@@ -4,8 +4,7 @@ import { Link } from "react-router-dom";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@chakra-ui/react";
-const BASE_URL = import.meta.env.VITE_BASE_URL ;
-
+const BASE_URL = import.meta.env.VITE_BASE_URL;
 
 const Login = () => {
   const [password, setPassword] = useState();
@@ -20,7 +19,6 @@ const Login = () => {
   //   }
   // }, []);
 
-
   // const handleSubmit = (e) => {
   //   e.preventDefault();
   //   axios
@@ -34,10 +32,10 @@ const Login = () => {
   //       if (message === "Login successful!") {
   //         // Store the token in localStorage
   //         localStorage.setItem("auth-token", token);
-  
+
   //         // Include the auth-token in the request headers
   //         axios.defaults.headers.common["auth-token"] = token;
-  
+
   //         toast({
   //           title: "Welcome to escrow dashboard.",
   //           description: "",
@@ -68,7 +66,6 @@ const Login = () => {
   //     });
   // };
 
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -77,14 +74,14 @@ const Login = () => {
         password,
       });
       const { message, token } = response.data;
-  
+
       if (message === "Login successful!") {
         // Store the token in localStorage
         localStorage.setItem("auth-token", token);
-  
+
         // Set the authentication token in Axios headers
         axios.defaults.headers.common["auth-token"] = token;
-         console.log("token", token);
+        console.log("token", token);
         // Redirect the user to the dashboard
         navigate("/dashboard");
       } else {
@@ -109,8 +106,6 @@ const Login = () => {
       });
     }
   };
-  
-  
 
   return (
     <div>
@@ -158,7 +153,7 @@ const Login = () => {
             type="submit"
             // to="/dashboard"
             to=""
-            className="w-[100%] flex  items-center justify-center  h-[50px] text-[14px]  rounded-xl mt-5  text-[#0F0821] bg-[#fff]"
+            className="w-[100%] flex  items-center justify-center  h-[50px] text-[14px]  rounded-xl mt-5  text-[#0F0821] hover:bg-[#07111C] hover:text-[#fff]   bg-[#fff]"
           >
             Login
           </button>
