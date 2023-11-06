@@ -1,0 +1,22 @@
+@keyframes slide {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-100%);
+    }
+  }
+  
+  .logo-container {
+    display: inline-block;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  
+  .logo {
+    display: inline-block;
+    /* opacity: 0.7; */
+    animation: slide 2s linear infinite;
+    animation-delay: calc(var(--logo-index) * -2s); /* Adjust the duration and delay as needed */
+  }
+  

@@ -1,0 +1,65 @@
+.hero_img_one{
+    position: relative;
+}
+.hero_img_one:before{
+    position: absolute;
+    width: 0;
+    height: 0;
+    background-color: transparent;
+    content: "";
+    z-index: 1;
+    top: -8px;
+    left: -6px;
+    /* border: 1px  solid red; */
+    border-top: 38px solid #0f1a2e;
+    border-left: 38px solid #0f1a2e;
+    border-right: 38px solid transparent;
+    border-bottom: 38px solid transparent;
+    -webkit-transform: rotate(10deg);
+    transform: rotate(10deg);
+}
+.hero_img_two{
+    position: relative;
+}
+.hero_img_two:before{
+    position: absolute;
+    width: 0;
+    height: 0;
+    background-color: transparent;
+    content: "";
+    z-index: 1;
+    top: -8px;
+    left: -6px;
+    /* border: 1px  solid red; */
+    border-top: 38px solid #0f1a2e;
+    border-left: 38px solid #0f1a2e;
+    border-right: 38px solid transparent;
+    border-bottom: 38px solid transparent;
+    -webkit-transform: rotate(10deg);
+    transform: rotate(10deg);
+}
+.hero h1{
+    /* font-size: 49px; */
+    line-height: 55px;
+    font-weight: bold;
+    padding-top: 8px;
+}
+.hero   .ss{
+    font-weight: 400;
+    font-size: 14px;
+    padding-top: 17px;
+}
+.bounce {
+    animation: bounceAnimation 3s infinite;
+  }
+  
+  @keyframes bounceAnimation {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-20px); /* Adjust this value for desired bounce height */
+    }
+  }
+
+  /* D8D3EB */
