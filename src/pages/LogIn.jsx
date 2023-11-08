@@ -111,7 +111,7 @@ const Login = () => {
     <div>
       {/* <Navbar/>  */}
       <div className="w-[100%] min-h-[100vh] flex-col  flex items-center justify-center pt-10  pb-5 pl-5 pr-5   bg-[#fff]">
-        <div className="absolute top-[40px] font-bold font-[Poppins] text-[36px] text-[#070411] left-[100px]">
+        <div className="absolute top-[40px] font-bold font-[Poppins] text-[36px] text-[#031420] md:left-[100px] left-[27px]">
           <Link to="/" className="outline-none">
             Escrow
           </Link>
@@ -119,7 +119,7 @@ const Login = () => {
         <form
           action=""
           onSubmit={handleSubmit}
-          className="pt-10 mt-8 text-[] pb-10 pl-5 pr-5  bg-[#0f1a2e] font-[Poppins] rounded-xl w-[500px] border border-[#D8D3EB] h-[auto]"
+          className="pt-10 mt-8 text-[] pb-10 pl-5 pr-5  bg-[#031420] font-[Poppins] rounded-xl md:w-[500px] w-[100%] border border-[#031420] h-[auto]"
         >
           <h3 className="text-[#fff]">All fields are required*</h3>
           <div className="mt-5">
@@ -153,7 +153,7 @@ const Login = () => {
             type="submit"
             // to="/dashboard"
             to=""
-            className="w-[100%] flex  items-center justify-center  h-[50px] text-[14px]  rounded-xl mt-5  text-[#0F0821] hover:bg-[#07111C] hover:text-[#fff]   bg-[#fff]"
+            className="w-[100%] flex  items-center justify-center  h-[50px] text-[14px] border-2   border-[#2D6B76] hover:border hover:border-[#81712E]  rounded-xl mt-5  text-[#0F0821] hover:bg-[#81712E] hover:text-[#fff] text-[#fff] bg-[#072534]"
           >
             Login
           </button>

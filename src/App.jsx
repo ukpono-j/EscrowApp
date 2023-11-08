@@ -13,6 +13,7 @@ import TransactionTab from "./components/dashboard/TransactionTab";
 import ContactUs from "./pages/ContactUs";
 import Notification from "./components/dashboard/Notification";
 import MessageBox from "./components/dashboard/MessageBox";
+import SetAvatar from "./pages/SetAvatar";
 
 function App() {
 
@@ -30,6 +31,9 @@ function App() {
           <Route path="/join-transaction"  element={<JoinTransaction/>} />
           <Route path="/contact"  element={<ContactUs/>} />
           <Route path="/notifications"  element={<Notification/>} />
+          <Route path="/setAvatar"  element={<SetAvatar/>} />
+
+          
           <Route path="/messages"  element={<MessageBox/>} />
          </Routes>
       {/* </Router> */}

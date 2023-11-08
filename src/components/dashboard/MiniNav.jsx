@@ -29,7 +29,7 @@ const MiniNav = () => {
 
   return (
     <div className="flex items-center justify-end fixed z-30 top-0 pr-7 text-[#fff] text-[24px] h-[auto] w-[100%] md:w-[83.2%] bg-[#0f1a2e]">
-      <Link to="/messages" className="relative">
+      <Link to="/setAvatar" className="relative">
         <AiFillMessage className="ml-2 mr-2 mt-4 mb-4" />
       </Link>
       <Link to="/notifications" className="relative">

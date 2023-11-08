@@ -1,12 +1,14 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import Buyer from "../../assets/seller.png";
+import "./ServicesComponent.css";
+
 
 const ServicesComponent = () => {
   return (
-    <div className="h-[auto]  bg-[#0f1a2e] md:pl-20 pl-5  pr-5  md:pr-20 pt-20 pb-20 text-[#FEFEFF] font-[Poppins] w-[100%]">
+    <div className="h-[auto]    md:pl-20 pl-5  pr-5  md:pr-20 pt-20 pb-20 text-[#FEFEFF] font-[Poppins] w-[100%]">
       <div className="h-[auto]">
-        <div className="service_title m-auto sm:text-[40px] text-[35px] md:w-[480px] text-center font-[900] sm:leading-[57px] leading-[45px]">
+        <div className="service_title m-auto sm:text-[54px] text-[35px] md:w-[560px] text-center font-[900] sm:leading-[60px] leading-[45px]">
           What you order has to be what you get!
         </div>
         {/* === buyer */}
@@ -20,7 +22,7 @@ const ServicesComponent = () => {
             </p>
             <Link
               to="/register"
-              className="w-[200px] pt-2  items-center justify-center  pb-2 mt-[17px] rounded-full text-[15px] bg-[#6149FA] flex text-[#FEFEFF]"
+              className="mt-5  flex items-center nav-btn  justify-center px-7 py-3  rounded-full text-[#fff] text-[14px] bg-[#81712E] border-2  border-[#81712E] login_btn  hover:border-2  hover:border-[#81712E]  hover:bg-[transparent]"
             >
               Get Started now
             </Link>
@@ -51,7 +53,7 @@ const ServicesComponent = () => {
             </p>
             <Link
               to="/register"
-              className="w-[200px] pt-2  items-center justify-center  pb-2 mt-[17px] rounded-full text-[15px] bg-[#6149FA] flex text-[#FEFEFF]"
+              className="mt-5  flex items-center nav-btn  justify-center px-7 py-3  rounded-full text-[#fff] text-[14px] bg-[#81712E] border-2  border-[#81712E] login_btn  hover:border-2  hover:border-[#81712E]  hover:bg-[transparent]"
             >
               Get Started now
             </Link>
@@ -68,7 +70,7 @@ const ServicesComponent = () => {
             </p>
             <Link
               to="/register"
-              className="w-[200px] pt-2  items-center justify-center  pb-2 mt-[17px] rounded-full text-[15px] bg-[#6149FA] flex text-[#FEFEFF]"
+              className="mt-5  flex items-center nav-btn  justify-center px-7 py-3  rounded-full text-[#fff] text-[14px] bg-[#81712E] border-2  border-[#81712E] login_btn  hover:border-2  hover:border-[#81712E]  hover:bg-[transparent]"
             >
               Get Started now
             </Link>

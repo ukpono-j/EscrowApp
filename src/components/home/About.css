@@ -77,6 +77,18 @@
     position: relative;
     border: 5px solid #0f1a2e;
 }
+.fade_right h1{
+  font-size: 50px;
+  font-weight: 800;
+  line-height: 57px;
+  letter-spacing: -2px;
+  font-family: 'Montserrat', sans-serif;
+  background: linear-gradient(-40deg, #db9b1e 0%, #C0D4C9 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+
+}
 .about_img_two:before{
     position: absolute;
     width: 0;
@@ -93,4 +105,28 @@
     border-bottom: 38px solid transparent;
     -webkit-transform: rotate(10deg);
     transform: rotate(10deg);
+}
+
+.about_img{
+  position: relative;
+  animation: moveUpDown 3.5s infinite alternate cubic-bezier(0.25, 0.1, 0.25, 0.2);
+}
+.fade_left{
+  background-image: url(../../assets/gateway.png);
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-position: center;
+    position: relative;
+}
+@keyframes moveUpDown {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(-20px); /* Adjust the vertical distance as needed */
+  }
+}
+/* linear-gradient(161deg, #FDED5C 0%, #8ED3FF 64.16%, #08F 100%) */
+.about_circle{
+background: linear-gradient(161deg, #FDED5C 0%, #8ED3FF 64.16%, #08F 100%);
 }

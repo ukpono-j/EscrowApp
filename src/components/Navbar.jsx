@@ -8,7 +8,9 @@ const Navbar = () => {
   return (
     <div className="pl-5 font-[Poppins] pr-5  md:pl-[60px] md:pr-[60px] left-0  fixed z-30 top-0 pt-5 pb-5 w-full bg-[#0F1A2E] text-white flex justify-between items-center">
       <div className="font-bold cursor-pointer  text-2xl uppercase">
-        <Link to="/" className="outline-none">TrustLink</Link>
+        <Link to="/" className="outline-none">
+          TrustLink
+        </Link>
         {/* 5B51FE */}
       </div>
       <div className="hidden text-[13px] md:flex space-x-6 items-center">
@@ -24,13 +26,13 @@ const Navbar = () => {
         </Link> */}
         <Link
           to="/login"
-          className="ml-3 flex items-center nav-btn  justify-center px-4 py-2 rounded-full text-[#fff] text-[13px] bg-[#6149FA] hover:bg-[#6149FA] bg-[#6149FA]"
+          className="ml-3 flex items-center nav-btn  justify-center px-7 py-3  rounded-full text-[#fff] text-[13px] bg-[#81712E] border-2  border-[#81712E] login_btn  hover:border-2  hover:border-[#81712E]  hover:bg-[transparent]"
         >
           Log In
         </Link>
         <Link
           to="/register"
-          className="ml-3 flex items-center nav-btn  justify-center px-4 py-2 rounded-full text-[#fff] text-[13px] bg-[#6149FA] hover:bg-[#6149FA] bg-[#6149FA]"
+          className="ml-3 flex items-center nav-btn  justify-center px-7 py-3  rounded-full text-[#fff] text-[13px] bg-[transparent]  border-2  border-[#81712E] register_btn"
         >
           Register
         </Link>
@@ -57,13 +59,13 @@ const Navbar = () => {
           </Link>
           <Link
             to="/login"
-            className="flex items-center nav-btn  justify-center px-4 py-2 rounded-full text-[#fff] text-[13px] bg-[#6149FA] hover:bg-[#6149FA] bg-[#6149FA]"
+            className="flex items-center nav-btn  justify-center px-7 py-3  rounded-full text-[#fff] text-[13px]  hover:bg-[#6149FA] bg-[#81712E]"
           >
             Log In
           </Link>
           <Link
             to="/register"
-            className=" flex mt-3  items-center nav-btn  justify-center px-4 py-2 rounded-full text-[#fff] text-[13px] bg-[#6149FA] hover:bg-[#6149FA] bg-[#6149FA]"
+            className=" flex mt-3  items-center nav-btn  justify-center px-7 py-3   rounded-full text-[#fff] text-[13px] bg-[transparent] hover:bg-[#6149FA] border-2  border-[#81712E]"
           >
             Register
           </Link>

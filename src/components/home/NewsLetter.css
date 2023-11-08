@@ -1,0 +1,24 @@
+.news_button:before{
+    transition: all 0.3s ease;
+    z-index: -1;
+  }
+  .news_button:hover{
+    display: inline-block;
+    position: relative;
+    overflow: hidden;
+    border-radius: 50px;
+    border: 1.5px solid rgba(219, 155, 30, 1);
+    color: #fff;
+    z-index: 1;
+    background: linear-gradient(60deg, rgba(37, 137, 172, 1) 0%, rgba(219, 155, 30, 1) 100%);
+    padding: 14px 18px 14px 18px !important;
+    transition: all 0.3s ease;
+    text-align: center;
+  }
+  .newsletter_content h1{
+    background: linear-gradient(-40deg, #db9b1e 0%, #C0D4C9 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+

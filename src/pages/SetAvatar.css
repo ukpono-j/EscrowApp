@@ -1,0 +1,6 @@
+.loader{
+    max-inline-size: 100%;
+}
+.avatars .selected{
+    border: 0.4rem solid #4e0eff;
+}
