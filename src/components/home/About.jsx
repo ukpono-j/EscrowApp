@@ -28,7 +28,7 @@ const About = () => {
   return (
     <div
       id="about"
-      className={`w-[100%] pt-14  text-[#fff]  md:pl-20 pl-5 pb-14  pr-5  md:pr-20 justify-between h-[auto] flex md:flex-row  flex-col-reverse  items-center ${
+      className={`w-[100%] pt-14  text-[#fff]  md:pl-20 pl-5 md:pb-14  pr-5  md:pr-20 justify-between h-[auto] flex md:flex-row  flex-col-reverse  items-center ${
         isScrolling ? "fade-in" : "fade-out"
       }`}
     >
@@ -37,11 +37,11 @@ const About = () => {
           isScrolling ? "slide-in-left" : "slide-out-left"
         }`}
       >
-        <div className=" md:w-[100%] md:h-[500px] w-[300px] sm:w-[100%] sm:h-[300px] relative z-10  md:mr-[-100px] mr-[-120px] mb-[70px] mt-[30px] about_img ">
+        <div className=" md:w-[100%] md:h-[500px] w-[100%] sm:w-[100%]  relative z-10  md:mr-[-100px] mr-[-120px] mb-[70px] mt-[30px] about_img ">
           <img
             src={AboutImage}
             alt=""
-            className="w-[90%] h-[100%] object-contain absolute"
+            className="w-[90%] h-[100%] object-contain"
           />
         </div>
         {/* <div className=" sm:w-[480px] w-[100%] sm:h-[500px]  h-[400px] mr-[0] about_img_one ">
