@@ -57,7 +57,7 @@ const Sidebar = () => {
   };
 
   return (
-    <div className="border text-[13px] fixed md:flex hidden md:flex-col left-0 top-0 pl-4 pr-4 pt-10 pb-10 border-black w-[100%] font-[Poppins] text-[#fff] bg-[#0f1a2e] min-h-[100vh]">
+    <div className="border text-[13px] fixed md:flex hidden md:flex-col left-0 top-0 pl-4 pr-4 pt-3 pb-10 border-black w-[100%] font-[Poppins] text-[#fff] bg-[#031420] min-h-[100vh]">
       <h1 className="text-[26px] font-bold">
         <Link to="/dashboard">TrustLink</Link>
       </h1>
@@ -74,8 +74,8 @@ const Sidebar = () => {
             key={link.to}
             to={link.to}
             onClick={() => handleLinkClick(link.to)}
-            className={`dash_links flex mt-2 mb-2 p-3 cursor-pointer ${
-              activeLink === link.to ? "text-[#000] rounded-3xl bg-[white] mb-3 text-[#000]" : ""
+            className={`dash_links flex mt-2 mb-2 pl-4 pr-3 pb-3 pt-3 cursor-pointer ${
+              activeLink === link.to ? "text-[#fff] rounded-3xl bg-[#81712E] mb-3 text-[#000]" : ""
             }`}
           >
             {link.label}

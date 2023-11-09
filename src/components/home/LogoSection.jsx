@@ -34,24 +34,24 @@ const LogoSection = () => {
   }, []);
 
   return (
-    <div className='logo-slider font-[Poppins] text-[13px] md:pt-8 pt-4 md:pl-0 pl-3 pb-4 md:pb-8 '>
-      <div className='flex items-center logo-container' ref={logoContainerRef}>
-        <div className='logo text-[#fff] md:m-4 m-2 w-[300px] md:h-[80px] h-[auto] border border-[#2D6B76] hover:bg-[#031420] cursor-pointer  flex items-center justify-center rounded-xl bg-[#072534]'>
+    <div className='logo-slider font-[Poppins] text-[13px] md:pt-8 pt-4 md:pl-14 md:pr-14  pl-3 pb-4 md:pb-8 '>
+      <div className='flex items-center logo-container pl-10 ' ref={logoContainerRef}>
+        <div className='logo text-[#fff] md:m-4 m-2 w-[300px] h-[80px] border border-[#2D6B76] hover:bg-[#031420] cursor-pointer  flex items-center justify-center rounded-xl bg-[#072534]'>
           Logos
         </div>
-        <div className='logo text-[#fff] md:m-4 m-2 w-[300px] md:h-[80px] h-[auto] border border-[#6149FA] flex items-center justify-center rounded-xl bg-[#072534]'>
+        <div className='logo text-[#fff] md:m-4 m-2 w-[300px] h-[80px] border border-[#6149FA] flex items-center justify-center rounded-xl bg-[#072534]'>
           Logos
         </div>
-        <div className='logo text-[#fff] md:m-4 m-2 w-[300px] md:h-[80px] h-[auto] border border-[#2D6B76] hover:bg-[#031420] cursor-pointer  flex items-center justify-center rounded-xl bg-[#072534]'>
+        <div className='logo text-[#fff] md:m-4 m-2 w-[300px] h-[80px] border border-[#2D6B76] hover:bg-[#031420] cursor-pointer  flex items-center justify-center rounded-xl bg-[#072534]'>
           Logos
         </div>
-        <div className='logo text-[#fff] md:m-4 m-2 w-[300px] md:h-[80px] h-[auto] border border-[#2D6B76] hover:bg-[#031420] cursor-pointer  flex items-center justify-center rounded-xl bg-[#072534]'>
+        <div className='logo text-[#fff] md:m-4 m-2 w-[300px] h-[80px] border border-[#2D6B76] hover:bg-[#031420] cursor-pointer  flex items-center justify-center rounded-xl bg-[#072534]'>
           Logos
         </div>
-        <div className='logo text-[#fff] md:m-4 m-2 w-[300px] md:h-[80px] h-[auto] border border-[#2D6B76] hover:bg-[#031420] cursor-pointer  flex items-center justify-center rounded-xl bg-[#072534]'>
+        <div className='logo text-[#fff] md:m-4 m-2 w-[300px] h-[80px] border border-[#2D6B76] hover:bg-[#031420] cursor-pointer  flex items-center justify-center rounded-xl bg-[#072534]'>
           Logos
         </div>
-        <div className='logo text-[#fff] md:m-4 m-2 w-[300px] md:h-[80px] h-[auto] border border-[#2D6B76] hover:bg-[#031420] cursor-pointer  flex items-center justify-center rounded-xl bg-[#072534]'>
+        <div className='logo text-[#fff] md:m-4 m-2 w-[300px] h-[80px] border border-[#2D6B76] hover:bg-[#031420] cursor-pointer  flex items-center justify-center rounded-xl bg-[#072534]'>
           Logos
         </div>
         {/* Repeat other logo elements here */}

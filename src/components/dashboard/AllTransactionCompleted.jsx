@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { PiCurrencyNgnDuotone } from "react-icons/pi";
-const BASE_URL = import.meta.env.VITE_BASE_URL ;
+const BASE_URL = import.meta.env.VITE_BASE_URL;
 import { useToast } from "@chakra-ui/react";
-import {formatCreatedAt } from "../../utility/DateTimeStramp"
+import { formatCreatedAt } from "../../utility/DateTimeStramp";
+import "./AllTransactionCompleted.css";
 
 const AllTransactionCompleted = ({
   transactionDetails,
@@ -51,14 +52,16 @@ const AllTransactionCompleted = ({
       {transactionDetails.map((transaction) => (
         <div
           key={transaction.transactionId}
-          className="w-[100%] h-[auto] mt-4 rounded-2xl bg-[#fff]  pl-5  pt-4  pb-4  pr-5"
+          className="w-[100%] h-[auto] mt-4 rounded-2xl bg-[#031420]  pl-5  pt-4  pb-4  pr-5"
         >
           <div className="flex  text-[17px] items-center justify-between">
-            <h3 className="text-[14px]">
-              {" "}
-              <span className="font-bold text-[16px]">User Name:</span>{" "}
-              {transaction.paymentName}{" "}
-            </h3>
+            <div className="text-[14px] flex   items-center ">
+              <p className="font-[600] text-[15px]">User Name :</p>{" "}
+              <span className="pl-2  text-[13px]">
+                {" "}
+                {transaction.paymentName}{" "}
+              </span>
+            </div>
             <h4 className="flex font-bold  items-center">
               <span className="">
                 <PiCurrencyNgnDuotone />
@@ -68,46 +71,48 @@ const AllTransactionCompleted = ({
           </div>
           {/* <div>Product Description: {transaction.paymentDscription}</div> */}
           <div>
-            <p className="text-[14px] mt-1">
-              <span className="font-[600] text-[16px]">
-                Product Description{" "}
+            <p className="text-[13px] mt-1">
+              <span className="font-[600] text-[15px]">
+                Product Description :{" "}
               </span>{" "}
               {transaction.paymentDscription}
             </p>
           </div>
           <div>
-            <p className="text-[14px] mt-1">
-              <span className="font-[600] text-[16px]">Email: </span>{" "}
+            <p className="text-[13px] mt-1">
+              <span className="font-[600] text-[15px]">Email : </span>{" "}
               {transaction.email}
             </p>
-            <p className="text-[14px] mt-1">
-              <span className="font-[600] text-[16px]">Bank Name: </span>{" "}
+            <p className="text-[13px] mt-1">
+              <span className="font-[600] text-[15px]">Bank Name : </span>{" "}
               {transaction.paymentBank}
             </p>
-            <p className="text-[14px] mt-1">
-              <span className="font-[600] text-[16px]">Bank Number: </span>{" "}
+            <p className="text-[13px] mt-1">
+              <span className="font-[600] text-[15px]">Bank Number : </span>{" "}
               {transaction.paymentAccountNumber}
             </p>
-            <p className="text-[14px] mt-1">
-              <span className="font-[600] text-[16px]">
-                Selected User Type:{" "}
+            <p className="text-[13px] mt-1">
+              <span className="font-[600] text-[15px]">
+                Selected User Type :{" "}
               </span>{" "}
               {transaction.selectedUserType}
             </p>
-            <p className="text-[14px] mt-1">
-              <span className="font-[600] text-[16px]">
-                Selected User Type:{" "}
+            <p className="text-[13px] mt-1">
+              <span className="font-[600] text-[15px]">
+                Selected User Type :{" "}
               </span>{" "}
               {transaction.willUseCourier ? "Yes" : "No"}
             </p>
             <div className="flex items-center ">
-              <p className="text-[14px]">
-                <span className="font-[600] text-[16px]">Transaction Id: </span>{" "}
+              <p className="text-[13px]">
+                <span className="font-[600] text-[15px]">
+                  Transaction Id :{" "}
+                </span>{" "}
                 {transaction.transactionId}{" "}
               </p>
               <div className="relative">
                 <button
-                  className="ml-3 border-2  border-[#0F1A2E] pl-4 pr-4  pt-1 pb-1 rounded-xl text-[12px]"
+                  className="ml-3 border-2  border-[#81712E] pl-4 pr-4  pt-1 pb-1 rounded-xl text-[12px]"
                   onClick={() => copyToClipboard(transaction.transactionId)}
                 >
                   Copy
@@ -116,7 +121,7 @@ const AllTransactionCompleted = ({
             </div>
           </div>
           <div className="flex mt-6  items-center justify-between">
-            <h5 className="text-[14px]">
+            <h5 className="text-[13px]">
               {/* {new Date(transaction.createdAt).toLocaleDateString()} */}
               {formatCreatedAt(transaction.createdAt)}
             </h5>
@@ -125,13 +130,13 @@ const AllTransactionCompleted = ({
                 <>
                   <button
                     onClick={() => onCancel(transaction.transactionId)}
-                    className="pl-5 pr-5 text-[14px] pt-2 pb-2 rounded-xl  bg-[#6149FA] text-[#fff]"
+                    className="ml-3 flex items-center   justify-center  pl-[38px] pt-[9px] pb-[9px] pr-[38px]   rounded-full text-[#fff] text-[13px] bg-[#81712E] border-2  border-[#81712E] all_btn   hover:border-2  hover:border-[#81712E]  hover:bg-[transparent]"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={() => onComplete(transaction.transactionId)}
-                    className="ml-3 pl-5 pr-5 text-[14px] pt-2 pb-2 rounded-xl  bg-[#6149FA] text-[#fff]"
+                    className="ml-3 flex items-center   justify-center  pl-[38px] pt-[9px] pb-[9px] pr-[38px]   rounded-full text-[#fff] text-[13px] bg-[#81712E] border-2  border-[#81712E] all_btn   hover:border-2  hover:border-[#81712E]  hover:bg-[transparent]"
                   >
                     Done
                   </button>
@@ -141,7 +146,8 @@ const AllTransactionCompleted = ({
               {/* Render Cancel and Done buttons only if the user is a participant and the transaction status is active */}
             </div>
           </div>
-          <div className="text-[14px]">Status: {transaction.status}</div> {/* Add this line */}
+          <div className="text-[13px]">Status: {transaction.status}</div>{" "}
+          {/* Add this line */}
         </div>
       ))}
     </div>

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 const BASE_URL = import.meta.env.VITE_BASE_URL ;
+import "./MainJoinTransaction.css";
+
 
 const MainJoinTransaction = () => {
   const [link, setLink] = useState("");
@@ -63,9 +65,9 @@ const MainJoinTransaction = () => {
   };
 
   return (
-    <div className="pl-20 font-[Poppins] mt-10  pr-20  pt-14 pb-14">
-      <h1 className="font-bold text-[30px]">Join Transaction</h1>
-      <p className="pt-10 pb-8">
+    <div className="font-[Poppins] pt-14 md:pr-14 pr-10 pl-10  mt-10  md:pl-14 pb-10">
+      <h1 className="font-bold text-[35px] join text-center md:text-start">Join Transaction</h1>
+      <p className="pt-10 pb-8 text-center md:text-start">
         Please paste the link you received from the person you are transacting
         with.
       </p>
@@ -76,13 +78,13 @@ const MainJoinTransaction = () => {
           placeholder="Transaction ID"
           value={transactionId}
           onChange={(e) => setTransactionId(e.target.value)}
-          className="border-b-2 border-[#F95CA1] text-[13px] outline-none bg-[transparent] w-[100%]"
+          className="border-b-2 border-[#81712E] text-[13px] outline-none  bg-[transparent] w-[100%]"
         />
-        <div className="mt-14  w-[70%]">
+        <div className="mt-14  md:w-[70%]">
           <button
             onClick={handleConfirm}
             disabled={isLoading || !transactionId}
-            className={`w-[100%] h-[35px] rounded-3xl text-[#fff] text-[12px] font-bold uppercase bg-[#0F0821] ${
+            className={`w-[100%] h-[35px] rounded-3xl cursor-pointer  text-[#fff] text-[12px] join_btn  font-bold uppercase bg-[#81712E] ${
               isLoading ? "cursor-not-allowed opacity-50" : ""
             }`}
           >

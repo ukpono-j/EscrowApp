@@ -134,134 +134,6 @@ const TransactionTab = ({ userResponse }) => {
     }
   );
 
-  // useEffect(
-  //   (transactionId) => {
-  //     if (userResponse) {
-  //       // Call the sendCancellationNotification function when userResponse changes
-  //       sendCancellationNotification(transactionId, userResponse);
-  //     }
-  //   },
-  //   [userResponse]
-  // );
-
-  // const sendCancellationNotification = (transactionId, transactionDetails) => {
-  //   const token = localStorage.getItem("auth-token");
-  //   if (token) {
-  //     axios.defaults.headers.common["auth-token"] = token;
-  //   }
-
-  //   // Fetch transaction details from the server
-  //   axios
-  //     .get(`${BASE_URL}/create-transaction/`, {
-  //       headers: {
-  //         "auth-token": token,
-  //       },
-  //     })
-  //     .then((response) => {
-  //       // Get transaction details from the response
-  //       const fetchedTransactionDetails = response.data;
-
-  //       // Find the transaction details for the specific transactionId
-  //       const foundTransaction = fetchedTransactionDetails.find(
-  //         (transaction) => transaction.transactionId === transactionId
-  //       );
-
-  //       if (foundTransaction) {
-  //         const {
-  //           paymentAmount,
-  //           selectedUserType,
-  //           paymentDscription,
-  //           paymentName,
-  //         } = foundTransaction;
-
-  //         // Create a custom notification message with the specific details
-  //         // const notificationMessage = `A ${selectedUserType} made a payment of ${paymentAmount} received for ${paymentDscription}. Reference: ${paymentName}`;
-  //         const notificationMessage = `A ${selectedUserType}  ${paymentName} has decide cancel this transaction (${paymentDscription}) with the amount of ${paymentAmount}  `;
-
-  //         // Create a new notification object with dynamic data
-  //         const newNotificationVerification = {
-  //           title: `Cancellation Notification for Transaction ${transactionId}`,
-  //           message: notificationMessage,
-  //           transactionId: transactionId,
-  //           transactionDetails: foundTransaction, // Include the specific transaction details in the notification
-  //         };
-
-  //         // Send the notification to the server
-  //         axios
-  //           .post(
-  //             `${BASE_URL}/verify-notifications`,
-  //             newNotificationVerification,
-  //             {
-  //               headers: {
-  //                 "auth-token": token,
-  //               },
-  //             }
-  //           )
-  //           .then((notificationResponse) => {
-  //             console.log("Notification created:", notificationResponse.data);
-  //             // Handle success if needed
-  //           })
-  //           .catch((notificationError) => {
-  //             console.error("Error creating notification:", notificationError);
-  //             // Handle error creating notification if needed
-  //           });
-  //       } else {
-  //         console.error(`Transaction with ID ${transactionId} not found.`);
-  //         // Handle the case where the transaction with the given ID is not found
-  //       }
-  //     })
-  //     .catch((error) => {
-  //       console.error("Error fetching transaction details:", error);
-  //       // Handle error fetching transaction details if needed
-  //     });
-  // };
-
-  // =========== handle Cancel
-  // const handleCancel = (transactionId) => {
-  //   const token = localStorage.getItem("auth-token");
-
-  //   axios
-  //     .post(
-  //       `${BASE_URL}/cancel-transaction`,
-  //       { transactionId: transactionId },
-  //       {
-  //         headers: {
-  //           "auth-token": token,
-  //         },
-  //       }
-  //     )
-  //     .then((response) => {
-  //       // After cancelling, update the server and fetch updated cancelled transactions
-  //       axios
-  //         .get(`${BASE_URL}/cancel-transactions`, {
-  //           headers: {
-  //             "auth-token": token,
-  //           },
-  //         })
-  //         .then((cancelledTransactionsData) => {
-  //           // Update cancelled transactions state with data from the server
-  //           setCancelledTransactions(cancelledTransactionsData);
-  //           toast({
-  //             title: "Transaction Cancelled",
-  //             status: "success",
-  //             duration: 3000,
-  //             isClosable: true,
-  //           });
-
-  //           // ======================= NotificationVerification Call
-
-  //         })
-  //         .catch((error) => {
-  //           console.error(error);
-  //           // Handle error, if any
-  //         });
-  //     })
-  //     .catch((error) => {
-  //       console.error(error);
-  //       // Handle error, if any
-  //     });
-  // };
-
   const handleCancel = (transactionId) => {
     const token = localStorage.getItem("auth-token");
 
@@ -465,6 +337,7 @@ const TransactionTab = ({ userResponse }) => {
     setActive(true);
     setCancelled(false);
     setAll(true);
+    setCompleted(false)
   };
   const handleCancelledTab = () => {
     setCancelled(true);
@@ -493,7 +366,7 @@ const TransactionTab = ({ userResponse }) => {
       />
       <div
         style={{ overflowY: "scroll" }}
-        className="layout bg-[#F4F5F5] fixed right-0 top-0 w-[100%]  md:w-[83.2%] h-[100vh]"
+        className="layout bg-[#072534] text-[#E4E4E4]  fixed right-0 top-0 w-[100%]  md:w-[83.2%] h-[100vh]"
       >
         <div
           className={
@@ -504,15 +377,15 @@ const TransactionTab = ({ userResponse }) => {
             <MiniNav />
           </div>
           {/* <MainJoinTransaction/> */}
-          <div className="font-[Poppins] pt-14 pr-14 mt-10  pl-14 pb-10">
-            <h1 className="text-[30px]">My Transactions</h1>
-            <div className="flex mt-4 mb-4  text-[14px]  items-center justify-between ">
-              <div className=" max-w-[280px] border-b border-[grey]   h-[auto]">
+          <div className="font-[Poppins] pt-14 md:pr-14 pr-7 pl-7  mt-10  md:pl-14 pb-20">
+            <h1 className="text-[33px] font-bold join ">My Transactions</h1>
+            <div className="sm:flex sm:flex-row  flex flex-col-reverse  mt-4 mb-4  text-[14px]  items-center justify-between ">
+              <div className=" sm:max-w-[280px] w-[100%] border-b border-[#81712E] rounded   h-[auto]">
                 <button
                   // className=" w-[120px]  pb-1 pl-4 pr-4"
                   className={`cursor-pointer w-[120px]  pb-1 pl-4 pr-4  ${
                     active
-                      ? "text-[#000] border-b-[3px]  h-[32px]  border-blue-500"
+                      ? "text-[#fff] border-b-[3px] rounded  h-[32px]  border-[#81712E]"
                       : ""
                   }`}
                   onClick={handleActiveTab}
@@ -523,7 +396,7 @@ const TransactionTab = ({ userResponse }) => {
                   // className=" w-[120px] pb-1 pl-4 "
                   className={`cursor-pointer w-[120px] pb-1 pl-4 pr-4  ${
                     cancelled
-                      ? "text-[#000] border-b-[3px]  h-[32px]  border-blue-500"
+                      ? "text-[#fff] border-b-[3px] rounded  h-[32px]  border-[#81712E]"
                       : ""
                   }`}
                   onClick={handleCancelledTab}
@@ -533,14 +406,14 @@ const TransactionTab = ({ userResponse }) => {
               </div>
 
               {/* ================= Search Feature ======= */}
-              <div className="w-[300px] h-[auto] flex items-center ">
+              <div className="sm:w-[300px] w-[100%] sm:mb-0 mb-6  h-[auto] flex items-center ">
                 <input
                   type="text"
                   placeholder="Search"
                   name=""
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pr-[20px]  w-[100%] bg-[transparent] border-black  border-b text-[13px] pb-2  outline-none"
+                  className="pr-[20px] text-[#fff]  w-[100%] bg-[transparent] border-[#fff]  border-b text-[13px] pb-2  outline-none"
                 />
                 <FiSearch className="text-[23px] ml-[-3px]" />
               </div>
@@ -554,7 +427,7 @@ const TransactionTab = ({ userResponse }) => {
                     // className="pl-10 pr-10 text-[13px]"
                     className={`cursor-pointer pl-5  pr-5  text-[13px]${
                       all
-                        ? "text-[#000] border-b-[2px]  h-[32px] text-[14px]  border-blue-500"
+                        ? "text-[#000] border-b-[2px] rounded  h-[32px] text-[14px]  border-[#81712E]"
                         : ""
                     }`}
                     onClick={handleAllToggle}
@@ -564,7 +437,7 @@ const TransactionTab = ({ userResponse }) => {
                   <button
                     className={`cursor-pointer pl-5  pr-5  text-[13px]${
                       completed
-                        ? "text-[#000] border-b-[2px] text-[14px]  h-[32px]  border-blue-500"
+                        ? "text-[#000] border-b-[2px] rounded  text-[14px]  h-[32px]  border-[#81712E]"
                         : ""
                     }`}
                     onClick={handleCompletedToggle}
@@ -575,18 +448,6 @@ const TransactionTab = ({ userResponse }) => {
                 {/* =========== POP MODEL FOR ACTIVE SUB CATEGORY======= */}
 
                 <div className="w-[100%] h-[auto]">
-                  {/* {transactionDetails.length === 0 ? (
-                    <div className="text-center mt-5">No transactions yet.</div>
-                  ) : all ? (
-                    <div className="mt-5 h-[auto]">
-                      <AllTransactionCompleted
-                        transactionDetails={transactionDetails}
-                        onCancel={handleCancel}
-                        onComplete={handleComplete}
-                      />
-                    </div>
-                  ) : null} */}
-
                   {all && (
                     <div className="w-[100%] mt-5  h-[auto]">
                       {loading ? (

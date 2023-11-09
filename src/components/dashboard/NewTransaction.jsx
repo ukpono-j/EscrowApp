@@ -5,6 +5,8 @@ import axios from "axios";
 import PaystackPop from "@paystack/inline-js";
 import { useToast } from "@chakra-ui/react";
 const BASE_URL = import.meta.env.VITE_BASE_URL ;
+import "./NewTransaction.css";
+
 
 const NewTransaction = () => {
   const [step, setStep] = useState(1); // Track the current step
@@ -175,14 +177,14 @@ const NewTransaction = () => {
   ];
 
   return (
-    <div className="font-[Poppins] pl-20 mt-10  pr-20 pt-14 pb-10">
-      <h1 className="text-[30px] font-bold">Create Transaction</h1>
+    <div className="font-[Poppins] bg-[#072534] min-h-[100vh] text-[#E4E4E4]   pt-14 md:pr-14 pr-10 pl-10  mt-10  md:pl-14 pb-20 ">
+      <h1 className="text-[33px] font-bold join text-center md:text-start">Create Transaction</h1>
       <form className="h-[auto] flex items-center flex-col justify-center mt-20 w-[100%]">
         <div className="h-[35px] flex items-center justify-between w-[300px]">
           {[1, 2, 3].map((number) => (
             <div
               key={number}
-              className={`border onActive bg-[#fff] border-2  border-black w-[33px] h-[33px]  rounded-full flex items-center justify-center text-[10px]`}
+              className={`border onActive bg-[#fff] text-[#031420] font-bold  border-2  border-[#81712E] w-[33px] h-[33px]  rounded-full flex items-center justify-center text-[13px]`}
               style={{ borderColor: getActiveColor(number) }}
             >
               {number}
@@ -190,7 +192,7 @@ const NewTransaction = () => {
           ))}
           <div className="h-[2px] w-[300px]  bg-[#CECECE] absolute z-[-1]"></div>
         </div>
-        <h3 className="pt-32 text-[21px] font-bold pb-7 title">
+        <h3 className="pt-32 text-[30px] text-center   font-bold pb-7 title">
           {stepTitles[step - 1]}
         </h3>
         {[1, 2, 3].map((number) => (
@@ -201,9 +203,9 @@ const NewTransaction = () => {
             }`}
           >
             {number === 2 ? (
-              <div className="flex items-center">
+              <div className="sm:flex items-center p-3 ">
                 <div
-                  className={`pl-6 shadow-xl hover:border-[#0F0821] hover:border-2  w-[250px] m-3 h-[100px] flex items-center rounded-2xl`}
+        className={`pl-10 shadow-xl hover:border-[#0F0821] bg-[#031420]  hover.borderWidth-2 max-w-[250px] pr-14  m-3 h-[100px] flex items-center rounded-2xl`}
                   style={{ borderColor: getActiveColor(number) }}
                 >
                   <input
@@ -219,14 +221,14 @@ const NewTransaction = () => {
                     }}
                   />
                   <div className="flex items-center pl-6">
-                    <span className="text-[#0F0821] text-[30px]">
+                    <span className="text-[#81712E] text-[30px]">
                       <FaCheck />
                     </span>
                     <h5 className="pl-4">Yes</h5>
                   </div>
                 </div>
                 <div
-                  className={`pl-6 shadow-xl hover:border-[#0F0821] hover:border-2  w-[250px] m-3 h-[100px] flex items-center rounded-2xl`}
+               className={`pl-10 shadow-xl hover:border-[#0F0821] bg-[#031420]  hover.borderWidth-2 max-w-[250px] pr-14  m-3 h-[100px] flex items-center rounded-2xl`}
                   style={{ borderColor: getActiveColor(number) }}
                 >
                   <input
@@ -242,7 +244,7 @@ const NewTransaction = () => {
                     }}
                   />
                   <div className="flex items-center pl-6">
-                    <span className="text-[#0F0821] text-[30px]">
+                    <span className="text-[#81712E] text-[30px]">
                       <FaTimes />
                     </span>
                     <h5 className="pl-4">No</h5>
@@ -252,12 +254,12 @@ const NewTransaction = () => {
             ) : step === 3 ? ( // Show a form for step 3
               // ====================================
               // ------------------------------ payment component
-              <div className="w-[550px] m-3">
+              <div className="w-[550px] m-3  ">
                 <div>
                   <div className="mb-4">
                     <label
                       htmlFor="paymentName"
-                      className="block text-sm font-bold text-[#0F0821] mb-2"
+                      className="block text-[13px] font-bold  text-[#fff] mb-2"
                     >
                       Name
                     </label>
@@ -267,14 +269,14 @@ const NewTransaction = () => {
                       name="paymentName"
                       onChange={(e) => setPaymentName(e.target.value)}
                       value={paymentName}
-                      className="border bg-[#FFF] rounded-md text-[13px] p-2 w-full"
+                      className="border-2  border-[#81712E] bg-[#031420] rounded-[30px] text-[12px] pl-4 pr-3 pt-2 pb-2  outline-none  w-full"
                       placeholder="Enter Payment Name"
                     />
                   </div>
                   <div className="mb-4">
                     <label
                       htmlFor="email"
-                      className="block text-sm font-bold text-[#0F0821] mb-2"
+                      className="block text-[13px] font-bold  text-[#fff] mb-2"
                     >
                       Email Address
                     </label>
@@ -284,14 +286,14 @@ const NewTransaction = () => {
                       name="email"
                       onChange={(e) => setEmail(e.target.value)}
                       value={email}
-                      className="border rounded-md text-[13px] p-2 w-full"
+                      className="border-2  border-[#81712E] bg-[#031420] rounded-[30px] text-[12px] pl-4 pr-3 pt-2 pb-2  outline-none mb-2  w-full"
                       placeholder="Enter Email Address"
                     />
                   </div>
                   <div className="mb-4">
                     <label
                       htmlFor="paymentAmount"
-                      className="block text-sm font-bold text-[#0F0821] mb-2"
+                      className="block text-[13px] font-bold  text-[#fff] mb-2"
                     >
                       Payment Amount
                     </label>
@@ -301,14 +303,14 @@ const NewTransaction = () => {
                       name="paymentAmount"
                       onChange={(e) => setPaymentAmount(e.target.value)}
                       value={paymentAmount}
-                      className="border rounded-md text-[13px] p-2 w-full"
+                      className="border-2  border-[#81712E] bg-[#031420] rounded-[30px] text-[12px] pl-4 pr-3 pt-2 pb-2  outline-none mb-2  w-full"
                       placeholder="Enter payment amount"
                     />
                   </div>
                   <div className="mb-4">
                     <label
                       htmlFor="paymentAmount"
-                      className="block text-sm font-bold text-[#0F0821] mb-2"
+                      className="block text-[13px] font-bold  text-[#fff] mb-2"
                     >
                       Bank Name
                     </label>
@@ -318,14 +320,14 @@ const NewTransaction = () => {
                       name="paymentBank"
                       onChange={(e) => setPaymentBank(e.target.value)}
                       value={paymentBank}
-                      className="border rounded-md text-[13px] p-2 w-full"
+                      className="border-2  border-[#81712E] bg-[#031420] rounded-[30px] text-[12px] pl-4 pr-3 pt-2 pb-2  outline-none mb-2  w-full"
                       placeholder="Enter payment bank"
                     />
                   </div>
                   <div className="mb-4">
                     <label
                       htmlFor="paymentAmount"
-                      className="block text-sm font-bold text-[#0F0821] mb-2"
+                      className="block text-[13px] font-bold  text-[#fff] mb-2"
                     >
                       Bank Number
                     </label>
@@ -335,22 +337,14 @@ const NewTransaction = () => {
                       name="paymentAccountNumber"
                       onChange={(e) => setPaymentAccountNumber(e.target.value)}
                       value={paymentAccountNumber}
-                      className="border rounded-md text-[13px] p-2 w-full"
+                      className="border-2  border-[#81712E] bg-[#031420] rounded-[30px] text-[12px] pl-4 pr-3 pt-2 pb-2  outline-none mb-2  w-full"
                       placeholder="Enter payment number"
                     />
                   </div>
-                  {/* <div className="mb-4">
-                    <label
-                      htmlFor="paymentMethod"
-                      className="block text-sm font-bold text-[#0F0821] mb-2"
-                    >
-                      Payment Method
-                    </label>
-                  </div> */}
                   <div className="mb-5 mt-5 ">
                     <label
                       htmlFor="paymentDscription"
-                      className="block text-sm font-bold text-[#0F0821] mb-2"
+                      className="block text-[13px] font-bold  text-[#fff] mb-2"
                     >
                       Payment Description
                     </label>
@@ -359,15 +353,15 @@ const NewTransaction = () => {
                       id="paymentDscription"
                       onChange={(e) => setPaymentDscription(e.target.value)}
                       value={paymentDscription}
-                      className="w-full text-[13px] p-2 text-[15px] border rounded"
-                      placeholder="Description"
+                      className="border-2  border-[#81712E] h-[100px] bg-[#031420] rounded-[30px]  text-[12px] pl-4 pr-3 pt-2 pb-2  outline-none mb-2  w-full"
+                      placeholder="Payment Description"
                     ></textarea>
                   </div>
                   <div className="text-center">
                     <button
                       type="submit"
                       onClick={paywithpaystack}
-                      className="bg-[#0F0821] text-white font-bold py-2 px-4 rounded-md"
+                      className=" rounded-full  text-white text-[13px] font-bold py-2  px-7   bg-[#81712E] border-2  border-[#81712E] all_btn   hover:border-2  hover:border-[#81712E]  hover:bg-[transparent]"
                     >
                       Start Transaction
                     </button>
@@ -375,9 +369,9 @@ const NewTransaction = () => {
                 </div>
               </div>
             ) : (
-              <div className="flex items-center">
+              <div className="sm:flex items-center">
                 <div
-                  className={`pl-6 shadow-xl hover:border-[#0F0821] hover.borderWidth-2 w-[250px] m-3 h-[100px] flex items-center rounded-2xl`}
+                  className={`pl-10 shadow-xl hover:border-[#0F0821] bg-[#031420]  hover.borderWidth-2 max-w-[250px] pr-14  m-3 h-[100px] flex items-center rounded-2xl`}
                   style={{ borderColor: getActiveColor(number) }}
                 >
                   <input
@@ -395,15 +389,15 @@ const NewTransaction = () => {
                         .classList.add("enabled");
                     }}
                   />
-                  <div className="flex items-center pl-6">
-                    <span className="text-[#0F0821] text-[30px]">
+                  <div className="flex items-center pl-3">
+                    <span className="text-[#81712E] text-[30px]">
                       <FaShoppingCart />
                     </span>
                     <h5 className="pl-4">Buyer</h5>
                   </div>
                 </div>
                 <div
-                  className={`pl-6 shadow-xl hover:border-[#0F0821] hover.borderWidth-2 w-[250px] m-3 h-[100px] flex items-center rounded-2xl`}
+                  className={`pl-10 shadow-xl hover:border-[#0F0821] bg-[#031420]   hover.borderWidth-2 max-w-[250px] pr-14  m-3 h-[100px] flex items-center rounded-2xl`}
                   style={{ borderColor: getActiveColor(number) }}
                 >
                   <input
@@ -420,8 +414,8 @@ const NewTransaction = () => {
                         .classList.add("enabled");
                     }}
                   />
-                  <div className="flex items-center pl-6">
-                    <span className="text-[#0F0821] text-[30px]">
+                  <div className="flex items-center pl-3">
+                    <span className="text-[#81712E] text-[30px]">
                       <FaStore />
                     </span>
                     <h5 className="pl-4">Seller</h5>
@@ -446,7 +440,7 @@ const NewTransaction = () => {
         ))}
         <div className="flex mt-24 space-x-4">
           <button
-            className={`border border-black  rounded-3xl h-[36px] font-bold w-[100px] ${
+            className={`border-2  border-[#81712E]   rounded-3xl h-[38px] font-bold w-[130px] ${
               step === 1 ? "hidden" : ""
             }`}
             onClick={handlePreviousClick}
@@ -455,9 +449,9 @@ const NewTransaction = () => {
           </button>
           <button
             id="nextButton"
-            className={`border rounded-3xl h-[36px] font-bold w-[100px] ${
+            className={`border-2  border-[#81712E]  rounded-3xl h-[38px] font-bold w-[130px] ${
               step === 3 ? "hidden" : ""
-            } ${nextButtonActive ? "text-black border-black" : ""}`}
+            } ${nextButtonActive ? "text-[#fff] border-black" : ""}`}
             onClick={handleNextClick}
             disabled={!nextButtonActive}
           >

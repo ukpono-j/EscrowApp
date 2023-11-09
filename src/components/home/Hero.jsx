@@ -17,7 +17,7 @@ const Hero = () => {
         {/* <h3 className="md:text-[16px] text-[14px]">
           Empower Your Transactions
         </h3> */}
-        <h1 className="md:text-[79px] leading-[67px] md:leading-[82px]  text-[50px] ">
+        <h1 className="md:text-[79px] leading-[67px] md:leading-[82px]  text-[56px] ">
           {" "}
           {/* A New Era of Trust and Transparency */}
           Where Trust Meets Transparency

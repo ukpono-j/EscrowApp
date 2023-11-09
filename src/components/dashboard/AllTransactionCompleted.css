@@ -1,0 +1,17 @@
+.all_btn:before{
+    transition: all 0.3s ease;
+    z-index: -1;
+  }
+  .all_btn:hover{
+    display: inline-block;
+    position: relative;
+    overflow: hidden;
+    border-radius: 50px;
+    border: 2px solid rgba(219, 155, 30, 1);
+    color: #fff;
+    z-index: 1;
+    background: linear-gradient(60deg, rgba(37, 137, 172, 1) 0%, rgba(219, 155, 30, 1) 100%);
+    padding: 10px 38px 10px 38px !important;
+    transition: all 0.3s ease;
+    text-align: center;
+  }
