@@ -1,4 +1,4 @@
-.faq h1{
+.faq .fg  h1{
     background: linear-gradient(-40deg, #db9b1e 0%, #C0D4C9 100%);
     background-clip: text;
     -webkit-background-clip: text;
@@ -23,4 +23,7 @@
     padding: 14px 38px 14px 38px !important;
     transition: all 0.3s ease;
     text-align: center;
+  }
+  .accordion_title{
+
   }

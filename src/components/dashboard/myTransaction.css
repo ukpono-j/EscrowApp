@@ -1,0 +1,12 @@
+.myTransaction{
+    background-image: url(../../assets/gateway.png);
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-position: center;
+    position: relative;
+}
+.createTransaction_Btn{
+    background: linear-gradient(rgba(37, 137, 172, 1), rgba(219, 155, 30, 1));
+    padding: 20px 10px;
+    /* -webkit-text-fill-color: transparent; */
+}

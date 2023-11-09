@@ -1,6 +1,8 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import Buyer from "../../assets/seller.png";
+import Vesa from "../../assets/vesa.png";
+import Card from "../../assets/Card.png";
+import Girl from "../../assets/about.png";
 import "./ServicesComponent.css";
 
 
@@ -12,7 +14,7 @@ const ServicesComponent = () => {
           What you order has to be what you get!
         </div>
         {/* === buyer */}
-        <div className="md:w-[80%]  h-[auto] sm:mt-16 mt-14  md:flex items-center justify-between  mb-6 ml-auto mr-auto">
+        <div className="md:w-[80%]   h-[auto] sm:mt-16 mt-14  md:flex items-center justify-between  mb-6 ml-auto mr-auto">
           <div className=" md:w-[380px] h-[auto] flex flex-col md:items-start items-center md:text-start text-center">
             <h1 className="font-bold text-[34px]">Buyer protection</h1>
             <p className="text-[15px] mt-2 ">
@@ -27,21 +29,21 @@ const ServicesComponent = () => {
               Get Started now
             </Link>
           </div>
-          <div className="rounded-3xl  md:mt-0 mt-9  md:w-[470px] h-[400px] ">
+          <div className="rounded-3xl flex  justify-center   moving   md:mt-0 mt-9  md:w-[470px] h-[auto] ">
             <img
-              src={Buyer}
+              src={Card}
               alt=""
-              className="w-[100%] h-[100%] rounded-3xl  object-cover"
+              className="sm:w-[100%] w-[80%]"
             />
           </div>
         </div>
         {/* ========== Seller */}
         <div className="md:w-[80%]  h-[auto] mt-16    flex md:flex-row  flex-col-reverse items-center justify-between  mb-6 ml-auto mr-auto">
-          <div className="rounded-3xl md:mt-0 mt-9   md:w-[470px] h-[400px] ">
+          <div className="rounded-3xl flex  justify-center   md:mt-0 mt-9  moving  md:w-[540px] h-[auto] ">
             <img
-              src={Buyer}
+              src={Girl}
               alt=""
-              className="w-[100%] h-[100%] rounded-3xl  object-cover"
+              className="w-[90%]"
             />
           </div>
           <div className=" md:w-[380px] h-[auto] flex flex-col md:items-start items-center md:text-start text-center">
@@ -60,8 +62,8 @@ const ServicesComponent = () => {
           </div>
         </div>
         {/* ======== Fraud Protection */}
-        <div className="md:w-[80%]  h-[auto] mt-16   md:flex items-center justify-between  mb-6 ml-auto mr-auto">
-        <div className=" md:w-[380px] h-[auto] flex flex-col md:items-start items-center md:text-start text-center">
+        <div className="md:w-[80%]  h-[auto] mt-20   md:flex items-center justify-between  mb-6 ml-auto mr-auto">
+        <div className=" md:w-[300px] h-[auto] flex flex-col md:items-start items-center md:text-start text-center">
             <h1 className="font-bold text-[34px]">Fraud protection</h1>
             <p className="text-[15px] mt-2 ">
               Transactions are domiciled on Bondly’s wallets and payment portal
@@ -75,11 +77,11 @@ const ServicesComponent = () => {
               Get Started now
             </Link>
           </div>
-          <div className="rounded-3xl md:mt-0 mt-9   md:w-[470px] h-[400px] ">
+          <div className="rounded-3xl flex  justify-center   md:mt-0 mt-9 moving   md:w-[470px] h-[400px] ">
             <img
-              src={Buyer}
+              src={Vesa}
               alt=""
-              className="w-[100%] h-[100%] rounded-3xl  object-cover"
+              className=" h-[100%]  w-[100%] object-cover object-center bottom relative  rounded-3xl"
             />
           </div>
         </div>

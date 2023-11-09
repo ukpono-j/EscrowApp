@@ -27,7 +27,7 @@ const Transaction = () => {
       />
       <div
         style={{ overflowY: "scroll" }}
-        className="layout  bg-[#F4F5F5] fixed right-0 top-0 w-[100%]  md:w-[83.2%] h-[100vh]"
+        className="layout  bg-[#F4F5F5] fixed right-0 top-0 w-[100%]  md:w-[83.2%]  h-[100vh]"
       >
         <div
           className={
