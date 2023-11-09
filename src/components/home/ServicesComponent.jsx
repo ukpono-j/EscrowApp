@@ -1,7 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import Vesa from "../../assets/vesa.png";
-import Card from "../../assets/Card.png";
+import Card from "../../assets/card.png";
 import Girl from "../../assets/about.png";
 import "./ServicesComponent.css";
 
