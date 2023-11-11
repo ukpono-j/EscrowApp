@@ -57,7 +57,7 @@ const Register = () => {
       <div className="w-[100%] min-h-[100vh] flex-col  flex items-center justify-center pt-10  pb-5 pl-5 pr-5   bg-[#fff]">
         <div className="absolute top-[40px] font-bold font-[Poppins] text-[36px] text-[#031420] md:left-[100px] left-[27px]">
           <Link to="/" className="outline-none">
-            Escrow
+          MiddleMan
           </Link>
         </div>
         <form

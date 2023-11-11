@@ -7,9 +7,9 @@ const Navbar = () => {
 
   return (
     <div className="pl-5 font-[Poppins] pr-5  md:pl-[60px] md:pr-[60px] left-0  fixed z-30 top-0 pt-5 pb-5 w-full bg-[#0F1A2E] text-white flex justify-between items-center">
-      <div className="font-bold cursor-pointer  md:text-3xl text-2xl uppercase">
+      <div className="font-bold cursor-pointer  md:text-2xl text-2xl uppercase">
         <Link to="/" className="outline-none">
-          TrustLink
+        MiddleMan
         </Link>
         {/* 5B51FE */}
       </div>

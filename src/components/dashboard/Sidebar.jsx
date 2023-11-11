@@ -59,7 +59,7 @@ const Sidebar = () => {
   return (
     <div className="border text-[13px] fixed md:flex hidden md:flex-col left-0 top-0 pl-4 pr-4 pt-3 pb-10 border-black w-[100%] font-[Poppins] text-[#fff] bg-[#031420] min-h-[100vh]">
       <h1 className="text-[26px] font-bold">
-        <Link to="/dashboard">TrustLink</Link>
+        <Link to="/dashboard">MiddleMan</Link>
       </h1>
       <h3 className="mt-10">Welcome <span>{userName}</span></h3>
       <div className="flex pt-6 pb-6 items-center">

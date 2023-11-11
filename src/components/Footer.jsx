@@ -10,7 +10,7 @@ const Footer = () => {
       <div className="font-[Poppins]   text-[#fff] list-none mb-[-30px] pt-20 pb-20   sm:pl-20 sm:pr-20 pl-5 pr-5  h-[auto] flex flex-col  items-center justify-center  w-[100%]">
         <div className=" sm:flex h-[auto]   justify-between w-[100%] ">
           <div className=" sm:w-[400px] w-[100%] h-[auto]">
-            <Link TO="/" className="text-[30px] font-bold">ESCROW</Link>
+            <Link TO="/" className="text-[27px] font-bold uppercase">MiddleMan</Link>
             <div className="text-[12px] leading-[23px] pt-4 font-[200]">
               Lorem ipsum dolor, sit amet consectetur adipisicing elit. Velit,
               optio. Voluptate sunt alias numquam quos ratione harum libero,
