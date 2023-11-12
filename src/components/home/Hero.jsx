@@ -10,7 +10,7 @@ const Hero = () => {
   return (
     <div
       className="
-     hero text-center md:text-start  font-[Poppins] md:flex items-center justify-between  md:pl-14  pl-5  pr-5  md:pr-14  md:pt-[180px] pt-[150px] pb-[70px]   h-[auto] text-[#FFF] w-[100%]"
+     hero   font-[Poppins] md:flex items-center justify-between  md:pl-14  pl-5  pr-5  md:pr-14  md:pt-[180px] pt-[150px] pb-[70px]   h-[auto] text-[#FFF] w-[100%]"
     >
       <div className="md:w-[50%]  w-[100%]   h-[auto] pr-10 ">
         {/* <h1>Transforming Transactions, Building Trust</h1> */}
