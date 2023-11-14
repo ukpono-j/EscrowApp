@@ -93,11 +93,6 @@
     background-color: transparent;
     content: "";
     z-index: 1;
-    /* border: 1px  solid red; */
-    /* border-top: 38px solid #0f1a2e;
-    border-left: 38px solid #0f1a2e;
-    border-right: 38px solid transparent;
-    border-bottom: 38px solid transparent; */
     -webkit-transform: rotate(10deg);
     transform: rotate(10deg);
 }
@@ -127,13 +122,20 @@
     background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    font-weight: bold;
     padding-top: 8px;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 900;
 }
 .hero   .ss{
-    font-weight: 100;
-    font-size: 15px;
+    font-weight: 400;
+    font-family: 'Poppins', sans-serif;
     margin-top: 26px;
+}
+.hero p{
+  font-family: 'Poppins', sans-serif;
+}
+.hero button{
+  font-family: 'Poppins', sans-serif;
 }
 .bounce {
     animation: bounceAnimation 3s infinite;

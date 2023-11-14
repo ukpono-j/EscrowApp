@@ -10,19 +10,15 @@ const Hero = () => {
   return (
     <div
       className="
-     hero   font-[Poppins] md:flex items-center justify-between  md:pl-14  pl-5  pr-5  md:pr-14  md:pt-[180px] pt-[150px] pb-[70px]   h-[auto] text-[#FFF] w-[100%]"
+     hero   md:flex items-center justify-between  md:pl-14  pl-5  pr-5  md:pr-14  md:pt-[180px] pt-[150px] md:pb-[70px]   h-[auto] text-[#FFF] w-[100%]"
     >
-      <div className="md:w-[50%]  w-[100%]   h-[auto] pr-10 ">
-        {/* <h1>Transforming Transactions, Building Trust</h1> */}
-        {/* <h3 className="md:text-[16px] text-[14px]">
-          Empower Your Transactions
-        </h3> */}
-        <h1 className="md:text-[79px] leading-[67px] md:leading-[82px]  text-[56px] ">
+      <div className="md:w-[50%]  w-[100%] text-center md:text-left   h-[auto] md:pr-10 ">
+        <h1 className="md:text-[50px] leading-[40px] md:leading-[60px]  text-[40px] ">
           {" "}
           {/* A New Era of Trust and Transparency */}
           Where Trust Meets Transparency
         </h1>
-        <p className="ss">
+        <p className="ss text-[14px]">
           Welcome to TrustLink, the ultimate solution for secure and transparent
           business transactions. Our groundbreaking web application introduces a
           new era of trust in commerce, offering seamless functionality and
@@ -31,7 +27,7 @@ const Hero = () => {
         <div className="flex items-center justify-center  md:justify-start  mt-10 ">
           <Link
             to="/login"
-            className="outine-none w-[auto] start_btn  pl-7 pr-7  text-[14px] h-[auto] pt-3 pb-3  text-[#fff] font-bold flex items-center justify-center   rounded-[50px]  border-2 border-[#81712E]"
+            className="outine-none font-[Poppins]   w-[auto] start_btn  pl-7 pr-7  text-[14px] h-[auto] pt-3 pb-3  text-[#fff]  flex items-center justify-center   rounded-[50px]  border-2 border-[#81712E]"
           >
             Start Transactions
           </Link>

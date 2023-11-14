@@ -54,10 +54,10 @@ const About = () => {
         }`}
       >
         {/* <h3 className="text-[16px]">Who We Are</h3> */}
-        <h1 className="font-bold  text-[27px] pt-1">
+        <h1 className="text-center md:text-left   md:text-[50px] leading-[44px] md:leading-[60px]  text-[40px]  pt-1">
           Transfer & Exchange Your Money Anytime In this World.
         </h1>
-        <p className=" text-[13px] mt-7  leading-[22px]">
+        <p className=" text-[13px] text-center md:text-left  mt-7   leading-[22px]">
           At TrustLink, we understand the importance of trust and security when
           it comes to online transactions. Whether you're buying or selling
           goods, services, or even digital assets, our platform is designed to

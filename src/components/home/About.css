@@ -78,15 +78,13 @@
     border: 5px solid #0f1a2e;
 }
 .fade_right h1{
-  font-size: 50px;
-  font-weight: 800;
-  line-height: 57px;
   letter-spacing: -2px;
-  font-family: 'Montserrat', sans-serif;
   background: linear-gradient(-40deg, #db9b1e 0%, #C0D4C9 100%);
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 900;
 
 }
 .about_img_two:before{
