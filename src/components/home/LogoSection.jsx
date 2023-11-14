@@ -3,7 +3,7 @@ import Slider from "react-slick";
 import "./LogoSection.css";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
-
+import Logo1 from "../../assets/logo-remove.png"
 const LogoSection = () => {
   const sliderRef = useRef(null);
 
@@ -60,22 +60,22 @@ const LogoSection = () => {
       >
         <div className="logo-wrapper">
           <div className="logo text-[#fff] m-2 md:w-[300px] w-full h-[80px] border border-[#2D6B76] hover:bg-[#031420] cursor-pointer flex items-center justify-center rounded-xl bg-[#072534]">
-            Logos
+            <img src={Logo1} alt=""  className="w-[50%] h-[100%] object-center   "/>
           </div>
         </div>
         <div className="logo-wrapper">
           <div className="logo text-[#fff] m-2 md:w-[300px] w-full h-[80px] border border-[#2D6B76] hover-bg-[#031420] cursor-pointer flex items-center justify-center rounded-xl bg-[#072534]">
-            Logos
+          <img src={Logo1} alt=""  className="w-[50%] h-[100%] object-center   "/>
           </div>
         </div>
         <div className="logo-wrapper">
           <div className="logo text-[#fff] m-2 md:w-[300px] w-full h-[80px] border border-[#2D6B76] hover-bg-[#031420] cursor-pointer flex items-center justify-center rounded-xl bg-[#072534]">
-            Logos
+          <img src={Logo1} alt=""  className="w-[50%] h-[100%] object-center   "/>
           </div>
         </div>
         <div className="logo-wrapper">
           <div className="logo text-[#fff] m-2 md:w-[300px] w-full h-[80px] border border-[#2D6B76] hover-bg-[#031420] cursor-pointer flex items-center justify-center rounded-xl bg-[#072534]">
-            Logos
+          <img src={Logo1} alt=""  className="w-[50%] h-[100%] object-center   "/>
           </div>
         </div>
         {/* Repeat other logo elements here */}
