@@ -30,6 +30,15 @@ const BottomNav = () => {
       })
       .then((response) => {
         setUserName(response.data.firstName);
+      })
+      .catch((error) => {
+        // Check if the error is due to token expiration
+        if (error.response && error.response.status === 401) {
+          handleLogout(); // Logout the user if the token has expired
+        } else {
+          // Handle other errors as needed
+          console.error("Error fetching user details:", error);
+        }
       });
   }, []);
 

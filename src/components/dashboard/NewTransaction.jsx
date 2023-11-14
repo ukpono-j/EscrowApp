@@ -22,65 +22,65 @@ const NewTransaction = () => {
   const [willUseCourier, setWillUseCourier] = useState(false);
   const toast = useToast();
 
-  const paywithpaystack = (e) => {
+  const createNewTransaction = (e) => {
     e.preventDefault();
 
-    const paystack = new PaystackPop();
-    paystack.newTransaction({
-      key: "pk_test_510517e6c4bcd95b12a073078d57b139164845d8",
-      amount: paymentAmount * 100, // Convert to kobo if dealing with Naira
-      paymentName: paymentName,
-      paymentDscription: paymentDscription,
-      email: email,
-      paymentAccountNumber: paymentAccountNumber,
-      paymentBank: paymentBank,
-      onSuccess(transaction) {
-        let message = `payment complete! Reference ${transaction.reference}`;
-        //  alert(message)
-        setEmail("");
-        setPaymentDscription("");
-        setPaymentAmount("");
-        setPaymentName("");
-        setPaymentBank("");
-        setPaymentAccountNumber("");
-        navigate("/transactions/tab");
+    // const paystack = new PaystackPop();
+    // paystack.newTransaction({
+    //   key: "pk_test_510517e6c4bcd95b12a073078d57b139164845d8",
+    //   amount: paymentAmount * 100, // Convert to kobo if dealing with Naira
+    //   paymentName: paymentName,
+    //   paymentDscription: paymentDscription,
+    //   email: email,
+    //   paymentAccountNumber: paymentAccountNumber,
+    //   paymentBank: paymentBank,
+    //   onSuccess(transaction) {
+    //     let message = `payment complete! Reference ${transaction.reference}`;
+    //     //  alert(message)
+    //     setEmail("");
+    //     setPaymentDscription("");
+    //     setPaymentAmount("");
+    //     setPaymentName("");
+    //     setPaymentBank("");
+    //     setPaymentAccountNumber("");
+    //     navigate("/transactions/tab");
 
-        // Create a new notification object
-        const newNotification = {
-          title: "New Transaction Created",
-          message: `A ${selectedUserType} made a  Payment of ${paymentAmount} received for ${paymentDscription}. Reference: ${paymentName}`,
-          transactionId: "just for test"
-        };
-        // Make an API request to create the notification
-        axios
-          .post(`${BASE_URL}/notifications`, newNotification, {
-            headers: {
-              "auth-token": token,
-            },
-          })
-          .then((notificationResponse) => {
-            console.log("Notification created:", notificationResponse.data);
-            // Navigate to the transactions page or handle success as needed
-            navigate("/transactions/tab");
-          })
-          .catch((notificationError) => {
-            console.error("Error creating notification:", notificationError);
-            // Handle error creating notification if needed
-          });
-      },
-      oncancel() {
-        alert("You have canceled the transaction");
-      },
-      // ref: "unique_transaction_reference",
-      callback: function (response) {
-        // Handle Paystack response here
-        console.log(response);
-      },
-      onClose: function () {
-        // Handle transaction close event
-        console.log("Transaction closed.");
-      },
-    });
+    //     // Create a new notification object
+    //     const newNotification = {
+    //       title: "New Transaction Created",
+    //       message: `A ${selectedUserType} made a  Payment of ${paymentAmount} received for ${paymentDscription}. Reference: ${paymentName}`,
+    //       transactionId: "just for test"
+    //     };
+    //     // Make an API request to create the notification
+    //     axios
+    //       .post(`${BASE_URL}/notifications`, newNotification, {
+    //         headers: {
+    //           "auth-token": token,
+    //         },
+    //       })
+    //       .then((notificationResponse) => {
+    //         console.log("Notification created:", notificationResponse.data);
+    //         // Navigate to the transactions page or handle success as needed
+    //         navigate("/transactions/tab");
+    //       })
+    //       .catch((notificationError) => {
+    //         console.error("Error creating notification:", notificationError);
+    //         // Handle error creating notification if needed
+    //       });
+    //   },
+    //   oncancel() {
+    //     alert("You have canceled the transaction");
+    //   },
+    //   // ref: "unique_transaction_reference",
+    //   callback: function (response) {
+    //     // Handle Paystack response here
+    //     console.log(response);
+    //   },
+    //   onClose: function () {
+    //     // Handle transaction close event
+    //     console.log("Transaction closed.");
+    //   },
+    // });
     // Assuming you're sending paymentName, email, paymentAmount, and paymentDscription from state
     const requestData = {
       paymentName,
@@ -114,6 +114,7 @@ const NewTransaction = () => {
           duration: 3000,
           isClosable: true,
         });
+        navigate("/transactions/tab");
       })
       .catch((error) => {
         console.error(error);
@@ -360,7 +361,7 @@ const NewTransaction = () => {
                   <div className="text-center">
                     <button
                       type="submit"
-                      onClick={paywithpaystack}
+                      onClick={createNewTransaction}
                       className=" rounded-full  text-white text-[13px] font-bold py-2  px-7   bg-[#81712E] border-2  border-[#81712E] all_btn   hover:border-2  hover:border-[#81712E]  hover:bg-[transparent]"
                     >
                       Start Transaction

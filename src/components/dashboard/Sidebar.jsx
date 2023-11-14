@@ -1,37 +1,44 @@
 import React, { useEffect, useState } from "react";
 import { MdLogout } from "react-icons/md";
-import { Link, useLocation,  useNavigate  } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useToast } from "@chakra-ui/react";
 import axios from "axios";
-const BASE_URL = import.meta.env.VITE_BASE_URL ;
-
+const BASE_URL = import.meta.env.VITE_BASE_URL;
 
 const Sidebar = () => {
   const location = useLocation();
   const [activeLink, setActiveLink] = useState(location.pathname);
   const toast = useToast(); // Initialize useToast hook
-  const navigate = useNavigate()
+  const navigate = useNavigate();
   const [userName, setUserName] = useState("");
 
+  // UseEffect for create transaction
+  useEffect(() => {
+    const token = localStorage.getItem("auth-token");
+    if (token) {
+      axios.defaults.headers.common["auth-token"] = token;
+    }
 
-    // UseEffect for create transaction
-    useEffect(() => {
-      const token = localStorage.getItem("auth-token");
-      if (token) {
-        axios.defaults.headers.common["auth-token"] = token;
-      }
-  
-      // Fetch transaction details from API and update the state
-      axios
-        .get(`${BASE_URL}/user-details`, {
-          headers: {
-            "auth-token": token,
-          },
-        })
-        .then((response) => {
-          setUserName(response.data.firstName);
-        });
-    }, []);
+    // Fetch transaction details from API and update the state
+    axios
+      .get(`${BASE_URL}/user-details`, {
+        headers: {
+          "auth-token": token,
+        },
+      })
+      .then((response) => {
+        setUserName(response.data.firstName);
+      })
+      .catch((error) => {
+        // Check if the error is due to token expiration
+        if (error.response && error.response.status === 401) {
+          handleLogout(); // Logout the user if the token has expired
+        } else {
+          // Handle other errors as needed
+          console.error("Error fetching user details:", error);
+        }
+      });
+  }, []);
 
   const links = [
     { to: "/create-transaction", label: "Create Transaction" },
@@ -61,7 +68,9 @@ const Sidebar = () => {
       <h1 className="text-[26px] font-bold">
         <Link to="/dashboard">MiddleMan</Link>
       </h1>
-      <h3 className="mt-10">Welcome <span>{userName}</span></h3>
+      <h3 className="mt-10">
+        Welcome <span>{userName}</span>
+      </h3>
       <div className="flex pt-6 pb-6 items-center">
         <MdLogout className="text-[18px]" />
         <button className="ml-1" onClick={handleLogout}>
@@ -75,7 +84,9 @@ const Sidebar = () => {
             to={link.to}
             onClick={() => handleLinkClick(link.to)}
             className={`dash_links flex mt-2 mb-2 pl-4 pr-3 pb-3 pt-3 cursor-pointer ${
-              activeLink === link.to ? "text-[#fff] rounded-3xl bg-[#81712E] mb-3 text-[#000]" : ""
+              activeLink === link.to
+                ? "text-[#fff] rounded-3xl bg-[#81712E] mb-3 text-[#000]"
+                : ""
             }`}
           >
             {link.label}

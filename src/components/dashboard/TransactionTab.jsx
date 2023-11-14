@@ -8,7 +8,7 @@ import { FiSearch } from "react-icons/fi";
 import CancelledComponent from "./CancelledComponent";
 import AllTransactionCompleted from "./AllTransactionCompleted";
 import axios from "axios";
-const BASE_URL = import.meta.env.VITE_BASE_URL ;
+const BASE_URL = import.meta.env.VITE_BASE_URL;
 import { useToast } from "@chakra-ui/react";
 import CompletedComponent from "./CompletedComponent";
 import MiniNav from "./MiniNav";
@@ -337,7 +337,7 @@ const TransactionTab = ({ userResponse }) => {
     setActive(true);
     setCancelled(false);
     setAll(true);
-    setCompleted(false)
+    setCompleted(false);
   };
   const handleCancelledTab = () => {
     setCancelled(true);
@@ -358,6 +358,19 @@ const TransactionTab = ({ userResponse }) => {
     setWaiting(false);
     setCompleted(true);
   };
+
+   // Filter transactions based on search query
+   const filteredCancelledTransactions = cancelledTransactions.filter(
+    (transaction) => {
+      const searchTerm = searchQuery.toLowerCase();
+      return (
+        transaction.paymentName.toLowerCase().includes(searchTerm) ||
+        transaction.email.toLowerCase().includes(searchTerm) ||
+        transaction.paymentDscription.toLowerCase().includes(searchTerm)
+      );
+    }
+  );
+
   return (
     <div className="border flex items-center border-black">
       <Sidebar
@@ -494,23 +507,8 @@ const TransactionTab = ({ userResponse }) => {
                 ) : (
                   <div className="mt-5 h-[auto]">
                     <CancelledComponent
-                      // cancelledTransactions={cancelledTransactions}
-                      cancelledTransactions={cancelledTransactions.filter(
-                        (transaction) => {
-                          const searchTerm = searchQuery.toLowerCase();
-                          return (
-                            transaction.paymentName
-                              .toLowerCase()
-                              .includes(searchTerm) ||
-                            transaction.email
-                              .toLowerCase()
-                              .includes(searchTerm) ||
-                            transaction.paymentDscription
-                              .toLowerCase()
-                              .includes(searchTerm)
-                          );
-                        }
-                      )}
+                      cancelledTransactions={cancelledTransactions}
+                      // cancelledTransactions={filteredCancelledTransactions}
                     />
                   </div>
                 )}
@@ -525,23 +523,23 @@ const TransactionTab = ({ userResponse }) => {
                 ) : (
                   <div className="mt-5 h-[auto]">
                     <CompletedComponent
-                      // completedTransactions={completedTransactions}
-                      completedTransactions={completedTransactions.filter(
-                        (transaction) => {
-                          const searchTerm = searchQuery.toLowerCase();
-                          return (
-                            transaction.paymentName
-                              .toLowerCase()
-                              .includes(searchTerm) ||
-                            transaction.email
-                              .toLowerCase()
-                              .includes(searchTerm) ||
-                            transaction.paymentDscription
-                              .toLowerCase()
-                              .includes(searchTerm)
-                          );
-                        }
-                      )}
+                      completedTransactions={completedTransactions}
+                      // completedTransactions={completedTransactions.filter(
+                      //   (transaction) => {
+                      //     const searchTerm = searchQuery.toLowerCase();
+                      //     return (
+                      //       transaction.paymentName
+                      //         .toLowerCase()
+                      //         .includes(searchTerm) ||
+                      //       transaction.email
+                      //         .toLowerCase()
+                      //         .includes(searchTerm) ||
+                      //       transaction.paymentDscription
+                      //         .toLowerCase()
+                      //         .includes(searchTerm)
+                      //     );
+                      //   }
+                      // )}
                     />
                   </div>
                 )}

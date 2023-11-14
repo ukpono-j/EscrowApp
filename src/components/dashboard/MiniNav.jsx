@@ -30,7 +30,7 @@ const MiniNav = () => {
     <div className="flex items-center justify-between pr-5  md:pl-[60px] md:pr-[60px] pl-5   fixed z-30 top-0 pr-7 text-[#fff] text-[24px] h-[auto] w-[100%] md:w-[83.2%] bg-[#031420]">
       <div className="font-bold  flex md:hidden  cursor-pointer  md:text-3xl text-2xl uppercase">
         <Link to="/dashboard" className="outline-none">
-          TrustLink
+        MiddleMan
         </Link>
         {/* 5B51FE */}
       </div>

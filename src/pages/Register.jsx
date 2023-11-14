@@ -27,8 +27,8 @@ const Register = () => {
         lastName,
         password,
         email,
-        bank,
-        accountNumber,
+        // bank,
+        // accountNumber,
         dateOfBirth,
       })
       .then((result) => {
@@ -108,7 +108,7 @@ const Register = () => {
               className=" w-[100%] text-[13px] mt-1  pl-3  h-[40px] border-[#D8D3EB] border rounded"
             />
           </div>
-          <div className="mt-5">
+          {/* <div className="mt-5">
             <label htmlFor="" className="text-[13px] text-[#fff]">
               Bank Name
             </label>
@@ -135,7 +135,7 @@ const Register = () => {
               placeholder="Bank Number"
               className=" w-[100%] text-[13px] mt-1  pl-3  h-[40px] border-[#D8D3EB] border rounded"
             />
-          </div>
+          </div> */}
           <div className="mt-5">
             <label htmlFor="" className="text-[13px] text-[#fff]">
               Date of Birth
