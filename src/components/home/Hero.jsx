@@ -13,7 +13,7 @@ const Hero = () => {
      hero   md:flex items-center justify-between  md:pl-14  pl-5  pr-5  md:pr-14  md:pt-[140px] pt-[150px] md:pb-[50px]   h-[auto] text-[#FFF] w-[100%]"
     >
       <div className="md:w-[50%]  w-[100%] text-center md:text-left   h-[auto] md:pr-10 ">
-        <h1 className="md:text-[50px] leading-[40px] md:leading-[60px]  text-[40px] ">
+        <h1 className="md:text-[56px] leading-[40px] md:leading-[64px]  text-[40px] ">
           {" "}
           {/* A New Era of Trust and Transparency */}
           Where Trust Meets Transparency
