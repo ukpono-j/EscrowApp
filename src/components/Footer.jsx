@@ -21,7 +21,7 @@ const Footer = () => {
           <div className=" sm:w-[400px] text-center  sm:pl-0  sm:pr-0  pl-6  pr-6  h-[auto]">
             <Link
               TO="/"
-              className="text-[27px] font-bold uppercase footer_title  tracking-wider"
+              className="sm:text-[34px] text-[30px] font-bold uppercase footer_title  tracking-wider"
               onClick={() => scrollTo("home")}
             >
               MiddleMan
