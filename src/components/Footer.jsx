@@ -74,7 +74,7 @@ const Footer = () => {
                 <FaInstagram  className="text-[#000]  sm:text-[23px] text-[19px]" />
                </div>
              </div>
-             <div className="flex items-center text-[14px] ">
+             <div className="flex sm:text-left text-center  items-center text-[14px] ">
                 <p className="sm:ml-3 ml-1 mr-1  sm:mr-3 ">Terms & Condition</p>
                 <p className="sm:ml-3 ml-1 mr-1  sm:mr-3 ">Privacy Policy</p>
              </div>
