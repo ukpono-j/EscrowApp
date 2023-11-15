@@ -75,8 +75,8 @@ const Footer = () => {
                </div>
              </div>
              <div className="flex sm:text-left text-center  items-center text-[14px] ">
-                <p className="sm:ml-3 ml-1 mr-1  sm:mr-3 ">Terms & Condition</p>
-                <p className="sm:ml-3 ml-1 mr-1  sm:mr-3 ">Privacy Policy</p>
+                <p className="sm:ml-4  ml-1 mr-1  sm:mr-3 ">Terms & Condition</p>
+                <p className="sm:ml-4  ml-1 mr-1  sm:mr-3 ">Privacy Policy</p>
              </div>
           </div>
           <div className="w-[100%] sm:flex text-center sm:text-left  items-center  text-[14px] justify-between mt-7 ">
