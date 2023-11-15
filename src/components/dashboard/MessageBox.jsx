@@ -52,10 +52,10 @@ const MessageBox = () => {
             {/* ===============End of Profile Component ============= */}
           </div>
         </div>
-        <BottomNav
+        {/* <BottomNav
           onShowProfile={handleShowProfile}
           onShowToggleComponent={handleMyTransaction}
-        />
+        /> */}
       </div>
     </div>
   );

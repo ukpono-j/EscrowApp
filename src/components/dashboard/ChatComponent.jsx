@@ -1,18 +1,33 @@
-import React from "react";
+// ChatComponent.jsx
+import React, { useState } from 'react';
+import Profile from "../../assets/profile_icon.png";
 
-const ChatComponent = () => {
+
+
+const ChatComponent = ({ contacts, currentUser, changeChat }) => {
+  const [selectedUser, setSelectedUser] = useState(undefined);
+
+  const changeCurrentChat = (index, user) => {
+    setSelectedUser(index);
+    changeChat(user);
+  }
+
   return (
-    <div>
-      <div className="flex items-center mt-3  justify-between">
-        <div className="w-[38px] h-[38px] rounded-full  border border-[#fff]"></div>
-        <div className=" outline-none  bg-[transparent] text-[10px] h-[auo] pl-1 text-[#fff] w-[76%]">
-            <h3>Sophia Johnny</h3>
-            <p>Hi, testing</p>
-            <p>2/3/23</p>
+    <div className='mt-3'>
+      {contacts.map((user, index) => (
+        <div
+          className={`contact  flex items-center mt-4  ${index === selectedUser ? "selected" : " "}`}
+          key={index}
+          onClick={() => changeCurrentChat(index, user)}
+        >
+          <div className='h-[36px] border  flex items-center justify-center  w-[36px] rounded-full'>
+            <img src={user.avatarImage || Profile} alt="img" className='object-contain rounded-full'/>
+          </div>
+          <span className='ml-2 cursor-pointer'>{user.firstName}</span>
         </div>
-      </div>
+      ))}
     </div>
   );
-};
+}
 
 export default ChatComponent;

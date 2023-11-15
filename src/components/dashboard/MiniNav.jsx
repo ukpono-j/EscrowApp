@@ -35,7 +35,7 @@ const MiniNav = () => {
         {/* 5B51FE */}
       </div>
       <div className="flex items-center justify-end w-[100%] ">
-        <Link to="/setAvatar" className="relative">
+        <Link to="/messages" className="relative">
           <AiFillMessage className="ml-2 mr-2 mt-4 mb-4" />
         </Link>
         <Link to="/notifications" className="relative">
