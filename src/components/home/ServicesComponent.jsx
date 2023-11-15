@@ -8,9 +8,9 @@ import "./ServicesComponent.css";
 
 const ServicesComponent = () => {
   return (
-    <div className="h-[auto]    md:pl-20 pl-5  pr-5  md:pr-20 pt-20 pb-20 text-[#FEFEFF] font-[Poppins] w-[100%]">
+    <div className="h-[auto]  services   md:pl-20 pl-5  pr-5  md:pr-20 md:pt-20 pt-8 pb-8   md:pb-20 text-[#FEFEFF] font-[Poppins] w-[100%]">
       <div className="h-[auto]">
-        <div className="service_title m-auto sm:text-[54px] text-[35px] md:w-[560px] text-center font-[900] sm:leading-[60px] leading-[45px]">
+        <div className="service_title m-auto  md:w-[560px] text-center font-[900] md:text-left   md:text-[50px] leading-[44px] md:leading-[60px]  text-[40px]">
           What you order has to be what you get!
         </div>
         {/* === buyer */}
@@ -29,7 +29,7 @@ const ServicesComponent = () => {
               Get Started now
             </Link>
           </div>
-          <div className="rounded-3xl flex  justify-center   moving   md:mt-0 mt-9  md:w-[470px] h-[auto] ">
+          <div className="rounded-3xl flex  justify-center   moving   md:mt-0 mt-14  md:w-[470px] h-[auto] ">
             <img
               src={Card}
               alt=""
@@ -39,7 +39,7 @@ const ServicesComponent = () => {
         </div>
         {/* ========== Seller */}
         <div className="md:w-[80%]  h-[auto] mt-16    flex md:flex-row  flex-col-reverse items-center justify-between  mb-6 ml-auto mr-auto">
-          <div className="rounded-3xl flex  justify-center   md:mt-0 mt-9  moving  md:w-[540px] h-[auto] ">
+          <div className="rounded-3xl flex  justify-center   md:mt-0 mt-14   moving  md:w-[540px] h-[auto] ">
             <img
               src={Girl}
               alt=""
@@ -77,7 +77,7 @@ const ServicesComponent = () => {
               Get Started now
             </Link>
           </div>
-          <div className="rounded-3xl flex  justify-center   md:mt-0 mt-9 moving   md:w-[470px] h-[400px] ">
+          <div className="rounded-3xl flex  justify-center   md:mt-0 mt-14  moving   md:w-[470px] h-[400px] ">
             <img
               src={Vesa}
               alt=""

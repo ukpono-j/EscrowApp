@@ -10,7 +10,7 @@ const Hero = () => {
   return (
     <div
       className="
-     hero   md:flex items-center justify-between  md:pl-14  pl-5  pr-5  md:pr-14  md:pt-[180px] pt-[150px] md:pb-[70px]   h-[auto] text-[#FFF] w-[100%]"
+     hero   md:flex items-center justify-between  md:pl-14  pl-5  pr-5  md:pr-14  md:pt-[140px] pt-[150px] md:pb-[50px]   h-[auto] text-[#FFF] w-[100%]"
     >
       <div className="md:w-[50%]  w-[100%] text-center md:text-left   h-[auto] md:pr-10 ">
         <h1 className="md:text-[50px] leading-[40px] md:leading-[60px]  text-[40px] ">
@@ -49,11 +49,11 @@ const Hero = () => {
             <p>Active Users</p>
           </div>
         </div>
-        <div className="w-[100%] m-4  h-[400px] hero_img_one">
+        <div className="w-[100%] m-4  max-h-[auto]   h-[100%] hero_img_one">
           <img
             src={HeroImage}
             alt=""
-            className="w-[90%] h-[] object-contain moving"
+            className="md:w-[100%] w-[100%]  moving"
           />
         </div>
         {/* <div className="w-[100%] ml-4  mr-4  mt-[100px] mb-4  h-[400px] hero_img_two">

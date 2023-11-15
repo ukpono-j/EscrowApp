@@ -55,39 +55,35 @@ const About = () => {
       >
         {/* <h3 className="text-[16px]">Who We Are</h3> */}
         <h1 className="text-center md:text-left   md:text-[50px] leading-[44px] md:leading-[60px]  text-[40px]  pt-1">
-          Transfer & Exchange Your Money Anytime In this World.
+          Trustworthy Escrow Services
         </h1>
         <p className=" text-[13px] text-center md:text-left  mt-7   leading-[22px]">
-          At TrustLink, we understand the importance of trust and security when
-          it comes to online transactions. Whether you're buying or selling
-          goods, services, or even digital assets, our platform is designed to
-          provide a safe and reliable environment for all parties involved.
-          TrustLink is your trusted partner in secure online transactions. Join
-          us today and experience the ease and peace of mind that comes with
-          using our reliable escrow services. TrustLink - Where Trust Meets
-          Security.
+          At MiddleMan, we believe in fostering secure transactions through
+          trust and integrity. Our platform is dedicated to providing a reliable
+          escrow service, ensuring that your transactions are carried out with
+          confidence. With a commitment to transparency, MiddleMan is here to
+          redefine the way you engage in financial exchanges.
         </p>
-        <div className="flex mt-4   items-center ">
-          <div className="about_circle  rounded-xl  w-[100px] h-[60px]"></div>
-          <div className="pl-3 pr-3 mt-4 mb-3">
-            <h2 className="font-[700] text-[18px]">
-              Powerful Mobile & Online App
-            </h2>
-            <p className="text-[13px] pt-1">
-              Vestibulum ac diam sit amet quam vehicula elemen tum sed sit amet
-              dui praesent sapien pellen tesque .
+        <div className="flex mt-6 ">
+          <div className="about_circle  rounded-xl  md:w-[60px] w-[70px] h-[60px]"></div>
+          <div className="pl-3 pr-3  w-[90%]">
+            <h2 className="font-[700] text-[18px]">Aim of the MiddleMan App</h2>
+            <p className="text-[13px]">
+              MiddleMan was founded with the vision of creating a secure and
+              transparent environment for online transactions. In an era where
+              trust is paramount, we serve as the bridge that connects buyers
+              and sellers, offering a safeguard for funds until both parties
+              fulfill their commitments.
             </p>
           </div>
         </div>
-        <div className="flex items-center ">
-          <div className="about_circle  rounded-xl  w-[100px] h-[60px]"></div>
-          <div className="pl-3 pr-3 mt-4 mb-3">
-            <h2 className="font-[700] text-[18px]">
-              Powerful Mobile & Online App
-            </h2>
-            <p className="text-[13px] pt-1">
-              Vestibulum ac diam sit amet quam vehicula elemen tum sed sit amet
-              dui praesent sapien pellen tesque .
+        <div className="flex mt-6">
+          <div className="about_circle  rounded-xl  md:w-[60px] w-[70px] h-[60px]"></div>
+          <div className="pl-3 pr-3 w-[90%]">
+            <h2 className="font-[700] text-[18px]">Our Mission</h2>
+            <p className="text-[13px]">
+              Our mission is to empower individuals and businesses, making
+              transactions seamless, trustworthy, and worry-free
             </p>
           </div>
         </div>

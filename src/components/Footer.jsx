@@ -1,41 +1,88 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { Link as ScrollLink, scroller } from "react-scroll";
 import "./Footer.css";
 import NewsLetter from "./home/NewsLetter";
+import { FaFacebookF, FaInstagram, FaTwitter } from "react-icons/fa";
 
 const Footer = () => {
+  const scrollTo = (element) => {
+    scroller.scrollTo(element, {
+      duration: 800,
+      delay: 0,
+      smooth: "easeInOutQuart",
+    });
+  };
   return (
     <div className="footer">
-      <NewsLetter/>
-      <div className="font-[Poppins]   text-[#fff] list-none mb-[-30px] pt-20 pb-20   sm:pl-20 sm:pr-20 pl-5 pr-5  h-[auto] flex flex-col  items-center justify-center  w-[100%]">
-        <div className=" sm:flex h-[auto]   justify-between w-[100%] ">
-          <div className=" sm:w-[400px] w-[100%] h-[auto]">
-            <Link TO="/" className="text-[27px] font-bold uppercase">MiddleMan</Link>
-            <div className="text-[12px] leading-[23px] pt-4 font-[200]">
-              Lorem ipsum dolor, sit amet consectetur adipisicing elit. Velit,
-              optio. Voluptate sunt alias numquam quos ratione harum libero,
-              nisi ipsam eligendi repudiandae nesciunt distinctio cumque,
-              commodi, atque id inventore eum.
+      <NewsLetter />
+      <div className="font-[Poppins]  text-[#fff] list-none mb-[-30px] pt-20 pb-4    md:pl-20  md:pr-20 pl-5 pr-5  h-[auto] flex flex-col  items-center justify-center  w-[100%]">
+        <div className=" sm:flex sm:flex-col  h-[auto]   sm:justify-center sm:items-center    w-[100%] ">
+          <div className=" sm:w-[400px] text-center  w-[100%] h-[auto]">
+            <Link
+              TO="/"
+              className="text-[27px] font-bold uppercase tracking-wider"
+              onClick={() => scrollTo("home")}
+            >
+              MiddleMan
+            </Link>
+            <div className=" text-[15px] mt-3  space-x-6 flex items-center justify-between">
+              <ScrollLink
+                className="cursor-pointer"
+                to="about"
+                smooth={true}
+                duration={800}
+              >
+                About Us
+              </ScrollLink>
+              <ScrollLink
+                className="cursor-pointer"
+                to="services"
+                smooth={true}
+                duration={800}
+              >
+                Services
+              </ScrollLink>
+              <ScrollLink
+                className="cursor-pointer"
+                to="faq"
+                smooth={true}
+                duration={800}
+              >
+                FAQ
+              </ScrollLink>
             </div>
+            {/* <div className="text-[12px] leading-[23px] pt-4 font-[200]">
+              At MiddleMan, we're dedicated to providing a seamless and secure
+              experience for all your transactions. Your trust and satisfaction
+              are our top priorities. If you have any questions, concerns, or
+              need assistance, our support team is here to help. Stay connected
+              with us on social media for the latest updates, and thank you for
+              choosing MiddleMan for your escrow needs.
+            </div> */}
           </div>
-          <div className=" w-[auto] sm:mt-0 mt-8  h-[auto]">
-            <h1 className="text-[30xp]">Business</h1>
-            <li className="text-[14px] pt-3">About</li>
-            <li className="text-[12px] pt-3">Blog</li>
-            <li className="text-[12px] pt-3">Partners</li>
-          </div>
-          <div className=" w-[auto] sm:mt-0 mt-8 h-[auto]">
-            <h1 className="text-[30xp]">Legal</h1>
-            <li className="text-[14px] pt-3">Cookies</li>
-            <li className="text-[12px] pt-3">Privacy</li>
-            <li className="text-[14px] pt-3">FAQ</li>
 
+          <div className="w-[100%] mt-5  border-b flex items-center  justify-between  border-t mt-3 ">
+             <div className="social_icon_container flex items-center ">
+               <div className="border h-[39px] w-[39px] m-3  flex items-center justify-center  rounded-full bg-[#fff]">
+                <FaFacebookF className="text-[#000] text-[23px]" />
+               </div>
+               <div className="border h-[39px] w-[39px] m-3  flex items-center justify-center  rounded-full bg-[#fff]">
+                <FaTwitter  className="text-[#000] text-[23px]" />
+               </div>
+               <div className="border h-[39px] w-[39px] m-3  flex items-center justify-center  rounded-full bg-[#fff]">
+                <FaInstagram  className="text-[#000] text-[23px]" />
+               </div>
+             </div>
+             <div className="flex items-center text-[14px] ">
+                <p className="ml-3 mr-3 ">Terms & Condition</p>
+                <p className="ml-3 mr-3 ">Privacy Policy</p>
+             </div>
           </div>
-          <div className=" w-[auto] sm:mt-0 mt-8  h-[auto]">
-            <h1 className="text-[30xp]">Services</h1>
-            <li className="text-[14px] pt-3">Banking and Payments</li>
+          <div className="w-[100%] flex items-center  text-[14px] justify-between mt-7 ">
+            <p>© 2023 MiddleMan App. All rights reserved.</p>
+            <p>Powered by Zeek</p>
           </div>
-       
         </div>
         {/* <div className="pt-20">copyright</div> */}
       </div>

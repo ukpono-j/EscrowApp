@@ -1,29 +1,40 @@
+// Navbar.jsx
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link as ScrollLink, scroller } from "react-scroll";
 import { AiOutlineMenu } from "react-icons/ai";
+import { Link } from "react-router-dom";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  const scrollTo = (element) => {
+    scroller.scrollTo(element, {
+      duration: 800,
+      delay: 0,
+      smooth: "easeInOutQuart",
+    });
+  };
+
   return (
     <div className="pl-5 font-[Poppins] pr-5  md:pl-[60px] md:pr-[60px] left-0  fixed z-30 top-0 pt-5 pb-5 w-full bg-[#0F1A2E] text-white flex justify-between items-center">
       <div className="font-bold cursor-pointer  md:text-2xl text-2xl uppercase">
-        <Link to="/" className="outline-none">
-        MiddleMan
+        <Link to="/" className="outline-none" onClick={() => scrollTo("home")}>
+          MiddleMan
         </Link>
-        {/* 5B51FE */}
       </div>
       <div className="hidden text-[13px] md:flex space-x-6 items-center">
-        <Link to="">Business</Link>
-        <Link to="">About Us</Link>
-        <Link to="">Services</Link>
-        <Link to="/contact">Contact Us</Link>
-        {/* <Link to="/login" className="nav-btn">
-          Log In
-        </Link>
-        <Link to="/register" className="nav-btn">
-          Register Now
-        </Link> */}
+        <ScrollLink className="cursor-pointer" to="about" smooth={true} duration={800}>
+          About Us
+        </ScrollLink>
+        <ScrollLink className="cursor-pointer" to="services" smooth={true} duration={800}>
+          Services
+        </ScrollLink>
+        <ScrollLink className="cursor-pointer" to="faq" smooth={true} duration={800}>
+          FAQ
+        </ScrollLink>
+        <ScrollLink className="cursor-pointer" to="footer" smooth={true} duration={800}>
+          Contact Us
+        </ScrollLink>
         <Link
           to="/login"
           className="ml-3 flex items-center nav-btn  justify-center px-7 py-3  rounded-full text-[#fff] text-[13px] bg-[#81712E] border-2  border-[#81712E] login_btn  hover:border-2  hover:border-[#81712E]  hover:bg-[transparent]"
@@ -45,16 +56,38 @@ const Navbar = () => {
       </div>
       {isMenuOpen && (
         <div className="md:hidden text-[13px]   fixed top-[72px] left-0 w-full h-full bg-[#0F1A2E] flex flex-col pl-5  pr-5  sm:pl-[60px] sm:pr-[60px] md:pl-[70px] md:pr-[70px]">
-          <Link to="" className="mt-4 mb-4">
-            Business
-          </Link>
-          <Link to="" className="mt-4 mb-4">
+          <ScrollLink
+            to="about"
+            className="mt-4 mb-4"
+            smooth={true}
+            duration={800}
+            onClick={() => setIsMenuOpen(false)}
+          >
             About Us
-          </Link>
-          <Link to="" className="mt-4 mb-4">
+          </ScrollLink>
+          <ScrollLink
+            to="services"
+            className="mt-4 mb-4"
+            smooth={true}
+            duration={800}
+            onClick={() => setIsMenuOpen(false)}
+          >
             Services
-          </Link>
-          <Link to="/contact" className="mt-4 mb-4">
+          </ScrollLink>
+          <ScrollLink
+            to="faq"
+            className="mt-4 mb-4"
+            smooth={true}
+            duration={800}
+            onClick={() => setIsMenuOpen(false)}
+          >
+            FAQ
+          </ScrollLink>
+          <Link
+            to="/contact"
+            className="mt-4 mb-4"
+            onClick={() => setIsMenuOpen(false)}
+          >
             Contact Us
           </Link>
           <Link
