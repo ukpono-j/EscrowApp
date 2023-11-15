@@ -18,7 +18,7 @@ const Footer = () => {
       <NewsLetter />
       <div className="font-[Poppins]  text-[#fff] list-none mb-[-30px] pt-20 pb-4    md:pl-20  md:pr-20 pl-5 pr-5  h-[auto] flex flex-col  items-center justify-center  w-[100%]">
         <div className=" sm:flex sm:flex-col  h-[auto]   sm:justify-center sm:items-center    w-[100%] ">
-          <div className=" sm:w-[400px] text-center  w-[100%] h-[auto]">
+          <div className=" sm:w-[400px] text-center  sm:pl-0  sm:pr-0  pl-6  pr-6  h-[auto]">
             <Link
               TO="/"
               className="text-[27px] font-bold uppercase tracking-wider"
@@ -64,22 +64,22 @@ const Footer = () => {
 
           <div className="w-[100%] mt-5  border-b flex items-center  justify-between  border-t mt-3 ">
              <div className="social_icon_container flex items-center ">
-               <div className="border h-[39px] w-[39px] m-3  flex items-center justify-center  rounded-full bg-[#fff]">
-                <FaFacebookF className="text-[#000] text-[23px]" />
+               <div className="border sm:h-[39px] h-[32px] w-[32px] sm:w-[39px] sm:m-3 m-2   flex items-center justify-center  rounded-full bg-[#fff]">
+                <FaFacebookF className="text-[#000]  sm:text-[23px] text-[19px]" />
                </div>
-               <div className="border h-[39px] w-[39px] m-3  flex items-center justify-center  rounded-full bg-[#fff]">
-                <FaTwitter  className="text-[#000] text-[23px]" />
+               <div className="border sm:h-[39px] h-[32px] w-[32px] sm:w-[39px] sm:m-3 m-2   flex items-center justify-center  rounded-full bg-[#fff]">
+                <FaTwitter  className="text-[#000]  sm:text-[23px] text-[19px]" />
                </div>
-               <div className="border h-[39px] w-[39px] m-3  flex items-center justify-center  rounded-full bg-[#fff]">
-                <FaInstagram  className="text-[#000] text-[23px]" />
+               <div className="border sm:h-[39px] h-[32px] w-[32px] sm:w-[39px] sm:m-3 m-2   flex items-center justify-center  rounded-full bg-[#fff]">
+                <FaInstagram  className="text-[#000]  sm:text-[23px] text-[19px]" />
                </div>
              </div>
              <div className="flex items-center text-[14px] ">
-                <p className="ml-3 mr-3 ">Terms & Condition</p>
-                <p className="ml-3 mr-3 ">Privacy Policy</p>
+                <p className="sm:ml-3 ml-1 mr-1  sm:mr-3 ">Terms & Condition</p>
+                <p className="sm:ml-3 ml-1 mr-1  sm:mr-3 ">Privacy Policy</p>
              </div>
           </div>
-          <div className="w-[100%] flex items-center  text-[14px] justify-between mt-7 ">
+          <div className="w-[100%] sm:flex text-center sm:text-left  items-center  text-[14px] justify-between mt-7 ">
             <p>© 2023 MiddleMan App. All rights reserved.</p>
             <p>Powered by Zeek</p>
           </div>
