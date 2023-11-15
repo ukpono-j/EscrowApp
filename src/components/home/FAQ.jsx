@@ -45,7 +45,7 @@ const FAQ = () => {
 
   return (
     <div className="h-[auto] text-center md:text-start  faq bg-[#062333]   md:flex md:flex-row flex-col-reverse flex  w-[100%]  text-[#fff]  pr-5  pl-5  md:pl-[80px] md:pr-[80px] pt-14  pb-14   ">
-      <div className="border p-10  w-[100%] md:mt-0 mt-14  h-[auto] moving bg-[#fff] rounded-3xl  ">
+      <div className="border md:p-10 p-3  w-[100%] text-left  md:mt-0 mt-14  h-[auto] moving bg-[#fff] rounded-3xl  ">
         {/* Accordion */}
         {accordionData.map((item) => (
           <div className="pt-3 pb-3 pl-3 pr-3" key={item.id}>
