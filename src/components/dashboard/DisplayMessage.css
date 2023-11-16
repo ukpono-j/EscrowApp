@@ -1,0 +1,58 @@
+/* DisplayMessage.css */
+
+.userDetails{
+    border-top-right-radius: 6px;
+}
+/* Add the following styles to customize the scrollbar */
+.chat_messages::-webkit-scrollbar {
+    width: 7px; /* Width of the scrollbar */
+  }
+  
+  .chat_messages::-webkit-scrollbar-thumb {
+    background-color: #0F1A2E; /* Color of the scrollbar thumb */
+    border-radius: 8px; /* Radius of the scrollbar thumb */
+  }
+  
+  .chat_messages::-webkit-scrollbar-track {
+    background-color: transparent; /* Color of the scrollbar track */
+    border-radius: 30px; /* Radius of the scrollbar thumb */
+  }
+
+
+.message-container {
+    display: flex;
+    flex-direction: column;
+  }
+  
+
+  .received {
+        /* border: 1px solid red; */
+        display: flex;
+        justify-content: flex-start;
+  }
+  
+.received .content{
+    text-align: start;
+    align-self: flex-start;
+    background-color: #152d5d;
+    color: #fff;
+    max-width: 70%;
+    font-size: 14px;
+    margin: 8px;
+    padding: 10px;
+    border-radius: 8px;
+}
+.sent {
+    /* border: 1px solid red; */
+    display: flex;
+    justify-content: flex-end;
+}
+.sent .content{
+    background-color: #0F1A2E;
+    color: #ffff;
+    max-width: 70%;
+    font-size: 14px;
+    margin: 8px;
+    padding: 10px;
+    border-radius: 8px;
+}

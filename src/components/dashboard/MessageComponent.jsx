@@ -3,12 +3,14 @@ import ChatComponent from "./ChatComponent";
 import { BsThreeDotsVertical } from "react-icons/bs";
 import DisplayMessage from "./DisplayMessage";
 const BASE_URL = import.meta.env.VITE_BASE_URL;
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import Profile from "../../assets/profile_icon.png";
 import { useNavigate } from "react-router-dom";
+import { io } from "socket.io-client";
 
 const MessageComponent = () => {
+  const socket = useRef();
   // const [messagerDetails, setMessagerDetails] = useState(null);
   const [avatarUrl, setAvatarUrl] = useState(undefined);
   const [contacts, setContacts] = useState([]);
@@ -16,6 +18,26 @@ const MessageComponent = () => {
   const [currentChat, setCurrentChat] = useState(undefined);
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filteredContacts, setFilteredContacts] = useState([]);
+
+  // Initialize socket outside the component
+  useEffect(() => {
+    socket.current = io(BASE_URL);
+
+    // Clean up socket connection when the component unmounts
+    return () => {
+      if (socket.current) {
+        socket.current.disconnect();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (currentUser) {
+      socket.current.emit("add-user", currentUser._id);
+    }
+  }, [currentUser]);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -56,6 +78,7 @@ const MessageComponent = () => {
         });
         console.log(response.data);
         setContacts(response.data);
+        setFilteredContacts(response.data);
       } catch (error) {
         console.error("Error fetching user data:", error);
         // Handle the error accordingly, e.g., redirect to login page
@@ -69,13 +92,29 @@ const MessageComponent = () => {
     setCurrentChat(chat);
   };
 
+  const handleSearch = (query) => {
+    setSearchQuery(query);
+    // Filter contacts based on the search query
+    const filtered = contacts.filter(
+      (contact) =>
+        contact.firstName.toLowerCase().includes(query.toLowerCase()) ||
+        contact.email.toLowerCase().includes(query.toLowerCase()) ||
+        contact._id.toLowerCase().includes(query.toLowerCase())
+    );
+    setFilteredContacts(filtered);
+  };
   return (
-    <div className="relative">
-      <div className="mt-16    flex items-center">
-        <div className="rounded-l-xl relative  text-[13px]  flex  md:flex-col left-0 top-0 w-[100%] font-[Poppins] text-[#fff] bg-[#0f1a2e] w-[280px] min-h-[auto]">
+    <div
+      className="relative rounded-3xl"
+      style={{
+        boxShadow: "0px 0px 10px rgba(0, 0, 0, 0.5)", // Adjust the shadow as needed
+      }}
+    >
+      <div className="mt-16  relative w-[100%]  flex items-center">
+        <div className="rounded-l-xl  text-[13px]  flex  md:flex-col left-0 top-0 w-[100%] font-[Poppins] text-[#fff] bg-[#0f1a2e] w-[280px] h-[80vh] ">
           <div
-            // style={{ overflowY: "scroll" }}
-            className="w-[100%] h-[100vh] sidebar_fixed pt-4 pb-4 pl-3 pr-3"
+            style={{ overflowY: "scroll" }}
+            className=" pt-4 pb-4 pl-3 pr-3 h-[80vh]"
           >
             <div className="flex justify-between text-[17px]">
               <h2>{}Chat</h2>
@@ -88,9 +127,11 @@ const MessageComponent = () => {
                 id=""
                 className="border outline-none  bg-[transparent] text-[10px] h-[28px] pl-2 rounded-2xl text-[#fff] w-[70%]"
                 placeholder="Search "
+                value={searchQuery}
+                onChange={(e) => handleSearch(e.target.value)}
               />
               {setCurrentUser && (
-                <div className="w-[38px] h-[38px] rounded-full">
+                <div className="w-[38px] h-[38px] border border-[grey] bg-[#fff] rounded-full">
                   <img
                     // src={BASE_URL + messagerDetails.avatarImage} // Assuming avatarImage is a URL
                     src={avatarUrl || Profile}
@@ -102,7 +143,7 @@ const MessageComponent = () => {
             </div>
             <div className="mt-3">
               <ChatComponent
-                contacts={contacts}
+                contacts={filteredContacts}
                 currentUser={currentUser}
                 changeChat={handleChatChange}
               />
@@ -111,14 +152,15 @@ const MessageComponent = () => {
         </div>
         <div
           style={{
-            overflowY: "scroll",
-            boxShadow: "0px 0px 10px rgba(0, 0, 0, 0.2)", // Adjust the shadow as needed
+            // overflowY: "scroll",
+            boxShadow: "0px 0px 10px rgba(0, 0, 0, 0.5)", // Adjust the shadow as needed
           }}
-          className="layout bg-[#F4F5F5]  right-0 rounded-r-3xl top-0 w-[100%]  md:w-[83.2%] h-[100vh]"
+          className=" bg-[#F4F5F5] relative  right-0 rounded-r-xl top-0 w-[100%]  md:w-[100%%] h-[80vh]"
         >
-          <div className="w-[100%]   sidebar_fixed  p-2   h-[100vh]">
+          <div className="h-[auto] ">
             <DisplayMessage
               currentChat={currentChat}
+              socket={socket}
               currentUser={currentUser}
             />
           </div>

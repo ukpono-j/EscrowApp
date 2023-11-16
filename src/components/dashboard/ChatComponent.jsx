@@ -4,7 +4,7 @@ import Profile from "../../assets/profile_icon.png";
 
 
 
-const ChatComponent = ({ contacts, currentUser, changeChat }) => {
+const ChatComponent = ({ contacts, currentUser,  changeChat }) => {
   const [selectedUser, setSelectedUser] = useState(undefined);
 
   const changeCurrentChat = (index, user) => {
@@ -20,7 +20,7 @@ const ChatComponent = ({ contacts, currentUser, changeChat }) => {
           key={index}
           onClick={() => changeCurrentChat(index, user)}
         >
-          <div className='h-[36px] border  flex items-center justify-center  w-[36px] rounded-full'>
+          <div className='h-[36px] border border-[grey] bg-[#fff]  flex items-center justify-center  w-[36px] rounded-full'>
             <img src={user.avatarImage || Profile} alt="img" className='object-contain rounded-full'/>
           </div>
           <span className='ml-2 cursor-pointer'>{user.firstName}</span>
