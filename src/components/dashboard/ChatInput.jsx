@@ -1,14 +1,19 @@
 import React, { useState } from "react";
 import Picker from "emoji-picker-react";
 import { IoMdSend } from "react-icons/io";
-import { BsClipboard, BsClipboard2Plus, BsEmojiSmile, BsSend } from "react-icons/bs";
+import {
+  BsClipboard,
+  BsClipboard2Plus,
+  BsEmojiSmile,
+  BsSend,
+} from "react-icons/bs";
 import "./ChatInput.css";
 import { MdAttachFile } from "react-icons/md";
-
 
 const ChatInput = ({ handleSendMessage }) => {
   const [emoji, setEmoji] = useState(false);
   const [msg, setMsg] = useState("");
+  const [selectedFile, setSelectedFile] = useState(null);
 
   const handleEmojiPicker = () => {
     setEmoji(!emoji);
@@ -19,15 +24,25 @@ const ChatInput = ({ handleSendMessage }) => {
     setMsg(message);
   };
 
-  const sendChat =(event) => {
-     event.preventDefault();
+  const sendChat = (event) => {
+    event.preventDefault();
 
-     if (msg.length> 0) {
-        handleSendMessage(msg);
-        setMsg("")
-        setEmoji(false);
-     }
-  }
+    if (msg.length > 0 || selectedFile) {
+      handleSendMessage({ text: msg, media: selectedFile });
+      setMsg("");
+      setEmoji(false);
+      // setSelectedFile(null); // Reset the selected file after sending
+    }
+  };
+
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+
+    // Check if a file is selected and if it is an image
+    if (file) {
+      setSelectedFile(file);
+    }
+  };
 
   return (
     <div>
@@ -37,9 +52,18 @@ const ChatInput = ({ handleSendMessage }) => {
           <BsEmojiSmile onClick={handleEmojiPicker} />
         </div>
         <div className="text-[#fff] text-[22px]">
-           <MdAttachFile/>
+          <MdAttachFile />
         </div>
-        <form onSubmit={(e) =>  sendChat(e)} action="" className="flex items-center w-[100%] ml-3">
+        <input
+          type="file"
+          onChange={handleFileChange}
+          className="w-[20px] h-[20px]"
+        />
+        <form
+          onSubmit={(e) => sendChat(e)}
+          action=""
+          className="flex items-center w-[100%] ml-3"
+        >
           <input
             type="text"
             placeholder="Type Message"

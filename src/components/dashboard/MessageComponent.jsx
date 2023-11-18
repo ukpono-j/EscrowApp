@@ -160,7 +160,7 @@ const MessageComponent = () => {
           <div className="h-[auto] ">
             <DisplayMessage
               currentChat={currentChat}
-              socket={socket}
+              // socket={socket}
               currentUser={currentUser}
             />
           </div>

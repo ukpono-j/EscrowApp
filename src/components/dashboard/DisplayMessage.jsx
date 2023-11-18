@@ -3,46 +3,54 @@ import React, { useEffect, useState, useRef } from "react";
 import Roboto from "../../assets/robot.gif";
 import Profile from "../../assets/profile_icon.png";
 import ChatInput from "./ChatInput";
-import Messages from "./Messages";
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 import axios from "axios";
 import "./DisplayMessage.css";
-import { v4 as uuidv4 } from "uuid";
+import { io } from "socket.io-client"; // Import socket.io-client
+import Picker from "emoji-picker-react";
+import { IoMdSend } from "react-icons/io";
+import {
+  BsClipboard,
+  BsClipboard2Plus,
+  BsEmojiSmile,
+  BsSend,
+} from "react-icons/bs";
+import { MdAttachFile } from "react-icons/md";
 
-// Function to format the time difference
-// const formatTimeDifference = (timestamp) => {
-//   const now = new Date();
-//   const createdAt = new Date(timestamp);
+const socket = io(BASE_URL); // Connect to the server
 
-//   const timeDifferenceInSeconds = Math.floor((now - createdAt) / 1000);
-
-//   if (timeDifferenceInSeconds < 60) {
-//     return `${timeDifferenceInSeconds} seconds ago`;
-//   } else if (timeDifferenceInSeconds < 3600) {
-//     const minutes = Math.floor(timeDifferenceInSeconds / 60);
-//     return `${minutes} ${minutes === 1 ? "minute" : "minutes"} ago`;
-//   } else if (timeDifferenceInSeconds < 86400) {
-//     const hours = Math.floor(timeDifferenceInSeconds / 3600);
-//     return `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
-//   } else if (timeDifferenceInSeconds < 604800) {
-//     const days = Math.floor(timeDifferenceInSeconds / 86400);
-//     return `${days} ${days === 1 ? "day" : "days"} ago`;
-//   } else if (timeDifferenceInSeconds < 2419200) {
-//     const weeks = Math.floor(timeDifferenceInSeconds / 604800);
-//     return `${weeks} ${weeks === 1 ? "week" : "weeks"} ago`;
-//   } else if (timeDifferenceInSeconds < 29030400) {
-//     const months = Math.floor(timeDifferenceInSeconds / 2419200);
-//     return `${months} ${months === 1 ? "month" : "months"} ago`;
-//   } else {
-//     const years = Math.floor(timeDifferenceInSeconds / 29030400);
-//     return `${years} ${years === 1 ? "year" : "years"} ago`;
-//   }
-// };
-
-const DisplayMessage = ({ currentChat, socket, currentUser }) => {
+const DisplayMessage = ({ currentChat, currentUser }) => {
   const [messages, setMessages] = useState([]);
-  const [arrivalMessage, setArrivalMessage] = useState(null);
+  const [newMessage, setNewMessage] = useState(null);
+  const [emoji, setEmoji] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [selectedFile, setSelectedFile] = useState(null);
   const scrollRef = useRef();
+  const [mediaPreview, setMediaPreview] = useState(null);
+  const [mediaData, setMediaData] = useState([]);
+
+  useEffect(() => {
+    const socket = io(BASE_URL);
+    console.log("Connected to the server");
+
+    socket.on("msg-receive", (message) => {
+      setNewMessage(message);
+      console.log("Received message:", message);
+    });
+
+    return () => {
+      socket.off("msg-receive");
+      socket.disconnect(); // Disconnect the socket here
+    };
+  }, []);
+
+  useEffect(() => {
+    if (newMessage) {
+      setMessages((prevMessages) => [...prevMessages, newMessage]);
+      scrollRef.current?.scrollIntoView({ behavior: "smooth" });
+      setNewMessage(null);
+    }
+  }, [newMessage, messages]);
 
   useEffect(() => {
     const token = localStorage.getItem("auth-token");
@@ -51,7 +59,6 @@ const DisplayMessage = ({ currentChat, socket, currentUser }) => {
     }
 
     if (currentUser && currentChat) {
-      // Fetch messages details from API and update the state
       axios
         .get(`${BASE_URL}/get-messages`, {
           params: {
@@ -60,79 +67,160 @@ const DisplayMessage = ({ currentChat, socket, currentUser }) => {
           },
         })
         .then((response) => {
-          setMessages(response.data);
+          // Reverse the order to show newer messages below
+          const sortedMessages = response.data.sort((a, b) => {
+            return new Date(a.createdAt) - new Date(b.createdAt);
+          });
+
+          setMessages(sortedMessages);
         })
         .catch((error) => {
           console.error("Error fetching messages:", error);
-          // Handle the error accordingly
         });
     }
   }, [currentUser, currentChat]);
 
-  const handleSendMessage = async (msg) => {
+  // Function to format the time difference
+  const formatTimeDifference = (timestamp) => {
+    const now = new Date();
+    const createdAt = new Date(timestamp);
+
+    const timeDifferenceInSeconds = Math.floor((now - createdAt) / 1000);
+
+    if (timeDifferenceInSeconds < 60) {
+      return `${timeDifferenceInSeconds} seconds ago`;
+    } else if (timeDifferenceInSeconds < 3600) {
+      const minutes = Math.floor(timeDifferenceInSeconds / 60);
+      return `${minutes} ${minutes === 1 ? "minute" : "minutes"} ago`;
+    } else if (timeDifferenceInSeconds < 86400) {
+      const hours = Math.floor(timeDifferenceInSeconds / 3600);
+      return `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
+    } else if (timeDifferenceInSeconds < 604800) {
+      const days = Math.floor(timeDifferenceInSeconds / 86400);
+      return `${days} ${days === 1 ? "day" : "days"} ago`;
+    } else if (timeDifferenceInSeconds < 2419200) {
+      const weeks = Math.floor(timeDifferenceInSeconds / 604800);
+      return `${weeks} ${weeks === 1 ? "week" : "weeks"} ago`;
+    } else if (timeDifferenceInSeconds < 29030400) {
+      const months = Math.floor(timeDifferenceInSeconds / 2419200);
+      return `${months} ${months === 1 ? "month" : "months"} ago`;
+    } else {
+      const years = Math.floor(timeDifferenceInSeconds / 29030400);
+      return `${years} ${years === 1 ? "year" : "years"} ago`;
+    }
+  };
+
+  const handleSendMessage = async ({ text }) => {
     const token = localStorage.getItem("auth-token");
     if (token) {
       axios.defaults.headers.common["auth-token"] = token;
     }
 
     try {
-      // Send the message to the server
+      // Send the message with text and media information
       await axios.post(`${BASE_URL}/send-message`, {
         from: currentUser._id,
         to: currentChat._id,
-        message: msg,
+        message: { text },
       });
 
-      // Emit the message using socket
-      socket.current.emit("send-msg", {
+      socket.emit("send-msg", {
         to: currentChat._id,
         from: currentUser._id,
-        message: msg,
+        message: { text },
       });
 
-      // Update the local state with the new message
-      const msgs = [...messages];
-      msgs.push({ fromUserId: true, message: msg });
-      setMessages(msgs);
+      // Instead of using setNewMessage, directly update the messages state
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        { fromUserId: true, message: { text } },
+      ]);
 
-      // Log the message immediately after sending
-      console.log("Message sent successfully:", msg);
+      scrollRef.current?.scrollIntoView({ behavior: "smooth" });
     } catch (error) {
       console.error("Error sending message:", error);
     }
   };
 
-  useEffect(() => {
-    if (socket.current) {
-      // Establish socket connection
-      socket.current.on("msg-receive", (msg) => {
-        // setMessages((prevMessages) => [
-        //   ...prevMessages,
-        //   { fromUserId: false, message: msg },
-        // ]);
-        // Update the state with the received message
-        setMessages({ fromUserId: false, message: msg });
-      });
-    }
+  const uploadMedia = async () => {
+    try {
+      const formData = new FormData();
+      formData.append("media", selectedFile);
 
-    // Clean up socket connection when the component unmounts
-    return () => {
-      if (socket.current) {
-        socket.current.off("msg-receive");
+      await axios.post(`${import.meta.env.VITE_BASE_URL}/chat-uploads`, formData);
+
+      // Update media preview if needed
+      const reader = new FileReader();
+      reader.onloadend = () => setMediaPreview(reader.result);
+      
+      if (selectedFile) {
+        reader.readAsDataURL(selectedFile);
+        console.log(selectedFile)
+      } else {
+        setMediaPreview(null);
       }
-    };
-  }, [socket]);
-
-  useEffect(() => {
-    if (arrivalMessage) {
-      // Update the state with the received message
-      setMessages((prevMessages) => [...prevMessages, arrivalMessage]);
+    } catch (error) {
+      console.error("Error uploading media:", error);
     }
-  }, [arrivalMessage]);
+  };
+
 
   useEffect(() => {
-    scrollRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    if (currentUser) {
+      socket.emit("add-user", currentUser._id);
+    }
+
+    return () => {
+      socket.disconnect(); // Disconnect the socket when the component unmounts
+    };
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (currentUser && currentChat) {
+      axios
+        .get(`${import.meta.env.VITE_BASE_URL}/chat-uploads`, {
+          params: {
+            from: currentUser._id,
+            to: currentChat._id,
+          },
+        })
+        .then((response) => setMediaData(response.data))
+        .catch((error) => console.error("Error fetching media:", error));
+    }
+  }, [currentUser, currentChat]);
+
+  const handleEmojiPicker = () => {
+    setEmoji(!emoji);
+  };
+
+  const handleEmojiClick = (chosenEmoji) => {
+    let message = msg + chosenEmoji.emoji;
+    setMsg(message);
+  };
+
+  const sendChat = (event) => {
+    event.preventDefault();
+
+    if (msg.length > 0 || selectedFile) {
+      handleSendMessage({ text: msg});
+      setMsg("");
+      setEmoji(false);
+    }
+  };
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    setSelectedFile(file);
+
+    const reader = new FileReader();
+    reader.onloadend = () => setMediaPreview(reader.result);
+
+    if (file) {
+      reader.readAsDataURL(file);
+      setSelectedFile(file);
+    } else {
+      setMediaPreview(null);
+    }
+  };
 
   return (
     <div className="message-container relative  h-[80vh] ">
@@ -148,7 +236,6 @@ const DisplayMessage = ({ currentChat, socket, currentUser }) => {
             </div>
             <div className="ml-1">
               <h2 className=" text-[14px]">{currentChat.firstName}</h2>
-              {/* <p className="text-[12px]">{currentChat._id}</p> */}
             </div>
           </div>
 
@@ -158,42 +245,87 @@ const DisplayMessage = ({ currentChat, socket, currentUser }) => {
             }}
             className="chat_messages h-[63vh] pt-2 pr-2  pl-2 pb-2  w-[100%] pt-5  pb-7"
           >
-            {messages.map((message, index) => (
-              <div
-                key={index}
-                ref={index === messages.length - 1 ? scrollRef : null}
-              >
-                {message.sender === currentUser._id ? (
-                  <div className="sent">
-                    <div className="content">
-                      <p>{message.message.text}</p>
-                      <div className="message-timestamp">
-                        {/* {message.createdAt && (
-                          <span>
-                            <span>
-                              {formatTimeDifference(message.createdAt)}
-                            </span>
-                          </span>
-                        )} */}
+            <div className=" min-h-[auto]">
+              {messages.map((message, index) => (
+                <div
+                  key={index}
+                  ref={index === messages.length - 1 ? scrollRef : null}
+                  className={
+                    message.sender === currentUser._id ? "sent" : "received"
+                  }
+                >
+                  <div className="content">
+                    {message.message?.media && (
+                      <div className="uploaded_file">
+                        <img
+                          src={message.message.media}
+                          alt={`Uploaded Media ${index}`}
+                          className="uploaded-image"
+                        />
                       </div>
+                    )}
+                    <p>{message.message?.text}</p>
+                    <div className="message-timestamp">
+                      {message.createdAt && (
+                        <span className="text-[10px]">
+                          <span>{formatTimeDifference(message.createdAt)}</span>
+                        </span>
+                      )}
                     </div>
                   </div>
-                ) : (
-                  <div className="received">
-                    <div className="content">
-                      <p>{message.message.text}</p>
-                      <div className="message-timestamp">
-                        {/* time strap */}
-                        {/* <span>{formatTimeDifference(message.createdAt)}</span> */}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-            {/* <Messages /> */}
+                </div>
+              ))}
+            </div>
           </div>
-          <ChatInput handleSendMessage={handleSendMessage} />
+          {/* <ChatInput handleSendMessage={handleSendMessage} /> */}
+          {mediaPreview && (
+            <div className=" mt-3 absolute bottom-[0px] rounded-r-3xl rounded-l-3xl  bg-[#fff]   z-20   w-[100%]  h-[auto  ]">
+              <img
+                src={mediaPreview}
+                alt="Preview"
+                className="w-[100%] rounded-r-3xl rounded-l-3xl  h-[100%] object-cover"
+              />
+              <div className="flex items-center justify-center  m-2 bg-[#fff] rounded-3xl">
+                <button
+                  onClick={uploadMedia}
+                  className="ml-2 rounded-xl pl-3 h-[33px] border border-[#152D5D] w-[70px] flex items-center justify-center pr-3 pt-2 pb-2 bg-[#152D5D] text-[#fff]"
+                >
+                  <BsSend />
+                </button>
+              </div>
+            </div>
+          )}
+          <div className="chat_input bg-[#0F1A2E] relative  w-[100%]  border p-2 flex items-center">
+            <div className="text-[23px] text-[#ffff00c8] cursor-pointer">
+              <BsEmojiSmile onClick={handleEmojiPicker} />
+            </div>
+            <div className="text-[#fff] text-[22px]">
+              <MdAttachFile />
+            </div>
+
+            {/* <input
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+              className="w-[20px] h-[20px]"
+            /> */}
+            <form
+              onSubmit={(e) => sendChat(e)}
+              action=""
+              className="flex items-center w-[100%] ml-3"
+            >
+              <input
+                type="text"
+                placeholder="Type Message"
+                value={msg}
+                onChange={(e) => setMsg(e.target.value)}
+                className="p-2 h-[33px] border border-[#0F1A2E] rounded-3xl text-[13px] font-[Poppins] w-[100%]"
+              />
+              <button className="submit ml-2 rounded-xl pl-3 h-[33px] border w-[80px] flex items-center justify-center pr-3 pt-2 pb-2 bg-[#152D5D] text-[#fff]">
+                <BsSend />
+              </button>
+            </form>
+          </div>
         </div>
       ) : (
         <div className="flex flex-col  items-center justify-center  min-h-[70vh]">
@@ -206,5 +338,4 @@ const DisplayMessage = ({ currentChat, socket, currentUser }) => {
   );
 };
 
-// ChatCom
 export default DisplayMessage;

@@ -24,25 +24,7 @@
     flex-direction: column;
   }
   
-
-  .received {
-        /* border: 1px solid red; */
-        display: flex;
-        justify-content: flex-start;
-  }
-  
-.received .content{
-    text-align: start;
-    align-self: flex-start;
-    background-color: #152d5d;
-    color: #fff;
-    max-width: 70%;
-    font-size: 14px;
-    margin: 8px;
-    padding: 10px;
-    border-radius: 8px;
-}
-.sent {
+  .sent {
     /* border: 1px solid red; */
     display: flex;
     justify-content: flex-end;
@@ -52,7 +34,24 @@
     color: #ffff;
     max-width: 70%;
     font-size: 14px;
-    margin: 8px;
+    margin: 5px;
+    padding: 10px;
+    border-radius: 8px;
+}
+
+  .received {
+        /* border: 1px solid red; */
+        display: flex;
+        justify-content: flex-start;
+  }
+  
+.received .content{
+    align-self: flex-start;
+    background-color: #152d5d;
+    color: #fff;
+    max-width: 70%;
+    font-size: 14px;
+    margin: 5px;
     padding: 10px;
     border-radius: 8px;
 }
