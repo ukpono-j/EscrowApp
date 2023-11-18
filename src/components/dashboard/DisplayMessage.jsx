@@ -27,7 +27,8 @@ const DisplayMessage = ({ currentChat, currentUser }) => {
   const [selectedFile, setSelectedFile] = useState(null);
   const scrollRef = useRef();
   const [mediaPreview, setMediaPreview] = useState(null);
-  const [mediaData, setMediaData] = useState([]);
+  // const [mediaData, setMediaData] = useState([]);
+  const [uploadedMedia, setUploadedMedia] = useState([]);
 
   useEffect(() => {
     const socket = io(BASE_URL);
@@ -142,29 +143,6 @@ const DisplayMessage = ({ currentChat, currentUser }) => {
     }
   };
 
-  const uploadMedia = async () => {
-    try {
-      const formData = new FormData();
-      formData.append("media", selectedFile);
-
-      await axios.post(`${import.meta.env.VITE_BASE_URL}/chat-uploads`, formData);
-
-      // Update media preview if needed
-      const reader = new FileReader();
-      reader.onloadend = () => setMediaPreview(reader.result);
-      
-      if (selectedFile) {
-        reader.readAsDataURL(selectedFile);
-        console.log(selectedFile)
-      } else {
-        setMediaPreview(null);
-      }
-    } catch (error) {
-      console.error("Error uploading media:", error);
-    }
-  };
-
-
   useEffect(() => {
     if (currentUser) {
       socket.emit("add-user", currentUser._id);
@@ -175,19 +153,26 @@ const DisplayMessage = ({ currentChat, currentUser }) => {
     };
   }, [currentUser]);
 
+  // Fetch uploaded media when the component mounts
   useEffect(() => {
-    if (currentUser && currentChat) {
-      axios
-        .get(`${import.meta.env.VITE_BASE_URL}/chat-uploads`, {
-          params: {
-            from: currentUser._id,
-            to: currentChat._id,
-          },
-        })
-        .then((response) => setMediaData(response.data))
-        .catch((error) => console.error("Error fetching media:", error));
-    }
-  }, [currentUser, currentChat]);
+    const fetchUploadedMedia = async () => {
+      try {
+        // Make a GET request to retrieve the uploaded media
+        const response = await axios.get(`${BASE_URL}/chat-message-uploads`);
+        const mediaData = response.data.messages.map(
+          (message) => message.media
+        );
+
+        // Update the state with the retrieved media data
+        setUploadedMedia(mediaData);
+        console.log(mediaData);
+      } catch (error) {
+        console.error("Error fetching uploaded media:", error);
+      }
+    };
+
+    fetchUploadedMedia();
+  }, []); // The empty dependency array ensures the effect runs only once on mount
 
   const handleEmojiPicker = () => {
     setEmoji(!emoji);
@@ -202,23 +187,47 @@ const DisplayMessage = ({ currentChat, currentUser }) => {
     event.preventDefault();
 
     if (msg.length > 0 || selectedFile) {
-      handleSendMessage({ text: msg});
+      handleSendMessage({ text: msg });
       setMsg("");
       setEmoji(false);
     }
   };
+
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     setSelectedFile(file);
 
+    // Read and display the image preview
     const reader = new FileReader();
-    reader.onloadend = () => setMediaPreview(reader.result);
-
+    reader.onloadend = () => {
+      setMediaPreview(reader.result);
+    };
     if (file) {
       reader.readAsDataURL(file);
-      setSelectedFile(file);
     } else {
       setMediaPreview(null);
+    }
+  };
+
+  const uploadMedia = async () => {
+    try {
+      const formData = new FormData();
+      formData.append("media", selectedFile);
+
+      // Use the new endpoint for file uploads
+      await axios.post(`${BASE_URL}/chat-message-uploads`, formData);
+
+      // Update media preview if needed
+      const reader = new FileReader();
+      reader.onloadend = () => setMediaPreview(reader.result);
+
+      if (selectedFile) {
+        reader.readAsDataURL(selectedFile);
+      } else {
+        setMediaPreview(null);
+      }
+    } catch (error) {
+      console.error("Error uploading media:", error);
     }
   };
 
@@ -255,15 +264,26 @@ const DisplayMessage = ({ currentChat, currentUser }) => {
                   }
                 >
                   <div className="content">
-                    {message.message?.media && (
-                      <div className="uploaded_file">
-                        <img
-                          src={message.message.media}
-                          alt={`Uploaded Media ${index}`}
-                          className="uploaded-image"
-                        />
+                    {message.message?.media && message.message.mimeType && (
+                      <div>
+                        <p>Media:</p>
+                        {message.message.mimeType.startsWith("image/") ? (
+                          <img
+                            src={`data:${message.message.mimeType};base64,${message.message.media}`}
+                            alt="uploaded media"
+                          />
+                        ) : (
+                          <video controls>
+                            <source
+                              src={`data:${message.message.mimeType};base64,${message.message.media}`}
+                              type={message.message.mimeType}
+                            />
+                            Your browser does not support the video tag.
+                          </video>
+                        )}
                       </div>
                     )}
+
                     <p>{message.message?.text}</p>
                     <div className="message-timestamp">
                       {message.createdAt && (
@@ -277,24 +297,6 @@ const DisplayMessage = ({ currentChat, currentUser }) => {
               ))}
             </div>
           </div>
-          {/* <ChatInput handleSendMessage={handleSendMessage} /> */}
-          {mediaPreview && (
-            <div className=" mt-3 absolute bottom-[0px] rounded-r-3xl rounded-l-3xl  bg-[#fff]   z-20   w-[100%]  h-[auto  ]">
-              <img
-                src={mediaPreview}
-                alt="Preview"
-                className="w-[100%] rounded-r-3xl rounded-l-3xl  h-[100%] object-cover"
-              />
-              <div className="flex items-center justify-center  m-2 bg-[#fff] rounded-3xl">
-                <button
-                  onClick={uploadMedia}
-                  className="ml-2 rounded-xl pl-3 h-[33px] border border-[#152D5D] w-[70px] flex items-center justify-center pr-3 pt-2 pb-2 bg-[#152D5D] text-[#fff]"
-                >
-                  <BsSend />
-                </button>
-              </div>
-            </div>
-          )}
           <div className="chat_input bg-[#0F1A2E] relative  w-[100%]  border p-2 flex items-center">
             <div className="text-[23px] text-[#ffff00c8] cursor-pointer">
               <BsEmojiSmile onClick={handleEmojiPicker} />
@@ -303,12 +305,19 @@ const DisplayMessage = ({ currentChat, currentUser }) => {
               <MdAttachFile />
             </div>
 
-            {/* <input
+            <input
               type="file"
-              accept="image/*"
+              accept="image/*, video/*" // Allow both image and video files
               onChange={handleFileChange}
-              className="w-[20px] h-[20px]"
-            /> */}
+              className="w-[70px] h-[20px]"
+            />
+            {/* ... Existing code ... */}
+            <button
+              onClick={uploadMedia}
+              className="submit ml-2 rounded-xl pl-3 h-[33px] border w-[80px] flex items-center justify-center pr-3 pt-2 pb-2 bg-[#152D5D] text-[#fff]"
+            >
+              Upload
+            </button>
             <form
               onSubmit={(e) => sendChat(e)}
               action=""
