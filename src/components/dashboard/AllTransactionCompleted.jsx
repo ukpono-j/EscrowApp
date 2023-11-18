@@ -236,7 +236,9 @@ const AllTransactionCompleted = ({
                 className="mr-4 text-[25px] cursor-pointer"
                 onClick={handleChat}
               >
-                <BsFillChatFill />
+                <Link to="/messages">
+                  <BsFillChatFill />
+                </Link>
               </div>
               <h4 className="flex font-bold  items-center">
                 <span className="">
