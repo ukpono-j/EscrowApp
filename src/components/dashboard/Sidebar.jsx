@@ -64,28 +64,28 @@ const Sidebar = () => {
   };
 
   return (
-    <div className="border text-[13px] fixed md:flex hidden md:flex-col left-0 top-0 pl-4 pr-4 pt-3 pb-10 border-black w-[100%] font-[Poppins] text-[#fff] bg-[#031420] min-h-[100vh]">
-      <h1 className="text-[26px] font-bold">
+    <div className="border text-[13px] fixed md:flex hidden md:flex-col left-0 top-0 pl-3  pr-4 pt-3 pb-10 border-black w-[100%] font-[Poppins] text-[#fff] bg-[#031420] min-h-[100vh]">
+      <h1 className="md:text-[23px] text-[20px] font-bold">
         <Link to="/dashboard">MiddleMan</Link>
       </h1>
       <h3 className="mt-10">
         Welcome <span>{userName}</span>
       </h3>
       <div className="flex pt-6 pb-6 items-center">
-        <MdLogout className="text-[18px]" />
+        <MdLogout className="text-[12px]" />
         <button className="ml-1" onClick={handleLogout}>
           Log Out
         </button>
       </div>
       <div className="mt-14">
-        {links.map((link) => (
+        {links.map((link, index) => (
           <Link
-            key={link.to}
+            key={index}
             to={link.to}
             onClick={() => handleLinkClick(link.to)}
-            className={`dash_links flex mt-2 mb-2 pl-4 pr-3 pb-3 pt-3 cursor-pointer ${
+            className={`dash_links flex mt-2 mb-2  pr-3 text-[12px] pb-3 pt-3 cursor-pointer ${
               activeLink === link.to
-                ? "text-[#fff] rounded-3xl bg-[#81712E] mb-3 text-[#000]"
+                ? "text-[#fff] rounded-3xl bg-[#81712E] mb-3 text-[#000] pl-3"
                 : ""
             }`}
           >

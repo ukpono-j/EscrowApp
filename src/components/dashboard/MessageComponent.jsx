@@ -117,7 +117,7 @@ const MessageComponent = () => {
             className=" pt-4 pb-4 pl-3 pr-3 h-[80vh]"
           >
             <div className="flex justify-between text-[17px]">
-              <h2>{}Chat</h2>
+              <h2 className="text-[14px] font-[600] uppercase">{}Chat</h2>
               <BsThreeDotsVertical />
             </div>
             <div className="flex mt-3   items-center justify-between">

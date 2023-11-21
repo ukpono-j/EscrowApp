@@ -1,6 +1,7 @@
 // DisplayMessage.jsx
 import React, { useEffect, useState, useRef } from "react";
 import Roboto from "../../assets/robot.gif";
+import Loading from "../../assets/loadings.gif";
 import Profile from "../../assets/profile_icon.png";
 import ChatInput from "./ChatInput";
 const BASE_URL = import.meta.env.VITE_BASE_URL;
@@ -29,6 +30,8 @@ const DisplayMessage = ({ currentChat, currentUser }) => {
   const [mediaPreview, setMediaPreview] = useState(null);
   // const [mediaData, setMediaData] = useState([]);
   const [uploadedMedia, setUploadedMedia] = useState([]);
+  const [loadingMessages, setLoadingMessages] = useState(true);
+  const [attach, setAttach] = useState(false);
 
   useEffect(() => {
     const socket = io(BASE_URL);
@@ -53,33 +56,94 @@ const DisplayMessage = ({ currentChat, currentUser }) => {
     }
   }, [newMessage, messages]);
 
+  // ====================== Useffect for get text messages
   useEffect(() => {
     const token = localStorage.getItem("auth-token");
     if (token) {
       axios.defaults.headers.common["auth-token"] = token;
     }
 
-    if (currentUser && currentChat) {
-      axios
-        .get(`${BASE_URL}/get-messages`, {
-          params: {
-            from: currentUser._id,
-            to: currentChat._id,
-          },
-        })
-        .then((response) => {
-          // Reverse the order to show newer messages below
-          const sortedMessages = response.data.sort((a, b) => {
-            return new Date(a.createdAt) - new Date(b.createdAt);
-          });
+    try {
+      setLoadingMessages(true);
+      setAttach(false);
+      if (currentUser && currentChat) {
+        axios
+          .get(`${BASE_URL}/get-messages`, {
+            params: {
+              from: currentUser._id,
+              to: currentChat._id,
+            },
+          })
+          .then((response) => {
+            // Separate media messages and text messages
+            const textMessages = response.data.filter(
+              (message) => message.message.text
+            );
+            // Reverse the order to show newer messages below
+            const sortedMessages = textMessages.sort((a, b) => {
+              return new Date(a.createdAt) - new Date(b.createdAt);
+            });
 
-          setMessages(sortedMessages);
-        })
-        .catch((error) => {
-          console.error("Error fetching messages:", error);
-        });
+            setMessages(sortedMessages);
+            setTimeout(() => {
+              setLoadingMessages(false);
+            }, 1000);
+          })
+          .catch((error) => {
+            console.error("Error fetching messages:", error);
+          });
+      }
+    } catch (error) {
+      console.error("Error fetching uploads:", error);
+    }
+
+    try {
+      if (currentUser && currentChat) {
+        // Fetch transaction details from API and update the state
+        axios
+          .get(`${BASE_URL}/chat-message-uploads`, {
+            params: {
+              from: currentUser._id,
+              to: currentChat._id,
+            },
+          })
+          .then((response) => {
+            // Filter media based on the sender and receiver
+            // Separate media messages and text messages
+            const mediaMessages = response.data.filter(
+              (message) => message.message.media
+            );
+
+            const filteredMedia = mediaMessages.filter((media) => {
+              console.log("Main Media", media);
+              const isCurrentUser = media.message.users[0] === currentUser._id;
+              const isCurrentChat = media.message.users[1] === currentChat._id;
+              console.log("Media Data:", media.message.media);
+              return isCurrentUser && isCurrentChat;
+            });
+            setUploadedMedia(filteredMedia);
+            // setMessages(response.data);
+            console.log("filtered Media All", filteredMedia);
+            console.log("Response Data:", response.data);
+            console.log("Filtered Media:", filteredMedia);
+            console.log("Uploaded Media:", uploadedMedia);
+          });
+      }
+    } catch (error) {
+      console.error("Error fetching uploads:", error);
     }
   }, [currentUser, currentChat]);
+
+  // ================= UseEffect for getting uploads
+  // useEffect(() => {
+  //   const token = localStorage.getItem("auth-token");
+  //   if (token) {
+  //     axios.defaults.headers.common["auth-token"] = token;
+  //   }
+
+  // }, [currentUser, currentChat]);
+
+  // ====================== UseEffect for get text messages and uploads
 
   // Function to format the time difference
   const formatTimeDifference = (timestamp) => {
@@ -116,7 +180,6 @@ const DisplayMessage = ({ currentChat, currentUser }) => {
     if (token) {
       axios.defaults.headers.common["auth-token"] = token;
     }
-
     try {
       // Send the message with text and media information
       await axios.post(`${BASE_URL}/send-message`, {
@@ -136,7 +199,7 @@ const DisplayMessage = ({ currentChat, currentUser }) => {
         ...prevMessages,
         { fromUserId: true, message: { text } },
       ]);
-
+      console.log({ fromUserId: true, message: { text } });
       scrollRef.current?.scrollIntoView({ behavior: "smooth" });
     } catch (error) {
       console.error("Error sending message:", error);
@@ -152,27 +215,6 @@ const DisplayMessage = ({ currentChat, currentUser }) => {
       socket.disconnect(); // Disconnect the socket when the component unmounts
     };
   }, [currentUser]);
-
-  // Fetch uploaded media when the component mounts
-  useEffect(() => {
-    const fetchUploadedMedia = async () => {
-      try {
-        // Make a GET request to retrieve the uploaded media
-        const response = await axios.get(`${BASE_URL}/chat-message-uploads`);
-        const mediaData = response.data.messages.map(
-          (message) => message.media
-        );
-
-        // Update the state with the retrieved media data
-        setUploadedMedia(mediaData);
-        console.log(mediaData);
-      } catch (error) {
-        console.error("Error fetching uploaded media:", error);
-      }
-    };
-
-    fetchUploadedMedia();
-  }, []); // The empty dependency array ensures the effect runs only once on mount
 
   const handleEmojiPicker = () => {
     setEmoji(!emoji);
@@ -209,28 +251,41 @@ const DisplayMessage = ({ currentChat, currentUser }) => {
     }
   };
 
-  const uploadMedia = async () => {
+  const uploadMedia = async (fromUserId, toUserId) => {
     try {
       const formData = new FormData();
       formData.append("media", selectedFile);
 
+      // Include "to" user ID in the request body
+
+      formData.append("from", currentUser._id);
+      formData.append("to", currentChat._id);
+
       // Use the new endpoint for file uploads
-      await axios.post(`${BASE_URL}/chat-message-uploads`, formData);
+      await axios.post(`${BASE_URL}/chat-message-uploads`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
 
-      // Update media preview if needed
-      const reader = new FileReader();
-      reader.onloadend = () => setMediaPreview(reader.result);
+        // Update uploadedMedia state immediately
+    // setUploadedMedia((prevUploadedMedia) => [...prevUploadedMedia, response.data]);
 
-      if (selectedFile) {
-        reader.readAsDataURL(selectedFile);
-      } else {
-        setMediaPreview(null);
-      }
+      // Clear the file input field after uploading the file
+      setSelectedFile(null); 
+      setAttach(!attach);
+      // Clear the input field after uploading the file
+      setMsg("");
     } catch (error) {
       console.error("Error uploading media:", error);
     }
   };
 
+  // const combinedData = [...messages, ...uploadedMedia];
+
+  const handleAttachToggle = () => {
+    setAttach(!attach);
+  };
   return (
     <div className="message-container relative  h-[80vh] ">
       {currentChat ? (
@@ -252,85 +307,137 @@ const DisplayMessage = ({ currentChat, currentUser }) => {
             style={{
               overflowY: "scroll",
             }}
-            className="chat_messages h-[63vh] pt-2 pr-2  pl-2 pb-2  w-[100%] pt-5  pb-7"
+            className="chat_messages h-[63vh]   w-[100%] "
           >
-            <div className=" min-h-[auto]">
-              {messages.map((message, index) => (
-                <div
-                  key={index}
-                  ref={index === messages.length - 1 ? scrollRef : null}
-                  className={
-                    message.sender === currentUser._id ? "sent" : "received"
-                  }
-                >
-                  <div className="content">
-                    {message.message?.media && message.message.mimeType && (
-                      <div>
-                        <p>Media:</p>
-                        {message.message.mimeType.startsWith("image/") ? (
-                          <img
-                            src={`data:${message.message.mimeType};base64,${message.message.media}`}
-                            alt="uploaded media"
-                          />
-                        ) : (
-                          <video controls>
-                            <source
-                              src={`data:${message.message.mimeType};base64,${message.message.media}`}
-                              type={message.message.mimeType}
-                            />
-                            Your browser does not support the video tag.
-                          </video>
-                        )}
-                      </div>
-                    )}
+            {/* Display loading spinner while fetching messages */}
+            {loadingMessages ? (
+              <div className="bg-[#101010] h-[63vh]   flex flex-col  items-center justify-center ">
+                <img
+                  src={Loading}
+                  alt=""
+                  className="max-w-[300px] max-h-[400px]"
+                />
+                {/* <p className="font-[600] text-[17px] text-[#fff]">Loading messages...</p> */}
+              </div>
+            ) : (
+              <div className="min-h-[auto] pt-2 pr-2  pl-2 pb-2 pt-5  pb-7">
+                {[...messages, ...uploadedMedia]
+                  .sort(
+                    (a, b) =>
+                      new Date(a.message.createdAt) -
+                      new Date(b.message.createdAt)
+                  )
+                  .map((item, index) => {
+                    const isMediaVisible =
+                      item.message?.media &&
+                      item.message.users.length === 2 &&
+                      item.message.users[0] === currentUser._id &&
+                      item.message.users[1] === currentChat._id;
 
-                    <p>{message.message?.text}</p>
-                    <div className="message-timestamp">
-                      {message.createdAt && (
-                        <span className="text-[10px]">
-                          <span>{formatTimeDifference(message.createdAt)}</span>
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                    return (
+                      <div
+                        key={index}
+                        ref={
+                          index === messages.length + uploadedMedia.length - 1
+                            ? scrollRef
+                            : null
+                        }
+                        className={
+                          item.sender === currentUser._id ? "sent" : "received"
+                        }
+                      >
+                        <div className="content">
+                          {item.message?.text && <p>{item.message.text}</p>}
+                          {isMediaVisible && (
+                            <div className="max-w-[300px] max-h-[300px] border border-black">
+                              {item.message.media ? (
+                                <img
+                                  src={`data:${item.message.media.mimetype};base64,${item.message.media}`}
+                                  className="w-[200px] h-[100%] object-cover"
+                                  alt="Uploaded Media"
+                                  onLoad={() =>
+                                    console.log("Image loaded successfully")
+                                  }
+                                  onError={(e) =>
+                                    console.error("Error loading image:", e)
+                                  }
+                                />
+                              ) : (
+                                <p>No media available</p>
+                              )}
+                            </div>
+                          )}
+                          <div className="message-timestamp">
+                            {item.message.createdAt && (
+                              <span className="text-[10px]">
+                                <span>
+                                  {formatTimeDifference(item.message.createdAt)}
+                                </span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
           </div>
           <div className="chat_input bg-[#0F1A2E] relative  w-[100%]  border p-2 flex items-center">
             <div className="text-[23px] text-[#ffff00c8] cursor-pointer">
               <BsEmojiSmile onClick={handleEmojiPicker} />
             </div>
-            <div className="text-[#fff] text-[22px]">
-              <MdAttachFile />
+            <div>
+              {attach && (
+                <div className="rounded-2xl absolute left-0 bottom-[50px] flex  justify-center flex-col text-center  w-[auto] pl-2  pr-2   pt-2  pb-4    text-[#fff] bg-[#0F1A2E]">
+                  {mediaPreview && (
+                    <div className="max-h-[200px] w-[auto]  bg-[#0F1A2E] font-[600] flex items-center justify-center  rounded-2xl  border border-[#fff]">
+                      <img
+                        src={mediaPreview}
+                        alt="Preview Image"
+                        className="h-[100%] w-[100%] object-contain rounded-2xl"
+                      />
+                    </div>
+                  )}
+                  <div className="text-[12px] flex justify-center mt-3 w-[180px]">
+                    <input
+                      type="file"
+                      accept="image/*, video/*" // Allow both image and video files
+                      onChange={handleFileChange}
+                      className="ml-1"
+                    />
+                  </div>
+                  <button
+                    onClick={uploadMedia}
+                    className="submit mt-3 uppercase  text-[11px] font-[500]  rounded-xl pl-3 h-[33px]  w-[auto] flex items-center justify-center pr-3 pt-2 pb-2 bg-[#152D5D] text-[#fff]"
+                  >
+                    Send Upload
+                  </button>
+                </div>
+              )}
+              <div
+                onClick={handleAttachToggle}
+                className="text-[#fff] text-[21px] cursor-pointer"
+              >
+                <MdAttachFile />
+              </div>
             </div>
 
-            <input
-              type="file"
-              accept="image/*, video/*" // Allow both image and video files
-              onChange={handleFileChange}
-              className="w-[70px] h-[20px]"
-            />
             {/* ... Existing code ... */}
-            <button
-              onClick={uploadMedia}
-              className="submit ml-2 rounded-xl pl-3 h-[33px] border w-[80px] flex items-center justify-center pr-3 pt-2 pb-2 bg-[#152D5D] text-[#fff]"
-            >
-              Upload
-            </button>
+
             <form
               onSubmit={(e) => sendChat(e)}
               action=""
-              className="flex items-center w-[100%] ml-3"
+              className="flex items-center w-[100%]"
             >
               <input
                 type="text"
                 placeholder="Type Message"
                 value={msg}
                 onChange={(e) => setMsg(e.target.value)}
-                className="p-2 h-[33px] border border-[#0F1A2E] rounded-3xl text-[13px] font-[Poppins] w-[100%]"
+                className="p-2 h-[33px]  rounded-3xl text-[12px] ml-1  font-[Poppins] w-[100%]"
               />
-              <button className="submit ml-2 rounded-xl pl-3 h-[33px] border w-[80px] flex items-center justify-center pr-3 pt-2 pb-2 bg-[#152D5D] text-[#fff]">
+              <button className="submit ml-2 rounded-xl pl-3 h-[33px]  w-[60px] flex items-center justify-center pr-3 pt-2 pb-2 bg-[#152D5D] text-[#fff]">
                 <BsSend />
               </button>
             </form>
