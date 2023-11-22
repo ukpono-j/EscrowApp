@@ -44,12 +44,12 @@ const DisplayMessage = ({ currentChat, currentUser }) => {
     socket.on("msg-receive", (message) => {
       // setNewMessage(message);
 
-      setNewMessage((prevMessage) => {
+      setMessages((prevMessages) => {
         // Find the index of the last message in the messages array
-        const lastMessageIndex = messages.findIndex(
-          (msg) => msg.message.createdAt === prevMessage?.message.createdAt
+        const lastMessageIndex = prevMessages.findIndex(
+          (msg) => msg.message.createdAt === prevMessages[prevMessages.length - 1]?.message.createdAt
         );
-
+  
         // Create a new array with the new text message added under the last message
         const newMessages = [
           ...messages.slice(0, lastMessageIndex + 1),
