@@ -321,12 +321,12 @@ const DisplayMessage = ({ currentChat, currentUser }) => {
       });
 
       // Fetch chat-message-uploads immediately after the media upload is complete
-      fetchChatMessageUploads();
-
+      
       // Clear the file input field after uploading the file
+      setAttach(false);
+      fetchChatMessageUploads();
       setMediaPreview(null);
       setSelectedFile(null);
-      setAttach(!attach);
       setTimeout(() => {
         setLoadingMessages(false);
       }, 1000);
