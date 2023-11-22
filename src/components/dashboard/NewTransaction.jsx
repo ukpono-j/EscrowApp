@@ -272,6 +272,7 @@ const NewTransaction = () => {
                       value={paymentName}
                       className="border-2  border-[#81712E] bg-[#031420] rounded-[30px] text-[12px] pl-4 pr-3 pt-2 pb-2  outline-none  w-full"
                       placeholder="Enter Payment Name"
+                      autoComplete="on" 
                     />
                   </div>
                   <div className="mb-4">
@@ -289,6 +290,7 @@ const NewTransaction = () => {
                       value={email}
                       className="border-2  border-[#81712E] bg-[#031420] rounded-[30px] text-[12px] pl-4 pr-3 pt-2 pb-2  outline-none mb-2  w-full"
                       placeholder="Enter Email Address"
+                      autoComplete="on" 
                     />
                   </div>
                   <div className="mb-4">
@@ -323,6 +325,7 @@ const NewTransaction = () => {
                       value={paymentBank}
                       className="border-2  border-[#81712E] bg-[#031420] rounded-[30px] text-[12px] pl-4 pr-3 pt-2 pb-2  outline-none mb-2  w-full"
                       placeholder="Enter payment bank"
+                      autoComplete="on" 
                     />
                   </div>
                   <div className="mb-4">
@@ -340,6 +343,7 @@ const NewTransaction = () => {
                       value={paymentAccountNumber}
                       className="border-2  border-[#81712E] bg-[#031420] rounded-[30px] text-[12px] pl-4 pr-3 pt-2 pb-2  outline-none mb-2  w-full"
                       placeholder="Enter payment number"
+                      autoComplete="on" 
                     />
                   </div>
                   <div className="mb-5 mt-5 ">

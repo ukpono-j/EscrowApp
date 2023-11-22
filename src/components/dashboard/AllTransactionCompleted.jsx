@@ -300,17 +300,16 @@ const AllTransactionCompleted = ({
             </div>
           </div>
           {/* ===================== Upload  */}
-          <div className="flex items-center  justify-between  ">
+          <div className="flex items-center   justify-between  ">
             <div className="w-[80%]">
               <h3 className="font-[600] text-[16px] ">
                 Proof of waybill:
-                <span className="ml-2 font-[100]  text-[14px]">
+                <span className="ml-2 font-[200]  text-[14px]">
                   {displayProofOfWaybill(transaction)}
                 </span>
               </h3>
               <p className="pt-1 text-[13px]">
-                Note : Seller should upload 2 videos and 2 images of the waybill
-                proof.
+                Note : Have you seen proof of waybill in chat?
               </p>
             </div>
 
@@ -320,7 +319,7 @@ const AllTransactionCompleted = ({
                   onClick={() =>
                     handleConfirmReceipt(transaction.transactionId)
                   }
-                  className="flex items-center justify-center pl-[27px] pt-[9px] pb-[9px] pr-[27px] rounded-full text-[#fff] text-[13px] bg-[#81712E] border-2 border-[#81712E] hover:border-2 hover:border-[#81712E] hover:bg-[transparent]"
+                  className="flex items-center justify-center md:w-[170px] md:h-[40px] w-[150px] h-[40px]  rounded-full text-[#fff] text-[13px] bg-[#81712E] border-2 border-[#81712E] hover:border-2 hover:border-[#81712E] hover:bg-[transparent]"
                   disabled={transaction.proofOfWaybill === "confirmed"}
                 >
                   {transaction.proofOfWaybill === "confirmed"
@@ -333,30 +332,30 @@ const AllTransactionCompleted = ({
             <div></div>
           </div>
           {/* =====================End  of  Upload  */}
-          <div className="flex mt-6  items-center justify-between">
-            <h5 className="text-[13px]">
+          <div className="md:flex md:flex-row flex-col-reverse  flex   md:items-center items-start  justify-between">
+            <h5 className="text-[13px] md:mt-0 mt-1">
               {/* {new Date(transaction.createdAt).toLocaleDateString()} */}
               {formatCreatedAt(transaction.createdAt)}
             </h5>
-            <div className="flex items-center ">
+            <div className="flex flex-wrap  items-center md:mt-0 mt-2 md:mb-0 mb-2 ">
               {transaction.status === "active" && (
                 <>
                   <button
                     onClick={() => onCancel(transaction.transactionId)}
-                    className="ml-3 flex items-center   justify-center  pl-[38px] pt-[9px] pb-[9px] pr-[38px]   rounded-full text-[#fff] text-[13px] bg-[#81712E] border-2  border-[#81712E] all_btn   hover:border-2  hover:border-[#81712E]  hover:bg-[transparent]"
+                    className=" flex items-center   justify-center m-1 md:mt-3  md:w-[130px] w-[120px] mt-2  h-[40px]  md:h-[40px]    rounded-full text-[#fff] text-[13px] bg-[#81712E] border-2  border-[#81712E] all_btn   hover:border-2  hover:border-[#81712E]  hover:bg-[transparent]"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={() => onComplete(transaction.transactionId)}
-                    className="ml-3 flex items-center   justify-center  pl-[38px] pt-[9px] pb-[9px] pr-[38px]   rounded-full text-[#fff] text-[13px] bg-[#81712E] border-2  border-[#81712E] all_btn   hover:border-2  hover:border-[#81712E]  hover:bg-[transparent]"
+                    className="flex items-center   justify-center m-1 md:mt-3  md:w-[130px] mt-2  w-[120px] h-[40px]  md:h-[40px]   rounded-full text-[#fff] text-[13px] bg-[#81712E] border-2  border-[#81712E] all_btn   hover:border-2  hover:border-[#81712E]  hover:bg-[transparent]"
                     disabled={transaction.proofOfWaybill !== "confirmed"}
                   >
                     Done
                   </button>
                   <button
                     onClick={() => handleMakePayment(transaction)}
-                    className="flex items-center justify-center pl-[27px] ml-3  pt-[9px] pb-[9px] pr-[27px] rounded-full text-[#fff] text-[13px] bg-[#81712E] border-2 border-[#81712E] hover:border-2 hover:border-[#81712E] hover:bg-[transparent]"
+                    className="flex items-center justify-center m-1 md:mt-3  md:w-[170px] w-[140px]  mt-2   h-[40px]  md:h-[40px] rounded-full text-[#fff] text-[13px] bg-[#81712E] border-2 border-[#81712E] hover:border-2 hover:border-[#81712E] hover:bg-[transparent]"
                     disabled={transaction.proofOfWaybill !== "confirmed"}
                   >
                     {transaction.paymentStatus === "paid"

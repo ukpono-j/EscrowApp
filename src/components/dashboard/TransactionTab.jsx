@@ -503,7 +503,7 @@ const TransactionTab = ({ userResponse }) => {
                 {loading ? (
                   <p>Loading...</p> // Show a loading indicator while data is being fetched
                 ) : cancelledTransactions.length === 0 ? (
-                  <p>No cancelled transactions found.1</p>
+                  <p>No cancelled transactions found.</p>
                 ) : (
                   <div className="mt-5 h-[auto]">
                     <CancelledComponent
