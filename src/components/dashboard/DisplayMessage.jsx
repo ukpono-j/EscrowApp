@@ -395,7 +395,7 @@ const DisplayMessage = ({ currentChat, currentUser }) => {
           >
             {/* Display loading spinner while fetching messages */}
             {loadingMessages ? (
-              <div className="bg-[#101010] h-[63vh] relative z-40   flex flex-col  items-center justify-center ">
+              <div className="bg-[#101010] h-[63vh] relative z-50   flex flex-col  items-center justify-center ">
                 <img
                   src={Loading}
                   alt=""
