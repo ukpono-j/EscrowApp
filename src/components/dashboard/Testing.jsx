@@ -413,3 +413,211 @@ export default Testing;
       )
   )}
 </div>
+
+
+                {/* {uploadedMedia && uploadedMedia.map((singleData) => {
+                  const base64String = btoa(
+                    String.fromCharCode(
+                      ...new Uint8Array((singleData.message.media?.data?.data) ?? [])
+                    )
+                  );
+                  return (
+                    <img
+                      src={`data:image/png;base64, ${base64String}`}
+                      alt=""
+                    />
+                  );
+                })} */}
+
+                <div className="min-h-[auto] pt-2 pr-2  pl-2 pb-2 pt-5  pb-7">
+                {[...messages, ...uploadedMedia]
+                  .sort(
+                    (a, b) =>
+                      new Date(a.message.createdAt) -
+                      new Date(b.message.createdAt)
+                  )
+                  .map((item, index) => {
+                    const isMediaVisible =
+                      item.message?.media &&
+                      item.message.users.length === 2 &&
+                      item.message.users[0] === currentUser._id &&
+                      item.message.users[1] === currentChat._id;
+
+                    return (
+                      <div
+                        key={index}
+                        ref={
+                          index === messages.length + uploadedMedia.length - 1
+                            ? scrollRef
+                            : null
+                        }
+                        className={
+                          item.sender === currentUser._id ? "sent" : "received"
+                        }
+                      >
+                        <div className="content">
+                          {item.message?.text && <p>{item.message.text}</p>}
+                          {isMediaVisible && (
+                            <div className="max-w-[300px] max-h-[300px] border border-black">
+                              {item.message.media ? (
+                                <img
+                                  src={`data:${item.message.media.mimetype};base64,${item.message.media}`}
+                                  className="w-[200px] h-[100%] object-cover"
+                                  alt="Uploaded Media"
+                                  onLoad={() =>
+                                    console.log("Image loaded successfully")
+                                  }
+                                  onError={(e) =>
+                                    console.error("Error loading image:", e)
+                                  }
+                                />
+                              ) : (
+                                <p>No media available</p>
+                              )}
+                            </div>
+                          )}
+                          <div className="message-timestamp">
+                            {item.message.createdAt && (
+                              <span className="text-[10px]">
+                                <span>
+                                  {formatTimeDifference(item.message.createdAt)}
+                                </span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                {/* {uploadedMedia && uploadedMedia.map((singleData) => {
+                  const base64String = btoa(
+                    String.fromCharCode(
+                      ...new Uint8Array((singleData.message.media?.data?.data) ?? [])
+                    )
+                  );
+                  return (
+                    <img
+                      src={`data:image/png;base64, ${base64String}`}
+                      alt=""
+                    />
+                  );
+                })} */}
+              </div>
+
+
+             {/* {uploadedMedia &&
+                  uploadedMedia.map((singleData) => {
+                    return (
+                      <div key={singleData._id}>
+                        <img
+                          src={`${BASE_URL}/images/${singleData.message.media.filename}`}
+                          width="300"
+                          alt="Uploaded Media"
+                        />
+                        <div>
+                          {singleData.message.createdAt && (
+                            <span className="text-[10px] font-bold">
+                              <span>
+                                {formatTimeDifference(
+                                  singleData.message.createdAt
+                                )}
+                              </span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })} */}
+
+                    // useEffect(() => {
+  //   const token = localStorage.getItem("auth-token");
+  //   if (token) {
+  //     axios.defaults.headers.common["auth-token"] = token;
+  //   }
+
+  //   try {
+  //     setLoadingMessages(true);
+  //     setAttach(false);
+  //     if (currentUser && currentChat) {
+  //       axios
+  //         .get(`${BASE_URL}/get-messages`, {
+  //           params: {
+  //             from: currentUser._id,
+  //             to: currentChat._id,
+  //           },
+  //         })
+  //         .then((response) => {
+  //           // Separate media messages and text messages
+  //           const textMessages = response.data.filter(
+  //             (message) => message.message.text
+  //           );
+  //           // Reverse the order to show newer messages below
+  //           const sortedMessages = textMessages.sort((a, b) => {
+  //             return new Date(a.createdAt) - new Date(b.createdAt);
+  //           });
+
+  //           setMessages(sortedMessages);
+  //           setTimeout(() => {
+  //             setLoadingMessages(false);
+  //           }, 1000);
+  //         })
+  //         .catch((error) => {
+  //           console.error("Error fetching messages:", error);
+  //         });
+  //     }
+  //   } catch (error) {
+  //     console.error("Error fetching uploads:", error);
+  //   }
+
+  //   try {
+  //     if (currentUser && currentChat) {
+  //       // Fetch transaction details from API and update the state
+  //       axios
+  //         .get(`${BASE_URL}/chat-message-uploads`, {
+  //           params: {
+  //             from: currentUser._id,
+  //             to: currentChat._id,
+  //           },
+  //         })
+  //         .then((response) => {
+  //           // Filter media based on the sender and receiver
+  //           // Separate media messages and text messages
+  //           const mediaMessages = response.data.filter(
+  //             (message) => message.message.media
+  //           );
+
+  //           const filteredMedia = mediaMessages.filter((media) => {
+  //             console.log("Main Media", media);
+  //             const isCurrentUser = media.message.users[0] === currentUser._id;
+  //             const isCurrentChat = media.message.users[1] === currentChat._id;
+  //             console.log("Media Data:", media.message.media);
+  //             return isCurrentUser && isCurrentChat;
+  //           });
+  //           setUploadedMedia(filteredMedia);
+  //           // setMessages(response.data);
+  //           console.log("filtered Media All", filteredMedia);
+  //           console.log("Response Data:", response.data);
+  //           console.log("Filtered Media:", filteredMedia);
+  //           console.log("Uploaded Media:", uploadedMedia);
+  //         });
+  //     }
+  //   } catch (error) {
+  //     console.error("Error fetching uploads:", error);
+  //   }
+  // }, [currentUser, currentChat]);
+
+
+
+    // Remaining code ...
+
+  // ================= UseEffect for getting uploads
+  // useEffect(() => {
+  //   const token = localStorage.getItem("auth-token");
+  //   if (token) {
+  //     axios.defaults.headers.common["auth-token"] = token;
+  //   }
+
+  // }, [currentUser, currentChat]);
+
+  // ====================== UseEffect for get text messages and uploads

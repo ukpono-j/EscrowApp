@@ -37,6 +37,7 @@
     margin: 5px;
     padding: 10px;
     border-radius: 8px;
+    position: relative;
 }
 
   .received {
@@ -49,9 +50,20 @@
     align-self: flex-start;
     background-color: #152d5d;
     color: #fff;
+    position: relative;
     max-width: 70%;
     font-size: 14px;
     margin: 5px;
     padding: 10px;
     border-radius: 8px;
+}
+
+.download-icon {
+  position: absolute;
+  bottom: -1px ;
+  right: 10px;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  color: #fff;
+  font-size: 17px;
 }

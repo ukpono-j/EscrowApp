@@ -13,6 +13,7 @@ import { IoMdSend } from "react-icons/io";
 import {
   BsClipboard,
   BsClipboard2Plus,
+  BsCloudDownload,
   BsEmojiSmile,
   BsSend,
 } from "react-icons/bs";
@@ -23,6 +24,7 @@ const socket = io(BASE_URL); // Connect to the server
 const DisplayMessage = ({ currentChat, currentUser }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState(null);
+  const [newMessageMedia, setNewMessageMedia] = useState(null);
   const [emoji, setEmoji] = useState(false);
   const [msg, setMsg] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
@@ -32,13 +34,35 @@ const DisplayMessage = ({ currentChat, currentUser }) => {
   const [uploadedMedia, setUploadedMedia] = useState([]);
   const [loadingMessages, setLoadingMessages] = useState(true);
   const [attach, setAttach] = useState(false);
+  const [data, setData] = useState([]);
+  const [mediaLoading, setMediaLoading] = useState(false);
 
   useEffect(() => {
     const socket = io(BASE_URL);
     console.log("Connected to the server");
 
     socket.on("msg-receive", (message) => {
-      setNewMessage(message);
+      // setNewMessage(message);
+
+      setNewMessage((prevMessage) => {
+        // Find the index of the last message in the messages array
+        const lastMessageIndex = messages.findIndex(
+          (msg) => msg.message.createdAt === prevMessage?.message.createdAt
+        );
+
+        // Create a new array with the new text message added under the last message
+        const newMessages = [
+          ...messages.slice(0, lastMessageIndex + 1),
+          { fromUserId: true, message },
+          ...messages.slice(lastMessageIndex + 1),
+        ];
+
+        setMessages(newMessages);
+        scrollRef.current?.scrollIntoView({ behavior: "smooth" });
+
+        return null; // Set newMessage to null to prevent unnecessary re-render
+      });
+
       console.log("Received message:", message);
     });
 
@@ -46,17 +70,31 @@ const DisplayMessage = ({ currentChat, currentUser }) => {
       socket.off("msg-receive");
       socket.disconnect(); // Disconnect the socket here
     };
+
+    socket.on("media-receive", (media) => {
+      setNewMessageMedia({ fromUserId: true, message: { media } });
+      console.log("Received media:", media);
+    });
+
+    return () => {
+      // Existing code...
+      socket.off("media-receive");
+    };
   }, []);
 
   useEffect(() => {
     if (newMessage) {
-      setMessages((prevMessages) => [...prevMessages, newMessage]);
+      // setMessages((prevMessages) => [...prevMessages, newMessage]);
+      setMessages((prevMessages) => [newMessage, ...prevMessages]);
       scrollRef.current?.scrollIntoView({ behavior: "smooth" });
       setNewMessage(null);
     }
   }, [newMessage, messages]);
 
   // ====================== Useffect for get text messages
+
+  // Existing code ...
+
   useEffect(() => {
     const token = localStorage.getItem("auth-token");
     if (token) {
@@ -96,7 +134,9 @@ const DisplayMessage = ({ currentChat, currentUser }) => {
     } catch (error) {
       console.error("Error fetching uploads:", error);
     }
+  }, [currentUser, currentChat]);
 
+  useEffect(() => {
     try {
       if (currentUser && currentChat) {
         // Fetch transaction details from API and update the state
@@ -108,42 +148,52 @@ const DisplayMessage = ({ currentChat, currentUser }) => {
             },
           })
           .then((response) => {
-            // Filter media based on the sender and receiver
-            // Separate media messages and text messages
             const mediaMessages = response.data.filter(
               (message) => message.message.media
             );
 
-            const filteredMedia = mediaMessages.filter((media) => {
-              console.log("Main Media", media);
-              const isCurrentUser = media.message.users[0] === currentUser._id;
-              const isCurrentChat = media.message.users[1] === currentChat._id;
-              console.log("Media Data:", media.message.media);
-              return isCurrentUser && isCurrentChat;
-            });
-            setUploadedMedia(filteredMedia);
-            // setMessages(response.data);
-            console.log("filtered Media All", filteredMedia);
-            console.log("Response Data:", response.data);
-            console.log("Filtered Media:", filteredMedia);
-            console.log("Uploaded Media:", uploadedMedia);
+            // Update the uploadedMedia state with media messages
+            setUploadedMedia(mediaMessages);
+            setMediaPreview(null);
+            setSelectedFile(null);
+            console.log("Uploaded Media:", response.data); // Log the response.data directly
+          });
+      }
+    } catch (error) {
+      console.error("Error fetching uploads:", error);
+      setMediaLoading(false);
+      setAttach(false);
+    }
+  }, [currentUser, currentChat]);
+
+  // Create a separate function to fetch chat-message-uploads
+  const fetchChatMessageUploads = () => {
+    try {
+      if (currentUser && currentChat) {
+        // Fetch transaction details from API and update the state
+        axios
+          .get(`${BASE_URL}/chat-message-uploads`, {
+            params: {
+              from: currentUser._id,
+              to: currentChat._id,
+            },
+          })
+          .then((response) => {
+            const mediaMessages = response.data.filter(
+              (message) => message.message.media
+            );
+
+            // Update the uploadedMedia state with media messages
+            setUploadedMedia(mediaMessages);
+            setMediaPreview(null);
+            setSelectedFile(null);
+            console.log("Uploaded Media:", response.data); // Log the response.data directly
           });
       }
     } catch (error) {
       console.error("Error fetching uploads:", error);
     }
-  }, [currentUser, currentChat]);
-
-  // ================= UseEffect for getting uploads
-  // useEffect(() => {
-  //   const token = localStorage.getItem("auth-token");
-  //   if (token) {
-  //     axios.defaults.headers.common["auth-token"] = token;
-  //   }
-
-  // }, [currentUser, currentChat]);
-
-  // ====================== UseEffect for get text messages and uploads
+  };
 
   // Function to format the time difference
   const formatTimeDifference = (timestamp) => {
@@ -218,6 +268,7 @@ const DisplayMessage = ({ currentChat, currentUser }) => {
 
   const handleEmojiPicker = () => {
     setEmoji(!emoji);
+    console.log("dfd");
   };
 
   const handleEmojiClick = (chosenEmoji) => {
@@ -253,6 +304,7 @@ const DisplayMessage = ({ currentChat, currentUser }) => {
 
   const uploadMedia = async (fromUserId, toUserId) => {
     try {
+      setLoadingMessages(true);
       const formData = new FormData();
       formData.append("media", selectedFile);
 
@@ -268,24 +320,56 @@ const DisplayMessage = ({ currentChat, currentUser }) => {
         },
       });
 
-        // Update uploadedMedia state immediately
-    // setUploadedMedia((prevUploadedMedia) => [...prevUploadedMedia, response.data]);
+      // Fetch chat-message-uploads immediately after the media upload is complete
+      fetchChatMessageUploads();
 
       // Clear the file input field after uploading the file
-      setSelectedFile(null); 
+      setMediaPreview(null);
+      setSelectedFile(null);
       setAttach(!attach);
+      setTimeout(() => {
+        setLoadingMessages(false);
+      }, 1000);
       // Clear the input field after uploading the file
-      setMsg("");
+      // setMsg("");
     } catch (error) {
       console.error("Error uploading media:", error);
     }
   };
 
-  // const combinedData = [...messages, ...uploadedMedia];
+  const allMessages = [...messages, ...uploadedMedia];
+
+  // Sort the combined array based on createdAt timestamps
+  allMessages.sort(
+    (a, b) => new Date(a.message.createdAt) - new Date(b.message.createdAt)
+  );
 
   const handleAttachToggle = () => {
     setAttach(!attach);
   };
+
+  if (!uploadedMedia) {
+    return <p>Loading...</p>;
+  }
+
+  const handleDownloadMedia = (filename) => {
+    const mediaUrl = `${BASE_URL}/images/${filename}`;
+
+    // Create a link element
+    const downloadLink = document.createElement("a");
+    downloadLink.href = mediaUrl;
+    downloadLink.download = filename;
+
+    // Append the link to the body
+    document.body.appendChild(downloadLink);
+
+    // Trigger a click to start the download
+    downloadLink.click();
+
+    // Remove the link from the body
+    document.body.removeChild(downloadLink);
+  };
+
   return (
     <div className="message-container relative  h-[80vh] ">
       {currentChat ? (
@@ -321,69 +405,70 @@ const DisplayMessage = ({ currentChat, currentUser }) => {
               </div>
             ) : (
               <div className="min-h-[auto] pt-2 pr-2  pl-2 pb-2 pt-5  pb-7">
-                {[...messages, ...uploadedMedia]
-                  .sort(
-                    (a, b) =>
-                      new Date(a.message.createdAt) -
-                      new Date(b.message.createdAt)
-                  )
-                  .map((item, index) => {
-                    const isMediaVisible =
-                      item.message?.media &&
-                      item.message.users.length === 2 &&
-                      item.message.users[0] === currentUser._id &&
-                      item.message.users[1] === currentChat._id;
-
-                    return (
-                      <div
-                        key={index}
-                        ref={
-                          index === messages.length + uploadedMedia.length - 1
-                            ? scrollRef
-                            : null
-                        }
-                        className={
-                          item.sender === currentUser._id ? "sent" : "received"
-                        }
-                      >
-                        <div className="content">
-                          {item.message?.text && <p>{item.message.text}</p>}
-                          {isMediaVisible && (
-                            <div className="max-w-[300px] max-h-[300px] border border-black">
-                              {item.message.media ? (
-                                <img
-                                  src={`data:${item.message.media.mimetype};base64,${item.message.media}`}
-                                  className="w-[200px] h-[100%] object-cover"
-                                  alt="Uploaded Media"
-                                  onLoad={() =>
-                                    console.log("Image loaded successfully")
-                                  }
-                                  onError={(e) =>
-                                    console.error("Error loading image:", e)
-                                  }
-                                />
-                              ) : (
-                                <p>No media available</p>
-                              )}
+                {allMessages
+                  .filter(
+                    (data) =>
+                      (data.message?.text ||
+                        (data.message?.media && data.message.media.filename)) &&
+                      (!data.message?.media || // Additional condition to filter out media messages not belonging to the current chat
+                        (data.message.users.length === 2 &&
+                          data.message.users.includes(currentUser._id) &&
+                          data.message.users.includes(currentChat._id)))
+                  ) // Filter out messages with no text or empty media
+                  .map((data, index) => (
+                    <div
+                      key={index}
+                      ref={index === allMessages.length - 1 ? scrollRef : null}
+                      className={
+                        data.sender === currentUser._id ? "sent" : "received"
+                      }
+                    >
+                      <div className="content">
+                        {data.message?.text && <p>{data.message.text}</p>}
+                        {data.message?.media &&
+                          data.message.media.filename &&
+                          data.message.users.length === 2 &&
+                          data.message.users.includes(currentUser._id) &&
+                          data.message.users.includes(currentChat._id) && (
+                            <div>
+                              <img
+                                src={`${BASE_URL}/images/${data.message.media.filename}`}
+                                width="300"
+                                alt="Uploaded Media"
+                              />
+                              <div
+                                className="download-icon"
+                                onClick={() =>
+                                  handleDownloadMedia(
+                                    data.message.media.filename
+                                  )
+                                }
+                              >
+                                <BsCloudDownload />
+                              </div>
                             </div>
                           )}
+                        {data.message.createdAt && (
                           <div className="message-timestamp">
-                            {item.message.createdAt && (
-                              <span className="text-[10px]">
-                                <span>
-                                  {formatTimeDifference(item.message.createdAt)}
-                                </span>
+                            <span className="text-[10px]">
+                              <span>
+                                {formatTimeDifference(data.message.createdAt)}
                               </span>
-                            )}
+                            </span>
                           </div>
-                        </div>
+                        )}
                       </div>
-                    );
-                  })}
+                    </div>
+                  ))}
               </div>
             )}
           </div>
           <div className="chat_input bg-[#0F1A2E] relative  w-[100%]  border p-2 flex items-center">
+            {emoji && (
+              <div className="absolute left-0  bottom-[50px] ">
+                <Picker onEmojiClick={handleEmojiClick} />
+              </div>
+            )}
             <div className="text-[23px] text-[#ffff00c8] cursor-pointer">
               <BsEmojiSmile onClick={handleEmojiPicker} />
             </div>
