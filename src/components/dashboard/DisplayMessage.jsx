@@ -424,7 +424,7 @@ const DisplayMessage = ({ currentChat, currentUser }) => {
                       }
                     >
                       <div className="content">
-                        {data.message?.text && <p>{data.message.text}</p>}
+                        {data.message?.text && <p className="text-[13px]">{data.message.text}</p>}
                         {data.message?.media &&
                           data.message.media.filename &&
                           data.message.users.length === 2 &&
@@ -476,11 +476,11 @@ const DisplayMessage = ({ currentChat, currentUser }) => {
               {attach && (
                 <div className="rounded-2xl absolute left-0 bottom-[50px] flex  justify-center flex-col text-center  w-[auto] pl-2  pr-2   pt-2  pb-4    text-[#fff] bg-[#0F1A2E]">
                   {mediaPreview && (
-                    <div className="max-h-[200px] w-[auto]  bg-[#0F1A2E] font-[600] flex items-center justify-center  rounded-2xl  border border-[#fff]">
+                    <div className="max-h-[200px] max-w-[500px]  bg-[#0F1A2E] font-[600] flex items-center justify-center  rounded-2xl  border border-[#fff]">
                       <img
                         src={mediaPreview}
                         alt="Preview Image"
-                        className="h-[100%] w-[100%] object-contain rounded-2xl"
+                        className="h-[100%] w-[100%] object-cover  rounded-2xl"
                       />
                     </div>
                   )}
