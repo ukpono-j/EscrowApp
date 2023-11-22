@@ -474,13 +474,13 @@ const DisplayMessage = ({ currentChat, currentUser }) => {
             </div>
             <div>
               {attach && (
-                <div className="rounded-2xl absolute left-0 bottom-[50px] flex  justify-center flex-col text-center  w-[auto] pl-2  pr-2   pt-2  pb-4    text-[#fff] bg-[#0F1A2E]">
+                <div className="rounded-2xl absolute  bottom-[50px] flex  justify-center flex-col text-center  w-[auto] pl-2  pr-2   pt-2  pb-4    text-[#fff] bg-[#0F1A2E]">
                   {mediaPreview && (
-                    <div className="max-h-[200px] max-w-[500px]  bg-[#0F1A2E] font-[600] flex items-center justify-center  rounded-2xl  border border-[#fff]">
+                    <div className="max-h-[200px] max-w-[400px]  bg-[#0F1A2E] font-[600] flex items-center justify-center  rounded-2xl  border border-[#fff]">
                       <img
                         src={mediaPreview}
                         alt="Preview Image"
-                        className="h-[100%] w-[100%] object-cover  rounded-2xl"
+                        className="max-h-[200px] w-[400px]  object-cover  rounded-2xl"
                       />
                     </div>
                   )}
