@@ -54,6 +54,7 @@ const MessageComponent = () => {
         });
         console.log(response.data);
         setCurrentUser(response.data);
+        setAvatarUrl(`${BASE_URL}/images/${response.data.avatarImage}`);
       } catch (error) {
         console.error("Error fetching user data:", error);
         // Handle the error accordingly, e.g., redirect to login page
@@ -130,11 +131,14 @@ const MessageComponent = () => {
                 value={searchQuery}
                 onChange={(e) => handleSearch(e.target.value)}
               />
-              {setCurrentUser && (
-                <div className="w-[38px] h-[38px] border border-[grey] bg-[#fff] rounded-full">
+              {currentUser  && (
+                <div className="w-[38px] h-[38px]  bg-[#fff] rounded-full">
                   <img
                     // src={BASE_URL + messagerDetails.avatarImage} // Assuming avatarImage is a URL
-                    src={avatarUrl || Profile}
+                    // src={avatarUrl || Profile}
+                    // src={currentUser.avatarImage || Profile}
+                    // src={`${BASE_URL}/images/${currentUser.avatarImage}` || Profile}
+                    src={currentUser.avatarImage ? `${BASE_URL}/images/${currentUser.avatarImage}` : Profile}
                     alt="user image"
                     className="w-full h-full object-cover rounded-full"
                   />

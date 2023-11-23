@@ -1,6 +1,7 @@
 // ChatComponent.jsx
 import React, { useState } from 'react';
 import Profile from "../../assets/profile_icon.png";
+const BASE_URL = import.meta.env.VITE_BASE_URL;
 
 
 
@@ -20,8 +21,11 @@ const ChatComponent = ({ contacts, currentUser,  changeChat }) => {
           key={index}
           onClick={() => changeCurrentChat(index, user)}
         >
-          <div className='h-[36px] border border-[grey] bg-[#fff]  flex items-center justify-center  w-[36px] rounded-full'>
-            <img src={user.avatarImage || Profile} alt="img" className='object-contain rounded-full'/>
+          <div className='h-[36px]  bg-[#fff]  flex items-center justify-center  w-[36px] rounded-full'>
+            <img 
+            // src={user.avatarImage || Profile} 
+            src={user.avatarImage ? `${BASE_URL}/images/${user.avatarImage}` : Profile}
+            alt="img" className='object-cover w-[100%] h-[100%] rounded-full'/>
           </div>
           <span className='ml-2 cursor-pointer'>{user.firstName}</span>
         </div>
