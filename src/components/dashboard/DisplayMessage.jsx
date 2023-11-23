@@ -37,51 +37,98 @@ const DisplayMessage = ({ currentChat, currentUser }) => {
   const [data, setData] = useState([]);
   const [mediaLoading, setMediaLoading] = useState(false);
 
+  // useEffect(() => {
+  //   const socket = io(BASE_URL);
+  //   console.log("Connected to the server");
+
+  //   socket.on("msg-receive", (message) => {
+  //     // setNewMessage(message);
+
+  //     setMessages((prevMessages) => {
+  //       // Find the index of the last message in the messages array
+  //       const lastMessageIndex = prevMessages.findIndex(
+  //         (msg) => msg.message.createdAt === prevMessages[prevMessages.length - 1]?.message.createdAt
+  //       );
+
+  //       // Create a new array with the new text message added under the last message
+  //       const newMessages = [
+  //         ...messages.slice(0, lastMessageIndex + 1),
+  //         { fromUserId: true, message },
+  //         ...messages.slice(lastMessageIndex + 1),
+  //       ];
+
+  //       setMessages(newMessages);
+  //       scrollRef.current?.scrollIntoView({ behavior: "smooth" });
+
+  //       return null; // Set newMessage to null to prevent unnecessary re-render
+  //     });
+
+  //     console.log("Received message:", message);
+  //   });
+
+  //   return () => {
+  //     socket.off("msg-receive");
+  //     socket.disconnect(); // Disconnect the socket here
+  //   };
+
+  //   socket.on("media-receive", (media) => {
+  //     setNewMessageMedia({ fromUserId: true, message: { media } });
+  //     console.log("Received media:", media);
+  //   });
+
+  //   return () => {
+  //     // Existing code...
+  //     socket.off("media-receive");
+  //   };
+  // }, []);
+
   useEffect(() => {
     const socket = io(BASE_URL);
     console.log("Connected to the server");
-
+  
     socket.on("msg-receive", (message) => {
-      // setNewMessage(message);
-
       setMessages((prevMessages) => {
-        // Find the index of the last message in the messages array
-        const lastMessageIndex = prevMessages.findIndex(
-          (msg) => msg.message.createdAt === prevMessages[prevMessages.length - 1]?.message.createdAt
+        // Create a new array with the new message added
+        const newMessages = [...prevMessages, { fromUserId: true, message }];
+        
+        // Sort the messages based on createdAt timestamps
+        newMessages.sort(
+          (a, b) => new Date(a.message.createdAt) - new Date(b.message.createdAt)
         );
   
-        // Create a new array with the new text message added under the last message
-        const newMessages = [
-          ...messages.slice(0, lastMessageIndex + 1),
-          { fromUserId: true, message },
-          ...messages.slice(lastMessageIndex + 1),
-        ];
-
-        setMessages(newMessages);
         scrollRef.current?.scrollIntoView({ behavior: "smooth" });
-
-        return null; // Set newMessage to null to prevent unnecessary re-render
+  
+        return newMessages;
       });
-
+  
       console.log("Received message:", message);
     });
-
+  
+    socket.on("media-receive", (media) => {
+      setMessages((prevMessages) => {
+        // Create a new array with the new media message added
+        const newMessages = [...prevMessages, { fromUserId: true, message: { media } }];
+  
+        // Sort the messages based on createdAt timestamps
+        newMessages.sort(
+          (a, b) => new Date(a.message.createdAt) - new Date(b.message.createdAt)
+        );
+  
+        scrollRef.current?.scrollIntoView({ behavior: "smooth" });
+  
+        console.log("Received media:", media);
+  
+        return newMessages;
+      });
+    });
+  
     return () => {
       socket.off("msg-receive");
+      socket.off("media-receive");
       socket.disconnect(); // Disconnect the socket here
     };
-
-    socket.on("media-receive", (media) => {
-      setNewMessageMedia({ fromUserId: true, message: { media } });
-      console.log("Received media:", media);
-    });
-
-    return () => {
-      // Existing code...
-      socket.off("media-receive");
-    };
   }, []);
-
+  
   useEffect(() => {
     if (newMessage) {
       // setMessages((prevMessages) => [...prevMessages, newMessage]);
@@ -321,7 +368,7 @@ const DisplayMessage = ({ currentChat, currentUser }) => {
       });
 
       // Fetch chat-message-uploads immediately after the media upload is complete
-      
+
       // Clear the file input field after uploading the file
       setAttach(false);
       fetchChatMessageUploads();
@@ -424,7 +471,9 @@ const DisplayMessage = ({ currentChat, currentUser }) => {
                       }
                     >
                       <div className="content">
-                        {data.message?.text && <p className="text-[13px]">{data.message.text}</p>}
+                        {data.message?.text && (
+                          <p className="text-[13px]">{data.message.text}</p>
+                        )}
                         {data.message?.media &&
                           data.message.media.filename &&
                           data.message.users.length === 2 &&
