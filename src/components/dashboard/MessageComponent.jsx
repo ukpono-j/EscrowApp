@@ -132,7 +132,7 @@ const MessageComponent = () => {
                 onChange={(e) => handleSearch(e.target.value)}
               />
               {currentUser  && (
-                <div className="w-[38px] h-[38px]  bg-[#fff] rounded-full">
+                <div className="w-[38px] h-[38px]  bg-[#fff] rounded-full  border border-[#0F1A2E]">
                   <img
                     // src={BASE_URL + messagerDetails.avatarImage} // Assuming avatarImage is a URL
                     // src={avatarUrl || Profile}

@@ -422,7 +422,7 @@ const DisplayMessage = ({ currentChat, currentUser }) => {
       {currentChat ? (
         <div className="relative">
           <div className="userDetails pt-2 pr-4 pl-4 pb-2 bg-[#0F1A2E]   w-[100%]  text-[#fff] flex items-center ">
-            <div className="h-[40px] bg-[#fff] w-[40px] rounded-full border border-[grey]">
+            <div className="h-[38px] bg-[#fff] w-[38px] rounded-full border border-[#0F1A2E]">
               <img
                 // src={currentChat.avatarImage || Profile}
                 src={currentChat.avatarImage ? `${BASE_URL}/images/${currentChat.avatarImage}` : Profile}

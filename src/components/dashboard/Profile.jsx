@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { PiWarningCircleBold } from "react-icons/pi";
-import { FaEdit } from "react-icons/fa";
+import { FaEdit, FaUpload } from "react-icons/fa";
 const BASE_URL = import.meta.env.VITE_BASE_URL;
+import UserProfile from "../../assets/profile_icon.png";
 
 const Profile = () => {
   const [account, setAccount] = useState(true);
@@ -17,6 +18,7 @@ const Profile = () => {
     bank: "",
     accountNumber: "",
   });
+  const [preview, setPreview] = useState(null);
 
   // State to manage edit mode
   const [editMode, setEditMode] = useState(false);
@@ -151,8 +153,20 @@ const Profile = () => {
       });
   };
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+
+    if (file) {
+      setSelectedImageFile(file);
+
+      // Preview the selected image
+      const imageUrl = URL.createObjectURL(file);
+      setPreview(imageUrl);
+    }
+  };
+
   return (
-    <div className="font-[Poppins] pt-14 md:pr-14 pr-10 pl-10 mt-10 md:pl-14 pb-10">
+    <div className="font-[Poppins] pt-7  md:pr-14 pr-5  pl-5  mt-0    md:pl-14 pb-10">
       <h1 className="text-[33px] font-bold join">My Profile</h1>
 
       <div className="gif border-b-[1px] border-[#81712E] rounded  flex mt-8">
@@ -186,45 +200,83 @@ const Profile = () => {
       </div>
 
       {account && userDetails && (
-        <div className=" mt-16  flex">
-          <div className="flex flex-col items-center p-3  rounded-3xl   bg-[#031420]  border border-[#81712E]">
-            <div className="w-[300px] h-[300px] text-center   rounded-3xl border border-[#81712E]  flex items-center justify-center">
+        <div className=" mt-16 mb-16  md:flex items-center">
+          <div className="flex flex-col items-center md:pt-6 pt-9 pb-9  md:pb-6 pr-6 pl-6  rounded-3xl   bg-[#031420] ">
+            <div className="md:w-[300px] w-[100%]  h-[auto] text-center   rounded-3xl   flex items-center justify-center">
               {/* Display or style your profile image */}
               {loadingImage ? (
                 <p>Loading...</p>
               ) : userDetails.avatarImage ? (
-                <img
-                  src={`${BASE_URL}/images/${userDetails.avatarImage}`}
-                  alt="Profile"
-                  className="w-full h-full object-cover rounded-3xl"
-                />
+                <div className="relative  flex items-center justify-center">
+                  <img
+                    src={`${BASE_URL}/images/${userDetails.avatarImage}`}
+                    alt="Profile"
+                    className="w-[300px] h-full object-cover rounded-3xl"
+                  />
+                  <div className="absolute flex w-[47px] h-[47px] flex border-2  border-[#81712E] items-center justify-center  rounded-full bg-[#031420]">
+                    <input
+                      type="file"
+                      // onChange={(e) => setSelectedImageFile(e.target.files[0])}
+                      onChange={handleImageChange}
+                      className="w-[47px] border z-20    opacity-0  cursor-pointer absolute  border-[gray]"
+                    />
+                    <FaUpload
+                      color="#fff"
+                      className="absolute text-[20px] mb-[4px]"
+                    />
+                  </div>
+                </div>
               ) : (
-                <span>No Profile Image</span>
+                // <span>No Profile Image</span>
+                <div className="relative  flex items-center justify-center">
+                  <img
+                    src={UserProfile}
+                    alt=""
+                    className="w-[100%] h-[100%] object-cover bg-[#fff] rounded-3xl"
+                  />
+
+                  <div className="absolute flex w-[47px] h-[47px] flex border-2  border-[#81712E] items-center justify-center  rounded-full bg-[#031420]">
+                    <input
+                      type="file"
+                      onChange={(e) => setSelectedImageFile(e.target.files[0])}
+                      className="w-[47px] border z-20    opacity-0  cursor-pointer absolute  border-[gray]"
+                    />
+                    <FaUpload
+                      color="#fff"
+                      className="absolute text-[20px] mb-[4px]"
+                    />
+                  </div>
+                </div>
               )}
             </div>
             {/* ====== Update Profile Picture =========== */}
-            <div className="mt-2">
-              <input
-                type="file"
-                onChange={(e) => setSelectedImageFile(e.target.files[0])}
-                className="w-[230px] border border-[gray]"
-              />
-            </div>
+            {/* <div className="md:w-[300px] w-[100%]  h-[auto]">
+              {preview && (
+                <div className="absolute   inset-0 flex items-center justify-center">
+                  <img
+                    src={preview}
+                    alt="Preview"
+                    className="w-[300px] h-[300px] object-cover object-center  rounded-3xl"
+                  />
+                </div>
+              )}
+            </div> */}
             <button
               onClick={handleProfileUpdate}
-              className="flex items-center mb-10  justify-center w-[190px] h-[40px] bg-[#3B82F6] rounded-xl mt-2"
+              className="flex text-[14px] items-center   justify-center w-[190px] h-[40px] bg-[#81712E] rounded-xl mt-4"
             >
-              Upldate Profile Pic
+              Submit Update
             </button>
+
           </div>
-          <div className="pl-4">
-            <div className=" w-[100%]">
-              <div className="">
-                <h4 className="pt-1  text-[16px] font-[700]">First Name</h4>
+          <div className="md:ml-4 mt-4 md:mt-0  w-[100%] bg-[#031420] pt-4 pb-7 pl-5 pr-5  rounded-3xl">
+            <div className=" w-[100%]  flex items-center ">
+              <div className="w-[100%]">
+                <h4 className="pt-1  text-[115x] font-[700]">First Name</h4>
                 {editMode ? (
                   <input
                     type="text"
-                    className="text-[#000] font-bold"
+                    className="text-[#fff] font-bold border border-[#81712E] text-[13px] mt-1  bg-[transparent] h-[32px] pl-2 rounded-3xl w-[100%] "
                     autoComplete="on"
                     value={editedUserDetails.firstName}
                     onChange={(e) =>
@@ -235,15 +287,15 @@ const Profile = () => {
                     }
                   />
                 ) : (
-                  <p>{userDetails.firstName}</p>
+                  <p className="text-[14px]">{userDetails.firstName}</p>
                 )}
               </div>
-              <div className="">
-                <h4 className="pt-5 text-[16px] font-[700]">Last Name</h4>
+              <div className="w-[100%]">
+                <h4 className="pt-1  text-[15px] font-[700]">Last Name</h4>
                 {editMode ? (
                   <input
                     type="text"
-                    className="text-[#000] font-bold"
+                    className="text-[#fff] font-bold border border-[#81712E] text-[13px] mt-1  bg-[transparent] h-[32px] pl-2 rounded-3xl w-[100%] "
                     autoComplete="on"
                     value={editedUserDetails.lastName}
                     onChange={(e) =>
@@ -254,39 +306,58 @@ const Profile = () => {
                     }
                   />
                 ) : (
-                  <p>{userDetails.lastName}</p>
+                  <p className="text-[14px]">{userDetails.lastName}</p>
+                )}
+              </div>
+            </div>
+            {/* ====================== Email and Date of Birth */}
+            <div className=" flex items-center ">
+              <div className="w-[100%]">
+                <h4 className="pt-5 text-[1615] font-[700]">Bank Number</h4>
+                {editMode ? (
+                  <input
+                    type="text"
+                    className="text-[#fff] font-bold border border-[#81712E] text-[13px] mt-1  bg-[transparent] h-[32px] pl-2 rounded-3xl w-[100%] "
+                    autoComplete="on"
+                    value={editedUserDetails.accountNumber}
+                    onChange={(e) =>
+                      setEditedUserDetails({
+                        ...editedUserDetails,
+                        accountNumber: e.target.value,
+                      })
+                    }
+                  />
+                ) : (
+                  <p className="text-[14px]">{userDetails.accountNumber}</p>
+                )}
+              </div>
+
+              <div className="w-[100%] ">
+                <h4 className="pt-5 text-[16px] font-[700]">Date of Birth</h4>
+                {editMode ? (
+                  <input
+                    type="text"
+                    className="text-[#fff] font-bold border border-[#81712E] text-[13px] mt-1  bg-[transparent] h-[32px] pl-2 rounded-3xl w-[100%] "
+                    autoComplete="on"
+                    value={editedUserDetails.dateOfBirth}
+                    onChange={(e) =>
+                      setEditedUserDetails({
+                        ...editedUserDetails,
+                        dateOfBirth: e.target.value,
+                      })
+                    }
+                  />
+                ) : (
+                  <p className="text-[15px]">{userDetails.dateOfBirth}</p>
                 )}
               </div>
             </div>
             <div>
-              <h4 className="pt-5 text-[16px] font-[700]">Email</h4>
-              <p className="text-[]">{userDetails.email}</p>
-            </div>
-            <div>
-              <h4 className="pt-5 text-[16px] font-[700]">Date of Birth</h4>
+              <h4 className="pt-5 text-[15px] font-[700]">Bank Name</h4>
               {editMode ? (
                 <input
                   type="text"
-                  className="text-[#000] font-bold"
-                  autoComplete="on"
-                  value={editedUserDetails.dateOfBirth}
-                  onChange={(e) =>
-                    setEditedUserDetails({
-                      ...editedUserDetails,
-                      dateOfBirth: e.target.value,
-                    })
-                  }
-                />
-              ) : (
-                <p>{userDetails.dateOfBirth}</p>
-              )}
-            </div>
-            <div>
-              <h4 className="pt-5 text-[16px] font-[700]">Bank Name</h4>
-              {editMode ? (
-                <input
-                  type="text"
-                  className="text-[#000] font-bold"
+                  className="text-[#fff] font-bold border border-[#81712E] text-[13px] mt-1  bg-[transparent] h-[32px] pl-2 rounded-3xl w-[100%] "
                   autoComplete="on"
                   value={editedUserDetails.bank}
                   onChange={(e) =>
@@ -297,32 +368,18 @@ const Profile = () => {
                   }
                 />
               ) : (
-                <p>{userDetails.bank}</p>
+                <p className="text-[14px]">{userDetails.bank}</p>
               )}
             </div>
-            <div>
-              <h4 className="pt-5 text-[16px] font-[700]">Bank Number</h4>
-              {editMode ? (
-                <input
-                  type="text"
-                  className="text-[#000] font-bold"
-                  autoComplete="on"
-                  value={editedUserDetails.accountNumber}
-                  onChange={(e) =>
-                    setEditedUserDetails({
-                      ...editedUserDetails,
-                      accountNumber: e.target.value,
-                    })
-                  }
-                />
-              ) : (
-                <p>{userDetails.accountNumber}</p>
-              )}
+
+            <div className="w-[100%] ">
+              <h4 className="pt-5 text-[16px] font-[700]">Email</h4>
+              <p className="text-[15px]">{userDetails.email}</p>
             </div>
             {editMode && (
               <button
                 onClick={handleUpdateDetails}
-                className="bg-blue-500 mt-10  text-white px-4 py-2 rounded"
+                className="bg-[#81712E] text-[14px]  mt-10  text-white px-4 py-2 rounded"
               >
                 Update Details
               </button>
@@ -330,7 +387,7 @@ const Profile = () => {
             {account && userDetails && !editMode && (
               <button
                 onClick={() => setEditMode(true)}
-                className="bg-blue-500 text-white flex items-center  justify-center  px-4 py-2 mt-4 rounded"
+                className="bg-[#81712E] text-[14px]  text-white flex items-center  justify-center  px-4 py-2 mt-4 rounded"
               >
                 <FaEdit className="mr-2" /> Edit Details
               </button>

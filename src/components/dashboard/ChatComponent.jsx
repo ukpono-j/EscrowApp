@@ -21,7 +21,7 @@ const ChatComponent = ({ contacts, currentUser,  changeChat }) => {
           key={index}
           onClick={() => changeCurrentChat(index, user)}
         >
-          <div className='h-[36px]  bg-[#fff]  flex items-center justify-center  w-[36px] rounded-full'>
+          <div className='h-[37px]  bg-[#fff] border border-[#0F1A2E]  flex items-center justify-center  w-[37px] rounded-full'>
             <img 
             // src={user.avatarImage || Profile} 
             src={user.avatarImage ? `${BASE_URL}/images/${user.avatarImage}` : Profile}

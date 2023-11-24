@@ -14,6 +14,8 @@ import ContactUs from "./pages/ContactUs";
 import Notification from "./components/dashboard/Notification";
 import MessageBox from "./components/dashboard/MessageBox";
 import SetAvatar from "./pages/SetAvatar";
+import Kyc from "./components/dashboard/Kyc";
+import Settings from "./components/dashboard/Settings";
 
 function App() {
 
@@ -35,6 +37,8 @@ function App() {
 
           
           <Route path="/messages"  element={<MessageBox/>} />
+          <Route path="/security-settings/kyc"  element={<Kyc/>} />
+          <Route path="/security-settings"  element={<Settings/>} />
          </Routes>
       {/* </Router> */}
   </>;
