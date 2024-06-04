@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Link as ScrollLink, scroller } from "react-scroll";
 import { AiOutlineMenu } from "react-icons/ai";
 import { Link } from "react-router-dom";
-
+import Logo from "../assets/logo3.png"
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -19,7 +19,8 @@ const Navbar = () => {
     <div className="pl-5 font-[Poppins] pr-5  md:pl-[60px] md:pr-[60px] left-0  fixed z-30 top-0 pt-5 pb-5 w-full bg-[#0F1A2E] text-white flex justify-between items-center">
       <div className="font-bold cursor-pointer  md:text-2xl text-2xl uppercase">
         <Link to="/" className="outline-none" onClick={() => scrollTo("home")}>
-          MiddleMan
+          {/* MiddleMan */}
+          <img src={Logo} alt="Logo Detail"  className="w-[190px]"/>
         </Link>
       </div>
       <div className="hidden text-[13px] md:flex space-x-6 items-center">

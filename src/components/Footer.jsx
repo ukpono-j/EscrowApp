@@ -4,6 +4,7 @@ import { Link as ScrollLink, scroller } from "react-scroll";
 import "./Footer.css";
 import NewsLetter from "./home/NewsLetter";
 import { FaFacebookF, FaInstagram, FaTwitter } from "react-icons/fa";
+import Logo from "../assets/logo3.png"
 
 const Footer = () => {
   const scrollTo = (element) => {
@@ -21,12 +22,13 @@ const Footer = () => {
           <div className=" sm:w-[400px] text-center  sm:pl-0  sm:pr-0  pl-6  pr-6  h-[auto]">
             <Link
               TO="/"
-              className="sm:text-[34px] text-[28px] font-bold uppercase footer_title  tracking-wider"
+              className="sm:text-[34px] flex items-center justify-center mb-4 text-[28px] font-bold uppercase footer_title  tracking-wider"
               onClick={() => scrollTo("home")}
             >
-              MiddleMan
+              {/* MiddleMan */}
+              <img src={Logo} alt="Logo Detail"  className="w-[200px]"/>
             </Link>
-            <div className=" text-[15px] mt-3  space-x-6 flex items-center justify-between">
+            <div className=" text-[15px] mt-6  space-x-6 flex items-center justify-between">
               <ScrollLink
                 className="cursor-pointer"
                 to="about"

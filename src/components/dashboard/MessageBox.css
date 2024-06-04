@@ -1,0 +1,37 @@
+.message-list {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .message {
+    margin-bottom: 10px;
+    padding: 10px;
+    border-radius: 10px;
+  }
+  
+  .message-user {
+    font-weight: bold;
+    margin-bottom: 5px;
+  }
+  
+  .message-content {
+    word-wrap: break-word;
+  }
+  
+  .sent {
+    align-self: flex-end; /* Aligns messages sent by the current user to the right */
+    background-color: #007bff;
+    max-width: 400px;
+    color: #fff;
+  }
+  
+  .received {
+    align-self: flex-start; /* Aligns messages received from other users to the left */
+    background-color: #28313A;
+    max-width: 400px;
+    color: #fff;
+  }
+  
+  .current-user {
+    color: #ffffff; /* Text color for messages sent by the current user */
+  }

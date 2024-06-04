@@ -10,6 +10,8 @@ import { BsFillChatFill } from "react-icons/bs";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import { Tooltip } from "@chakra-ui/react";
+import { useNavigate } from "react-router-dom"; // Import useNavigate
+
 
 const AllTransactionCompleted = ({
   transactionDetails,
@@ -20,6 +22,8 @@ const AllTransactionCompleted = ({
   const [copied, setCopied] = useState(null);
   const toast = useToast(); // Initialize useToast hook
   const [paymentStatus, setPaymentStatus] = useState({});
+  const navigate = useNavigate();
+
 
   const isUserParticipant = (transaction, userId) => {
     // Check if the user's ID is in the list of participants' IDs
@@ -36,11 +40,6 @@ const AllTransactionCompleted = ({
   if (!transactionDetails) {
     return <div>Loading...</div>;
   }
-
-  // Sort transactions by timestamp in descending order (newest first)
-  // const sortedTransactions = transactionDetails.sort(
-  //   (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-  // );
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
@@ -60,7 +59,7 @@ const AllTransactionCompleted = ({
       key: "pk_test_510517e6c4bcd95b12a073078d57b139164845d8",
       amount: paymentDetails.paymentAmount * 100,
       paymentName: paymentDetails.paymentName,
-      paymentDscription: paymentDetails.paymentDscription,
+      paymentDescription: paymentDetails.paymentDescription,
       email: paymentDetails.email,
       paymentAccountNumber: paymentDetails.paymentAccountNumber,
       paymentBank: paymentDetails.paymentBank,
@@ -69,7 +68,7 @@ const AllTransactionCompleted = ({
           const token = localStorage.getItem("auth-token");
 
           const response = axios.post(
-            `${BASE_URL}/update-payment-status`,
+            `${BASE_URL}/api/transactions/update-payment-status`,
             { transactionId: transactionId, paymentStatus: "paid" },
             {
               headers: {
@@ -83,20 +82,10 @@ const AllTransactionCompleted = ({
           // ... rest of the code
         } catch (error) {
           console.error("Error updating payment status:", error);
-          // Handle error if needed
         }
 
-        // console.log("Proof of payment Status confirmed:", response.data);
-        // console.log("Transaction ID:", transactionId);
-
-        // setPaymentStatus((prevPaymentStatus) => ({
-        //   ...prevPaymentStatus,
-        //   [transactionId]: "paid",
-        // }));
 
         let message = `payment complete! Reference ${transaction.reference}`;
-        // navigate("/transactions/tab");
-
         toast({
           title: "Payment Successful!",
           status: "success",
@@ -151,7 +140,7 @@ const AllTransactionCompleted = ({
     const paymentDetails = {
       paymentAmount: transaction.paymentAmount,
       paymentName: transaction.paymentName,
-      paymentDscription: transaction.paymentDscription,
+      paymentDescription: transaction.paymentDescription,
       email: transaction.email,
       paymentAccountNumber: transaction.paymentAccountNumber,
       paymentBank: transaction.paymentBank,
@@ -160,9 +149,6 @@ const AllTransactionCompleted = ({
     initiatePaystackPayment(paymentDetails, transaction.transactionId);
   };
 
-  const handleChat = () => {
-    console.log("User Chat Clicked");
-  };
 
   const handleConfirmReceipt = async (transactionId) => {
     const token = localStorage.getItem("auth-token");
@@ -170,7 +156,7 @@ const AllTransactionCompleted = ({
     try {
       // Make a POST request to the server to confirm the receipt
       const response = await axios.post(
-        `${BASE_URL}/confirm-receipt`,
+        `${BASE_URL}/api/transactions/confirm-receipt`,
         {},
         {
           headers: {
@@ -216,6 +202,63 @@ const AllTransactionCompleted = ({
     }
   };
 
+  
+  const handleChatClick = async (transactionId) => {
+    
+    const token = localStorage.getItem("auth-token");
+    try {
+      // Fetch transaction data from the server
+      const transactionResponse = await axios.get(`${BASE_URL}/api/transactions/${transactionId}`, {
+        headers: {
+          "auth-token": token,
+        },
+      });
+  
+      const transactionData = transactionResponse.data;
+      console.log("Transaction Data:", transactionData); // Log the transaction data
+  
+      const userId = transactionData.userId;
+  
+      if (!userId) {
+        console.error("User ID is missing");
+        toast({
+          title: "Error creating chatroom",
+          description: "User ID is missing",
+          status: "error",
+          duration: 3000,
+          isClosable: true,
+        });
+        return;
+      }
+  
+      console.log({ transactionId, userId });
+  
+      // Proceed with creating the chatroom if necessary
+      const response = await axios.post(
+        `${BASE_URL}/api/transactions/create-chatroom`,
+        { transactionId, userId },
+        {
+          headers: {
+            "auth-token": token,
+          },
+        }
+      );
+  
+      const chatroomId = response.data.chatroomId;
+      navigate(`/chat/${chatroomId}`);
+    } catch (error) {
+      console.error("Error fetching transaction or creating chatroom:", error);
+      toast({
+        title: "Error creating chatroom",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+  
+  
+
   return (
     <div>
       {transactionDetails.map((transaction) => (
@@ -232,14 +275,7 @@ const AllTransactionCompleted = ({
               </span>
             </div>
             <div className="flex items-center">
-              <div
-                className="mr-4 text-[25px] cursor-pointer"
-                onClick={handleChat}
-              >
-                <Link to="/messages">
-                  <BsFillChatFill />
-                </Link>
-              </div>
+            <button onClick={() => handleChatClick(transaction.transactionId)}>Chat</button>
               <h4 className="flex font-bold  items-center">
                 <span className="">
                   <PiCurrencyNgnDuotone />
@@ -254,10 +290,14 @@ const AllTransactionCompleted = ({
               <span className="font-[600] text-[15px]">
                 Product Description :{" "}
               </span>{" "}
-              {transaction.paymentDscription}
+              {transaction.paymentDescription}
             </p>
           </div>
           <div>
+            {/* <p className="text-[13px] mt-1">
+              <span className="font-[600] text-[15px]">Amount : </span>{" "}
+              {transaction.amount}
+            </p> */}
             <p className="text-[13px] mt-1">
               <span className="font-[600] text-[15px]">Email : </span>{" "}
               {transaction.email}
@@ -364,22 +404,6 @@ const AllTransactionCompleted = ({
                   </button>
                 </>
               )}
-
-              {/* <button
-                onClick={() => handleMakePayment(transaction)}
-                className={`ml-3 flex items-center justify-center pl-[38px] pt-[9px] pb-[9px] pr-[38px] rounded-full text-[#fff] text-[13px] bg-[#81712E] border-2 border-[#81712E] all_btn hover:border-2 hover:border-[#81712E] hover:bg-[transparent] ${
-                  paymentStatus[transaction.transactionId] === "paid"
-                    ? "opacity-50 cursor-not-allowed"
-                    : ""
-                }`}
-                disabled={transaction.proofOfWaybill !== "confirmed"}
-              >
-                {paymentStatus[transaction.transactionId] === "paid"
-                  ? "Paid"
-                  : "Make Payment"}
-              </button> */}
-
-              {/* Render Cancel and Done buttons only if the user is a participant and the transaction status is active */}
             </div>
           </div>
           <div className="text-[13px]">Status: {transaction.status}</div>{" "}

@@ -5,6 +5,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@chakra-ui/react";
 const BASE_URL = import.meta.env.VITE_BASE_URL;
+import Logo from "../assets/logo2.png"
 
 const Login = () => {
   const [password, setPassword] = useState();
@@ -12,64 +13,11 @@ const Login = () => {
   const navigate = useNavigate();
   const toast = useToast();
 
-  // useEffect(() => {
-  //   const token = localStorage.getItem("auth-token");
-  //   if (token) {
-  //     axios.defaults.headers.common["auth-token"] = token;
-  //   }
-  // }, []);
-
-  // const handleSubmit = (e) => {
-  //   e.preventDefault();
-  //   axios
-  //     .post(`${BASE_URL}/login`, {
-  //       email,
-  //       password,
-  //     })
-  //     .then((response) => {
-  //       const { message, token } = response.data;
-  //       console.log(response);
-  //       if (message === "Login successful!") {
-  //         // Store the token in localStorage
-  //         localStorage.setItem("auth-token", token);
-
-  //         // Include the auth-token in the request headers
-  //         axios.defaults.headers.common["auth-token"] = token;
-
-  //         toast({
-  //           title: "Welcome to escrow dashboard.",
-  //           description: "",
-  //           status: "success",
-  //           duration: 9000,
-  //           isClosable: true,
-  //         });
-  //         navigate("/dashboard");
-  //       } else {
-  //         toast({
-  //           title: "Invalid Credentials.",
-  //           description: "",
-  //           status: "error",
-  //           duration: 9000,
-  //           isClosable: true,
-  //         });
-  //       }
-  //     })
-  //     .catch((err) => {
-  //       console.log(err);
-  //       toast({
-  //         title: "An Error Occurred.",
-  //         description: "",
-  //         status: "error",
-  //         duration: 9000,
-  //         isClosable: true,
-  //       });
-  //     });
-  // };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post(`${BASE_URL}/login`, {
+      const response = await axios.post(`${BASE_URL}/api/auth/login`, {
         email,
         password,
       });
@@ -113,7 +61,8 @@ const Login = () => {
       <div className="w-[100%] min-h-[100vh] flex-col  flex items-center justify-center pt-10  pb-5 pl-5 pr-5   bg-[#fff]">
         <div className="absolute top-[40px] font-bold font-[Poppins] text-[36px] text-[#031420] md:left-[100px] left-[27px]">
           <Link to="/" className="outline-none">
-          MiddleMan
+          {/* MiddleMan */}
+          <img src={Logo} alt="Logo Detail"  className="w-[200px]"/>
           </Link>
         </div>
         <form
@@ -158,7 +107,7 @@ const Login = () => {
             Login
           </button>
         </form>
-        <p className="mt-2 font-[Poppins] text-[grey] text-[13px]">
+        <p className="mt-4 font-[Poppins]  text-[grey] text-[13px]">
           I Don't have an account?{" "}
           <Link
             to="/register"

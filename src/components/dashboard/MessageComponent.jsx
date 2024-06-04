@@ -47,7 +47,7 @@ const MessageComponent = () => {
           axios.defaults.headers.common["auth-token"] = token;
         }
         console.log("Token from localStorage:", token);
-        const response = await axios.get(`${BASE_URL}/user-details`, {
+        const response = await axios.get(`${BASE_URL}/api/users/user-details`, {
           headers: {
             "auth-token": token,
           },
@@ -72,7 +72,7 @@ const MessageComponent = () => {
           axios.defaults.headers.common["auth-token"] = token;
         }
         console.log("Token from localStorage:", token);
-        const response = await axios.get(`${BASE_URL}/all-user-details`, {
+        const response = await axios.get(`${BASE_URL}api/users/all-user-details`, {
           headers: {
             "auth-token": token,
           },
@@ -106,7 +106,7 @@ const MessageComponent = () => {
   };
   return (
     <div
-      className="relative rounded-3xl"
+      className="relative rounded-3xl border-2 border-[red]"
       style={{
         boxShadow: "0px 0px 10px rgba(0, 0, 0, 0.5)", // Adjust the shadow as needed
       }}

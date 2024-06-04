@@ -23,7 +23,7 @@ const BottomNav = () => {
 
     // Fetch transaction details from API and update the state
     axios
-      .get(`${BASE_URL}/user-details`, {
+      .get(`${BASE_URL}/api/users/user-details`, {
         headers: {
           "auth-token": token,
         },
@@ -64,8 +64,8 @@ const BottomNav = () => {
   ];
 
   return (
-    <div className="w-[100%] sm:text-[14px] text-[12px] text-[#fff] font-[Poppins] flex items-center justify-center h-[60px] md:hidden bg-[#031420] fixed bottom-0">
-      {links.map((link) => (
+    <div className="w-[100%] sm:text-[14px] text-[12px] text-[#fff] font-[Poppins] flex items-center justify-center h-[0px] md:hidden bg-[#031420] fixed bottom-0">
+      {/* {links.map((link) => (
         <Link
           key={link.to}
           to={link.to}
@@ -76,7 +76,7 @@ const BottomNav = () => {
           
         </Link>
       ))}
-      <span onClick={handleLogout} className="flex items-center pl-2"><MdLogout className="pr-1  text-[18px]" /> Log Out</span>
+      <span onClick={handleLogout} className="flex items-center pl-2"><MdLogout className="pr-1  text-[18px]" /> Log Out</span> */}
     </div>
   );
 };

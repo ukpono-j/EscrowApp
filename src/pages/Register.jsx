@@ -5,6 +5,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@chakra-ui/react";
 const BASE_URL = import.meta.env.VITE_BASE_URL ;
+import Logo from "../assets/logo2.png"
 
 const Register = () => {
   const [firstName, setFirstName] = useState();
@@ -22,13 +23,11 @@ const Register = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     axios
-    .post(`${BASE_URL}/register`, {
+    .post(`${BASE_URL}/api/auth/register`, {
         firstName,
         lastName,
         password,
         email,
-        // bank,
-        // accountNumber,
         dateOfBirth,
       })
       .then((result) => {
@@ -43,27 +42,20 @@ const Register = () => {
         navigate("/login");
       })
       .catch((err) => console.log(err));
-    // toast({
-    //   title: "Error happen during registration",
-    //   status: "dangers",
-    //   duration: 9000,
-    //   isClosable: true,
-    // });
   };
 
   return (
     <div>
-      {/* <Navbar/>  */}
-      <div className="w-[100%] min-h-[100vh] flex-col  flex items-center justify-center pt-10  pb-5 pl-5 pr-5   bg-[#fff]">
+      <div className="w-[100%] min-h-[100vh] flex-col  flex items-center justify-center pt-10  pb-14 pl-5 pr-5   bg-[#fff]">
         <div className="absolute top-[40px] font-bold font-[Poppins] text-[36px] text-[#031420] md:left-[100px] left-[27px]">
           <Link to="/" className="outline-none">
-          MiddleMan
+          <img src={Logo} alt="Logo Detail"  className="w-[200px]"/>
           </Link>
         </div>
         <form
           action=""
           onSubmit={handleSubmit}
-          className="pt-10  mt-20  text-[] pb-10 pl-5 pr-5  bg-[#031420] font-[Poppins] rounded-xl md:w-[500px] w-[100%] border border-[#031420] h-[auto]"
+          className="pt-10  mt-24  text-[] pb-10 pl-5 pr-5  bg-[#031420] font-[Poppins] rounded-xl md:w-[500px] w-[100%] border border-[#031420] h-[auto]"
         >
           <h3 className="text-[#fff]">All fields are required*</h3>
           <div className="mt-5">
@@ -108,34 +100,7 @@ const Register = () => {
               className=" w-[100%] text-[13px] mt-1  pl-3  h-[40px] border-[#D8D3EB] border rounded"
             />
           </div>
-          {/* <div className="mt-5">
-            <label htmlFor="" className="text-[13px] text-[#fff]">
-              Bank Name
-            </label>
-            <input
-              type="text"
-              name="bank"
-              required
-              onChange={(e) => setBank(e.target.value)}
-              id=""
-              placeholder="Bank Name"
-              className=" w-[100%] text-[13px] mt-1  pl-3  h-[40px] border-[#D8D3EB] border rounded"
-            />
-          </div>
-          <div className="mt-5">
-            <label htmlFor="" className="text-[13px] text-[#fff]">
-              Bank Number
-            </label>
-            <input
-              type="number"
-              name="accountNumber"
-              required
-              onChange={(e) => setAccountNumber(e.target.value)}
-              id=""
-              placeholder="Bank Number"
-              className=" w-[100%] text-[13px] mt-1  pl-3  h-[40px] border-[#D8D3EB] border rounded"
-            />
-          </div> */}
+  
           <div className="mt-5">
             <label htmlFor="" className="text-[13px] text-[#fff]">
               Date of Birth
@@ -176,30 +141,15 @@ const Register = () => {
               className=" w-[100%] text-[13px] mt-1  pl-3  h-[40px] border-[#D8D3EB] border rounded"
             />
           </div>
-          {/* <div className="flex items-center justify-between text-[12px] mt-3 mb-3">
-            <div className="flex items-center">
-              <input
-                type="checkout"
-                className="w-[13px] rounded  h-[13px] border border-black"
-                name=""
-                id=""
-              />
-              <p className="pl-1">Keep me logged in</p>
-            </div>
-            <Link to="">
-                <p className="underline">Reset password</p>
-            </Link>
-          </div> */}
           <button
             type="submit"
-            // to="/dashboard"
             to=""
             className="w-[100%] flex  items-center justify-center  h-[50px] text-[14px] border-2   border-[#2D6B76] hover:border hover:border-[#81712E]  rounded-xl mt-5  text-[#0F0821] hover:bg-[#81712E] hover:text-[#fff] text-[#fff] bg-[#072534]"
           >
             Register
           </button>
         </form>
-        <p className="mt-2 font-[Poppins] text-[grey] text-[13px]">
+        <p className="mt-4 font-[Poppins] text-[grey] text-[13px]">
           Already have an account?{" "}
           <Link
             to="/login"

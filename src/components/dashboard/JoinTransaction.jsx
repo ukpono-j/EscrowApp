@@ -28,7 +28,7 @@ const JoinTransaction = () => {
       />
       <div
         style={{ overflowY: "scroll" }}
-        className="layout   bg-[#072534] text-[#E4E4E4]   fixed right-0 top-0 w-[100%]  md:w-[83.2%] h-[100vh]"
+        className="layout   bg-[#1A1E21] text-[#E4E4E4]   fixed right-0 top-0 w-[100%]  md:w-[83.2%] h-[100vh]"
       >
         <div
           className={

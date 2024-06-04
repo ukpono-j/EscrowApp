@@ -5,6 +5,8 @@ import { useToast } from "@chakra-ui/react";
 import axios from "axios";
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 import { BsChevronDown } from "react-icons/bs";
+import Logo from "../../assets/logo3.png"
+
 
 const Sidebar = () => {
   const location = useLocation();
@@ -21,7 +23,7 @@ const Sidebar = () => {
     }
 
     axios
-      .get(`${BASE_URL}/user-details`, {
+      .get(`${BASE_URL}/api/users/user-details`, {
         headers: {
           "auth-token": token,
         },
@@ -78,9 +80,11 @@ const Sidebar = () => {
   };
 
   return (
-    <div className="border text-[13px] fixed md:flex hidden md:flex-col left-0 top-0 pl-3  pr-4 pt-3 pb-10 border-black w-[100%] font-[Poppins] text-[#fff] bg-[#031420] min-h-[100vh]">
+    <div className="border text-[13px] fixed md:flex hidden md:flex-col left-0 top-0 pl-3  pr-4 pt-3 pb-10 border-black w-[100%] font-[Poppins] text-[#fff] bg-[#111518] min-h-[100vh]">
       <h1 className="md:text-[23px] text-[20px] font-bold">
-        <Link to="/dashboard">MiddleMan</Link>
+        <Link to="/dashboard">
+        <img src={Logo} alt="Logo Detail"  className="w-[170px]"/>
+        </Link>
       </h1>
       <h3 className="mt-10">
         Welcome <span>{userName}</span>
@@ -99,7 +103,7 @@ const Sidebar = () => {
             onClick={() => handleLinkClick(link.to)}
             className={`dash_links flex mt-2 mb-2  pr-3 text-[12px] pb-3 pt-3 cursor-pointer ${
               activeLink === link.to
-                ? "text-[#fff] rounded-3xl bg-[#81712E] mb-3 text-[#000] pl-3"
+                ? "text-[#fff] rounded-3xl bg-[#318AE6] mb-3 text-[#000] pl-3"
                 : ""
             }`}
           >

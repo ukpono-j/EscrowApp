@@ -35,7 +35,7 @@ const Demo = () => {
           key: "pk_test_510517e6c4bcd95b12a073078d57b139164845d8",
           amount: paymentAmount * 100, // Convert to kobo if dealing with Naira
           paymentName: paymentName,
-          paymentDscription: paymentDscription,
+          paymentDescription: paymentDescription,
           email: email,
           paymentAccountNumber: paymentAccountNumber,
           paymentBank: paymentBank,
@@ -43,7 +43,7 @@ const Demo = () => {
             let message = `payment complete! Reference ${transaction.reference}`;
             //  alert(message)
             setEmail("");
-            setPaymentDscription("");
+            setPaymentDescription("");
             setPaymentAmount("");
             setPaymentName("");
             setPaymentBank("");
@@ -91,7 +91,7 @@ const Demo = () => {
           paymentName,
           email,
           paymentAmount,
-          paymentDscription,
+          paymentDescription,
           selectedUserType,
           willUseCourier,
           paymentBank,
@@ -549,3 +549,115 @@ const DisplayMessage = ({ currentChat, currentUser }) => {
 };
 
 export default DisplayMessage;
+
+
+
+
+  // const initiatePaystackPayment = (paymentDetails, transactionId) => {
+  //   const paystack = new PaystackPop();
+  //   paystack.newTransaction({
+  //     key: "pk_test_510517e6c4bcd95b12a073078d57b139164845d8",
+  //     amount: paymentDetails.paymentAmount * 100,
+  //     paymentName: paymentDetails.paymentName,
+  //     paymentDescription: paymentDetails.paymentDescription,
+  //     email: paymentDetails.email,
+  //     paymentAccountNumber: paymentDetails.paymentAccountNumber,
+  //     paymentBank: paymentDetails.paymentBank,
+  //     onSuccess(transaction) {
+  //       try {
+  //         const token = localStorage.getItem("auth-token");
+
+  //         const response = axios.post(
+  //           `${BASE_URL}/update-payment-status`,
+  //           { transactionId: transactionId, paymentStatus: "paid" },
+  //           {
+  //             headers: {
+  //               "auth-token": token,
+  //             },
+  //           }
+  //         );
+
+  //         // console.log("Proof of payment Status confirmed:", response.data);
+
+  //         // ... rest of the code
+  //       } catch (error) {
+  //         console.error("Error updating payment status:", error);
+  //         // Handle error if needed
+  //       }
+
+  //       // console.log("Proof of payment Status confirmed:", response.data);
+  //       // console.log("Transaction ID:", transactionId);
+
+  //       // setPaymentStatus((prevPaymentStatus) => ({
+  //       //   ...prevPaymentStatus,
+  //       //   [transactionId]: "paid",
+  //       // }));
+
+  //       let message = `payment complete! Reference ${transaction.reference}`;
+  //       // navigate("/transactions/tab");
+
+  //       toast({
+  //         title: "Payment Successful!",
+  //         status: "success",
+  //         duration: 2000,
+  //         isClosable: true,
+  //       });
+  //       // Create a new notification object
+  //       const newNotification = {
+  //         title: "New Transaction Created",
+  //         message: `A ${selectedUserType} made a  Payment of ${paymentAmount} received for ${paymentDscription}. Reference: ${paymentName}`,
+  //         transactionId: transactionId,
+  //       };
+  //       // Make an API request to create the notification
+  //       axios
+  //         .post(`${BASE_URL}/notifications`, newNotification, {
+  //           headers: {
+  //             "auth-token": token,
+  //           },
+  //         })
+  //         .then((notificationResponse) => {
+  //           console.log("Notification created:", notificationResponse.data);
+  //         })
+  //         .catch((notificationError) => {
+  //           console.error("Error creating notification:", notificationError);
+  //           // Handle error creating notification if needed
+  //         });
+  //     },
+  //     oncancel() {
+  //       alert("You have canceled the transaction");
+  //     },
+  //     // ref: "unique_transaction_reference",
+  //     callback: function (response) {
+  //       // Handle Paystack response here
+  //       console.log(response);
+  //     },
+  //     onClose: function () {
+  //       // Handle transaction close event
+  //       console.log("Transaction closed.");
+  //     },
+  //   });
+  //   // For demonstration purposes, let's show a dummy success message
+
+  //   // Additional logic if needed
+  // };
+
+  // const handleMakePayment = (transaction) => {
+  //   if (paymentStatus[transaction.transactionId] === "paid") {
+  //     // Already paid, do nothing
+  //     return;
+  //   }
+
+  //   const paymentDetails = {
+  //     paymentAmount: transaction.paymentAmount,
+  //     paymentName: transaction.paymentName,
+  //     paymentDscription: transaction.paymentDscription,
+  //     email: transaction.email,
+  //     paymentAccountNumber: transaction.paymentAccountNumber,
+  //     paymentBank: transaction.paymentBank,
+  //   };
+
+  //   initiatePaystackPayment(paymentDetails, transaction.transactionId);
+  // };
+
+
+  

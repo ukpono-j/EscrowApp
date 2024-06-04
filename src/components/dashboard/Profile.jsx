@@ -31,7 +31,7 @@ const Profile = () => {
     }
 
     axios
-      .get(`${BASE_URL}/user-details`, {
+      .get(`${BASE_URL}/api/users/user-details`, {
         headers: {
           "auth-token": token,
         },
@@ -58,7 +58,7 @@ const Profile = () => {
     }
 
     axios
-      .get(`${BASE_URL}/user-details`, {
+      .get(`${BASE_URL}/api/users/user-details`, {
         headers: {
           "auth-token": token,
         },
@@ -139,7 +139,7 @@ const Profile = () => {
     formData.append("image", selectedImageFile);
 
     axios
-      .post(`${BASE_URL}/setAvatar`, formData, {
+      .post(`${BASE_URL}/api/users/setAvatar`, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },

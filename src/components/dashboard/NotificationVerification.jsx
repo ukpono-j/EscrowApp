@@ -6,39 +6,23 @@ import {formatCreatedAt } from "../../utility/DateTimeStramp"
 const NotificationVerification = ({}) => {
   const [notifications, setNotifications] = useState([]);
 
+
+
   useEffect(() => {
-    const fetchData = async () => {
+    // Fetch notifications count from the server when the component mounts
+    const fetchNotificationCount = async () => {
       try {
-        const response = await axios.get(`${BASE_URL}/verify-notifications`);
-        setNotifications(response.data);
+        const response = await axios.get(`${BASE_URL}/api/notifications/notifications`);
+        setNotifications(response.data)
+        console.log(response.data)
       } catch (error) {
         console.error("Error fetching notifications:", error);
       }
     };
 
-    fetchData();
-  }, []); // Empty dependency array ensures this effect runs once after the initial render
+    fetchNotificationCount();
+  }, []); // Empty dependency array ensures the effect runs once after the initial render
 
-  const handleResponse = async (transactionId, action) => {
-    try {
-      let endpoint;
-      if (action === "accept") {
-        endpoint = `${BASE_URL}/accept-transaction`;
-      } else if (action === "decline") {
-        endpoint = `${BASE_URL}/decline-transaction`;
-      } else {
-        // Handle other actions if needed
-        return;
-      }
-
-      const response = await axios.post(endpoint, { transactionId });
-      // Handle the response as needed, e.g., show a success message
-      console.log(response.data);
-    } catch (error) {
-      // Handle errors, e.g., show an error message
-      console.error(error);
-    }
-  };
 
 
   //   add  the handleCancel and handleComplete function to the buttons

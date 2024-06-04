@@ -3,7 +3,7 @@ import Sidebar from './Sidebar';
 import MyTransaction from './MyTransaction';
 import Profile from './Profile';
 import BottomNav from './BottomNav';
-import NewTransaction from './NewTransaction';
+import TransactionCreation from './TransactionCreation';
 import MiniNav from './MiniNav';
 // import Sidebar from "../components/dashboard/Sidebar";
 // import MyTransaction from "../components/dashboard/MyTransaction";
@@ -44,7 +44,7 @@ const CreateTransaction = () => {
                  <div>
               <MiniNav />
             </div>
-                <NewTransaction/>
+                <TransactionCreation/>
             </div>
             <div className={showProfile ? "profile" : "hidden"}>
               {/* =============== Profile Component ============= */}
