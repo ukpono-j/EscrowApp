@@ -197,7 +197,7 @@ const navigate = useNavigate()
               type="text"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              onKeyPress={handleKeyPress}
+              onKeyDown={handleKeyPress}
               placeholder="Type your message..."
               className="w-[100%] px-3 h-[50px] rounded-xl outline-none text-[white] bg-[#28313A]"
             />
