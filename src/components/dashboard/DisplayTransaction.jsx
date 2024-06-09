@@ -8,6 +8,7 @@ import { useToast } from "@chakra-ui/react";
 import MiniNav from "./MiniNav";
 import { useNavigate } from "react-router-dom"; // Import useNavigate
 import { FaFacebookMessenger } from "react-icons/fa6";
+import { BsChatFill } from "react-icons/bs";
 
 const DisplayTransaction = ({ userResponse }) => {
   const [showToggleContainer, setShowToggleContainer] = useState(true);
@@ -125,7 +126,8 @@ const DisplayTransaction = ({ userResponse }) => {
                       <div className="flex items-center justify-between">
                         <h3>Name: {transaction.paymentName}</h3>
                         <button onClick={() => handleChatButton(transaction._id)} className="text-[24px]">
-                          <FaFacebookMessenger />
+                          {/* <FaFacebookMessenger /> */}
+                          <BsChatFill />
                         </button>
                       </div>
                       <h3>Email: {transaction.email}</h3>

@@ -90,21 +90,63 @@ const navigate = useNavigate()
     }
   }, [chatroomId, userDetails._id]);
 
-  const sendMessage = () => {
-    // Check if socketRef.current is defined and the connection is established
+  useEffect(() => {
+    const fetchMessages = async () => {
+      const token = localStorage.getItem("auth-token");
+      if (token) {
+        axios.defaults.headers.common["auth-token"] = token;
+      }
+      try {
+        const response = await axios.get(`${BASE_URL}/api/messages/${chatroomId}`);
+        setMessages(response.data);
+      } catch (error) {
+        console.error("Error fetching messages:", error);
+      }
+    };
+  
+    fetchMessages();
+  }, [chatroomId]);
+  
+
+  // const sendMessage = () => {
+  //   // Check if socketRef.current is defined and the connection is established
+  //   if (socketRef.current && socketRef.current.connected && message.trim() !== "") {
+  //     const newMessage = {
+  //       userId: userDetails._id, // Include userId in the message object
+  //       userFirstName: userDetails.firstName,
+  //       message,
+  //       timestamp: new Date().toISOString(),
+  //     };
+  //     console.log("Sending message:", newMessage); // Log the message before emitting
+  //     // Emit the message
+  //     socketRef.current.emit("message", newMessage);
+  //     setMessage("");
+  //   }
+  // };
+
+  const sendMessage = async () => {
     if (socketRef.current && socketRef.current.connected && message.trim() !== "") {
       const newMessage = {
-        userId: userDetails._id, // Include userId in the message object
+        chatroomId,
+        userId: userDetails._id,
         userFirstName: userDetails.firstName,
         message,
         timestamp: new Date().toISOString(),
       };
-      console.log("Sending message:", newMessage); // Log the message before emitting
-      // Emit the message
-      socketRef.current.emit("message", newMessage);
-      setMessage("");
+         // Emit the message to other participants
+         socketRef.current.emit("message", newMessage);
+         setMessage("");
+  
+      try {
+        // Save the message to the backend
+        const response = await axios.post(`${BASE_URL}/api/messages/send-message`, newMessage);
+        console.log("Message saved:", response.data); // Log the saved message
+      } catch (error) {
+        console.error("Error saving message:", error);
+      }
     }
   };
+  
 
   const handleKeyPress = (e) => {
     if (e.key === "Enter") {
