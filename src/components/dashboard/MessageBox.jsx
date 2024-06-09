@@ -163,7 +163,7 @@ const navigate = useNavigate()
     <div className="bg-[#031420] py-[90px] text-white font-[Poppins]">
       <div className="flex items-center justify-between pr-5 border md:pl-[30px] md:pr-[30px] pl-5 fixed right-0 z-30 top-0 text-[#fff] h-[10vh] w-[100%] bg-[#1A1E21] border-none">
         <h1 className="text-[20px] font-bold ">Chat Room</h1>
-        <h1 className="text-[18px] font-bold flex items-center" onClick={handleChatExit}><MdOutlineLogout className="mr-1 text-[22px]" /> Exit</h1>
+        <h1 className="text-[18px] font-bold flex items-center cursor-pointer" onClick={handleChatExit}><MdOutlineLogout className="mr-1 text-[22px]" /> Exit</h1>
       </div>
       <div className="chat-container p-4">
         {/* <h2>Transaction Details</h2>
