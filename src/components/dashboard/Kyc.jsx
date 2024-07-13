@@ -33,22 +33,67 @@ const Kyc = () => {
     setShowProfile(false);
   };
 
+  // const handleInputChange = (e) => {
+  //   const { name, files } = e.target;
+  //   const file = files ? files[0] : null;
+
+  //   // Update file preview based on the input name
+  //   if (name === "documentPhoto") {
+  //     setDocumentPhotoPreview(file ? URL.createObjectURL(file) : null);
+  //   } else if (name === "personalPhoto") {
+  //     setPersonalPhotoPreview(file ? URL.createObjectURL(file) : null);
+  //   }
+
+  //   setFormData((prevData) => ({
+  //     ...prevData,
+  //     [name]: file,
+  //   }));
+  // };
+
+
+
+  // const handleInputChange = (e) => {
+  //   const { name, value, files } = e.target;
+  //   let file = null;
+  
+  //   if (name === "documentPhoto" || name === "personalPhoto") {
+  //     file = files ? files[0] : null;
+  //     // Update file preview based on the input name
+  //     if (name === "documentPhoto") {
+  //       setDocumentPhotoPreview(file ? URL.createObjectURL(file) : null);
+  //     } else if (name === "personalPhoto") {
+  //       setPersonalPhotoPreview(file ? URL.createObjectURL(file) : null);
+  //     }
+  //   }
+  
+  //   setFormData((prevData) => ({
+  //     ...prevData,
+  //     [name]: name === "documentType" ? value : file,
+  //   }));
+  // };
+
   const handleInputChange = (e) => {
-    const { name, files } = e.target;
-    const file = files ? files[0] : null;
-
-    // Update file preview based on the input name
-    if (name === "documentPhoto") {
-      setDocumentPhotoPreview(file ? URL.createObjectURL(file) : null);
-    } else if (name === "personalPhoto") {
-      setPersonalPhotoPreview(file ? URL.createObjectURL(file) : null);
+    const { name, value, files } = e.target;
+    let file = null;
+  
+    if (name === "documentPhoto" || name === "personalPhoto") {
+      file = files ? files[0] : null;
+      // Update file preview based on the input name
+      if (name === "documentPhoto") {
+        setDocumentPhotoPreview(file ? URL.createObjectURL(file) : null);
+      } else if (name === "personalPhoto") {
+        setPersonalPhotoPreview(file ? URL.createObjectURL(file) : null);
+      }
     }
-
+  
     setFormData((prevData) => ({
       ...prevData,
-      [name]: file,
+      [name]: name === "documentType" ? value : file,
+      firstName: name === "firstName" ? value : prevData.firstName,
+      lastName: name === "lastName" ? value : prevData.lastName,
     }));
   };
+  
 
   useEffect(() => {
     // Fetch KYC status from your backend
@@ -58,7 +103,7 @@ const Kyc = () => {
         if (token) {
           axios.defaults.headers.common["auth-token"] = token;
         }
-        const response = await axios.get(`${BASE_URL}/kyc-details`, {
+        const response = await axios.get(`${BASE_URL}/api/kyc/kyc-details`, {
           headers: {
             "auth-token": token,
           },
@@ -76,22 +121,32 @@ const Kyc = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+      // Basic validation example, adjust as per your requirements
+      if (!formData.firstName || !formData.lastName) {
+        alert('Please fill out all required fields.');
+        return;
+      }
+
     try {
       const token = localStorage.getItem("auth-token");
 
       const formDataToSend = new FormData();
-      formDataToSend.append("documentType", formData.documentType);
-      formDataToSend.append("documentPhoto", formData.documentPhoto);
-      formDataToSend.append("personalPhoto", formData.personalPhoto);
-      formDataToSend.append("firstName", formData.firstName);
-      formDataToSend.append("lastName", formData.lastName);
-      formDataToSend.append("dateOfBirth", formData.dateOfBirth);
+      formDataToSend.append("documentType", formData.documentType || ""); // Ensure documentType is set or empty string if null
+      formDataToSend.append("documentPhoto", formData.documentPhoto); // Assuming documentPhoto is an array with one element
+      formDataToSend.append("personalPhoto", formData.personalPhoto); // Assuming personalPhoto is an array with one element
+      formDataToSend.append("firstName", formData.firstName || ""); // Ensure firstName is set or empty string if null
+      formDataToSend.append("lastName", formData.lastName || ""); // Ensure lastName is set or empty string if null
+      
+      // Format dateOfBirth to ISO string format
+      formDataToSend.append("dateOfBirth", new Date(formData.dateOfBirth).toISOString());
+  
 
-      await axios.post(`${BASE_URL}/submit-kyc`, formDataToSend, {
+      await axios.post(`${BASE_URL}/api/kyc/submit-kyc`, formDataToSend, {
         // await axios.post(`${BASE_URL}/send-message`, {
         headers: {
-          //   "auth-token": token,
+            "auth-token": token,
           "Content-Type": "multipart/form-data",
+          // "auth-token": token,
         },
       });
 
@@ -176,7 +231,7 @@ const Kyc = () => {
                 </label>
                 <select
                   name="documentType"
-                  value={formData.documentType || ""}
+                  value={formData.documentType}
                   onChange={handleInputChange}
                   className="w-[100%] text-[13px] m-1 border border-[#000] outline-none text-[#000] font-bold pl-2 pr-3 h-[40px] border rounded-xl"
                 >
@@ -255,7 +310,7 @@ const Kyc = () => {
                       type="text"
                       name="firstName"
                       placeholder="First Name"
-                      value={formData.firstName || ""}
+                      value={formData.firstName}
                       onChange={handleInputChange}
                       className="border border-[#000] text-[13px] pl-3 outline-none w-[100%] h-[38px] rounded-xl"
                     />
@@ -273,7 +328,7 @@ const Kyc = () => {
                       type="text"
                       name="lastName"
                       placeholder="Last Name"
-                      value={formData.lastName || ""}
+                      value={formData.lastName}
                       onChange={handleInputChange}
                       className="border border-[#000] text-[13px] pl-3 outline-none w-[100%] h-[38px] rounded-xl"
                     />
@@ -288,7 +343,7 @@ const Kyc = () => {
                 <input
                   type="date"
                   name="dateOfBirth"
-                  value={formData.dateOfBirth || ""}
+                  value={formData.dateOfBirth}
                   onChange={handleInputChange}
                   className="w-[100%] text-[13px] m-1 border border-[#000] outline-none text-[#000] font-bold pl-2 pr-3 h-[40px] border rounded-xl"
                 />

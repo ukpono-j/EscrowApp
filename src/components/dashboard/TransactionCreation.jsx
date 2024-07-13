@@ -4,9 +4,10 @@ import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import PaystackPop from "@paystack/inline-js";
 import { useToast } from "@chakra-ui/react";
-const BASE_URL = import.meta.env.VITE_BASE_URL ;
+const BASE_URL = import.meta.env.VITE_BASE_URL;
 import "./NewTransaction.css";
-
+import { MdClose } from "react-icons/md";
+import defaultProfileImage from '../../assets/test.jpg';
 
 const TransactionCreation = () => {
   const [step, setStep] = useState(1); // Track the current step
@@ -21,6 +22,42 @@ const TransactionCreation = () => {
   const [selectedUserType, setSelectedUserType] = useState(""); // Track selected user type
   const [willUseCourier, setWillUseCourier] = useState(false);
   const toast = useToast();
+  const [acceptTransactionModel, setAcceptTransactionModel] = useState(false)
+  const [profileImage, setProfileImage] = useState(null);
+
+
+  // Example function to fetch profile image from database
+  const fetchProfileImage = () => {
+    // Simulate fetching profile image from database
+    const fetchedImage = ''; // Replace with actual logic to fetch image URL from database
+    if (fetchedImage) {
+      setProfileImage(fetchedImage);
+    } else {
+      // Set default profile image if no image fetched
+      setProfileImage(defaultProfileImage);
+    }
+  };
+
+  // Call fetchProfileImage when modal opens (acceptTransactionModel is true)
+  useEffect(() => {
+    if (acceptTransactionModel) {
+      fetchProfileImage();
+    }
+  }, [acceptTransactionModel]);
+
+
+
+  // Calculate the transaction fee and total amount
+  const transactionFee = (paymentAmount * 0.008).toFixed(2);
+  const totalAmount = (parseFloat(paymentAmount) + parseFloat(transactionFee)).toFixed(2);
+
+
+
+
+  const acceptTransactionFunction = (e) => {
+    e.preventDefault();
+    setAcceptTransactionModel(true)
+  }
 
   const createNewTransaction = (e) => {
     e.preventDefault();
@@ -82,11 +119,11 @@ const TransactionCreation = () => {
     //   },
     // });
     // Assuming you're sending paymentName, email, paymentAmount, and paymentDscription from state
-    
+
     const requestData = {
       paymentName,
       email,
-      paymentAmount,
+      paymentAmount: totalAmount,
       paymentDescription,
       selectedUserType,
       willUseCourier,
@@ -108,8 +145,8 @@ const TransactionCreation = () => {
       })
       .then((response) => {
         console.log(response.data);
-          // Extract the transactionId from the response
-          const transactionId = response.data.transactionId;
+        // Extract the transactionId from the response
+        const transactionId = response.data.transactionId;
         // this is a  token  to show successful  transaction
         toast({
           title: "Successfully created a transaction",
@@ -183,8 +220,78 @@ const TransactionCreation = () => {
   ];
 
   return (
-    <div className="font-[Poppins] bg-[#1A1E21] min-h-[100vh] text-[#E4E4E4]   pt-14 md:pr-14 pr-10 pl-10  mt-10  md:pl-14 pb-20 ">
+    <div className="font-[Poppins] bg-[#1A1E21] min-h-[100vh] text-[#E4E4E4] relative   pt-14 md:pr-14 pr-10 pl-10  mt-10  md:pl-14 pb-20 ">
       <h1 className="text-[33px] font-bold text-center md:text-start">Create Transaction</h1>
+      {acceptTransactionModel && (
+        <div className="fixed inset-0 pl-4 pr-4 pt-8 pb-8 flex items-center justify-center bg-black bg-opacity-50 z-50 overflow-y-auto">
+          <div className="bg-[#28313A] text-[white] text-[13px] p-6 rounded-lg w-96">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-[18px] font-bold text-center">Accept Escrow Transaction</h2>
+                {/* <p className=" text-center text-xl font-bold">Transaction</p> */}
+              </div>
+              <button
+                className="text-[24px] font-bold"
+                onClick={() => setAcceptTransactionModel(false)}
+              >
+                <MdClose />
+              </button>
+            </div>
+            <div className="flex items-center mt-4">
+              <div className="border h-[40px] w-[40px] flex items-center justify-center rounded-[100%]">
+                {profileImage ? (
+                  <img src={profileImage} alt="Profile Icon" className="h-[40px] w-[40px] rounded-full" />
+                ) : (
+                  <img src={defaultProfileImage} alt="Default Profile Icon" className="h-[40px] w-[100%] bg-cover bg-center rounded-full" />
+                )}
+              </div>
+              <div className="p-2">
+                <p><strong>Name:</strong> {paymentName}</p>
+                <p><strong>Amount:</strong> {paymentAmount}</p>
+              </div>
+            </div>
+            <p className="mt-2">You are about to accept the escrow transaction. Make sure you understand the terms before proceeding.</p>
+            <h3 className="mt-4 font-bold text-[14px]">Terms</h3>
+            <div className="flex justify-between text-[12px] mt-3 items-center">
+              <p className="font-bold">Payment Method</p>
+              <p className="text-end">Wire Transfer</p>
+            </div>
+            <div className="flex justify-between text-[12px] mt-3 items-center">
+              <p className="font-bold">Transaction Amount</p>
+              <p className="text-end">{paymentAmount}</p>
+            </div>
+            <div className="flex justify-between text-[12px] mt-3 items-center">
+              <p className="font-bold">Transaction Fee</p>
+              <p className="text-end">0.8%</p>
+            </div>
+            <div className="flex justify-between mt-3 items-center">
+              <p><strong>Bank:</strong> </p>
+              <p>{paymentBank}</p>
+            </div>
+            <div className="flex justify-between mt-3 items-center">
+              <p><strong>Account Number:</strong></p>
+              <p> {paymentAccountNumber}</p>
+            </div>
+            <div className="flex justify-between items-center text-[12px] mt-3">
+              <p className="font-bold text-[13px]">Total Amount</p>
+              <p className="text-end">{totalAmount} Naira</p>
+            </div>
+            {/* <p><strong>Email:</strong> {email}</p>
+            <p><strong>Description:</strong> {paymentDescription}</p> */}
+
+            <button
+              className="mt-4 px-4 py-2 bg-[#318AE6] w-[100%] text-white rounded-2xl"
+              onClick={(e) => {
+                setAcceptTransactionModel(false);
+                createNewTransaction(e);
+              }}
+            >
+              Accept
+            </button>
+
+          </div>
+        </div>
+      )}
       <form className="h-[auto] flex items-center flex-col justify-center mt-20 w-[100%]">
         <div className="h-[35px] flex items-center  justify-between w-[200px] sm:w-[300px]">
           {[1, 2, 3].map((number) => (
@@ -204,14 +311,13 @@ const TransactionCreation = () => {
         {[1, 2, 3].map((number) => (
           <div
             key={number}
-            className={`flex items-center justify-center ${
-              step === number ? "default" : "hidden"
-            }`}
+            className={`flex items-center justify-center ${step === number ? "default" : "hidden"
+              }`}
           >
             {number === 2 ? (
               <div className="sm:flex items-center p-3 ">
                 <div
-        className={`pl-10 shadow-xl hover:border-[#0F0821] bg-[#031420]  hover.borderWidth-2 max-w-[250px] pr-14  m-3 h-[100px] flex items-center rounded-2xl`}
+                  className={`pl-10 shadow-xl hover:border-[#0F0821] bg-[#031420]  hover.borderWidth-2 max-w-[250px] pr-14  m-3 h-[100px] flex items-center rounded-2xl`}
                   style={{ borderColor: getActiveColor(number) }}
                 >
                   <input
@@ -234,7 +340,7 @@ const TransactionCreation = () => {
                   </div>
                 </div>
                 <div
-               className={`pl-10 shadow-xl hover:border-[#0F0821] bg-[#031420]  hover.borderWidth-2 max-w-[250px] pr-14  m-3 h-[100px] flex items-center rounded-2xl`}
+                  className={`pl-10 shadow-xl hover:border-[#0F0821] bg-[#031420]  hover.borderWidth-2 max-w-[250px] pr-14  m-3 h-[100px] flex items-center rounded-2xl`}
                   style={{ borderColor: getActiveColor(number) }}
                 >
                   <input
@@ -277,7 +383,7 @@ const TransactionCreation = () => {
                       value={paymentName}
                       className="border-2  border-[#318AE6] bg-[#031420] rounded-[30px] text-[12px] pl-4 pr-3 pt-2 pb-2  outline-none  w-full"
                       placeholder="Enter Payment Name"
-                      autoComplete="on" 
+                      autoComplete="on"
                     />
                   </div>
                   <div className="mb-4">
@@ -295,7 +401,7 @@ const TransactionCreation = () => {
                       value={email}
                       className="border-2  border-[#318AE6] bg-[#031420] rounded-[30px] text-[12px] pl-4 pr-3 pt-2 pb-2  outline-none mb-2  w-full"
                       placeholder="Enter Email Address"
-                      autoComplete="on" 
+                      autoComplete="on"
                     />
                   </div>
                   <div className="mb-4">
@@ -330,7 +436,7 @@ const TransactionCreation = () => {
                       value={paymentBank}
                       className="border-2  border-[#318AE6] bg-[#031420] rounded-[30px] text-[12px] pl-4 pr-3 pt-2 pb-2  outline-none mb-2  w-full"
                       placeholder="Enter payment bank"
-                      autoComplete="on" 
+                      autoComplete="on"
                     />
                   </div>
                   <div className="mb-4">
@@ -348,7 +454,7 @@ const TransactionCreation = () => {
                       value={paymentAccountNumber}
                       className="border-2  border-[#318AE6] bg-[#031420] rounded-[30px] text-[12px] pl-4 pr-3 pt-2 pb-2  outline-none mb-2  w-full"
                       placeholder="Enter payment number"
-                      autoComplete="on" 
+                      autoComplete="on"
                     />
                   </div>
                   <div className="mb-5 mt-5 ">
@@ -367,15 +473,18 @@ const TransactionCreation = () => {
                       placeholder="Payment Description"
                     ></textarea>
                   </div>
+                  {/* ============= Modifying the create transaction, by adding a popup =================== */}
                   <div className="text-center">
                     <button
                       type="submit"
-                      onClick={createNewTransaction}
+                      // onClick={createNewTransaction}
+                      onClick={acceptTransactionFunction}
                       className=" rounded-full  text-white text-[13px] font-bold py-2  px-7   bg-[#318AE6] border-2  border-[#318AE6] all_btn   hover:border-2  hover:border-[#318AE6]  hover:bg-[transparent]"
                     >
                       Start Transaction
                     </button>
                   </div>
+
                 </div>
               </div>
             ) : (
@@ -438,9 +547,8 @@ const TransactionCreation = () => {
         {[1, 2, 3].map((number) => (
           <div
             key={number}
-            className={`flex items-center justify-center ${
-              step === number ? "default" : "hidden"
-            }`}
+            className={`flex items-center justify-center ${step === number ? "default" : "hidden"
+              }`}
           >
             {/* Content for steps 1, 2, and 3 */}
             {/* <p>
@@ -450,25 +558,25 @@ const TransactionCreation = () => {
         ))}
         <div className="flex mt-24 space-x-4">
           <button
-            className={`border-2  border-[#318AE6]   rounded-3xl h-[38px] font-bold w-[130px] ${
-              step === 1 ? "hidden" : ""
-            }`}
+            className={`border-2  border-[#318AE6]   rounded-3xl h-[38px] font-bold w-[130px] ${step === 1 ? "hidden" : ""
+              }`}
             onClick={handlePreviousClick}
           >
             Previous
           </button>
           <button
             id="nextButton"
-            className={`border-2  border-[#318AE6]  rounded-3xl h-[38px] font-bold w-[130px] ${
-              step === 3 ? "hidden" : ""
-            } ${nextButtonActive ? "text-[#fff] border-black" : ""}`}
+            className={`border-2  border-[#318AE6]  rounded-3xl h-[38px] font-bold w-[130px] ${step === 3 ? "hidden" : ""
+              } ${nextButtonActive ? "text-[#fff] border-black" : ""}`}
             onClick={handleNextClick}
             disabled={!nextButtonActive}
           >
             Next
           </button>
         </div>
+
       </form>
+
     </div>
   );
 };
