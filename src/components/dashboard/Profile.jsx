@@ -5,6 +5,7 @@ import { FaEdit, FaUpload } from "react-icons/fa";
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 import UserProfile from "../../assets/profile_icon.png";
 
+
 const Profile = () => {
   const [account, setAccount] = useState(true);
   const [pay, setPay] = useState(false);
@@ -95,14 +96,14 @@ const Profile = () => {
     const token = localStorage.getItem("auth-token");
 
     axios
-      .put(`${BASE_URL}/update-user-details`, editedUserDetails, {
+      .put(`${BASE_URL}api/users/update-user-details`, editedUserDetails, {
         headers: {
           "auth-token": token,
         },
       })
       .then((response) => {
         axios
-          .get(`${BASE_URL}/user-details`, {
+          .get(`${BASE_URL}/api/users/user-details`, {
             headers: {
               "auth-token": token,
             },
@@ -142,6 +143,7 @@ const Profile = () => {
       .post(`${BASE_URL}/api/users/setAvatar`, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
+          "auth-token": token,
         },
       })
       .then((response) => {
@@ -207,44 +209,35 @@ const Profile = () => {
               {loadingImage ? (
                 <p>Loading...</p>
               ) : userDetails.avatarImage ? (
-                <div className="relative  flex items-center justify-center">
+                <div className="relative flex items-center justify-center">
                   <img
                     src={`${BASE_URL}/images/${userDetails.avatarImage}`}
                     alt="Profile"
                     className="w-[300px] h-full object-cover rounded-3xl"
                   />
-                  <div className="absolute flex w-[47px] h-[47px] flex border-2  border-[#81712E] items-center justify-center  rounded-full bg-[#031420]">
+                  <div className="absolute flex w-[47px] h-[47px] flex border-2 border-[#81712E] items-center justify-center rounded-full bg-[#031420]">
                     <input
                       type="file"
-                      // onChange={(e) => setSelectedImageFile(e.target.files[0])}
                       onChange={handleImageChange}
-                      className="w-[47px] border z-20    opacity-0  cursor-pointer absolute  border-[gray]"
+                      className="w-[47px] border z-20 opacity-0 cursor-pointer absolute border-[gray]"
                     />
-                    <FaUpload
-                      color="#fff"
-                      className="absolute text-[20px] mb-[4px]"
-                    />
+                    <FaUpload color="#fff" className="absolute text-[20px] mb-[4px]" />
                   </div>
                 </div>
               ) : (
-                // <span>No Profile Image</span>
-                <div className="relative  flex items-center justify-center">
+                <div className="relative flex items-center justify-center">
                   <img
                     src={UserProfile}
                     alt=""
                     className="w-[100%] h-[100%] object-cover bg-[#fff] rounded-3xl"
                   />
-
-                  <div className="absolute flex w-[47px] h-[47px] flex border-2  border-[#81712E] items-center justify-center  rounded-full bg-[#031420]">
+                  <div className="absolute flex w-[47px] h-[47px] flex border-2 border-[#81712E] items-center justify-center rounded-full bg-[#031420]">
                     <input
                       type="file"
-                      onChange={(e) => setSelectedImageFile(e.target.files[0])}
-                      className="w-[47px] border z-20    opacity-0  cursor-pointer absolute  border-[gray]"
+                      onChange={handleImageChange}
+                      className="w-[47px] border z-20 opacity-0 cursor-pointer absolute border-[gray]"
                     />
-                    <FaUpload
-                      color="#fff"
-                      className="absolute text-[20px] mb-[4px]"
-                    />
+                    <FaUpload color="#fff" className="absolute text-[20px] mb-[4px]" />
                   </div>
                 </div>
               )}
