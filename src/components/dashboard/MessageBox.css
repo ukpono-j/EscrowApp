@@ -11,6 +11,7 @@
   
   .message-user {
     font-weight: bold;
+    font-size: 14px;
     margin-bottom: 5px;
   }
   
@@ -23,6 +24,7 @@
     background-color: #007bff;
     max-width: 400px;
     color: #fff;
+    font-size: 12px;
   }
   
   .received {
@@ -30,6 +32,7 @@
     background-color: #28313A;
     max-width: 400px;
     color: #fff;
+    font-size: 12px;
   }
   
   .current-user {

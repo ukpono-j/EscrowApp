@@ -264,7 +264,7 @@ const AllTransactionCompleted = ({
       {transactionDetails.map((transaction) => (
         <div
           key={transaction.transactionId}
-          className="w-[100%] h-[auto] mt-4 rounded-2xl bg-[#031420]  pl-5  pt-4  pb-4  pr-5"
+          className="w-[100%] h-[auto] mt-4 rounded-2xl bg-[#1A1E21]  pl-5  pt-4  pb-4  pr-5"
         >
           <div className="flex  text-[17px] items-center justify-between">
             <div className="text-[14px] flex   items-center ">

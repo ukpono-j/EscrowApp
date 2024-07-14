@@ -183,7 +183,7 @@ const Kyc = () => {
       />
       <div
         style={{ overflowY: "scroll" }}
-        className="layout  bg-[#072534] text-[#000]   fixed right-0 top-0 w-[100%]  md:w-[83.2%] h-[100vh]"
+        className="layout  bg-[#1A1E21] text-[#000]   fixed right-0 top-0 w-[100%]  md:w-[83.2%] h-[100vh]"
       >
         <div
           className={
@@ -217,7 +217,7 @@ const Kyc = () => {
             <form
               action=""
               onSubmit={handleSubmit}
-              className="w-[80%]  bg-[#FBFBFA] pt-9  pb-9  pr-5  pl-5  h-[auto] border rounded-2xl"
+              className="w-[80%] text-white bg-[#111518] pt-9  pb-9  pr-5  pl-5  h-[auto] rounded-2xl"
             >
               <h1 className="text-center text-[33px] font-bold">
                 KYC Verification
@@ -250,7 +250,7 @@ const Kyc = () => {
                   >
                     Upload Document Photo
                   </label>
-                  <div className=" w-[100%] relative  rounded-xl mt-1  flex items-center justify-center  h-[120px] border border-[#000]">
+                  <div className=" w-[100%] relative  rounded-xl mt-1  flex items-center justify-center  h-[120px] border border-[white]">
                     {documentPhotoPreview && (
                       <img
                         src={documentPhotoPreview}
@@ -258,7 +258,7 @@ const Kyc = () => {
                         className="w-full h-full object-cover rounded-xl"
                       />
                     )}
-                    <div className="absolute flex w-[40px] h-[40px] flex border-2  border-[#81712E] items-center justify-center  rounded-full bg-[#031420]">
+                    <div className="absolute flex w-[40px] h-[40px] flex border-2  border-[#318AE6] items-center justify-center  rounded-full bg-[#031420]">
                       <input
                         type="file"
                         name="documentPhoto"
@@ -276,7 +276,7 @@ const Kyc = () => {
                   >
                     Personal Photo
                   </label>
-                  <div className=" w-[100%] rounded-xl mt-1  flex items-center justify-center  h-[120px] border border-[#000]">
+                  <div className=" w-[100%] rounded-xl mt-1  flex items-center justify-center  h-[120px] border border-[#fff]">
                     {personalPhotoPreview && (
                       <img
                         src={personalPhotoPreview}
@@ -284,7 +284,7 @@ const Kyc = () => {
                         className="w-full h-full object-cover rounded-xl"
                       />
                     )}
-                    <div className="absolute flex w-[40px] h-[40px] flex border-2  border-[#81712E] items-center justify-center  rounded-full bg-[#031420]">
+                    <div className="absolute flex w-[40px] h-[40px] flex border-2  border-[#318AE6] items-center justify-center  rounded-full bg-[#031420]">
                       <input
                         type="file"
                         name="personalPhoto"
@@ -312,7 +312,7 @@ const Kyc = () => {
                       placeholder="First Name"
                       value={formData.firstName}
                       onChange={handleInputChange}
-                      className="border border-[#000] text-[13px] pl-3 outline-none w-[100%] h-[38px] rounded-xl"
+                      className="border border-[#000] text-[13px] text-black font-bold pl-3 outline-none w-[100%] h-[38px] rounded-xl"
                     />
                   </div>
                 </div>
@@ -330,7 +330,7 @@ const Kyc = () => {
                       placeholder="Last Name"
                       value={formData.lastName}
                       onChange={handleInputChange}
-                      className="border border-[#000] text-[13px] pl-3 outline-none w-[100%] h-[38px] rounded-xl"
+                      className="border border-[#000] text-[13px] text-black font-bold  pl-3 outline-none w-[100%] h-[38px] rounded-xl"
                     />
                   </div>
                 </div>
@@ -350,12 +350,12 @@ const Kyc = () => {
               </div>
 
               <div className="flex items-center justify-end">
-                <button className="flex items-center justify-center h-[40px] uppercase  font-[600]  rounded-xl   text-[14px]  w-[100px] border-2  border-[#81712E] m-2">
+                <button className="flex items-center justify-center h-[40px] uppercase  font-[600]  rounded-xl   text-[14px]  w-[100px] border-2  border-[#318AE6] m-2">
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex items-center justify-center h-[40px] uppercase  font-[600]  rounded-xl   text-[14px]  w-[100px] border border-[#81712E]  m-2 bg-[#81712E] text-[#fff]"
+                  className="flex items-center justify-center h-[40px] uppercase  font-[600]  rounded-xl   text-[14px]  w-[100px] m-2 bg-[#318AE6] text-[#fff]"
                 >
                   Submit
                 </button>

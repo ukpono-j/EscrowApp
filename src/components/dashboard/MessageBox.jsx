@@ -5,6 +5,7 @@ import axios from "axios";
 import "./MessageBox.css";
 import { MdOutlineLogout } from "react-icons/md";
 import { Navigate } from "react-router-dom";
+import DefaultProfile from "../../assets/profile_icon.png"
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 const SOCKET_SERVER_URL = `${BASE_URL}`;
@@ -15,7 +16,7 @@ const MessageBox = () => {
   const [userDetails, setUserDetails] = useState({});
   const [transactionDetails, setTransactionDetails] = useState({});
   const [participants, setParticipants] = useState([]);
-const navigate = useNavigate()
+  const navigate = useNavigate()
 
   const socketRef = useRef();
   const { chatroomId } = useParams(); // Get the chatroom ID from the URL
@@ -103,10 +104,10 @@ const navigate = useNavigate()
         console.error("Error fetching messages:", error);
       }
     };
-  
+
     fetchMessages();
   }, [chatroomId]);
-  
+
 
   // const sendMessage = () => {
   //   // Check if socketRef.current is defined and the connection is established
@@ -132,11 +133,12 @@ const navigate = useNavigate()
         userFirstName: userDetails.firstName,
         message,
         timestamp: new Date().toISOString(),
+        avatarImage: userDetails.avatarImage,
       };
-         // Emit the message to other participants
-         socketRef.current.emit("message", newMessage);
-         setMessage("");
-  
+      // Emit the message to other participants
+      socketRef.current.emit("message", newMessage);
+      setMessage("");
+
       try {
         // Save the message to the backend
         const response = await axios.post(`${BASE_URL}/api/messages/send-message`, newMessage);
@@ -146,7 +148,7 @@ const navigate = useNavigate()
       }
     }
   };
-  
+
 
   const handleKeyPress = (e) => {
     if (e.key === "Enter") {
@@ -160,10 +162,10 @@ const navigate = useNavigate()
     navigate("/transactions/tab")
   }
   return (
-    <div className="bg-[#031420] py-[90px]  text-white font-[Poppins]">
+    <div className="bg-[#111518] py-[90px]  text-white font-[Poppins]">
       <div className="flex items-center justify-between pr-5 border md:pl-[30px] md:pr-[30px] pl-5 fixed right-0 z-30 top-0 text-[#fff] h-[10vh] w-[100%] bg-[#1A1E21] border-none">
         <h1 className="text-[20px] font-bold ">Chat Room</h1>
-        <h1 className="text-[18px] font-bold flex items-center cursor-pointer" onClick={handleChatExit}><MdOutlineLogout className="mr-1 text-[22px]" /> Exit</h1>
+        <h1 className="text-[18px] font-bold flex items-center cursor-pointer" onClick={handleChatExit}><MdOutlineLogout className="mr-1 text-[22px]" /></h1>
       </div>
       <div className="chat-container p-4">
         {/* <h2>Transaction Details</h2>
@@ -184,10 +186,38 @@ const navigate = useNavigate()
         <div className="message-list text-white">
           {messages.map((msg, index) => (
             <div key={index} className={`message ${msg.userId === userDetails._id ? "sent" : "received"}`}>
-              <div className={`message-user ${msg.userId === userDetails._id ? "current-user" : ""}`}>
-                {/* {msg.userId === transactionDetails.userId ? ` ${msg.userFirstName}` : ` ${msg.userFirstName}`} */}
+              <div className="flex items-center">
+                <div className="h-[32px] mr-2 w-[32px] flex items-center justify-center rounded-full">
+                  {/* USER'S AVATAR IMAGE */}
+                  {/* <img 
+                    src={msg.userId === userDetails._id ? `${BASE_URL}/images/${userDetails.avatarImage}` : `${BASE_URL}/images/${msg.avatarImage}`}
+                    alt="Avatar"
+                    className="w-[50px] h-[50px] bg-center bg-cover rounded-full"
+                  /> */}
+                <img
+                    src={
+                      msg.userId === userDetails._id
+                        ? userDetails.avatarImage
+                          ? `${BASE_URL}/images/${userDetails.avatarImage}`
+                          : DefaultProfile
+                        : msg.avatarImage
+                        ? `${BASE_URL}/images/${msg.avatarImage}`
+                        : DefaultProfile
+                    }
+                    alt="Avatar"
+                    className="w-[32px] h-[32px] bg-center bg-cover rounded-full"
+                  />
+                </div>
+                <div className={`message-user ${msg.userId === userDetails._id ? "current-user" : ""}`}>
+                  {msg.userId === transactionDetails.userId ? ` ${msg.userFirstName}` : ` ${msg.userFirstName}`}
+                </div>
               </div>
-              <div className="message-content">{msg.message}</div>
+              <div >
+                <div className="ml-2 mt-2">
+                  <div className="message-content">{msg.message}</div>
+                </div>
+              </div>
+
             </div>
           ))}
         </div>
@@ -199,9 +229,9 @@ const navigate = useNavigate()
               onChange={(e) => setMessage(e.target.value)}
               onKeyDown={handleKeyPress}
               placeholder="Type your message..."
-              className="w-[100%] px-3 h-[50px] rounded-xl outline-none text-[white] bg-[#28313A]"
+              className="w-[100%] px-3 h-[40px] rounded-xl outline-none text-[white] text-[13px] bg-[#28313A]"
             />
-            <button onClick={sendMessage} className="text-white h-[50px] w-[130px] bg-[#007bff] rounded-xl mx-3">Send</button>
+            <button onClick={sendMessage} className="text-white h-[40px] w-[130px] bg-[#007bff] rounded-xl mx-3">Send</button>
           </div>
         </div>
       </div>

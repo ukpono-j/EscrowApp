@@ -21,17 +21,17 @@ const MyTransaction = () => {
   };
 
   return (
-    <div className="font-[Poppins] text-[#E4E4E4] md:pl-20 pl-4 mt-10 bg-[#072534]  min-h-[100vh]  pr-4  md:pr-20 pt-14  pb-10">
-      <h1 className="font-bold text-[35px] join text-center md:text-start">
+    <div className="font-[Poppins] text-[#E4E4E4] md:pl-20 pl-4 mt-10 bg-[#1A1E21]  min-h-[100vh]  pr-4  md:pr-20 pt-14  pb-10">
+      <h1 className="font-bold text-[35px] text-center md:text-start">
         TrustLink: Confident Transactions
       </h1>
 
-      <div className="gif border-b-[1px] border-[#D8D3EB]   flex mt-8">
+      <div className="gif border-b-[1px] border-[#318AE6]   flex mt-8">
         <h3
           onClick={handleCreate}
           className={`cursor-pointer text-[13px] ${
             create
-              ? "text-[#E4E4E4] border-b-[4px]  h-[32px]  border-[#DA9A21]"
+              ? "text-[#E4E4E4] border-b-[4px]  h-[32px]  border-[#318AE6]"
               : ""
           }`}
         >
@@ -41,7 +41,7 @@ const MyTransaction = () => {
           onClick={handleJoin}
           className={`ml-6 text-[13px]  cursor-pointer ${
             join
-              ? "text-[#E4E4E4] border-b-[4px]  h-[32px]  border-[#DA9A21]"
+              ? "text-[#E4E4E4] border-b-[4px]  h-[32px]  border-[#318AE6]"
               : ""
           }`}
         >

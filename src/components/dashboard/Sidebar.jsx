@@ -41,6 +41,7 @@ const Sidebar = () => {
   }, []);
 
   const links = [
+    { to: "/dashboard", label: "Home" },
     { to: "/create-transaction", label: "Create Transaction" },
     { to: "/join-transaction", label: "Join Transaction" },
     { to: "/transactions/tab", label: "My Transaction" },
@@ -118,7 +119,7 @@ const Sidebar = () => {
                   onClick={() => handleSettingLinkClick(link.to)}
                   className={`dash_links flex   pr-2  text-[12px] pb-3 pr-3  pt-3  cursor-pointer ${
                     activeLink === link.to
-                      ? "text-[#fff] rounded-3xl bg-[#81712E] mb-3 text-[#000] pl-4"
+                      ? "text-[#fff] rounded-3xl bg-[#318AE6] mb-3 text-[#000] pl-4"
                       : ""
                   }`}
                 >

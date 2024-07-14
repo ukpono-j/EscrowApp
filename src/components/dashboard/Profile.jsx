@@ -168,15 +168,15 @@ const Profile = () => {
   };
 
   return (
-    <div className="font-[Poppins] pt-7  md:pr-14 pr-5  pl-5  mt-0    md:pl-14 pb-10">
-      <h1 className="text-[33px] font-bold join">My Profile</h1>
+    <div className="font-[Poppins] pt-7 bg-[#1A1E21]  md:pr-14 pr-5  pl-5  mt-0    md:pl-14 pb-10">
+      <h1 className="text-[33px] font-bold">My Profile</h1>
 
-      <div className="gif border-b-[1px] border-[#81712E] rounded  flex mt-8">
+      <div className="gif border-b-[1px] border-[#318AE6] rounded  flex mt-8">
         <h3
           onClick={handleAccount}
           className={`cursor-pointer text-[13px] pl-6  pr-6 ${
             account
-              ? "text-[#fff] border-b-[2px]  h-[32px]  border-[#81712E]"
+              ? "text-[#fff] border-b-[2px]  h-[32px]  border-[#318AE6]"
               : ""
           }`}
         >
@@ -185,7 +185,7 @@ const Profile = () => {
         <h3
           onClick={handlePay}
           className={`ml-6 flex items-center   text-[13px] pl-6  pr-6  cursor-pointer ${
-            pay ? "text-[#fff] border-b-[2px]  h-[32px]  border-[#81712E]" : ""
+            pay ? "text-[#fff] border-b-[2px]  h-[32px]  border-[#318AE6]" : ""
           }`}
         >
           <PiWarningCircleBold className="text-[red] text-[25px]" />
@@ -202,8 +202,8 @@ const Profile = () => {
       </div>
 
       {account && userDetails && (
-        <div className=" mt-16 mb-16  md:flex items-center">
-          <div className="flex flex-col items-center md:pt-6 pt-9 pb-9  md:pb-6 pr-6 pl-6  rounded-3xl   bg-[#031420] ">
+        <div className=" mt-16 mb-16  md:flex ">
+          <div className="flex flex-col items-center  rounded-3xl">
             <div className="md:w-[300px] w-[100%]  h-[auto] text-center   rounded-3xl   flex items-center justify-center">
               {/* Display or style your profile image */}
               {loadingImage ? (
@@ -215,7 +215,7 @@ const Profile = () => {
                     alt="Profile"
                     className="w-[300px] h-full object-cover rounded-3xl"
                   />
-                  <div className="absolute flex w-[47px] h-[47px] flex border-2 border-[#81712E] items-center justify-center rounded-full bg-[#031420]">
+                  <div className="absolute flex w-[47px] h-[47px] flex border-2 border-[#318AE6] items-center justify-center rounded-full bg-[#031420]">
                     <input
                       type="file"
                       onChange={handleImageChange}
@@ -256,7 +256,7 @@ const Profile = () => {
             </div> */}
             <button
               onClick={handleProfileUpdate}
-              className="flex text-[14px] items-center   justify-center w-[190px] h-[40px] bg-[#81712E] rounded-xl mt-4"
+              className="flex text-[14px] items-center   justify-center w-[190px] h-[40px] bg-[#318AE6] rounded-xl mt-4"
             >
               Submit Update
             </button>
@@ -372,7 +372,7 @@ const Profile = () => {
             {editMode && (
               <button
                 onClick={handleUpdateDetails}
-                className="bg-[#81712E] text-[14px]  mt-10  text-white px-4 py-2 rounded"
+                className="bg-[#318AE6] text-[14px]  mt-10  text-white px-4 py-2 rounded"
               >
                 Update Details
               </button>
@@ -380,7 +380,7 @@ const Profile = () => {
             {account && userDetails && !editMode && (
               <button
                 onClick={() => setEditMode(true)}
-                className="bg-[#81712E] text-[14px]  text-white flex items-center  justify-center  px-4 py-2 mt-4 rounded"
+                className="bg-[#318AE6] text-[14px]  text-white flex items-center  justify-center  px-4 py-2 mt-4 rounded"
               >
                 <FaEdit className="mr-2" /> Edit Details
               </button>

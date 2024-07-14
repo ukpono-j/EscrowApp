@@ -6,7 +6,8 @@
     position: relative;
 }
 .createTransaction_Btn{
-    background: linear-gradient(rgba(37, 137, 172, 1), rgba(219, 155, 30, 1));
+    /* background: linear-gradient(rgba(37, 137, 172, 1), rgba(219, 155, 30, 1)); */
+    background-color: #318AE6;
     padding: 20px 10px;
     /* -webkit-text-fill-color: transparent; */
 }

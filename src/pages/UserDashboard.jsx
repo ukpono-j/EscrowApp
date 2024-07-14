@@ -28,7 +28,7 @@ const UserDashboard = () => {
         />
         <div
           style={{ overflowY: "scroll" }}
-          className=" layout  bg-[#F4F5F5] fixed right-0 top-0 w-[100%]  md:w-[83.2%] h-[100vh]"
+          className=" layout  bg-[#1A1E21] fixed right-0 top-0 w-[100%]  md:w-[83.2%] h-[100vh]"
         >
           <div
             className={
