@@ -1,16 +1,11 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { PiWarningCircleBold } from "react-icons/pi";
 import { FaEdit, FaUpload } from "react-icons/fa";
-const BASE_URL = import.meta.env.VITE_BASE_URL;
 import UserProfile from "../../assets/profile_icon.png";
-
+const BASE_URL = import.meta.env.VITE_BASE_URL;
 
 const Profile = () => {
-  const [account, setAccount] = useState(true);
-  const [pay, setPay] = useState(false);
   const [selectedImageFile, setSelectedImageFile] = useState(null);
-  const [help, setHelp] = useState(false);
   const [userDetails, setUserDetails] = useState(null);
   const [editedUserDetails, setEditedUserDetails] = useState({
     firstName: "",
@@ -20,10 +15,8 @@ const Profile = () => {
     accountNumber: "",
   });
   const [preview, setPreview] = useState(null);
-
-  // State to manage edit mode
+  const [loading, setLoading] = useState(false);
   const [editMode, setEditMode] = useState(false);
-  const [loadingImage, setLoadingImage] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("auth-token");
@@ -42,9 +35,9 @@ const Profile = () => {
         setEditedUserDetails({
           firstName: response.data.firstName,
           lastName: response.data.lastName,
-          dateOfBirth: response.data.dateOfBirth || "",
-          bank: response.data.bank || "",
-          accountNumber: response.data.accountNumber || "",
+          dateOfBirth: response.data.dateOfBirth,
+          bank: response.data.bank,
+          accountNumber: response.data.accountNumber,
         });
       })
       .catch((error) => {
@@ -52,346 +45,199 @@ const Profile = () => {
       });
   }, []);
 
-  const reloadProfilePic = () => {
-    const token = localStorage.getItem("auth-token");
-    if (token) {
-      axios.defaults.headers.common["auth-token"] = token;
+  useEffect(() => {
+    if (selectedImageFile) {
+      const filePreview = URL.createObjectURL(selectedImageFile);
+      setPreview(filePreview);
+    } else {
+      setPreview(null);
     }
-
-    axios
-      .get(`${BASE_URL}/api/users/user-details`, {
-        headers: {
-          "auth-token": token,
-        },
-      })
-      .then((response) => {
-        setUserDetails(response.data);
-        setLoadingImage(false);
-      });
-  };
-
-  const handleAccount = () => {
-    setAccount(true);
-    setPay(false);
-    setHelp(false);
-  };
-
-  const handlePay = () => {
-    setPay(true);
-    setAccount(false);
-    setHelp(false);
-  };
-
-  const handleHelp = () => {
-    setHelp(true);
-    setAccount(false);
-    setPay(false);
-  };
-
-  const obscurePassword = (password) => {
-    return "*".repeat(password.length);
-  };
+  }, [selectedImageFile]);
 
   const handleUpdateDetails = () => {
-    const token = localStorage.getItem("auth-token");
-
+    setLoading(true);
     axios
-      .put(`${BASE_URL}api/users/update-user-details`, editedUserDetails, {
-        headers: {
-          "auth-token": token,
-        },
-      })
+      .put(
+        `${BASE_URL}/api/users/update-user-details`,
+        { ...editedUserDetails },
+        {
+          headers: {
+            "auth-token": localStorage.getItem("auth-token"),
+          },
+        }
+      )
       .then((response) => {
-        axios
-          .get(`${BASE_URL}/api/users/user-details`, {
-            headers: {
-              "auth-token": token,
-            },
-          })
-          .then((response) => {
-            setUserDetails(response.data);
-          })
-          .catch((error) => {
-            console.error("Error fetching updated user details:", error);
-          });
-
-        setEditedUserDetails({
-          firstName: "",
-          lastName: "",
-          dateOfBirth: "",
-          bank: "",
-          accountNumber: "",
-        });
-
-        setEditMode(false); // Turn off edit mode after update
-
-        console.log(response.data.message);
+        setUserDetails(response.data);
+        setEditMode(false);
+        console.log("User details updated successfully.");
       })
       .catch((error) => {
         console.error("Error updating user details:", error);
+      })
+      .finally(() => {
+        setLoading(false);
       });
   };
 
-  const handleProfileUpdate = () => {
-    const token = localStorage.getItem("auth-token");
-
-    // Upload profile picture
+  const handleImageUpload = () => {
+    setLoading(true);
     const formData = new FormData();
     formData.append("image", selectedImageFile);
 
     axios
       .post(`${BASE_URL}/api/users/setAvatar`, formData, {
         headers: {
+          "auth-token": localStorage.getItem("auth-token"),
           "Content-Type": "multipart/form-data",
-          "auth-token": token,
         },
       })
       .then((response) => {
-        console.log(response.data);
-        reloadProfilePic();
+        setUserDetails(response.data.user);
+        setSelectedImageFile(null);
+        console.log("Avatar updated successfully.");
       })
       .catch((error) => {
-        console.error("Error setting avatar:", error);
+        console.error("Error updating avatar:", error);
+      })
+      .finally(() => {
+        setLoading(false);
       });
   };
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-
-    if (file) {
-      setSelectedImageFile(file);
-
-      // Preview the selected image
-      const imageUrl = URL.createObjectURL(file);
-      setPreview(imageUrl);
-    }
-  };
-
   return (
-    <div className="font-[Poppins] pt-7 bg-[#1A1E21]  md:pr-14 pr-5  pl-5  mt-0    md:pl-14 pb-10">
+    <div className="font-[Poppins] pt-7 bg-[#1A1E21] md:pr-14 pr-5 pl-5 mt-0 md:pl-14 pb-10">
       <h1 className="text-[33px] font-bold">My Profile</h1>
-
-      <div className="gif border-b-[1px] border-[#318AE6] rounded  flex mt-8">
-        <h3
-          onClick={handleAccount}
-          className={`cursor-pointer text-[13px] pl-6  pr-6 ${
-            account
-              ? "text-[#fff] border-b-[2px]  h-[32px]  border-[#318AE6]"
-              : ""
-          }`}
-        >
-          Account
-        </h3>
-        <h3
-          onClick={handlePay}
-          className={`ml-6 flex items-center   text-[13px] pl-6  pr-6  cursor-pointer ${
-            pay ? "text-[#fff] border-b-[2px]  h-[32px]  border-[#318AE6]" : ""
-          }`}
-        >
-          <PiWarningCircleBold className="text-[red] text-[25px]" />
-          <span className="pl-1">Payout Details</span>
-        </h3>
-        <h3
-          onClick={handleHelp}
-          className={`ml-6 text-[14px] pl-6  pr-6  cursor-pointer ${
-            help ? "text-[#fff] border-b-[2px]  h-[32px]  border-[#81712E]" : ""
-          }`}
-        >
-          Help
-        </h3>
-      </div>
-
-      {account && userDetails && (
-        <div className=" mt-16 mb-16  md:flex ">
-          <div className="flex flex-col items-center  rounded-3xl">
-            <div className="md:w-[300px] w-[100%]  h-[auto] text-center   rounded-3xl   flex items-center justify-center">
-              {/* Display or style your profile image */}
-              {loadingImage ? (
-                <p>Loading...</p>
-              ) : userDetails.avatarImage ? (
-                <div className="relative flex items-center justify-center">
-                  <img
-                    src={`${BASE_URL}/images/${userDetails.avatarImage}`}
-                    alt="Profile"
-                    className="w-[300px] h-full object-cover rounded-3xl"
-                  />
-                  <div className="absolute flex w-[47px] h-[47px] flex border-2 border-[#318AE6] items-center justify-center rounded-full bg-[#031420]">
-                    <input
-                      type="file"
-                      onChange={handleImageChange}
-                      className="w-[47px] border z-20 opacity-0 cursor-pointer absolute border-[gray]"
-                    />
-                    <FaUpload color="#fff" className="absolute text-[20px] mb-[4px]" />
-                  </div>
-                </div>
-              ) : (
-                <div className="relative flex items-center justify-center">
-                  <img
-                    src={UserProfile}
-                    alt=""
-                    className="w-[100%] h-[100%] object-cover bg-[#fff] rounded-3xl"
-                  />
-                  <div className="absolute flex w-[47px] h-[47px] flex border-2 border-[#81712E] items-center justify-center rounded-full bg-[#031420]">
-                    <input
-                      type="file"
-                      onChange={handleImageChange}
-                      className="w-[47px] border z-20 opacity-0 cursor-pointer absolute border-[gray]"
-                    />
-                    <FaUpload color="#fff" className="absolute text-[20px] mb-[4px]" />
-                  </div>
-                </div>
-              )}
-            </div>
-            {/* ====== Update Profile Picture =========== */}
-            {/* <div className="md:w-[300px] w-[100%]  h-[auto]">
-              {preview && (
-                <div className="absolute   inset-0 flex items-center justify-center">
-                  <img
-                    src={preview}
-                    alt="Preview"
-                    className="w-[300px] h-[300px] object-cover object-center  rounded-3xl"
-                  />
-                </div>
-              )}
-            </div> */}
-            <button
-              onClick={handleProfileUpdate}
-              className="flex text-[14px] items-center   justify-center w-[190px] h-[40px] bg-[#318AE6] rounded-xl mt-4"
-            >
-              Submit Update
-            </button>
-
+      {userDetails && (
+        <div className="flex flex-col md:flex-row items-center mt-6">
+          <div className="relative">
+            <img
+              src={preview || (userDetails.avatarImage ? `${BASE_URL}/${userDetails.avatarImage}` : UserProfile)}
+              alt="Profile"
+              className="w-32 h-32 rounded-full bg-cover"
+            />
+            <label htmlFor="avatar-upload" className="absolute bottom-0 right-0 bg-[#318AE6] p-2 rounded-full cursor-pointer">
+              <FaUpload className="text-white" />
+            </label>
+            <input
+              id="avatar-upload"
+              type="file"
+              accept="image/*"
+              onChange={(e) => setSelectedImageFile(e.target.files[0])}
+              className="hidden"
+            />
+            {selectedImageFile && (
+              <button
+                onClick={handleImageUpload}
+                className="absolute bottom-0 left-0 bg-[#318AE6] text-white p-2 rounded-md mt-2"
+              >
+                {loading ? "Uploading..." : "Upload Avatar"}
+              </button>
+            )}
           </div>
-          <div className="md:ml-4 mt-4 md:mt-0  w-[100%] bg-[#031420] pt-4 pb-7 pl-5 pr-5  rounded-3xl">
-            <div className=" w-[100%]  flex items-center ">
-              <div className="w-[100%]">
-                <h4 className="pt-1  text-[115x] font-[700]">First Name</h4>
-                {editMode ? (
-                  <input
-                    type="text"
-                    className="text-[#fff] font-bold border border-[#81712E] text-[13px] mt-1  bg-[transparent] h-[32px] pl-2 rounded-3xl w-[100%] "
-                    autoComplete="on"
-                    value={editedUserDetails.firstName}
-                    onChange={(e) =>
-                      setEditedUserDetails({
-                        ...editedUserDetails,
-                        firstName: e.target.value,
-                      })
-                    }
-                  />
-                ) : (
-                  <p className="text-[14px]">{userDetails.firstName}</p>
-                )}
-              </div>
-              <div className="w-[100%]">
-                <h4 className="pt-1  text-[15px] font-[700]">Last Name</h4>
-                {editMode ? (
-                  <input
-                    type="text"
-                    className="text-[#fff] font-bold border border-[#81712E] text-[13px] mt-1  bg-[transparent] h-[32px] pl-2 rounded-3xl w-[100%] "
-                    autoComplete="on"
-                    value={editedUserDetails.lastName}
-                    onChange={(e) =>
-                      setEditedUserDetails({
-                        ...editedUserDetails,
-                        lastName: e.target.value,
-                      })
-                    }
-                  />
-                ) : (
-                  <p className="text-[14px]">{userDetails.lastName}</p>
-                )}
-              </div>
+
+          <div className="ml-0 md:ml-10 mt-4 md:mt-0">
+            <div className="flex justify-end">
+              <button
+                onClick={() => setEditMode(!editMode)}
+                className="flex items-center cursor-pointer bg-[#031420] border-[1px] border-[#318AE6] rounded-md"
+              >
+                <FaEdit color="#318AE6" className="text-[15px] ml-2" />
+                <span className="text-[#318AE6] text-[12px] p-1 pr-2">
+                  {editMode ? "Cancel Edit" : "Edit Profile"}
+                </span>
+              </button>
             </div>
-            {/* ====================== Email and Date of Birth */}
-            <div className=" flex items-center ">
-              <div className="w-[100%]">
-                <h4 className="pt-5 text-[1615] font-[700]">Bank Number</h4>
+
+            <div className="flex md:flex-row flex-col mt-4">
+              <div className="mt-2">
+                <h3 className="text-[12px] text-[#B0B0B0]">First Name</h3>
                 {editMode ? (
                   <input
                     type="text"
-                    className="text-[#fff] font-bold border border-[#81712E] text-[13px] mt-1  bg-[transparent] h-[32px] pl-2 rounded-3xl w-[100%] "
-                    autoComplete="on"
-                    value={editedUserDetails.accountNumber}
-                    onChange={(e) =>
-                      setEditedUserDetails({
-                        ...editedUserDetails,
-                        accountNumber: e.target.value,
-                      })
-                    }
+                    value={editedUserDetails.firstName}
+                    onChange={(e) => setEditedUserDetails({ ...editedUserDetails, firstName: e.target.value })}
+                    className="w-[100%] rounded-md p-2 bg-[#1A1E21] border-[1px] border-[#318AE6]"
                   />
                 ) : (
-                  <p className="text-[14px]">{userDetails.accountNumber}</p>
+                  <p className="text-[13px] text-[#fff]">{userDetails.firstName}</p>
                 )}
               </div>
 
-              <div className="w-[100%] ">
-                <h4 className="pt-5 text-[16px] font-[700]">Date of Birth</h4>
+              <div className="md:ml-4 mt-2">
+                <h3 className="text-[12px] text-[#B0B0B0]">Last Name</h3>
                 {editMode ? (
                   <input
                     type="text"
-                    className="text-[#fff] font-bold border border-[#81712E] text-[13px] mt-1  bg-[transparent] h-[32px] pl-2 rounded-3xl w-[100%] "
-                    autoComplete="on"
-                    value={editedUserDetails.dateOfBirth}
-                    onChange={(e) =>
-                      setEditedUserDetails({
-                        ...editedUserDetails,
-                        dateOfBirth: e.target.value,
-                      })
-                    }
+                    value={editedUserDetails.lastName}
+                    onChange={(e) => setEditedUserDetails({ ...editedUserDetails, lastName: e.target.value })}
+                    className="w-[100%] rounded-md p-2 bg-[#1A1E21] border-[1px] border-[#318AE6]"
                   />
                 ) : (
-                  <p className="text-[15px]">{userDetails.dateOfBirth}</p>
+                  <p className="text-[13px] text-[#fff]">{userDetails.lastName}</p>
                 )}
               </div>
             </div>
-            <div>
-              <h4 className="pt-5 text-[15px] font-[700]">Bank Name</h4>
+
+            <div className="mt-4">
+              <h3 className="text-[12px] text-[#B0B0B0]">Email Address</h3>
+              <p className="text-[13px] text-[#fff]">{userDetails.email}</p>
+            </div>
+
+            <div className="mt-4">
+              <h3 className="text-[12px] text-[#B0B0B0]">Date of Birth</h3>
+              {editMode ? (
+                <input
+                  type="date"
+                  value={editedUserDetails.dateOfBirth}
+                  onChange={(e) => setEditedUserDetails({ ...editedUserDetails, dateOfBirth: e.target.value })}
+                  className="w-[100%] rounded-md p-2 bg-[#1A1E21] border-[1px] border-[#318AE6]"
+                />
+              ) : (
+                <p className="text-[13px] text-[#fff]">{userDetails.dateOfBirth || "Not Provided"}</p>
+              )}
+            </div>
+
+            <div className="mt-4">
+              <h3 className="text-[12px] text-[#B0B0B0]">Bank</h3>
               {editMode ? (
                 <input
                   type="text"
-                  className="text-[#fff] font-bold border border-[#81712E] text-[13px] mt-1  bg-[transparent] h-[32px] pl-2 rounded-3xl w-[100%] "
-                  autoComplete="on"
                   value={editedUserDetails.bank}
-                  onChange={(e) =>
-                    setEditedUserDetails({
-                      ...editedUserDetails,
-                      bank: e.target.value,
-                    })
-                  }
+                  onChange={(e) => setEditedUserDetails({ ...editedUserDetails, bank: e.target.value })}
+                  className="w-[100%] rounded-md p-2 bg-[#1A1E21] border-[1px] border-[#318AE6]"
                 />
               ) : (
-                <p className="text-[14px]">{userDetails.bank}</p>
+                <p className="text-[13px] text-[#fff]">{userDetails.bank || "Not Provided"}</p>
               )}
             </div>
 
-            <div className="w-[100%] ">
-              <h4 className="pt-5 text-[16px] font-[700]">Email</h4>
-              <p className="text-[15px]">{userDetails.email}</p>
+            <div className="mt-4">
+              <h3 className="text-[12px] text-[#B0B0B0]">Account Number</h3>
+              {editMode ? (
+                <input
+                  type="text"
+                  value={editedUserDetails.accountNumber}
+                  onChange={(e) => setEditedUserDetails({ ...editedUserDetails, accountNumber: e.target.value })}
+                  className="w-[100%] rounded-md p-2 bg-[#1A1E21] border-[1px] border-[#318AE6]"
+                />
+              ) : (
+                <p className="text-[13px] text-[#fff]">{userDetails.accountNumber || "Not Provided"}</p>
+              )}
             </div>
+
             {editMode && (
-              <button
-                onClick={handleUpdateDetails}
-                className="bg-[#318AE6] text-[14px]  mt-10  text-white px-4 py-2 rounded"
-              >
-                Update Details
-              </button>
-            )}
-            {account && userDetails && !editMode && (
-              <button
-                onClick={() => setEditMode(true)}
-                className="bg-[#318AE6] text-[14px]  text-white flex items-center  justify-center  px-4 py-2 mt-4 rounded"
-              >
-                <FaEdit className="mr-2" /> Edit Details
-              </button>
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={handleUpdateDetails}
+                  className="bg-[#318AE6] text-white p-2 rounded-md"
+                >
+                  {loading ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
             )}
           </div>
         </div>
       )}
-
-      {pay && <div className="pt-4">Pay</div>}
-      {help && <div className="pt-4">Help</div>}
-      {/* Add Edit icon and handleEdit function */}
     </div>
   );
 };

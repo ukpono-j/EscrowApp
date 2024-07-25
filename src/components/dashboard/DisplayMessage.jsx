@@ -435,6 +435,7 @@ const DisplayMessage = ({ currentChat, currentUser }) => {
             </div>
           </div>
 
+
           <div
             style={{
               overflowY: "scroll",

@@ -24,7 +24,7 @@ const TransactionCreation = () => {
   const toast = useToast();
   const [acceptTransactionModel, setAcceptTransactionModel] = useState(false)
   const [profileImage, setProfileImage] = useState(null);
-
+  const [errors, setErrors] = useState([]);
 
   // Example function to fetch profile image from database
   const fetchProfileImage = () => {
@@ -159,6 +159,16 @@ const TransactionCreation = () => {
       .catch((error) => {
         console.error(error);
         console.log(requestData);
+        if (error.response && error.response.data && error.response.data.errors) {
+          setErrors(error.response.data.errors);
+        } else {
+          toast({
+            title: "Error occurred during transaction",
+            status: "error",
+            duration: 3000,
+            isClosable: true,
+          });
+        }
         // Handle error, for example, display an error message to the user
         toast({
           title: "Error occured during transaction",
