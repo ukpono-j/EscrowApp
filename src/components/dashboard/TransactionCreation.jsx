@@ -7,7 +7,7 @@ import { useToast } from "@chakra-ui/react";
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 import "./NewTransaction.css";
 import { MdClose } from "react-icons/md";
-import defaultProfileImage from '../../assets/test.jpg';
+import defaultProfileImage from '../../assets/profile_icon.png';
 
 const TransactionCreation = () => {
   const [step, setStep] = useState(1); // Track the current step
@@ -25,25 +25,51 @@ const TransactionCreation = () => {
   const [acceptTransactionModel, setAcceptTransactionModel] = useState(false)
   const [profileImage, setProfileImage] = useState(null);
   const [errors, setErrors] = useState([]);
+  const [userDetails, setUserDetails] = useState({});
 
-  // Example function to fetch profile image from database
-  const fetchProfileImage = () => {
-    // Simulate fetching profile image from database
-    const fetchedImage = ''; // Replace with actual logic to fetch image URL from database
-    if (fetchedImage) {
-      setProfileImage(fetchedImage);
-    } else {
-      // Set default profile image if no image fetched
-      setProfileImage(defaultProfileImage);
-    }
-  };
+
+
+  useEffect(() => {
+    const fetchUserDetails = async () => {
+      const token = localStorage.getItem("auth-token");
+      if (token) {
+        axios.defaults.headers.common["auth-token"] = token;
+      }
+
+      try {
+        const response = await axios.get(`${BASE_URL}/api/users/user-details`, {
+          headers: {
+            "auth-token": token,
+          },
+        });
+        setUserDetails(response.data);
+        console.log("User details profile fetched:", response.data); // Log the user details
+      } catch (error) {
+        console.error("Error fetching user details:", error);
+      }
+    };
+
+    fetchUserDetails();
+  }, []);
+
+  // // Example function to fetch profile image from database
+  // const fetchProfileImage = () => {
+  //   // Simulate fetching profile image from database
+  //   const fetchedImage = ''; // Replace with actual logic to fetch image URL from database
+  //   if (fetchedImage) {
+  //     setProfileImage(fetchedImage);
+  //   } else {
+  //     // Set default profile image if no image fetched
+  //     setProfileImage(defaultProfileImage);
+  //   }
+  // };
 
   // Call fetchProfileImage when modal opens (acceptTransactionModel is true)
-  useEffect(() => {
-    if (acceptTransactionModel) {
-      fetchProfileImage();
-    }
-  }, [acceptTransactionModel]);
+  // useEffect(() => {
+  //   if (acceptTransactionModel) {
+  //     fetchProfileImage();
+  //   }
+  // }, [acceptTransactionModel]);
 
 
 
@@ -248,12 +274,26 @@ const TransactionCreation = () => {
               </button>
             </div>
             <div className="flex items-center mt-4">
-              <div className="border h-[40px] w-[40px] flex items-center justify-center rounded-[100%]">
-                {profileImage ? (
+              <div className="h-[40px] w-[40px] flex items-center justify-center rounded-[100%]">
+                {/* {profileImage ? (
                   <img src={profileImage} alt="Profile Icon" className="h-[40px] w-[40px] rounded-full" />
                 ) : (
                   <img src={defaultProfileImage} alt="Default Profile Icon" className="h-[40px] w-[100%] bg-cover bg-center rounded-full" />
-                )}
+                )} */}
+                   <img
+                    src={
+                      userDetails.userId === userDetails._id
+                        ? userDetails.avatarImage
+                          ? `${BASE_URL}/${userDetails.avatarImage}`
+                          : defaultProfileImage
+                        : userDetails.avatarImage
+                          ? `${BASE_URL}/${userDetails.avatarImage}`
+                          : defaultProfileImage
+                    }
+                    alt="Avatar"
+                    onError={(e) => { e.target.onerror = null; e.target.src = DefaultProfile; }}
+                    className="w-full h-full bg-cover rounded-full"
+                  />
               </div>
               <div className="p-2">
                 <p><strong>Name:</strong> {paymentName}</p>

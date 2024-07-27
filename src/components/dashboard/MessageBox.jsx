@@ -189,23 +189,19 @@ const MessageBox = () => {
               <div className="flex items-center">
                 <div className="h-[32px] mr-2 w-[32px] flex items-center justify-center rounded-full">
                   {/* USER'S AVATAR IMAGE */}
-                  {/* <img 
-                    src={msg.userId === userDetails._id ? `${BASE_URL}/images/${userDetails.avatarImage}` : `${BASE_URL}/images/${msg.avatarImage}`}
-                    alt="Avatar"
-                    className="w-[50px] h-[50px] bg-center bg-cover rounded-full"
-                  /> */}
-                <img
+                  <img
                     src={
                       msg.userId === userDetails._id
                         ? userDetails.avatarImage
-                          ? `${BASE_URL}/images/${userDetails.avatarImage}`
+                          ? `${BASE_URL}/${userDetails.avatarImage}`
                           : DefaultProfile
                         : msg.avatarImage
-                        ? `${BASE_URL}/images/${msg.avatarImage}`
-                        : DefaultProfile
+                          ? `${BASE_URL}/${msg.avatarImage}`
+                          : DefaultProfile
                     }
                     alt="Avatar"
-                    className="w-[32px] h-[32px] bg-center bg-cover rounded-full"
+                    onError={(e) => { e.target.onerror = null; e.target.src = DefaultProfile; }}
+                    className="w-full h-full bg-cover rounded-full"
                   />
                 </div>
                 <div className={`message-user ${msg.userId === userDetails._id ? "current-user" : ""}`}>

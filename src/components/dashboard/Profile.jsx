@@ -4,6 +4,8 @@ import { FaEdit, FaUpload } from "react-icons/fa";
 import UserProfile from "../../assets/profile_icon.png";
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 
+
+
 const Profile = () => {
   const [selectedImageFile, setSelectedImageFile] = useState(null);
   const [userDetails, setUserDetails] = useState(null);
@@ -110,11 +112,22 @@ const Profile = () => {
       {userDetails && (
         <div className="flex flex-col md:flex-row items-center mt-6">
           <div className="relative">
-            <img
+            {/* <img
               src={preview || (userDetails.avatarImage ? `${BASE_URL}/${userDetails.avatarImage}` : UserProfile)}
               alt="Profile"
               className="w-32 h-32 rounded-full bg-cover"
-            />
+            /> */}
+            <div className="w-32 h-32 rounded-full overflow-hidden">
+              <img
+                src={preview || `${BASE_URL}/${userDetails.avatarImage}`}
+                alt="Profile"
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.target.onerror = null; // Prevents infinite loop if fallback image fails
+                  e.target.src = UserProfile; // Fallback image
+                }}
+              />
+            </div>
             <label htmlFor="avatar-upload" className="absolute bottom-0 right-0 bg-[#318AE6] p-2 rounded-full cursor-pointer">
               <FaUpload className="text-white" />
             </label>

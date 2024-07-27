@@ -128,6 +128,7 @@ const DisplayTransaction = ({ userResponse }) => {
   //   }
   // };
 
+
   const fetchBuyerWaybillDetails = async (transactionId) => {
     const token = localStorage.getItem("auth-token");
     try {
@@ -288,12 +289,14 @@ const DisplayTransaction = ({ userResponse }) => {
                           <div className="flex items-center justify-between">
                             <p>Status: {transaction.status}</p>
                             <div className=" text-[13px]">
-                              <button className="px-3 mt-3 py-2 bg-[#318AE6] rounded-xl">Fund Account</button>
+                              <button className="px-3 mt-3 py-2 bg-[#318AE6] rounded-xl font-bold">Fund Account</button>
                             </div>
                           </div>
                           <div className="flex items-center justify-between mt-7">
-                            <button className="border px-3 py-3 rounded-xl" onClick={() => handleBuyerWaybillPopup(transaction._id)}>View Waybill Details</button>
-                            <button className="border px-3 py-3 rounded-xl" onClick={() => handleWaybillPopup(transaction._id)}>Input Waybill Details</button>
+                            <button className="px-4 py-2 rounded-xl m-3 font-bold bg-[#318AE6]" onClick={() => handleBuyerWaybillPopup(transaction._id)}>View Waybill</button>
+                            <button className="px-4 py-2 rounded-xl m-3 font-bold bg-[#318AE6]" onClick={() => handleWaybillPopup(transaction._id)}>Input Waybill</button>
+                            
+                            {/* ============================ showWaybillPopup =======================  */}
                             {showWaybillPopup[transaction._id] && (
                               // <Modal>
                               <div style={{ overflowY: "scroll" }} className="modal-container pr-5 pt-5 pb-10 pl-5 fixed z-30 bg-[#111518] left-0 top-0 w-[100%] h-[100vh]">
@@ -349,6 +352,8 @@ const DisplayTransaction = ({ userResponse }) => {
                               </div>
                               // </Modal>
                             )}
+
+                            {/* ============================ buyershowWaybillPopup =======================  */}
 
                             {buyershowWaybillPopup[transaction._id] && (
                               <div style={{ overflowY: "scroll" }} className="modal-container pr-5 pt-5 pb-10 pl-5 fixed z-30 bg-[#111518] left-0 top-0 w-[100%] h-[100vh]">
