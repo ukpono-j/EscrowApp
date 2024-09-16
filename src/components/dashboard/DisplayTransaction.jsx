@@ -141,6 +141,7 @@ const DisplayTransaction = ({ userResponse }) => {
       const imagePath = image ? `${BASE_URL}/${image}` : ""; // Ensure imagePath is correctly formed
       setImageUrl(imagePath);
       console.log(imagePath);
+      console.log(response.data)
       setBuyerWaybillDetails({
         [transactionId]: {
           item,
@@ -221,6 +222,34 @@ const DisplayTransaction = ({ userResponse }) => {
     link.click();
     document.body.removeChild(link);
   };
+
+  // =========================================
+  const cancelTransaction = async (transactionId) => {
+    const token = localStorage.getItem("auth-token");
+    try {
+      const response = await axios.put(`${BASE_URL}/api/transactions/cancel/${transactionId}`, {}, {
+        headers: { "auth-token": token },
+      });
+      toast({
+        title: "Transaction cancelled successfully",
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+
+      // Refresh transactions list after cancellation
+      setTransactions(transactions.filter(transaction => transaction._id !== transactionId));
+    } catch (error) {
+      console.error("Error cancelling transaction", error);
+      toast({
+        title: "Failed to cancel transaction",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
   return (
     <div className="border flex items-center border-black">
       <Sidebar
@@ -280,7 +309,7 @@ const DisplayTransaction = ({ userResponse }) => {
                           <h3>Email: {transaction.email}</h3>
                           <p>Payment Amount: {transaction.paymentAmount}</p>
                           <p>Description: {transaction.paymentDescription}</p>
-                          <p>Created At{transaction.createdAt}</p>
+                          <p>Created At: {transaction.createdAt}</p>
                           <p>Proof of way bill: {transaction.proofOfWaybill}</p>
                           <p>Selected User Type: {transaction.selectedUserType}</p>
                           <p>Payment Bank: {transaction.paymentBank}</p>
@@ -291,11 +320,17 @@ const DisplayTransaction = ({ userResponse }) => {
                             <div className=" text-[13px]">
                               <button className="px-3 mt-3 py-2 bg-[#318AE6] rounded-xl font-bold">Fund Account</button>
                             </div>
+                            {/* cancel transaction button */}
+                            <div>
+                              <button className="px-4 py-2 rounded-xl m-3 font-bold bg-[#318AE6]" onClick={() => cancelTransaction(transaction._id)}>
+                                Cancel Transaction
+                              </button>
+                            </div>
                           </div>
                           <div className="flex items-center justify-between mt-7">
                             <button className="px-4 py-2 rounded-xl m-3 font-bold bg-[#318AE6]" onClick={() => handleBuyerWaybillPopup(transaction._id)}>View Waybill</button>
                             <button className="px-4 py-2 rounded-xl m-3 font-bold bg-[#318AE6]" onClick={() => handleWaybillPopup(transaction._id)}>Input Waybill</button>
-                            
+
                             {/* ============================ showWaybillPopup =======================  */}
                             {showWaybillPopup[transaction._id] && (
                               // <Modal>
