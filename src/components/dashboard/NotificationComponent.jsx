@@ -44,7 +44,7 @@ const NotificationComponent = () => {
       <h1 className="md:text-[24px] text-[20px] font-[600]">Notification</h1>
       {notifications.map((notification) => (
         <div
-          key={notification.id}
+          key={notification._id}
           className="mt-2  w-[100%] h-[auto] relative flex justify-between pl-3  pt-2 pb-2 pr-3  rounded-xl bg-[#FFFFFF]"
         >
           <div>
