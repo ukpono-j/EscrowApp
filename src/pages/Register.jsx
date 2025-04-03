@@ -143,7 +143,7 @@ const Register = () => {
           </div>
           <button
             type="submit"
-            to=""
+            
             className="w-[100%] flex  items-center justify-center  h-[50px] text-[14px] border-2   border-[#2D6B76] hover:border hover:border-[#81712E]  rounded-xl mt-5  text-[#0F0821] hover:bg-[#81712E] hover:text-[#fff] text-[#fff] bg-[#072534]"
           >
             Register

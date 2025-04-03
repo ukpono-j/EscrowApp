@@ -11,7 +11,7 @@ import { useNavigate } from "react-router-dom"; // Import useNavigate
 import { FaFacebookMessenger } from "react-icons/fa6";
 import { BsChatFill } from "react-icons/bs";
 import { MdClose } from "react-icons/md";
-
+import ConfirmTransactionModal from './ConfirmTransactionModal';
 
 
 const DisplayTransaction = ({ userResponse }) => {
@@ -33,6 +33,10 @@ const DisplayTransaction = ({ userResponse }) => {
   });
   const [buyerWaybillDetails, setBuyerWaybillDetails] = useState({});
   const [imageUrl, setImageUrl] = useState(""); // Add state for imageUrl
+  const [cancelTransactionModel, setCancelTransactionModel] = useState(false)
+  const [confirmPayment, setConfirmPayment] = useState(false)
+  const [modalVisible, setModalVisible] = useState(false);
+    const [selectedTransactionId, setSelectedTransactionId] = useState(null);
 
 
 
@@ -250,6 +254,49 @@ const DisplayTransaction = ({ userResponse }) => {
     }
   };
 
+  const completeTransaction = async (transactionId) => {
+    const token = localStorage.getItem("auth-token");
+    try {
+      const response = await axios.put(`${BASE_URL}/api/transactions/complete-transaction/${transactionId}`, {
+        headers: { "auth-token": token },
+      });
+
+      // Handle the response
+      console.log('Transaction completed:', response.data);
+      toast({
+        title: "Transaction completed successfully",
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+
+      // Refresh transactions list after cancellation
+      setTransactions(transactions.filter(transaction => transaction._id !== transactionId));
+    } catch (error) {
+      console.error('Error completing transaction:', error);
+      toast({
+        title: "Failed to complete transaction",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
+
+  const handleDoneClick = (transactionId) => {
+    setSelectedTransactionId(transactionId);
+    setModalVisible(true);
+};
+
+// const handleConfirm = (transactionId) => {
+//     // Handle transaction completion logic here
+//     console.log(`Transaction ${transactionId} completed!`);
+//     setModalVisible(false);
+// };
+
+
+
   return (
     <div className="border flex items-center border-black">
       <Sidebar
@@ -315,21 +362,30 @@ const DisplayTransaction = ({ userResponse }) => {
                           <p>Payment Bank: {transaction.paymentBank}</p>
                           <p>Transaction ID: {transaction.transactionId}</p>
                           <p>Participants: {transaction.participants[0]}</p>
-                          <div className="flex items-center justify-between">
+                          <div className="">
                             <p>Status: {transaction.status}</p>
-                            <div className=" text-[13px]">
-                              <button className="px-3 mt-3 py-2 bg-[#318AE6] rounded-xl font-bold">Fund Account</button>
-                            </div>
                             {/* cancel transaction button */}
+
+                          </div>
+                          <div className="flex items-center justify-between mt-4">
+                            {/* <button className="px-4 py-2 rounded-xl m-3 font-bold bg-[#318AE6]" onClick={() => handleBuyerWaybillPopup(transaction._id)}>View Waybill</button>
+                            <button className="px-4 py-2 rounded-xl m-3 font-bold bg-[#318AE6]" onClick={() => handleWaybillPopup(transaction._id)}>Input Waybill</button> */}
                             <div>
-                              <button className="px-4 py-2 rounded-xl m-3 font-bold bg-[#318AE6]" onClick={() => cancelTransaction(transaction._id)}>
+                              <button className="px-3 py-2 rounded-xl font-bold bg-[#318AE6]" onClick={() => cancelTransaction(transaction._id)}>
                                 Cancel Transaction
                               </button>
                             </div>
-                          </div>
-                          <div className="flex items-center justify-between mt-7">
-                            <button className="px-4 py-2 rounded-xl m-3 font-bold bg-[#318AE6]" onClick={() => handleBuyerWaybillPopup(transaction._id)}>View Waybill</button>
-                            <button className="px-4 py-2 rounded-xl m-3 font-bold bg-[#318AE6]" onClick={() => handleWaybillPopup(transaction._id)}>Input Waybill</button>
+
+                            <button
+                              className="px-3 py-2 bg-[#318AE6] rounded-lg font-bold"
+                              onClick={() =>
+                                transaction.selectedUserType === "seller"
+                                  ? handleWaybillPopup(transaction._id)
+                                  : handleBuyerWaybillPopup(transaction._id)
+                              }
+                            >
+                              {transaction.selectedUserType === "seller" ? "Input Waybill" : "View Waybill"}
+                            </button>
 
                             {/* ============================ showWaybillPopup =======================  */}
                             {showWaybillPopup[transaction._id] && (
@@ -428,12 +484,41 @@ const DisplayTransaction = ({ userResponse }) => {
                             )}
 
                           </div>
+                          {/* ======================== */}
+                          <div className="flex items-center justify-between">
+                          <button className="px-3 mt-3 py-2 bg-[#318AE6] rounded-xl font-bold" onClick={() => handleDoneClick(transaction._id)}>Complete Transaction</button>
+                          <div className=" text-[13px]">
+                              <button className="px-3 mt-3 py-2 bg-[#318AE6] rounded-xl font-bold">Fund Account</button>
+                            </div>
+                          </div>
+
+                          {/* {
+                            doneModel && (
+                              <>
+                              <h1>are you sure you want to complete this transaction</h1>
+                              <button>No</button>
+                                <button
+                                  onClick={() => completeTransaction(transaction._id)} // Call the completeTransaction function
+                                  className="mt-3 p-2 bg-[#318AE6] rounded-lg font-bold"
+                                >
+                                  Yes
+                                </button>
+
+                              </>
+                            )
+                          } */}
                         </div>
                       ))
                   }
                 </div>
               )}
             </div>
+            <ConfirmTransactionModal
+                show={modalVisible}
+                onClose={() => setModalVisible(false)}
+                onConfirm={completeTransaction}
+                transactionId={selectedTransactionId}
+            />
           </div>
         </div>
       </div>

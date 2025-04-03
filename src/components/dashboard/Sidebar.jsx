@@ -5,7 +5,7 @@ import { useToast } from "@chakra-ui/react";
 import axios from "axios";
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 import { BsChevronDown } from "react-icons/bs";
-import Logo from "../../assets/logo3.png"
+import Logo from "../../assets/logo_preview.png"
 
 
 const Sidebar = () => {
@@ -84,7 +84,7 @@ const Sidebar = () => {
     <div className="border text-[13px] fixed md:flex hidden md:flex-col left-0 top-0 pl-3  pr-4 pt-3 pb-10 border-black w-[100%] font-[Poppins] text-[#fff] bg-[#111518] min-h-[100vh]">
       <h1 className="md:text-[23px] text-[20px] font-bold">
         <Link to="/dashboard">
-        <img src={Logo} alt="Logo Detail"  className="w-[170px]"/>
+        <img src={Logo} alt="Logo Detail"  className="w-[230px]"/>
         </Link>
       </h1>
       <h3 className="mt-10">

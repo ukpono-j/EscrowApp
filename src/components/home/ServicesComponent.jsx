@@ -8,19 +8,17 @@ import "./ServicesComponent.css";
 
 const ServicesComponent = () => {
   return (
-    <div className="h-[auto]  services   md:pl-20 pl-5  pr-5  md:pr-20 md:pt-20 pt-8 pb-8   md:pb-20 text-[#FEFEFF] font-[Poppins] w-[100%]">
+    <div className="h-[auto] services md:pl-20 pl-5 font-[Inter]  pr-5  md:pr-20 md:pt-20 pt-8 pb-8   md:pb-20 text-[#FEFEFF] w-[100%]">
       <div className="h-[auto]">
-        <div className="service_title m-auto  md:w-[560px] text-center font-[900] md:text-left   md:text-[50px] leading-[44px] md:leading-[60px]  text-[40px]">
+        <div className="service_title m-auto md:w-[560px] text-center font-[900] md:text-left   md:text-[50px] leading-[44px] md:leading-[60px]  text-[40px]">
           What you order has to be what you get!
         </div>
         {/* === buyer */}
         <div className="md:w-[80%]   h-[auto] sm:mt-16 mt-14  md:flex items-center justify-between  mb-6 ml-auto mr-auto">
           <div className=" md:w-[380px] h-[auto] flex flex-col md:items-start items-center md:text-start text-center">
-            <h1 className="font-bold text-[34px]">Buyer protection</h1>
+            <h1 className="font-bold text-[34px] service_sub_title">Buyer protection</h1>
             <p className="text-[15px] mt-2 ">
-              The buyer’s funds are held in Bondly’s custody & won’t be released
-              to the seller until buyer have received the goods and are happy
-              with the transaction.
+              Your money stays secure until you confirm that the goods or services meet your expectations. We hold funds in escrow and only release them when you’re completely satisfied. No more fears of paying for subpar or undelivered products.
             </p>
             <Link
               to="/register"
@@ -47,11 +45,9 @@ const ServicesComponent = () => {
             />
           </div>
           <div className=" md:w-[380px] h-[auto] flex flex-col md:items-start items-center md:text-start text-center">
-            <h1 className="font-bold text-[34px]">Seller protection</h1>
+            <h1 className="font-bold text-[34px] service_sub_title">Seller protection</h1>
             <p className="text-[15px] mt-2 ">
-              We ensure the funds have been secured, notify you so you can ship
-              the item to the buyer & distribute the cash to you after the buyer
-              receives and accepts the goods.
+              Ship with confidence knowing that funds are secured before you send the product. Once the buyer confirms receipt, you get paid—guaranteed.
             </p>
             <Link
               to="/register"
@@ -63,8 +59,8 @@ const ServicesComponent = () => {
         </div>
         {/* ======== Fraud Protection */}
         <div className="md:w-[80%]  h-[auto] mt-20   md:flex items-center justify-between  mb-6 ml-auto mr-auto">
-        <div className=" md:w-[300px] h-[auto] flex flex-col md:items-start items-center md:text-start text-center">
-            <h1 className="font-bold text-[34px]">Fraud protection</h1>
+          <div className=" md:w-[300px] h-[auto] flex flex-col md:items-start items-center md:text-start text-center">
+            <h1 className="font-bold text-[34px] service_sub_title">Fraud protection</h1>
             <p className="text-[15px] mt-2 ">
               Transactions are domiciled on Bondly’s wallets and payment portal
               to ensure that all transaction are verified as we work closely

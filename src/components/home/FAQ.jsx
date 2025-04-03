@@ -44,8 +44,8 @@ const FAQ = () => {
   };
 
   return (
-    <div className="h-[auto] text-center md:text-start  faq bg-[#062333]   md:flex md:flex-row flex-col-reverse flex  w-[100%]  text-[#fff]  pr-5  pl-5  md:pl-[80px] md:pr-[80px] pt-14  pb-14   ">
-      <div className="border md:p-10 p-3  w-[100%] text-left  md:mt-0 mt-14  h-[auto] moving bg-[#fff] rounded-3xl  ">
+    <div className="h-[auto] font-[Inter] text-center md:text-start faq md:flex md:flex-row flex-col-reverse flex  w-[100%] pr-5  pl-5  md:pl-[80px] md:pr-[80px] pt-14  pb-14   ">
+      <div className="border md:p-10 p-3  w-[100%] text-left  md:mt-0 mt-14  h-[auto]  bg-[#fff] rounded-3xl  ">
         {/* Accordion */}
         {accordionData.map((item) => (
           <div className="pt-3 pb-3 pl-3 pr-3" key={item.id}>
@@ -63,26 +63,28 @@ const FAQ = () => {
               )}
             </div>
             {openAccordionId === item.id && (
-              <div className=" text-[14px] mt-2 font-[300]  text-[#97A9A8]">
+              <div className=" text-[14px] mt-2 font-[300] ">
                 <p>{item.content}</p>
               </div>
             )}
           </div>
         ))}
       </div>
-      <div className="w-[100%] font-[Poppins]  h-[auto] md:ml-5 md:mr-5 md:mt-5 fg md:mb-5">
-        <h1 className="font-bold md:text-left   md:text-[50px] leading-[44px] md:leading-[60px]  text-[40px]">
-          FREQUENTLY ASKED QUESTIONS
+      <div className="w-[100%] h-[auto] md:ml-5 md:mr-5 md:mt-5 fg md:mb-5">
+        <h1 className="font-bold text-[#01003A]  md:text-left Uppercase  md:text-[50px] leading-[44px] md:leading-[60px]  text-[40px]">
+          Frequently Asked Questions
         </h1>
-        <p className=" text-[14px] mt-4">
+        <p className=" text-[14px] text-[#01003A] mt-4">
           MiddleMan is an escrow app designed to bring trust and transparency to
           your transactions. Acting as a reliable intermediary, MiddleMan
           safeguards your transactions, ensuring that both parties fulfill their
           commitments before the funds are released.
         </p>
-        <button className="outine-none w-[auto] faq  mt-5  start_btn  pl-7 pr-7  text-[14px] h-[auto] pt-3 pb-3  text-[#fff] font-bold flex items-center justify-center   rounded-[50px]  border-2 border-[#81712E]">
+        <div className="flex justify-center md:justify-start">
+        <button className="outine-none text-white w-[auto] faq  mt-5  start_btn  pl-7 pr-7  text-[14px] h-[auto] pt-3 pb-3 font-bold flex items-center justify-center   rounded-[50px]  border-2 bg-[#FF5000] border-[#FF5000]">
           Get Started
         </button>
+        </div>
       </div>
     </div>
   );

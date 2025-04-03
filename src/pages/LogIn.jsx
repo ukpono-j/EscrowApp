@@ -29,9 +29,17 @@ const Login = () => {
 
         // Set the authentication token in Axios headers
         axios.defaults.headers.common["auth-token"] = token;
-        console.log("token", token);
+        // console.log("token", token);
+        toast({
+          title: "Login Successful.",
+          description: "Welcome back!",
+          status: "success",
+          duration: 5000,  // Reduced duration for quicker disappearance
+          isClosable: true,
+        });
         // Redirect the user to the dashboard
         navigate("/dashboard");
+    
       } else {
         // Handle invalid credentials
         toast({

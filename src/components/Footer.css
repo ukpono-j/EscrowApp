@@ -1,15 +1,6 @@
 .footer {
-  background: radial-gradient(
-    53.25% 96.6% at 53.86% 100.69%,
-    #136165 0.82%,
-    #0b3b48 30.73%,
-    #072a36 64.58%,
-    rgba(3, 21, 33, 0) 100%
-  );
+  background: linear-gradient(135deg, #04061c, #01003A);
 }
-.footer_title{
-  background: linear-gradient(-40deg, #db9b1e 0%, #C0D4C9 100%);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+.footer_logo, .newsletter_content input{
+  font-family: "Bricolage Grotesque", sans-serif;
 }

@@ -17,16 +17,17 @@ const Footer = () => {
   return (
     <div className="footer">
       <NewsLetter />
-      <div className="font-[Poppins]  text-[#fff] list-none mb-[-30px] pt-20 pb-4    md:pl-20  md:pr-20 pl-5 pr-5  h-[auto] flex flex-col  items-center justify-center  w-[100%]">
-        <div className=" sm:flex sm:flex-col  h-[auto]   sm:justify-center sm:items-center    w-[100%] ">
+      <div className="font-[Inter] text-[#fff] list-none mb-[-30px] pt-20 pb-4    md:pl-20  md:pr-20 pl-5 pr-5  h-[auto] flex flex-col  items-center justify-center  w-[100%]">
+        <div className=" sm:flex sm:flex-col h-[auto] sm:justify-center sm:items-center    w-[100%] ">
           <div className=" sm:w-[400px] text-center  sm:pl-0  sm:pr-0  pl-6  pr-6  h-[auto]">
             <Link
               TO="/"
-              className="sm:text-[34px] flex items-center justify-center mb-4 text-[28px] font-bold uppercase footer_title  tracking-wider"
+              className="sm:text-[34px] flex items-center justify-center mb-4 text-[28px] font-bold footer_title  tracking-wider"
               onClick={() => scrollTo("home")}
             >
               {/* MiddleMan */}
-              <img src={Logo} alt="Logo Detail"  className="w-[200px]"/>
+              <h1 className="footer_logo">Safesylo</h1>
+              {/* <img src={Logo} alt="Logo Detail"  className="w-[200px]"/> */}
             </Link>
             <div className=" text-[15px] mt-6  space-x-6 flex items-center justify-between">
               <ScrollLink
@@ -66,13 +67,13 @@ const Footer = () => {
 
           <div className="w-[100%] mt-5  border-b flex items-center  justify-between  border-t mt-3 ">
              <div className="social_icon_container flex items-center ">
-               <div className="border sm:h-[39px] h-[32px] w-[32px] sm:w-[39px] sm:m-3 m-2   flex items-center justify-center  rounded-full bg-[#fff]">
+               <div className="border sm:h-[39px] h-[32px] w-[32px] sm:w-[39px] sm:m-3 m-2 flex items-center justify-center  rounded-full bg-[#fff]">
                 <FaFacebookF className="text-[#000]  sm:text-[23px] text-[19px]" />
                </div>
-               <div className="border sm:h-[39px] h-[32px] w-[32px] sm:w-[39px] sm:m-3 m-2   flex items-center justify-center  rounded-full bg-[#fff]">
+               <div className="border sm:h-[39px] h-[32px] w-[32px] sm:w-[39px] sm:m-3 m-2 flex items-center justify-center  rounded-full bg-[#fff]">
                 <FaTwitter  className="text-[#000]  sm:text-[23px] text-[19px]" />
                </div>
-               <div className="border sm:h-[39px] h-[32px] w-[32px] sm:w-[39px] sm:m-3 m-2   flex items-center justify-center  rounded-full bg-[#fff]">
+               <div className="border sm:h-[39px] h-[32px] w-[32px] sm:w-[39px] sm:m-3 m-2 flex items-center justify-center  rounded-full bg-[#fff]">
                 <FaInstagram  className="text-[#000]  sm:text-[23px] text-[19px]" />
                </div>
              </div>

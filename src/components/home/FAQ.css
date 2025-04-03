@@ -1,8 +1,9 @@
 .faq .fg  h1{
-    background: linear-gradient(-40deg, #db9b1e 0%, #C0D4C9 100%);
+    /* background: linear-gradient(-40deg, #db9b1e 0%, #C0D4C9 100%);
     background-clip: text;
     -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    -webkit-text-fill-color: transparent; */
+    font-family: "Bricolage Grotesque", sans-serif;
 }
 
 .faq_button:before{

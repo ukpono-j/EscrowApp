@@ -1,6 +1,13 @@
 .service_title{
-    background: linear-gradient(-40deg, #db9b1e 0%, #C0D4C9 100%);
+    /* background: linear-gradient(-40deg, #db9b1e 0%, #C0D4C9 100%);
     background-clip: text;
     -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    -webkit-text-fill-color: transparent; */
+    font-family: "Bricolage Grotesque", sans-serif;
+}
+.services{
+    background: linear-gradient(135deg, #04061c, #01003A);
+}
+.service_sub_title{
+    font-family: "Bricolage Grotesque", sans-serif;
 }
