@@ -36,7 +36,7 @@ const DisplayTransaction = ({ userResponse }) => {
   const [cancelTransactionModel, setCancelTransactionModel] = useState(false)
   const [confirmPayment, setConfirmPayment] = useState(false)
   const [modalVisible, setModalVisible] = useState(false);
-    const [selectedTransactionId, setSelectedTransactionId] = useState(null);
+  const [selectedTransactionId, setSelectedTransactionId] = useState(null);
 
 
 
@@ -62,6 +62,26 @@ const DisplayTransaction = ({ userResponse }) => {
     };
     fetchTransactions();
   }, []);
+
+  useEffect(() => {
+    const interval = setInterval(fetchTransactionData, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchTransactionData = async () => {
+    try {
+      const token = localStorage.getItem("auth-token");
+      const res = await axios.get(`${BASE_URL}/api/transactions/get-transaction`, {
+        headers: { "auth-token": token }
+      });
+      setTransactions(res.data); // Or however you're storing the data
+    } catch (err) {
+      console.error("Fetch error:", err);
+    }
+  };
+
+
+
   const handleShowProfile = () => {
     setShowToggleContainer(false);
     setShowProfile(true);
@@ -110,28 +130,6 @@ const DisplayTransaction = ({ userResponse }) => {
     setBuyerShowWaybillPopup({ [transactionId]: false });
     console.log("Close waybillDetails")
   };
-  // const fetchBuyerWaybillDetails = async (transactionId) => {
-  //   const token = localStorage.getItem("auth-token");
-  //   try {
-  //     const response = await axios.get(`${BASE_URL}/api/transactions/${transactionId}`, {
-  //       headers: {
-  //         "auth-token": token,
-  //       },
-  //     });
-  //     const imageUrl = `${BASE_URL}/${response.data.waybillDetails?.image}`;
-  //     console.log("Fetched Image URL:", imageUrl); // Debugging statement
-  //     setBuyerWaybillDetails({ [transactionId]: response.data.waybillDetails || null });
-  //   } catch (error) {
-  //     console.error("Error fetching waybill details:", error);
-  //     toast({
-  //       title: "Error fetching waybill details",
-  //       status: "error",
-  //       duration: 3000,
-  //       isClosable: true,
-  //     });
-  //   }
-  // };
-
 
   const fetchBuyerWaybillDetails = async (transactionId) => {
     const token = localStorage.getItem("auth-token");
@@ -287,13 +285,165 @@ const DisplayTransaction = ({ userResponse }) => {
   const handleDoneClick = (transactionId) => {
     setSelectedTransactionId(transactionId);
     setModalVisible(true);
-};
+  };
 
-// const handleConfirm = (transactionId) => {
-//     // Handle transaction completion logic here
-//     console.log(`Transaction ${transactionId} completed!`);
-//     setModalVisible(false);
-// };
+  // const handleConfirm = (transactionId) => {
+  //     // Handle transaction completion logic here
+  //     console.log(`Transaction ${transactionId} completed!`);
+  //     setModalVisible(false);
+  // };
+  const handleConfirm = async (transactionId) => {
+    try {
+      const token = localStorage.getItem("auth-token");
+
+      const response = await axios.post(
+        `${BASE_URL}/api/transactions/confirm`,
+        { transactionId },
+        { headers: { "auth-token": token } }
+      );
+
+      alert("Confirmation submitted!");
+      // Optional: Refresh data or socket update here
+    } catch (error) {
+      console.error("Confirmation error:", error);
+      alert("Could not complete transaction. Please try again.");
+    }
+  };
+
+
+  // const handleFund = async (transaction) => {
+  //   // Log the transaction to make sure it's correct
+  //   console.log("Initiating payment with transaction:", transaction);
+
+  //   // Ensure we're using the correct fields from the transaction object
+  //   const { paymentAmount, transactionId, email, paymentBank, paymentName, paymentDescription } = transaction;
+
+  //   // Define the request data for initiating payment
+  //   const requestData = {
+  //     amount: paymentAmount,        // Use paymentAmount for the transaction
+  //     transactionId: transactionId, // Use transactionId for tracking
+  //     email: email,                 // Use email (for customer info)
+  //     paymentBank: paymentBank,     // Include paymentBank if necessary
+  //     paymentName: paymentName,     // Include paymentName if necessary
+  //     paymentDescription: paymentDescription // Optional: if necessary for the transaction
+  //   };
+
+  //   // Get the authentication token
+  //   const token = localStorage.getItem("auth-token");
+
+  //   try {
+  //     // Make the POST request to the server
+  //     const response = await axios.post(
+  //       `${BASE_URL}/api/transactions/initiate`, // Backend endpoint
+  //       requestData, // Data to send to the backend
+  //       {
+  //         headers: {
+  //           "auth-token": token // Pass the token if needed for authorization
+  //         }
+  //       }
+  //     );
+
+  //     // If Paystack authorization URL is returned, redirect to Paystack for payment
+  //     if (response.data && response.data.authorization_url) {
+  //       window.location.href = response.data.authorization_url; // Redirect to Paystack
+  //     } else {
+  //       console.error("No authorization URL found in the response");
+  //       alert("Error: Could not find the payment link.");
+  //     }
+  //   } catch (error) {
+  //     // Handle errors, including network issues
+  //     console.error("Error initiating payment:", error);
+  //     alert("There was an issue processing the payment. Please try again.");
+  //   }
+  // };
+  const handleFund = async (transaction) => {
+    console.log("Initiating payment with transaction:", transaction);
+  
+    // Destructure necessary properties from transaction
+    const {
+      _id,  // This is the MongoDB document ID
+      paymentAmount,
+      email,
+      paymentBank,
+      paymentName,
+      paymentDescription,
+    } = transaction;
+  
+    // Prepare request data - using _id as the transactionId
+    const requestData = {
+      amount: paymentAmount,
+      transactionId: _id,  // Use the MongoDB document ID
+      email,
+      paymentBank,
+      paymentName,
+      paymentDescription,
+    };
+  
+    const token = localStorage.getItem("auth-token");
+  
+    try {
+      console.log("Sending payment request with data:", requestData);
+      
+      const response = await axios.post(
+        `${BASE_URL}/api/transactions/initiate`,
+        requestData,
+        {
+          headers: {
+            "auth-token": token,
+          },
+        }
+      );
+  
+      console.log("Payment initiation response:", response.data);
+  
+      if (response.data && response.data.authorization_url) {
+        // Redirect to Paystack payment page
+        window.location.href = response.data.authorization_url;
+  
+        // Set up polling to check payment status
+        const interval = setInterval(async () => {
+          try {
+            const statusRes = await axios.get(
+              `${BASE_URL}/api/transactions/check-funded?transactionId=${_id}`,
+              { headers: { "auth-token": token } }
+            );
+  
+            console.log("Payment status check:", statusRes.data);
+  
+            if (statusRes.data.funded) {
+              clearInterval(interval);
+              alert("Payment confirmed!");
+              
+              // Update the transactions state
+              setTransactions(prev =>
+                prev.map(tx =>
+                  tx._id === _id ? { ...tx, funded: true } : tx
+                )
+              );
+            }
+          } catch (err) {
+            console.error("Polling error:", err);
+            // Continue polling despite errors
+          }
+        }, 3000); // Check every 3 seconds
+      } else {
+        console.error("No authorization URL in response:", response.data);
+        alert("Error: Could not find the payment link.");
+      }
+    } catch (error) {
+      console.error("Error initiating payment:", error);
+      
+      // Provide a helpful error message
+      let errorMessage = "There was an issue processing the payment. Please try again.";
+      
+      if (error.response && error.response.data && error.response.data.message) {
+        errorMessage = error.response.data.message;
+      }
+      
+      alert(errorMessage);
+    }
+  };
+
 
 
 
@@ -303,6 +453,7 @@ const DisplayTransaction = ({ userResponse }) => {
         onShowProfile={handleShowProfile}
         onShowToggleComponent={handleMyTransaction}
       />
+
       <div
         style={{ overflowY: "scroll" }}
         className="layout bg-[#1A1E21] text-[#E4E4E4]  fixed right-0 top-0 w-[100%]  md:w-[83.2%] h-[100vh]"
@@ -486,9 +637,28 @@ const DisplayTransaction = ({ userResponse }) => {
                           </div>
                           {/* ======================== */}
                           <div className="flex items-center justify-between">
-                          <button className="px-3 mt-3 py-2 bg-[#318AE6] rounded-xl font-bold" onClick={() => handleDoneClick(transaction._id)}>Complete Transaction</button>
-                          <div className=" text-[13px]">
-                              <button className="px-3 mt-3 py-2 bg-[#318AE6] rounded-xl font-bold">Fund Account</button>
+                            {/* <button className="px-3 mt-3 py-2 bg-[#318AE6] rounded-xl font-bold" onClick={() => handleDoneClick(transaction._id)}>Complete Transaction</button> */}
+                            <button
+                              className="px-3 mt-3 py-2 bg-[#318AE6] rounded-xl font-bold"
+                              disabled={transaction.buyerConfirmed || transaction.sellerConfirmed}
+                              onClick={() => handleConfirm(transaction._id)}
+                            >
+                              {
+                                transaction.buyerConfirmed && transaction.sellerConfirmed
+                                  ? "Completed"
+                                  : transaction.userId === transaction.userId && (transaction.buyerConfirmed || transaction.sellerConfirmed)
+                                    ? "Pending"
+                                    : "Complete Transaction"
+                              }
+                            </button>
+                            <div className=" text-[13px]">
+                              <button
+                                className="px-3 mt-3 py-2 bg-[#318AE6] rounded-xl font-bold"
+                                onClick={() => handleFund(transaction)}
+                                disabled={transaction.funded}
+                              >
+                                {transaction.funded ? "Funded" : "Fund Account"}
+                              </button>
                             </div>
                           </div>
 
@@ -514,10 +684,10 @@ const DisplayTransaction = ({ userResponse }) => {
               )}
             </div>
             <ConfirmTransactionModal
-                show={modalVisible}
-                onClose={() => setModalVisible(false)}
-                onConfirm={completeTransaction}
-                transactionId={selectedTransactionId}
+              show={modalVisible}
+              onClose={() => setModalVisible(false)}
+              onConfirm={completeTransaction}
+              transactionId={selectedTransactionId}
             />
           </div>
         </div>
