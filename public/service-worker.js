@@ -15,13 +15,36 @@
 //     })
 //   );
 // });
+// const CACHE_NAME = "react-pwa-cache-v1";
+
+// self.addEventListener("install", (event) => {
+//   self.skipWaiting();
+//   event.waitUntil(
+//     caches.open(CACHE_NAME).then((cache) => {
+//       return cache.addAll(["/"]); // Keep it minimal
+//     })
+//   );
+// });
+
+// self.addEventListener("fetch", (event) => {
+//   event.respondWith(
+//     caches.match(event.request).then((response) => {
+//       return (
+//         response ||
+//         fetch(event.request).catch(() =>
+//           caches.match("/") // fallback to home if offline
+//         )
+//       );
+//     })
+//   );
+// });
 const CACHE_NAME = "react-pwa-cache-v1";
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(["/"]); // Keep it minimal
+      return cache.addAll(["/"]); // Cache the homepage
     })
   );
 });
@@ -31,9 +54,7 @@ self.addEventListener("fetch", (event) => {
     caches.match(event.request).then((response) => {
       return (
         response ||
-        fetch(event.request).catch(() =>
-          caches.match("/") // fallback to home if offline
-        )
+        fetch(event.request).catch(() => caches.match("/")) // Fallback to homepage if offline
       );
     })
   );

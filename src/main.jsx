@@ -1,3 +1,16 @@
+if (typeof window !== "undefined" && !window.ethereum) {
+  Object.defineProperty(window, "ethereum", {
+    value: {
+      request: async ({ method, params }) => {
+        console.log(`Ethereum method called: ${method}`, params);
+        return null;
+      },
+    },
+    writable: false,
+  });
+}
+
+
 import React from "react";
 import ReactDOM from "react-dom";
 import App from "./App.jsx";
@@ -24,3 +37,10 @@ if ('serviceWorker' in navigator) {
             .catch(err => console.log('Service Worker registration failed:', err));
     });
 }
+
+// if (!window.ethereum) {
+//   Object.defineProperty(window, "ethereum", {
+//     value: yourEthereumObject,
+//     writable: false
+//   });
+// }
