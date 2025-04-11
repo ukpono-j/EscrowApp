@@ -30,7 +30,7 @@ const About = () => {
   return (
     <div
       id="about"
-      className={`w-[100%] pt-14 font-[Inter] text-[#01003A] bg-[#f7f7f7] md:pl-20 pl-5 md:pb-14  pr-5  md:pr-20 justify-between h-[auto] flex md:flex-row  flex-col-reverse  items-center ${isScrolling ? "fade-in" : "fade-out"
+      className={`w-[100%] pt-14 font-[Inter] text-[#192331] bg-[#f7f7f7] md:pl-20 pl-5 md:pb-14  pr-5  md:pr-20 justify-between h-[auto] flex md:flex-row  flex-col-reverse  items-center ${isScrolling ? "fade-in" : "fade-out"
         }`}
     >
       <div
@@ -65,7 +65,7 @@ const About = () => {
        <div className="flex justify-center md:justify-start">
        <Link
           to="/login"
-          className="outine-none bg-[#FF5000] max-w-[220px] mt-6 start_btn  pl-7 pr-7  text-[14px] h-[auto] pt-3 pb-3  text-[#fff]  flex items-center justify-center   rounded-[50px]  border-2 border-[#FF5000]"
+          className="outine-none bg-[#B38939] max-w-[220px] mt-6 start_btn  pl-7 pr-7  text-[14px] h-[auto] pt-3 pb-3  text-[#fff]  flex items-center justify-center   rounded-[50px]  border-2 border-[#B38939]"
         >
           Start Transactions
         </Link>

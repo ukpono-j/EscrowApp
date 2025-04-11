@@ -49,6 +49,7 @@ function App() {
           });
         });
       }
+      console.log('PWA install prompt captured but not shown');
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -80,7 +81,7 @@ function App() {
         <Route path="/chat/:chatroomId" element={<PrivateRoute element={MessageBox} />} />
       </Routes>
 
-      <button
+      {/* <button
         id="install-btn"
         style={{
           display: 'none',
@@ -97,7 +98,7 @@ function App() {
         }}
       >
         Install App
-      </button>
+      </button> */}
     </>
   );
 }

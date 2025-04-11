@@ -28,14 +28,14 @@ const Hero = () => {
         <div className="flex items-center justify-center  md:justify-start  mt-10 ">
           <Link
             to="/login"
-            className="outine-none font-[Poppins]   w-[auto] start_btn  pl-7 pr-7  text-[14px] h-[auto] pt-3 pb-3  text-[#fff]  flex items-center justify-center   rounded-[50px] bg-[#FF5000]  border-2 border-[#FF5000]"
+            className="outine-none font-[Poppins]   w-[auto] start_btn  pl-7 pr-7  text-[14px] h-[auto] pt-3 pb-3  text-[#fff]  flex items-center justify-center   rounded-[50px] bg-[#B38939]  border-2 border-[#B38939]"
           >
             Start Transactions
           </Link>
         </div>
       </div>
       <div className="md:w-[50%] w-[100%]  mt-7  md:mt-0 relative  flex  h-[auto]">
-        <div className="bounce rounded-xl p-2 absolute max-w-[200px] h-[auto] flex items-center justify-center  bg-[#01003A] m-auto z-10 top-[50%] left-[34%]">
+        <div className="bounce rounded-xl p-2 absolute max-w-[200px] h-[auto] flex items-center justify-center  bg-[#192331] m-auto z-10 top-[50%] left-[34%]">
           {/* <div className="">
             <MdGroups2 className="text-[60px] text-[#010066]" />
           </div> */}

@@ -5,28 +5,33 @@ const BASE_URL = import.meta.env.VITE_BASE_URL;
 import "./MainJoinTransaction.css";
 
 const MainJoinTransaction = () => {
-  const [link, setLink] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
   const [transactionId, setTransactionId] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const [responseMessage, setResponseMessage] = useState("");
+  const [messageType, setMessageType] = useState(""); // "success" or "error"
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (responseMessage) {
       const timeoutId = setTimeout(() => {
         setResponseMessage("");
-      }, 5000); // 5000 milliseconds (5 seconds)
-      return () => clearTimeout(timeoutId); // Clear the timeout on component unmount or when responseMessage changes
+        setMessageType("");
+      }, 5000);
+      return () => clearTimeout(timeoutId);
     }
   }, [responseMessage]);
 
   const handleConfirm = async (e) => {
-    e.preventDefault(); // Prevent default form submission
+    e.preventDefault();
     try {
       setIsLoading(true);
       const token = localStorage.getItem("auth-token");
-      if (token) {
-        axios.defaults.headers.common["auth-token"] = token;
+      
+      if (!token) {
+        setResponseMessage("You must be logged in to join a transaction");
+        setMessageType("error");
+        setIsLoading(false);
+        return;
       }
 
       const response = await axios.post(
@@ -39,25 +44,23 @@ const MainJoinTransaction = () => {
         }
       );
 
-      // Handle the response from the server as needed
-      setResponseMessage(response.data.message);
-      console.log(response.data);
-      navigate("/transactions/tab");
+      // Handle successful response
+      setResponseMessage(`Successfully joined as ${response.data.role}. Redirecting...`);
+      setMessageType("success");
+      
+      // Redirect after a short delay to show the success message
+      setTimeout(() => {
+        navigate("/transactions/tab");
+      }, 2000);
+      
     } catch (error) {
       console.error("Error joining transaction:", error);
       if (error.response) {
-        // Handle known server errors
-        if (error.response.status === 400) {
-          setResponseMessage("User is already a participant in this transaction.");
-        } else if (error.response.status === 404) {
-          setResponseMessage("Transaction not found.");
-        } else {
-          setResponseMessage("Error joining transaction. Please try again.");
-        }
+        setResponseMessage(error.response.data.error || "Error joining transaction");
       } else {
-        // Handle network or other errors
         setResponseMessage("Network error. Please try again.");
       }
+      setMessageType("error");
     } finally {
       setIsLoading(false);
     }
@@ -67,7 +70,7 @@ const MainJoinTransaction = () => {
     <div className="font-[Poppins] pt-14 md:pr-14 pr-10 pl-10 mt-10 md:pl-14 pb-10">
       <h1 className="font-bold text-[35px] text-center md:text-start">Join Transaction</h1>
       <p className="pt-10 pb-8 text-center md:text-start">
-        Please paste the link you received from the person you are transacting with.
+        Please enter the Transaction ID you received from the person you are transacting with.
       </p>
       <form onSubmit={handleConfirm}>
         <input
@@ -83,7 +86,7 @@ const MainJoinTransaction = () => {
             type="submit"
             disabled={isLoading || !transactionId}
             className={`w-[100%] h-[35px] rounded-3xl cursor-pointer text-[#fff] text-[12px] join_btn font-bold uppercase bg-[#318AE6] ${
-              isLoading ? "cursor-not-allowed opacity-50" : ""
+              isLoading || !transactionId ? "cursor-not-allowed opacity-50" : ""
             }`}
           >
             {isLoading ? "Processing..." : "Join Transaction"}
@@ -91,7 +94,7 @@ const MainJoinTransaction = () => {
           {responseMessage && (
             <p
               className={`text-center text-[13px] pt-3 ${
-                responseMessage.includes("Error") ? "text-red-500" : "text-[#0F0821]"
+                messageType === "error" ? "text-red-500" : "text-green-500"
               }`}
             >
               {responseMessage}

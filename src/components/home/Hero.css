@@ -1,6 +1,7 @@
 .hero{
   /* background: linear-gradient(10deg, #FF5000 0%, #010066 100%); */
-  background: linear-gradient(135deg, #04061c, #01003A);
+  /* background: linear-gradient(135deg, #192331, #01003A); */
+  background-color: #192331;
   /* background: radial-gradient(60.25% 73.6% at 14.86% 21.69%, #136165 0.82%, #0B3B48 30.73%, #072A36 64.58%, rgba(3, 21, 33, 0.00) 100%); */
 }
 .login_btn:before{

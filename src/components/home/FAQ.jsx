@@ -53,13 +53,13 @@ const FAQ = () => {
               className="cursor-pointer flex justify-between items-center"
               onClick={() => toggleAccordion(item.id)}
             >
-              <h1 className=" font-[700] accordion_title  text-[#212529]">
+              <h1 className=" font-[700] accordion_title  text-[#192331]">
                 {item.title}
               </h1>
               {openAccordionId === item.id ? (
-                <FaChevronUp className="text-[#212529]" />
+                <FaChevronUp className="text-[#192331]" />
               ) : (
-                <FaChevronDown className="text-[#212529]" />
+                <FaChevronDown className="text-[#192331]" />
               )}
             </div>
             {openAccordionId === item.id && (
@@ -71,17 +71,17 @@ const FAQ = () => {
         ))}
       </div>
       <div className="w-[100%] h-[auto] md:ml-5 md:mr-5 md:mt-5 fg md:mb-5">
-        <h1 className="font-bold text-[#01003A]  md:text-left Uppercase  md:text-[50px] leading-[44px] md:leading-[60px]  text-[40px]">
+        <h1 className="font-bold text-[#192331]  md:text-left Uppercase  md:text-[50px] leading-[44px] md:leading-[60px]  text-[40px]">
           Frequently Asked Questions
         </h1>
-        <p className=" text-[14px] text-[#01003A] mt-4">
+        <p className=" text-[14px] text-[#192331] mt-4">
           MiddleMan is an escrow app designed to bring trust and transparency to
           your transactions. Acting as a reliable intermediary, MiddleMan
           safeguards your transactions, ensuring that both parties fulfill their
           commitments before the funds are released.
         </p>
         <div className="flex justify-center md:justify-start">
-        <button className="outine-none text-white w-[auto] faq  mt-5  start_btn  pl-7 pr-7  text-[14px] h-[auto] pt-3 pb-3 font-bold flex items-center justify-center   rounded-[50px]  border-2 bg-[#FF5000] border-[#FF5000]">
+        <button className="outine-none text-white w-[auto] faq  mt-5  start_btn  pl-7 pr-7  text-[14px] h-[auto] pt-3 pb-3 font-bold flex items-center justify-center   rounded-[50px]  border-2 bg-[#B38939] border-[#B38939]">
           Get Started
         </button>
         </div>

@@ -5,7 +5,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@chakra-ui/react";
 const BASE_URL = import.meta.env.VITE_BASE_URL;
-import Logo from "../assets/logo2.png"
+import Logo from "../assets/logo1.png"
 
 const Login = () => {
   const [password, setPassword] = useState();

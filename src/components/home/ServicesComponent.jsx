@@ -22,7 +22,7 @@ const ServicesComponent = () => {
             </p>
             <Link
               to="/register"
-              className="mt-5  flex items-center nav-btn  justify-center px-7 py-3  rounded-full text-[#fff] text-[14px] bg-[#81712E] border-2  border-[#81712E] login_btn  hover:border-2  hover:border-[#81712E]  hover:bg-[transparent]"
+              className="mt-5  flex items-center nav-btn  justify-center px-7 py-3  rounded-full text-[#fff] text-[14px] bg-[#81712E] border-2  border-[#81712E] login_btn  hover:border-2  hover:border-[#B38939]  hover:bg-[transparent]"
             >
               Get Started now
             </Link>
@@ -51,7 +51,7 @@ const ServicesComponent = () => {
             </p>
             <Link
               to="/register"
-              className="mt-5  flex items-center nav-btn  justify-center px-7 py-3  rounded-full text-[#fff] text-[14px] bg-[#81712E] border-2  border-[#81712E] login_btn  hover:border-2  hover:border-[#81712E]  hover:bg-[transparent]"
+              className="mt-5  flex items-center nav-btn  justify-center px-7 py-3  rounded-full text-[#fff] text-[14px] bg-[#81712E] border-2  border-[#B38939] login_btn  hover:border-2  hover:border-[#B38939]  hover:bg-[transparent]"
             >
               Get Started now
             </Link>
@@ -68,7 +68,7 @@ const ServicesComponent = () => {
             </p>
             <Link
               to="/register"
-              className="mt-5  flex items-center nav-btn  justify-center px-7 py-3  rounded-full text-[#fff] text-[14px] bg-[#81712E] border-2  border-[#81712E] login_btn  hover:border-2  hover:border-[#81712E]  hover:bg-[transparent]"
+              className="mt-5  flex items-center nav-btn  justify-center px-7 py-3  rounded-full text-[#fff] text-[14px] bg-[#B38939] border-2  border-[#81712E] login_btn  hover:border-2  hover:border-[#B38939]  hover:bg-[transparent]"
             >
               Get Started now
             </Link>

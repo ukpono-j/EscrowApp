@@ -17,7 +17,7 @@ const Footer = () => {
   return (
     <div className="footer">
       <NewsLetter />
-      <div className="font-[Inter] text-[#fff] list-none mb-[-30px] pt-20 pb-4    md:pl-20  md:pr-20 pl-5 pr-5  h-[auto] flex flex-col  items-center justify-center  w-[100%]">
+      <div className="font-[Inter] text-[#fff] list-none mb-[-30px] pt-20 pb-4  md:pl-20  md:pr-20 pl-5 pr-5  h-[auto] flex flex-col  items-center justify-center  w-[100%]">
         <div className=" sm:flex sm:flex-col h-[auto] sm:justify-center sm:items-center    w-[100%] ">
           <div className=" sm:w-[400px] text-center  sm:pl-0  sm:pr-0  pl-6  pr-6  h-[auto]">
             <Link

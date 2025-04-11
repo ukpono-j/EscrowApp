@@ -12,7 +12,8 @@ import { FaFacebookMessenger } from "react-icons/fa6";
 import { BsChatFill } from "react-icons/bs";
 import { MdClose } from "react-icons/md";
 import ConfirmTransactionModal from './ConfirmTransactionModal';
-
+// import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const DisplayTransaction = ({ userResponse }) => {
   const [showToggleContainer, setShowToggleContainer] = useState(true);
@@ -37,8 +38,42 @@ const DisplayTransaction = ({ userResponse }) => {
   const [confirmPayment, setConfirmPayment] = useState(false)
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedTransactionId, setSelectedTransactionId] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
 
+  useEffect(() => {
+    // Fetch current user info first
+    const fetchCurrentUser = async () => {
+      const token = localStorage.getItem("auth-token");
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const response = await axios.get(`${BASE_URL}/api/users/user-details`, {
+          headers: {
+            "auth-token": token,
+          },
+        });
+        setCurrentUser(response.data);
+        console.log(response.data)
+      } catch (error) {
+        console.error("Error fetching current user:", error);
+        toast({
+          title: "Error fetching user information",
+          status: "error",
+          duration: 3000,
+          isClosable: true,
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCurrentUser();
+  }, [toast]);
 
   useEffect(() => {
     const fetchTransactions = async () => {
@@ -50,6 +85,7 @@ const DisplayTransaction = ({ userResponse }) => {
           },
         });
         setTransactions(response.data);
+        console.log(response.data)
       } catch (error) {
         console.error("Error fetching transactions:", error);
         toast({
@@ -287,28 +323,24 @@ const DisplayTransaction = ({ userResponse }) => {
     setModalVisible(true);
   };
 
-  // const handleConfirm = (transactionId) => {
-  //     // Handle transaction completion logic here
-  //     console.log(`Transaction ${transactionId} completed!`);
-  //     setModalVisible(false);
+
+  // const handleConfirm = async (transactionId) => {
+  //   try {
+  //     const token = localStorage.getItem("auth-token");
+
+  //     const response = await axios.post(
+  //       `${BASE_URL}/api/transactions/confirm`,
+  //       { transactionId },
+  //       { headers: { "auth-token": token } }
+  //     );
+
+  //     alert("Confirmation submitted!");
+  //     // Optional: Refresh data or socket update here
+  //   } catch (error) {
+  //     console.error("Confirmation error:", error);
+  //     alert("Could not complete transaction. Please try again.");
+  //   }
   // };
-  const handleConfirm = async (transactionId) => {
-    try {
-      const token = localStorage.getItem("auth-token");
-
-      const response = await axios.post(
-        `${BASE_URL}/api/transactions/confirm`,
-        { transactionId },
-        { headers: { "auth-token": token } }
-      );
-
-      alert("Confirmation submitted!");
-      // Optional: Refresh data or socket update here
-    } catch (error) {
-      console.error("Confirmation error:", error);
-      alert("Could not complete transaction. Please try again.");
-    }
-  };
 
 
   // const handleFund = async (transaction) => {
@@ -356,9 +388,139 @@ const DisplayTransaction = ({ userResponse }) => {
   //     alert("There was an issue processing the payment. Please try again.");
   //   }
   // };
+
+  // const handleConfirm = async (transactionId) => {
+  //   try {
+  //     const token = localStorage.getItem("auth-token");
+
+  //     // Show confirmation dialog
+  //     if (!window.confirm("Are you sure you want to complete this transaction? This action cannot be undone.")) {
+  //       return;
+  //     }
+
+  //     console.log("Confirming transaction:", transactionId);
+
+  //     const response = await axios.post(
+  //       `${BASE_URL}/api/transactions/confirm`,
+  //       { transactionId },
+  //       { headers: { "auth-token": token } }
+  //     );
+
+  //     console.log("Confirmation response:", response.data);
+
+  //     // Update UI based on response
+  //     if (response.data.buyerConfirmed && response.data.sellerConfirmed) {
+  //       alert("Transaction has been completed! Payout has been initiated to the seller.");
+  //     } else {
+  //       alert("Your confirmation has been recorded. Waiting for the other party to confirm.");
+  //     }
+
+  //     // Refresh transaction data
+  //     fetchTransactions(); // You'll need to implement this function to reload the transactions
+  //   } catch (error) {
+  //     console.error("Confirmation error:", error);
+  //     let errorMessage = "Could not complete transaction. Please try again.";
+
+  //     if (error.response && error.response.data && error.response.data.message) {
+  //       errorMessage = error.response.data.message;
+  //     }
+
+  //     alert(errorMessage);
+  //   }
+  // };
+
+  // Updated handleConfirm function
+  const handleConfirm = async (transactionId) => {
+    try {
+      const token = localStorage.getItem("auth-token");
+      if (!token) {
+        toast({
+          title: "User not authenticated",
+          status: "error",
+          duration: 3000,
+          isClosable: true,
+        });
+        return;
+      }
+
+
+      // First check if there are participants (if user is creator)
+      const transaction = transactions.find(t => t._id === transactionId);
+
+      // If current user is creator and there are no participants yet
+      if (
+        transaction &&
+        currentUser &&
+        // currentUser._id === transaction.userId._id &&
+        // (!transaction.participants || transaction.participants.length === 0)
+        currentUser._id === (transaction.userId._id ? transaction.userId._id : transaction.userId) &&
+      (!transaction.participants || transaction.participants.length === 0)
+      ) {
+        toast({
+          title: "There is no participant in this transaction",
+          description: "Please wait for someone to join.",
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+        });
+        return;
+      }
+
+      if (!window.confirm("Are you sure you want to complete this transaction? This action cannot be undone.")) {
+        return;
+      }
+
+      console.log("Confirming transaction:", transactionId);
+
+      const response = await axios.post(
+        `${BASE_URL}/api/transactions/confirm`,
+        { transactionId },
+        { headers: { "auth-token": token } }
+      );
+
+      console.log("Confirmation response:", response.data);
+
+      if (response.data.buyerConfirmed && response.data.sellerConfirmed) {
+        toast({
+          title: "Transaction completed successfully",
+          description: "Payout has been initiated to the seller.",
+          status: "success",
+          duration: 5000,
+          isClosable: true,
+        });
+      } else {
+        toast({
+          title: "Confirmation recorded",
+          description: "Waiting for the other party to confirm.",
+          status: "info",
+          duration: 5000,
+          isClosable: true,
+        });
+      }
+
+      // Refresh transaction data
+      fetchTransactionData();
+    } catch (error) {
+      console.error("Confirmation error:", error);
+      let errorMessage = "Could not complete transaction. Please try again.";
+
+      if (error.response && error.response.data && error.response.data.message) {
+        errorMessage = error.response.data.message;
+      }
+
+      toast({
+        title: "Error",
+        description: errorMessage,
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+  };
+
   const handleFund = async (transaction) => {
     console.log("Initiating payment with transaction:", transaction);
-  
+
     // Destructure necessary properties from transaction
     const {
       _id,  // This is the MongoDB document ID
@@ -368,7 +530,7 @@ const DisplayTransaction = ({ userResponse }) => {
       paymentName,
       paymentDescription,
     } = transaction;
-  
+
     // Prepare request data - using _id as the transactionId
     const requestData = {
       amount: paymentAmount,
@@ -378,12 +540,13 @@ const DisplayTransaction = ({ userResponse }) => {
       paymentName,
       paymentDescription,
     };
-  
+
+
     const token = localStorage.getItem("auth-token");
-  
+
     try {
       console.log("Sending payment request with data:", requestData);
-      
+
       const response = await axios.post(
         `${BASE_URL}/api/transactions/initiate`,
         requestData,
@@ -393,13 +556,13 @@ const DisplayTransaction = ({ userResponse }) => {
           },
         }
       );
-  
+
       console.log("Payment initiation response:", response.data);
-  
+
       if (response.data && response.data.authorization_url) {
         // Redirect to Paystack payment page
         window.location.href = response.data.authorization_url;
-  
+
         // Set up polling to check payment status
         const interval = setInterval(async () => {
           try {
@@ -407,13 +570,13 @@ const DisplayTransaction = ({ userResponse }) => {
               `${BASE_URL}/api/transactions/check-funded?transactionId=${_id}`,
               { headers: { "auth-token": token } }
             );
-  
+
             console.log("Payment status check:", statusRes.data);
-  
+
             if (statusRes.data.funded) {
               clearInterval(interval);
               alert("Payment confirmed!");
-              
+
               // Update the transactions state
               setTransactions(prev =>
                 prev.map(tx =>
@@ -432,14 +595,14 @@ const DisplayTransaction = ({ userResponse }) => {
       }
     } catch (error) {
       console.error("Error initiating payment:", error);
-      
+
       // Provide a helpful error message
       let errorMessage = "There was an issue processing the payment. Please try again.";
-      
+
       if (error.response && error.response.data && error.response.data.message) {
         errorMessage = error.response.data.message;
       }
-      
+
       alert(errorMessage);
     }
   };
@@ -512,11 +675,39 @@ const DisplayTransaction = ({ userResponse }) => {
                           <p>Selected User Type: {transaction.selectedUserType}</p>
                           <p>Payment Bank: {transaction.paymentBank}</p>
                           <p>Transaction ID: {transaction.transactionId}</p>
-                          <p>Participants: {transaction.participants[0]}</p>
+                          {/* <p>Participants: {transaction.participants[0]}</p> */}
+                          <p>
+                            Participants: {transaction.participants && transaction.participants.length > 0 ?
+                              transaction.participants.map((participant, index) => {
+                                // Check if participant is a populated object with properties
+                                if (participant && typeof participant === 'object') {
+                                  return (
+                                    <span key={index}>
+                                      {participant.firstName || 'user'} ({participant.email || 'No email'})
+                                      {index < transaction.participants.length - 1 ? ', ' : ''}
+                                    </span>
+                                  );
+                                }
+                                // If it's just an ID (not populated)
+                                else {
+                                  return (
+                                    <span key={index}>
+                                      {participant || 'Unknown participant'}
+                                      {index < transaction.participants.length - 1 ? ', ' : ''}
+                                    </span>
+                                  );
+                                }
+                              })
+                              : 'No participants yet'
+                            }
+                          </p>
                           <div className="">
                             <p>Status: {transaction.status}</p>
                             {/* cancel transaction button */}
 
+                          </div>
+                          <div className="">
+                            <p>paymentStatus: {transaction.paymentStatus}</p>
                           </div>
                           <div className="flex items-center justify-between mt-4">
                             {/* <button className="px-4 py-2 rounded-xl m-3 font-bold bg-[#318AE6]" onClick={() => handleBuyerWaybillPopup(transaction._id)}>View Waybill</button>
@@ -638,7 +829,7 @@ const DisplayTransaction = ({ userResponse }) => {
                           {/* ======================== */}
                           <div className="flex items-center justify-between">
                             {/* <button className="px-3 mt-3 py-2 bg-[#318AE6] rounded-xl font-bold" onClick={() => handleDoneClick(transaction._id)}>Complete Transaction</button> */}
-                            <button
+                            {/* <button
                               className="px-3 mt-3 py-2 bg-[#318AE6] rounded-xl font-bold"
                               disabled={transaction.buyerConfirmed || transaction.sellerConfirmed}
                               onClick={() => handleConfirm(transaction._id)}
@@ -650,7 +841,95 @@ const DisplayTransaction = ({ userResponse }) => {
                                     ? "Pending"
                                     : "Complete Transaction"
                               }
+                            </button> */}
+                            {/* <button
+                              className={`px-3 mt-3 py-2 rounded-xl font-bold ${
+                                transaction.buyerConfirmed && transaction.sellerConfirmed
+                                  ? "bg-green-500"
+                                  : transaction.buyerConfirmed || transaction.sellerConfirmed
+                                    ? "bg-yellow-500"
+                                    : "bg-[#318AE6]"
+                                }`}
+                              disabled={
+                                // Check if currentUser exists before accessing its _id
+                                (currentUser && currentUser._id === transaction.userId && transaction.buyerConfirmed) ||
+                                (currentUser && currentUser._id !== transaction.userId && transaction.sellerConfirmed) ||
+                                (transaction.buyerConfirmed && transaction.sellerConfirmed)
+                              }
+                              onClick={() => handleConfirm(transaction._id)}
+                            >
+                              {transaction.buyerConfirmed && transaction.sellerConfirmed
+                                ? "Transaction Completed"
+                                : currentUser && currentUser._id === transaction.userId && transaction.buyerConfirmed
+                                  ? "Pending Completion"
+                                  : currentUser && currentUser._id !== transaction.userId && transaction.sellerConfirmed
+                                    ? "Pending Completion"
+                                    : "Complete Transaction"}
+                            </button> */}
+
+                            {/* Complete Transaction Button with improved logic */}
+                            <button
+                              className={`px-3 mt-3 py-2 rounded-xl font-bold ${transaction.buyerConfirmed && transaction.sellerConfirmed
+                                ? "bg-green-500"
+                                : (transaction.buyerConfirmed || transaction.sellerConfirmed) &&
+                                  ((currentUser && transaction.userId && currentUser._id === transaction.userId._id &&
+                                    ((transaction.selectedUserType === "buyer" && transaction.buyerConfirmed) ||
+                                      (transaction.selectedUserType === "seller" && transaction.sellerConfirmed))) ||
+                                    (currentUser && transaction.userId && currentUser._id !== transaction.userId._id &&
+                                      ((transaction.selectedUserType === "buyer" && transaction.sellerConfirmed) ||
+                                        (transaction.selectedUserType === "seller" && transaction.buyerConfirmed))))
+                                  ? "bg-yellow-500"
+                                  : "bg-[#318AE6]"
+                                }`}
+                              disabled={
+                                // Transaction fully completed
+                                (transaction.buyerConfirmed && transaction.sellerConfirmed) ||
+
+                                // Current user is creator (buyer) and already confirmed
+                                (currentUser && transaction.userId &&
+                                  currentUser._id === transaction.userId._id &&
+                                  transaction.selectedUserType === "buyer" &&
+                                  transaction.buyerConfirmed) ||
+
+                                // Current user is creator (seller) and already confirmed
+                                (currentUser && transaction.userId &&
+                                  currentUser._id === transaction.userId._id &&
+                                  transaction.selectedUserType === "seller" &&
+                                  transaction.sellerConfirmed) ||
+
+                                // Current user is participant (buyer) and already confirmed
+                                (currentUser && transaction.userId &&
+                                  currentUser._id !== transaction.userId._id &&
+                                  transaction.selectedUserType === "seller" &&
+                                  transaction.buyerConfirmed) ||
+
+                                // Current user is participant (seller) and already confirmed
+                                (currentUser && transaction.userId &&
+                                  currentUser._id !== transaction.userId._id &&
+                                  transaction.selectedUserType === "buyer" &&
+                                  transaction.sellerConfirmed)
+                              }
+                              onClick={() => handleConfirm(transaction._id)}
+                            >
+                              {/* Button text logic */}
+                              {transaction.buyerConfirmed && transaction.sellerConfirmed
+                                ? "Transaction Completed"
+                                : (
+                                  // Check if the current user has confirmed (either as creator or participant)
+                                  (currentUser && transaction.userId &&
+                                    (transaction.userId._id ? currentUser._id === transaction.userId._id : currentUser._id === transaction.userId) &&
+                                    ((transaction.selectedUserType === "buyer" && transaction.buyerConfirmed) ||
+                                      (transaction.selectedUserType === "seller" && transaction.sellerConfirmed))) ||
+                                  (currentUser && transaction.userId &&
+                                    (transaction.userId._id ? currentUser._id !== transaction.userId._id : currentUser._id !== transaction.userId) &&
+                                    ((transaction.selectedUserType === "buyer" && transaction.sellerConfirmed) ||
+                                      (transaction.selectedUserType === "seller" && transaction.buyerConfirmed)))
+                                )
+                                  ? "Pending Completion"
+                                  : "Complete Transaction"
+                              }
                             </button>
+
                             <div className=" text-[13px]">
                               <button
                                 className="px-3 mt-3 py-2 bg-[#318AE6] rounded-xl font-bold"
