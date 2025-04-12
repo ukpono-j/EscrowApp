@@ -1,61 +1,69 @@
-// // src/service-worker.js
-// const CACHE_NAME = "react-pwa-cache-v1";
-// const urlsToCache = ["/", "/index.html", "/static/js/bundle.js"];
+// service-worker.js - save at the root of your public directory
+const CACHE_NAME = "middleman-cache-v2";
 
-// self.addEventListener("install", (event) => {
-//   event.waitUntil(
-//     caches.open(CACHE_NAME).then((cache) => cache.addAll(urlsToCache))
-//   );
-// });
+// List of resources to cache
+const urlsToCache = [
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/icons/favicon-32x32.png',
+  '/icons/favicon.ico',
+  '/icons/android-chrome-512x512.png',
+  '/icons/android-chrome-192x192.png'
+];
 
-// self.addEventListener("fetch", (event) => {
-//   event.respondWith(
-//     caches.match(event.request).then((response) => {
-//       return response || fetch(event.request);
-//     })
-//   );
-// });
-// const CACHE_NAME = "react-pwa-cache-v1";
-
-// self.addEventListener("install", (event) => {
-//   self.skipWaiting();
-//   event.waitUntil(
-//     caches.open(CACHE_NAME).then((cache) => {
-//       return cache.addAll(["/"]); // Keep it minimal
-//     })
-//   );
-// });
-
-// self.addEventListener("fetch", (event) => {
-//   event.respondWith(
-//     caches.match(event.request).then((response) => {
-//       return (
-//         response ||
-//         fetch(event.request).catch(() =>
-//           caches.match("/") // fallback to home if offline
-//         )
-//       );
-//     })
-//   );
-// });
-const CACHE_NAME = "react-pwa-cache-v1";
-
-self.addEventListener("install", (event) => {
+// Install event - caches assets
+self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(["/"]); // Cache the homepage
-    })
+    caches.open(CACHE_NAME)
+      .then((cache) => {
+        return cache.addAll(urlsToCache);
+      })
+      .catch(err => {
+        console.error('Cache addAll error:', err);
+        // Continue despite errors
+        return Promise.resolve();
+      })
   );
 });
 
-self.addEventListener("fetch", (event) => {
-  event.respondWith(
-    caches.match(event.request).then((response) => {
-      return (
-        response ||
-        fetch(event.request).catch(() => caches.match("/")) // Fallback to homepage if offline
+// Activate event - cleans up old caches
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames.map(cacheName => {
+          if (CACHE_NAME !== cacheName) {
+            return caches.delete(cacheName);
+          }
+        })
       );
     })
+  );
+  return self.clients.claim();
+});
+
+// Fetch event - network first, then cache
+self.addEventListener('fetch', (event) => {
+  event.respondWith(
+    fetch(event.request)
+      .catch(() => {
+        return caches.match(event.request)
+          .then(cachedResponse => {
+            if (cachedResponse) {
+              return cachedResponse;
+            }
+            // If both network and cache fail, return cached homepage as fallback
+            if (event.request.mode === 'navigate') {
+              return caches.match('/');
+            }
+            // Otherwise, just fail
+            return new Response('Network error occurred', {
+              status: 408,
+              headers: { 'Content-Type': 'text/plain' }
+            });
+          });
+      })
   );
 });

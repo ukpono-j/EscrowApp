@@ -14,22 +14,7 @@
 
 <body>
   <div id="root"></div>
-  <script type="module" src="./src/main.jsx"></script>
-  <script>
-    if (!window.ethereum) {
-      Object.defineProperty(window, "ethereum", {
-        value: {
-          // Mock or custom implementation here
-          request: async ({ method, params }) => {
-            // mock logic
-            console.log(`Ethereum method called: ${method}`);
-            return null;
-          },
-        },
-        writable: false,
-      });
-    }
-  </script>
+  <script type="module" src="/src/main.jsx"></script>
 </body>
 
 </html>
