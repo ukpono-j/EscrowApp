@@ -5,6 +5,8 @@ import "./Footer.css";
 import NewsLetter from "./home/NewsLetter";
 import { FaFacebookF, FaInstagram, FaTwitter } from "react-icons/fa";
 import Logo from "../assets/logo3.png"
+import { Box, Text } from "@chakra-ui/react";
+
 
 const Footer = () => {
   const scrollTo = (element) => {
@@ -15,9 +17,9 @@ const Footer = () => {
     });
   };
   return (
-    <div className="footer">
+    <Box className="footer">
       <NewsLetter />
-      <div className="font-[Inter] text-[#fff] list-none mb-[-30px] pt-20 pb-4  md:pl-20  md:pr-20 pl-5 pr-5  h-[auto] flex flex-col  items-center justify-center  w-[100%]">
+      <div className="font-[Inter] list-none mb-[-30px] pt-20 pb-4  md:pl-20  md:pr-20 pl-5 pr-5  h-[auto] flex flex-col  items-center justify-center  w-[100%]">
         <div className=" sm:flex sm:flex-col h-[auto] sm:justify-center sm:items-center    w-[100%] ">
           <div className=" sm:w-[400px] text-center  sm:pl-0  sm:pr-0  pl-6  pr-6  h-[auto]">
             <Link
@@ -26,7 +28,7 @@ const Footer = () => {
               onClick={() => scrollTo("home")}
             >
               {/* MiddleMan */}
-              <h1 className="footer_logo">Safesylo</h1>
+              <Text className="footer_logo">Safesylo</Text>
               {/* <img src={Logo} alt="Logo Detail"  className="w-[200px]"/> */}
             </Link>
             <div className=" text-[15px] mt-6  space-x-6 flex items-center justify-between">
@@ -89,7 +91,7 @@ const Footer = () => {
         </div>
         {/* <div className="pt-20">copyright</div> */}
       </div>
-    </div>
+    </Box>
   );
 };
 

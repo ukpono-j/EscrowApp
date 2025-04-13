@@ -16,14 +16,3 @@
   transition: all 0.3s ease;
   text-align: center;
 }
-
-.newsletter_content h1 {
-  color: white;
-  font-family: "Bricolage Grotesque", sans-serif;
-
-}
-
-.newsletter_container {
-  /* background: linear-gradient(135deg, #04061c, #01003A); */
-  background-color: #192331;
-}

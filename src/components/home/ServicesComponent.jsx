@@ -4,11 +4,12 @@ import Vesa from "../../assets/vesa.png";
 import Card from "../../assets/card.png";
 import Girl from "../../assets/about.png";
 import "./ServicesComponent.css";
+import { Box, Text } from "@chakra-ui/react";
 
 
 const ServicesComponent = () => {
   return (
-    <div className="h-[auto] services md:pl-20 pl-5 font-[Inter]  pr-5  md:pr-20 md:pt-20 pt-8 pb-8   md:pb-20 text-[#FEFEFF] w-[100%]">
+    <Box className="h-[auto] services md:pl-20 pl-5 font-[Inter]  pr-5  md:pr-20 md:pt-20 pt-8 pb-8   md:pb-20 w-[100%]">
       <div className="h-[auto]">
         <div className="service_title m-auto md:w-[560px] text-center font-[900] md:text-left   md:text-[50px] leading-[44px] md:leading-[60px]  text-[40px]">
           What you order has to be what you get!
@@ -82,7 +83,7 @@ const ServicesComponent = () => {
           </div>
         </div>
       </div>
-    </div>
+    </Box>
   );
 };
 

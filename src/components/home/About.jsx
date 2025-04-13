@@ -3,6 +3,8 @@ import "./About.css";
 import Test from "../../assets/money3.png";
 import AboutImage from "../../assets/about.png";
 import { Link } from "react-router-dom";
+import { Box, Text } from "@chakra-ui/react";
+
 
 
 const About = () => {
@@ -30,7 +32,7 @@ const About = () => {
   return (
     <div
       id="about"
-      className={`w-[100%] pt-14 font-[Inter] text-[#192331] bg-[#f7f7f7] md:pl-20 pl-5 md:pb-14  pr-5  md:pr-20 justify-between h-[auto] flex md:flex-row  flex-col-reverse  items-center ${isScrolling ? "fade-in" : "fade-out"
+      className={`w-[100%] pt-14 font-[Inter] md:pl-20 pl-5 md:pb-14  pr-5  md:pr-20 justify-between h-[auto] flex md:flex-row  flex-col-reverse  items-center ${isScrolling ? "fade-in" : "fade-out"
         }`}
     >
       <div

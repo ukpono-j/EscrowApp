@@ -323,111 +323,7 @@ const DisplayTransaction = ({ userResponse }) => {
     setModalVisible(true);
   };
 
-
-  // const handleConfirm = async (transactionId) => {
-  //   try {
-  //     const token = localStorage.getItem("auth-token");
-
-  //     const response = await axios.post(
-  //       `${BASE_URL}/api/transactions/confirm`,
-  //       { transactionId },
-  //       { headers: { "auth-token": token } }
-  //     );
-
-  //     alert("Confirmation submitted!");
-  //     // Optional: Refresh data or socket update here
-  //   } catch (error) {
-  //     console.error("Confirmation error:", error);
-  //     alert("Could not complete transaction. Please try again.");
-  //   }
-  // };
-
-
-  // const handleFund = async (transaction) => {
-  //   // Log the transaction to make sure it's correct
-  //   console.log("Initiating payment with transaction:", transaction);
-
-  //   // Ensure we're using the correct fields from the transaction object
-  //   const { paymentAmount, transactionId, email, paymentBank, paymentName, paymentDescription } = transaction;
-
-  //   // Define the request data for initiating payment
-  //   const requestData = {
-  //     amount: paymentAmount,        // Use paymentAmount for the transaction
-  //     transactionId: transactionId, // Use transactionId for tracking
-  //     email: email,                 // Use email (for customer info)
-  //     paymentBank: paymentBank,     // Include paymentBank if necessary
-  //     paymentName: paymentName,     // Include paymentName if necessary
-  //     paymentDescription: paymentDescription // Optional: if necessary for the transaction
-  //   };
-
-  //   // Get the authentication token
-  //   const token = localStorage.getItem("auth-token");
-
-  //   try {
-  //     // Make the POST request to the server
-  //     const response = await axios.post(
-  //       `${BASE_URL}/api/transactions/initiate`, // Backend endpoint
-  //       requestData, // Data to send to the backend
-  //       {
-  //         headers: {
-  //           "auth-token": token // Pass the token if needed for authorization
-  //         }
-  //       }
-  //     );
-
-  //     // If Paystack authorization URL is returned, redirect to Paystack for payment
-  //     if (response.data && response.data.authorization_url) {
-  //       window.location.href = response.data.authorization_url; // Redirect to Paystack
-  //     } else {
-  //       console.error("No authorization URL found in the response");
-  //       alert("Error: Could not find the payment link.");
-  //     }
-  //   } catch (error) {
-  //     // Handle errors, including network issues
-  //     console.error("Error initiating payment:", error);
-  //     alert("There was an issue processing the payment. Please try again.");
-  //   }
-  // };
-
-  // const handleConfirm = async (transactionId) => {
-  //   try {
-  //     const token = localStorage.getItem("auth-token");
-
-  //     // Show confirmation dialog
-  //     if (!window.confirm("Are you sure you want to complete this transaction? This action cannot be undone.")) {
-  //       return;
-  //     }
-
-  //     console.log("Confirming transaction:", transactionId);
-
-  //     const response = await axios.post(
-  //       `${BASE_URL}/api/transactions/confirm`,
-  //       { transactionId },
-  //       { headers: { "auth-token": token } }
-  //     );
-
-  //     console.log("Confirmation response:", response.data);
-
-  //     // Update UI based on response
-  //     if (response.data.buyerConfirmed && response.data.sellerConfirmed) {
-  //       alert("Transaction has been completed! Payout has been initiated to the seller.");
-  //     } else {
-  //       alert("Your confirmation has been recorded. Waiting for the other party to confirm.");
-  //     }
-
-  //     // Refresh transaction data
-  //     fetchTransactions(); // You'll need to implement this function to reload the transactions
-  //   } catch (error) {
-  //     console.error("Confirmation error:", error);
-  //     let errorMessage = "Could not complete transaction. Please try again.";
-
-  //     if (error.response && error.response.data && error.response.data.message) {
-  //       errorMessage = error.response.data.message;
-  //     }
-
-  //     alert(errorMessage);
-  //   }
-  // };
+  
 
   // Updated handleConfirm function
   const handleConfirm = async (transactionId) => {
@@ -502,6 +398,14 @@ const DisplayTransaction = ({ userResponse }) => {
       fetchTransactionData();
     } catch (error) {
       console.error("Confirmation error:", error);
+      console.error("Confirmation error details:", {
+        message: error.message,
+        response: error.response ? {
+          status: error.response.status,
+          data: error.response.data
+        } : 'No response',
+        request: error.request ? 'Request sent but no response received' : 'Request setup failed'
+      });
       let errorMessage = "Could not complete transaction. Please try again.";
 
       if (error.response && error.response.data && error.response.data.message) {
@@ -754,7 +658,6 @@ const DisplayTransaction = ({ userResponse }) => {
                                     </div>
                                     <div className="mt-3">
                                       <h3>Image:</h3>
-                                      {/* <input type="file" value={waybillDetails.image} onChange={(e) => setWaybillDetails({ ...waybillDetails, image: e.target.value })} /> */}
                                       <input
                                         type="file"
                                         onChange={(e) => setWaybillDetails({ ...waybillDetails, image: e.target.files[0] })}

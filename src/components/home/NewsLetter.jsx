@@ -1,21 +1,21 @@
 import React from "react";
 import Buyer from "../../assets/seller.png";
 import "./NewsLetter.css";
+import { Box, Text } from "@chakra-ui/react";
+import { useColorModeValue } from "@chakra-ui/react";
 
 
 const NewsLetter = () => {
+    const mobileNewsLetterBg = useColorModeValue("#FAFAFA", "#1A202C");
+
+
   return (
-    <div className="md:pl-20 pl-5 font-[Inter] newsletter_container text-[#FEFEFF] pr-5 md:pr-20     pb-14  pt-10">
-      <div className=" w-[100%] h-[auto] md:pl-20 pl-5  pr-5 md:pr-20  pt-7 pb-7 flex items-center justify-center  rounded-3xl">
-        {/* <div className="newsletter_image sm:flex hidden w-[300px] rounded-2xl  h-[200px] border">
-          <img
-            src={Buyer}
-            className="w-[100%] h-[100%] object-cover rounded-2xl"
-            alt=""
-          />
-        </div> */}
+    <Box className="md:pl-20 pl-5 font-[Inter] newsletter_container pr-5 md:pr-20 pb-14 pt-10"
+    bg={mobileNewsLetterBg}
+    >
+      <div className=" w-[100%] h-[auto] md:pl-20 pl-5 pr-5 md:pr-20  pt-7 pb-7 flex items-center justify-center rounded-3xl">
         <div className="newsletter_content sm:ml-4 text-center ">
-          <h1 className="md:text-[34px] sm:text-[32px] text-[30px] font-bold">Subscribe Our Newsletter</h1>
+          <Text className="md:text-[34px] sm:text-[32px] text-[30px] font-bold">Subscribe Our Newsletter</Text>
           <p className="mt-2 text-[16px] font-[200]">Get latest News and Updates</p>
           <div className="flex mt-5   items-center  bg-[#fff] pl-5 pt-1 pb-1 pr-2  rounded-full ">
             <input
@@ -31,7 +31,7 @@ const NewsLetter = () => {
           </div>
         </div>
       </div>
-    </div>
+    </Box>
   );
 };
 

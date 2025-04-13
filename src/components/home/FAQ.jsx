@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import "./FAQ.css";
 import { FaChevronDown, FaChevronUp } from "react-icons/fa";
+import { Box, Text } from "@chakra-ui/react";
 
 const FAQ = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -44,16 +45,16 @@ const FAQ = () => {
   };
 
   return (
-    <div className="h-[auto] font-[Inter] text-center md:text-start faq md:flex md:flex-row flex-col-reverse flex  w-[100%] pr-5  pl-5  md:pl-[80px] md:pr-[80px] pt-14  pb-14   ">
-      <div className="border md:p-10 p-3  w-[100%] text-left  md:mt-0 mt-14  h-[auto]  bg-[#fff] rounded-3xl  ">
+    <Box className="h-[auto] font-[Inter] text-center md:text-start faq md:flex md:flex-row flex-col-reverse flex w-[100%] pr-5 pl-5 md:pl-[80px] md:pr-[80px] pt-14  pb-14   ">
+      <div className="border md:p-10 p-3  w-[100%] text-left  md:mt-0 mt-14  h-[auto] rounded-3xl  ">
         {/* Accordion */}
         {accordionData.map((item) => (
           <div className="pt-3 pb-3 pl-3 pr-3" key={item.id}>
-            <div
+            <Text
               className="cursor-pointer flex justify-between items-center"
               onClick={() => toggleAccordion(item.id)}
             >
-              <h1 className=" font-[700] accordion_title  text-[#192331]">
+              <h1 className=" font-[700] accordion_title">
                 {item.title}
               </h1>
               {openAccordionId === item.id ? (
@@ -61,20 +62,20 @@ const FAQ = () => {
               ) : (
                 <FaChevronDown className="text-[#192331]" />
               )}
-            </div>
+            </Text>
             {openAccordionId === item.id && (
               <div className=" text-[14px] mt-2 font-[300] ">
-                <p>{item.content}</p>
+                <Text>{item.content}</Text>
               </div>
             )}
           </div>
         ))}
       </div>
       <div className="w-[100%] h-[auto] md:ml-5 md:mr-5 md:mt-5 fg md:mb-5">
-        <h1 className="font-bold text-[#192331]  md:text-left Uppercase  md:text-[50px] leading-[44px] md:leading-[60px]  text-[40px]">
+        <h1 className="font-bold md:text-left Uppercase  md:text-[50px] leading-[44px] md:leading-[60px]  text-[40px]">
           Frequently Asked Questions
         </h1>
-        <p className=" text-[14px] text-[#192331] mt-4">
+        <p className=" text-[14px] mt-4">
           MiddleMan is an escrow app designed to bring trust and transparency to
           your transactions. Acting as a reliable intermediary, MiddleMan
           safeguards your transactions, ensuring that both parties fulfill their
@@ -86,7 +87,7 @@ const FAQ = () => {
         </button>
         </div>
       </div>
-    </div>
+    </Box>
   );
 };
 

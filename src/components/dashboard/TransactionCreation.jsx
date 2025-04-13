@@ -26,6 +26,9 @@ const TransactionCreation = () => {
   const [profileImage, setProfileImage] = useState(null);
   const [errors, setErrors] = useState([]);
   const [userDetails, setUserDetails] = useState({});
+  const [banks, setBanks] = useState([]);
+  const [selectedBankCode, setSelectedBankCode] = useState("");
+  const [uniqueBanks, setUniqueBanks] = useState([]);
 
 
 
@@ -50,6 +53,45 @@ const TransactionCreation = () => {
     };
 
     fetchUserDetails();
+  }, []);
+
+  useEffect(() => {
+    // Filter to get only unique bank codes
+    const bankMap = new Map();
+    banks.forEach(bank => {
+      if (!bankMap.has(bank.code)) {
+        bankMap.set(bank.code, bank);
+      }
+    });
+    setUniqueBanks(Array.from(bankMap.values()));
+  }, [banks]);
+
+
+  // Add this useEffect to fetch banks on component mount
+  useEffect(() => {
+    const fetchBanks = async () => {
+      try {
+        const token = localStorage.getItem("auth-token");
+        // Fetch banks from your backend that proxies the Paystack API
+        const response = await axios.get(`${BASE_URL}/api/transactions/banks`, {
+          headers: {
+            "auth-token": token,
+          },
+        });
+
+        setBanks(response.data.data);
+      } catch (error) {
+        console.error("Error fetching banks:", error);
+        toast({
+          title: "Error fetching banks",
+          status: "error",
+          duration: 3000,
+          isClosable: true,
+        });
+      }
+    };
+
+    fetchBanks();
   }, []);
 
   // // Example function to fetch profile image from database
@@ -82,69 +124,33 @@ const TransactionCreation = () => {
 
   const acceptTransactionFunction = (e) => {
     e.preventDefault();
+    // Add validation
+    if (!selectedBankCode) {
+      toast({
+        title: "Please select a bank",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
     setAcceptTransactionModel(true)
   }
+  
 
   const createNewTransaction = (e) => {
     e.preventDefault();
 
-    // const paystack = new PaystackPop();
-    // paystack.newTransaction({
-    //   key: "pk_test_510517e6c4bcd95b12a073078d57b139164845d8",
-    //   amount: paymentAmount * 100, // Convert to kobo if dealing with Naira
-    //   paymentName: paymentName,
-    //   paymentDescription: paymentDescription,
-    //   email: email,
-    //   paymentAccountNumber: paymentAccountNumber,
-    //   paymentBank: paymentBank,
-    //   onSuccess(transaction) {
-    //     let message = `payment complete! Reference ${transaction.reference}`;
-    //     //  alert(message)
-    //     setEmail("");
-    //     setPaymentDescription("");
-    //     setPaymentAmount("");
-    //     setPaymentName("");
-    //     setPaymentBank("");
-    //     setPaymentAccountNumber("");
-    //     navigate("/transactions/tab");
-
-    //     // Create a new notification object
-    //     const newNotification = {
-    //       title: "New Transaction Created",
-    //       message: `A ${selectedUserType} made a  Payment of ${paymentAmount} received for ${paymentDscription}. Reference: ${paymentName}`,
-    //       transactionId: "just for test"
-    //     };
-    //     // Make an API request to create the notification
-    //     axios
-    //       .post(`${BASE_URL}/api/notifications/notifications`, newNotification, {
-    //         headers: {
-    //           "auth-token": token,
-    //         },
-    //       })
-    //       .then((notificationResponse) => {
-    //         console.log("Notification created:", notificationResponse.data);
-    //         // Navigate to the transactions page or handle success as needed
-    //         navigate("/transactions/tab");
-    //       })
-    //       .catch((notificationError) => {
-    //         console.error("Error creating notification:", notificationError);
-    //         // Handle error creating notification if needed
-    //       });
-    //   },
-    //   oncancel() {
-    //     alert("You have canceled the transaction");
-    //   },
-    //   // ref: "unique_transaction_reference",
-    //   callback: function (response) {
-    //     // Handle Paystack response here
-    //     console.log(response);
-    //   },
-    //   onClose: function () {
-    //     // Handle transaction close event
-    //     console.log("Transaction closed.");
-    //   },
-    // });
-    // Assuming you're sending paymentName, email, paymentAmount, and paymentDscription from state
+    // Add validation here too
+    if (!selectedBankCode) {
+      toast({
+        title: "Bank code is required",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
 
     const requestData = {
       paymentName,
@@ -154,6 +160,7 @@ const TransactionCreation = () => {
       selectedUserType,
       willUseCourier,
       paymentBank,
+      paymentBankCode: selectedBankCode, // Add the bank code
       paymentAccountNumber,
     };
 
@@ -280,20 +287,20 @@ const TransactionCreation = () => {
                 ) : (
                   <img src={defaultProfileImage} alt="Default Profile Icon" className="h-[40px] w-[100%] bg-cover bg-center rounded-full" />
                 )} */}
-                   <img
-                    src={
-                      userDetails.userId === userDetails._id
-                        ? userDetails.avatarImage
-                          ? `${BASE_URL}/${userDetails.avatarImage}`
-                          : defaultProfileImage
-                        : userDetails.avatarImage
-                          ? `${BASE_URL}/${userDetails.avatarImage}`
-                          : defaultProfileImage
-                    }
-                    alt="Avatar"
-                    onError={(e) => { e.target.onerror = null; e.target.src = DefaultProfile; }}
-                    className="w-full h-full bg-cover rounded-full"
-                  />
+                <img
+                  src={
+                    userDetails.userId === userDetails._id
+                      ? userDetails.avatarImage
+                        ? `${BASE_URL}/${userDetails.avatarImage}`
+                        : defaultProfileImage
+                      : userDetails.avatarImage
+                        ? `${BASE_URL}/${userDetails.avatarImage}`
+                        : defaultProfileImage
+                  }
+                  alt="Avatar"
+                  onError={(e) => { e.target.onerror = null; e.target.src = DefaultProfile; }}
+                  className="w-full h-full bg-cover rounded-full"
+                />
               </div>
               <div className="p-2">
                 <p><strong>Name:</strong> {paymentName}</p>
@@ -478,7 +485,7 @@ const TransactionCreation = () => {
                     >
                       Bank Name
                     </label>
-                    <input
+                    {/* <input
                       type="text"
                       id="paymentBank"
                       name="paymentBank"
@@ -487,7 +494,45 @@ const TransactionCreation = () => {
                       className="border-2  border-[#318AE6] bg-[#031420] rounded-[30px] text-[12px] pl-4 pr-3 pt-2 pb-2  outline-none mb-2  w-full"
                       placeholder="Enter payment bank"
                       autoComplete="on"
-                    />
+                    /> */}
+                    {/* <select
+                      id="paymentBank"
+                      name="paymentBank"
+                      onChange={(e) => {
+                        const selectedBank = banks.find(bank => bank.code === e.target.value);
+                        setSelectedBankCode(e.target.value);
+                        setPaymentBank(selectedBank ? selectedBank.name : "");
+                      }}
+                      value={selectedBankCode}
+                      className="border-2 border-[#318AE6] bg-[#031420] rounded-[30px] text-[12px] pl-4 pr-3 pt-2 pb-2 outline-none mb-2 w-full"
+                      required
+                    >
+                      <option value="">Select Bank</option>
+                      {banks.map((bank) => (
+                        <option key={bank.code} value={bank.code}>
+                          {bank.name}
+                        </option>
+                      ))}
+                    </select> */}
+                    <select
+                      id="paymentBank"
+                      name="paymentBank"
+                      onChange={(e) => {
+                        const selectedBank = uniqueBanks.find(bank => bank.code === e.target.value);
+                        setSelectedBankCode(e.target.value);
+                        setPaymentBank(selectedBank ? selectedBank.name : "");
+                      }}
+                      value={selectedBankCode}
+                      className="border-2 border-[#318AE6] bg-[#031420] rounded-[30px] text-[12px] pl-4 pr-3 pt-2 pb-2 outline-none mb-2 w-full"
+                      required
+                    >
+                      <option value="">Select Bank</option>
+                      {uniqueBanks.map((bank) => (
+                        <option key={bank.code} value={bank.code}>
+                          {bank.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div className="mb-4">
                     <label
