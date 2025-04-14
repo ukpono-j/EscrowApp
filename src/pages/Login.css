@@ -1,0 +1,283 @@
+/* Login.css */
+
+.login-page {
+    font-family: 'Geist', sans-serif;
+    position: relative;
+  }
+  
+  /* Logo styling */
+  .logo-container {
+    overflow: hidden;
+    border-radius: 8px;
+    position: relative;
+  }
+  
+  .login-logo {
+    transition: all 0.4s ease;
+  }
+  
+  .login-logo:hover {
+    transform: scale(1.08);
+    filter: brightness(1.1);
+  }
+  
+  .logo-container::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 3px;
+    bottom: -3px;
+    left: 0;
+    background: linear-gradient(90deg, transparent, #B38939, transparent);
+    transform: scaleX(0);
+    transform-origin: center;
+    transition: transform 0.5s ease;
+  }
+  
+  .logo-container:hover::after {
+    transform: scaleX(1);
+  }
+  
+  /* Form container effects */
+  .form-container {
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  
+  .form-container:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+  }
+  
+  /* Input field focus effects */
+  .input-field {
+    transition: all 0.3s ease;
+    box-shadow: 0 0 0 rgba(179, 137, 57, 0);
+  }
+  
+  .input-field:focus {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(179, 137, 57, 0.2);
+  }
+  
+  /* Login button animation */
+  .login-button {
+    overflow: hidden;
+    position: relative;
+    z-index: 1;
+    transition: all 0.4s ease !important;
+  }
+  
+  .login-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.7s ease;
+    z-index: -1;
+  }
+  
+  .login-button:hover::before {
+    left: 100%;
+  }
+  
+  .login-button::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 0;
+    background-color: rgba(255, 255, 255, 0.1);
+    transition: height 0.3s ease;
+    z-index: -1;
+  }
+  
+  .login-button:hover::after {
+    height: 100%;
+  }
+  
+  /* Background animation - optimized */
+  @keyframes float {
+    0% {
+      transform: translatey(0px) translateX(0px);
+    }
+    50% {
+      transform: translatey(-20px) translateX(10px);
+    }
+    100% {
+      transform: translatey(0px) translateX(0px);
+    }
+  }
+  
+  .background-shapes {
+    will-change: transform;
+  }
+  
+  /* Form wrapper with subtle glow */
+  .login-form-wrapper {
+    position: relative;
+  }
+  
+  .login-form-wrapper::before {
+    content: '';
+    position: absolute;
+    top: -5px;
+    left: -5px;
+    right: -5px;
+    bottom: -5px;
+    background: linear-gradient(45deg, #B38939, transparent, #031420, transparent, #B38939);
+    background-size: 400%;
+    border-radius: 18px;
+    filter: blur(10px);
+    opacity: 0;
+    z-index: -1;
+    transition: opacity 0.5s ease;
+    animation: glowing 20s linear infinite;
+  }
+  
+  .login-form-wrapper:hover::before {
+    opacity: 0.6;
+  }
+  
+  @keyframes glowing {
+    0% { background-position: 0 0; }
+    50% { background-position: 400% 0; }
+    100% { background-position: 0 0; }
+  }
+  
+  /* Welcome message animations */
+  .welcome-heading, .welcome-text {
+    position: relative;
+  }
+  
+  .welcome-heading::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 2px;
+    bottom: -5px;
+    left: 0;
+    background-color: #B38939;
+    transition: width 0.8s ease;
+  }
+  
+  .login-form-wrapper:hover ~ .welcome-heading::after {
+    width: 50%;
+  }
+  
+  .accent-bar {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .accent-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.5);
+    animation: shimmer 3s infinite;
+  }
+  
+  @keyframes shimmer {
+    100% {
+      left: 100%;
+    }
+  }
+  
+  /* Forgot password and register link effects */
+  .forgot-password, .register-link {
+    position: relative;
+    transition: all 0.3s ease;
+  }
+  
+  .forgot-password::after, .register-link::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 1px;
+    bottom: -2px;
+    left: 0;
+    background-color: #B38939;
+    transition: width 0.3s ease;
+  }
+  
+  .forgot-password:hover::after, .register-link:hover::after {
+    width: 100%;
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 992px) {
+    .login-form-wrapper {
+      max-width: 500px;
+      margin: 0 auto;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .login-form-wrapper {
+      max-width: 100%;
+      width: 100%;
+    }
+    
+    .form-container {
+      padding: 1.5rem;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .login-page {
+      background-attachment: fixed;
+    }
+    
+    .input-field, .login-button {
+      font-size: 14px;
+    }
+  }
+  
+  /* High-resolution displays */
+  @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .login-page {
+      background-size: cover;
+    }
+  }
+  
+
+  /* Animation for form entry */
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .form-container {
+    animation: fadeInUp 0.6s ease-out;
+  }
+  
+  /* Prevent layout shifts during loading */
+  .input-field, .login-button {
+    min-height: 45px;
+  }
+  
+  /* Touch device optimizations */
+  @media (hover: none) {
+    .login-button:hover {
+      transform: none !important;
+    }
+    
+    .form-container:hover {
+      transform: none;
+    }
+  }

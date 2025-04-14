@@ -1,0 +1,294 @@
+/* Register.css */
+
+.register-page {
+    font-family: 'Geist', 'Poppins', sans-serif;
+    position: relative;
+  }
+  
+  /* Logo styling */
+  .logo-container {
+    overflow: hidden;
+    border-radius: 8px;
+    position: relative;
+  }
+  
+  .register-logo {
+    transition: all 0.4s ease;
+  }
+  
+  .register-logo:hover {
+    transform: scale(1.08);
+    filter: brightness(1.1);
+  }
+  
+  .logo-container::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 3px;
+    bottom: -3px;
+    left: 0;
+    background: linear-gradient(90deg, transparent, #B38939, transparent);
+    transform: scaleX(0);
+    transform-origin: center;
+    transition: transform 0.5s ease;
+  }
+  
+  .logo-container:hover::after {
+    transform: scaleX(1);
+  }
+  
+  /* Form container effects */
+  .form-container {
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  
+  .form-container:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+  }
+  
+  /* Input field focus effects */
+  .input-fields {
+    transition: all 0.3s ease;
+    box-shadow: 0 0 0 rgba(179, 137, 57, 0);
+  }
+  
+  .input-fields:focus {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(179, 137, 57, 0.2);
+  }
+  
+  /* Special styling for date input type */
+  .date-input::-webkit-calendar-picker-indicator {
+    filter: invert(1) brightness(0.8);
+    cursor: pointer;
+    opacity: 0.7;
+    transition: all 0.2s ease;
+  }
+  
+  .date-input::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+    scale: 1.1;
+  }
+  
+  /* Register button animation */
+  .register-button {
+    overflow: hidden;
+    position: relative;
+    z-index: 1;
+    transition: all 0.4s ease !important;
+  }
+  
+  .register-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.7s ease;
+    z-index: -1;
+  }
+  
+  .register-button:hover::before {
+    left: 100%;
+  }
+  
+  .register-button::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 0;
+    background-color: rgba(255, 255, 255, 0.1);
+    transition: height 0.3s ease;
+    z-index: -1;
+  }
+  
+  .register-button:hover::after {
+    height: 100%;
+  }
+  
+  /* Background animation - optimized */
+  @keyframes float {
+    0% {
+      transform: translatey(0px) translateX(0px);
+    }
+    50% {
+      transform: translatey(-20px) translateX(10px);
+    }
+    100% {
+      transform: translatey(0px) translateX(0px);
+    }
+  }
+  
+  .background-shapes {
+    will-change: transform;
+  }
+  
+  /* Form wrapper with subtle glow */
+  .register-form-wrapper {
+    position: relative;
+  }
+  
+  .register-form-wrapper::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: -8px;
+    right: -8px;
+    bottom: -8px;
+    background: linear-gradient(45deg, #B38939, transparent, #031420, transparent, #B38939);
+    background-size: 400%;
+    border-radius: 20px;
+    filter: blur(15px);
+    opacity: 0;
+    z-index: -1;
+    transition: opacity 0.5s ease;
+    animation: glowing 20s linear infinite;
+  }
+  
+  .register-form-wrapper:hover::before {
+    opacity: 0.6;
+  }
+  
+  @keyframes glowing {
+    0% { background-position: 0 0; }
+    50% { background-position: 400% 0; }
+    100% { background-position: 0 0; }
+  }
+  
+  /* Welcome content animations */
+  .welcome-heading, .welcome-text, .features-list, .accent-bar {
+    transition: all 0.5s ease;
+  }
+  
+  .welcome-heading {
+    position: relative;
+  }
+  
+  .welcome-heading::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 0;
+    width: 60px;
+    height: 3px;
+    background: #B38939;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.6s ease;
+  }
+  
+  .welcome-heading:hover::after {
+    transform: scaleX(1);
+  }
+  
+  /* Features list hover effects */
+  .features-list HStack {
+    transition: all 0.3s ease;
+  }
+  
+  .features-list HStack:hover {
+    transform: translateX(5px);
+  }
+  
+  /* Login link animation */
+  .login-link {
+    position: relative;
+    transition: all 0.3s ease;
+  }
+  
+  .login-link::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 2px;
+    bottom: -2px;
+    left: 0;
+    background-color: #B38939;
+    transform: scaleX(0);
+    transform-origin: center;
+    transition: transform 0.3s ease;
+  }
+  
+  .login-link:hover::after {
+    transform: scaleX(1);
+  }
+  
+  /* Form validation effects */
+  .input-fields.chakra-input--invalid {
+    animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+  }
+  
+  @keyframes shake {
+    10%, 90% { transform: translateX(-1px); }
+    20%, 80% { transform: translateX(2px); }
+    30%, 50%, 70% { transform: translateX(-3px); }
+    40%, 60% { transform: translateX(3px); }
+  }
+  
+  /* Mobile responsiveness enhancements */
+  @media (max-width: 768px) {
+    .register-page {
+      background-attachment: fixed;
+    }
+    
+    .form-container {
+      padding: 20px !important;
+    }
+    
+    .register-form-wrapper::before {
+      opacity: 0.3;
+    }
+  }
+  
+  /* Scroll animations for better user experience */
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .input-fields, .register-button {
+    animation: fadeInUp 0.8s ease forwards;
+    animation-play-state: paused;
+    animation-delay: calc(var(--scroll) * -1s);
+  }
+  
+  /* Password strength indicator styling */
+  .password-strength-meter {
+    height: 4px;
+    width: 100%;
+    background-color: #2D3748;
+    border-radius: 4px;
+    margin-top: 8px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+  }
+  
+  .password-strength-meter div {
+    height: 100%;
+    transition: width 0.3s ease, background-color 0.3s ease;
+  }
+  
+  /* Form success state animation */
+  @keyframes successPulse {
+    0% { box-shadow: 0 0 0 0 rgba(179, 137, 57, 0.7); }
+    70% { box-shadow: 0 0 0 15px rgba(179, 137, 57, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(179, 137, 57, 0); }
+  }
+  
+  .form-success {
+    animation: successPulse 1.5s infinite;
+  }
