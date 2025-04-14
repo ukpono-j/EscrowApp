@@ -32,7 +32,7 @@ const About = () => {
   return (
     <div
       id="about"
-      className={`w-[100%] pt-14 font-[Poppins] md:pl-20 pl-5 md:pb-14  pr-5  md:pr-20 justify-between h-[auto] flex md:flex-row  flex-col-reverse  items-center ${isScrolling ? "fade-in" : "fade-out"
+      className={`w-[100%] pt-14 md:pl-20 pl-5 md:pb-14  pr-5  md:pr-20 justify-between h-[auto] flex md:flex-row  flex-col-reverse  items-center ${isScrolling ? "fade-in" : "fade-out"
         }`}
     >
       <div
@@ -58,20 +58,24 @@ const About = () => {
         <h1 className="text-center md:text-left md:text-[54px] font-bold leading-[44px] md:leading-[60px]  text-[40px]  pt-1">
           Trustworthy Escrow Services
         </h1>
-        <p className=" text-[13px] text-center md:text-left  mt-7   leading-[22px]">
-          At SafeSylo, we prioritize security, transparency, and fairness. Acting as a neutral third party, we ensure that funds are securely held until both parties fulfill their obligations. Our platform removes risk and fraud from transactions, so you can trade with confidence every time.
+        <p className="text-[17px] text-center mt-2 md:text-left">
+          At Sylo, we believe that trust is the currency of every successful transaction. Whether you're dealing with digital goods, services, or high-stake purchases, uncertainty shouldn't be part of the deal. That’s where we come in.
         </p>
-        <p className=" text-[13px] text-center md:text-left  mt-7   leading-[22px]">
-          Our escrow process protects buyers from losing money to scammers and ensures that sellers are paid promptly after fulfilling their part of the agreement. This two-way security system eliminates risk and promotes fair business dealings.
+        <p className=" text-[17px] text-center mt-4 md:text-left">
+          We’re a modern, tech-forward escrow platform built to protect both buyers and sellers, no matter the industry. From freelancers and online sellers to real estate investors and everyday users, Sylo acts as your secure middle ground, holding funds safely until both sides are satisfied.
         </p>
-       <div className="flex justify-center md:justify-start">
-       <Link
-          to="/login"
-          className="outine-none bg-[#B38939] max-w-[220px] mt-6 start_btn  pl-7 pr-7  text-[14px] h-[auto] pt-3 pb-3  text-[#fff]  flex items-center justify-center   rounded-[50px]  border-2 border-[#B38939]"
-        >
-          Start Transactions
-        </Link>
-       </div>
+
+        <p className=" text-[17px] text-center md:text-left  mt-7">
+          With Sylo, no one gets paid until the job is done right.
+        </p>
+        <div className="flex justify-center md:justify-start">
+          <Link
+            to="/login"
+            className="outine-none bg-[#B38939] rounded-full max-w-[220px] mt-6 start_btn  pl-7 pr-7  text-[17px] h-[auto] pt-3 pb-3 text-[#fff] flex items-center justify-center border-2 border-[#B38939]"
+          >
+            Start Transactions
+          </Link>
+        </div>
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
-.faq .fg  h1{
+.faq{
     /* font-family: "Bricolage Grotesque", sans-serif; */
+    font-family: "Geist", sans-serif;
 }
 
 .faq_button:before{

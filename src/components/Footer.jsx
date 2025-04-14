@@ -1,12 +1,9 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { Link as ScrollLink, scroller } from "react-scroll";
-import "./Footer.css";
-import NewsLetter from "./home/NewsLetter";
-import { FaFacebookF, FaInstagram, FaTwitter } from "react-icons/fa";
-import Logo from "../assets/logo3.png"
-import { Box, Text } from "@chakra-ui/react";
-
+import { Box, Flex, Text, Container, Grid, GridItem, Divider, Icon, VStack, HStack } from "@chakra-ui/react";
+import { FaFacebookF, FaInstagram, FaTwitter, FaLinkedinIn } from "react-icons/fa";
+import Logo from "../assets/logo1.png";
 
 const Footer = () => {
   const scrollTo = (element) => {
@@ -16,81 +13,183 @@ const Footer = () => {
       smooth: "easeInOutQuart",
     });
   };
-  return (
-    <Box className="footer">
-      <NewsLetter />
-      <div className="font-[Inter] list-none mb-[-30px] pt-20 pb-4  md:pl-20  md:pr-20 pl-5 pr-5  h-[auto] flex flex-col  items-center justify-center  w-[100%]">
-        <div className=" sm:flex sm:flex-col h-[auto] sm:justify-center sm:items-center    w-[100%] ">
-          <div className=" sm:w-[400px] text-center  sm:pl-0  sm:pr-0  pl-6  pr-6  h-[auto]">
-            <Link
-              TO="/"
-              className="sm:text-[34px] flex items-center justify-center mb-4 text-[28px] font-bold footer_title  tracking-wider"
-              onClick={() => scrollTo("home")}
-            >
-              {/* MiddleMan */}
-              <Text className="footer_logo">Safesylo</Text>
-              {/* <img src={Logo} alt="Logo Detail"  className="w-[200px]"/> */}
-            </Link>
-            <div className=" text-[15px] mt-6  space-x-6 flex items-center justify-between">
-              <ScrollLink
-                className="cursor-pointer"
-                to="about"
-                smooth={true}
-                duration={800}
-              >
-                About Us
-              </ScrollLink>
-              <ScrollLink
-                className="cursor-pointer"
-                to="services"
-                smooth={true}
-                duration={800}
-              >
-                Services
-              </ScrollLink>
-              <ScrollLink
-                className="cursor-pointer"
-                to="faq"
-                smooth={true}
-                duration={800}
-              >
-                FAQ
-              </ScrollLink>
-            </div>
-            {/* <div className="text-[12px] leading-[23px] pt-4 font-[200]">
-              At MiddleMan, we're dedicated to providing a seamless and secure
-              experience for all your transactions. Your trust and satisfaction
-              are our top priorities. If you have any questions, concerns, or
-              need assistance, our support team is here to help. Stay connected
-              with us on social media for the latest updates, and thank you for
-              choosing MiddleMan for your escrow needs.
-            </div> */}
-          </div>
+  
+  const socialLinks = [
+    { icon: FaFacebookF, href: "https://facebook.com" },
+    { icon: FaTwitter, href: "https://twitter.com" },
+    { icon: FaInstagram, href: "https://instagram.com" },
+    { icon: FaLinkedinIn, href: "https://linkedin.com" }
+  ];
+  
+  const navLinks = [
+    { name: "About Us", to: "about" },
+    { name: "Services", to: "services" },
+    { name: "FAQ", to: "faq" },
+    { name: "Contact", to: "contact" }
+  ];
 
-          <div className="w-[100%] mt-5  border-b flex items-center  justify-between  border-t mt-3 ">
-             <div className="social_icon_container flex items-center ">
-               <div className="border sm:h-[39px] h-[32px] w-[32px] sm:w-[39px] sm:m-3 m-2 flex items-center justify-center  rounded-full bg-[#fff]">
-                <FaFacebookF className="text-[#000]  sm:text-[23px] text-[19px]" />
-               </div>
-               <div className="border sm:h-[39px] h-[32px] w-[32px] sm:w-[39px] sm:m-3 m-2 flex items-center justify-center  rounded-full bg-[#fff]">
-                <FaTwitter  className="text-[#000]  sm:text-[23px] text-[19px]" />
-               </div>
-               <div className="border sm:h-[39px] h-[32px] w-[32px] sm:w-[39px] sm:m-3 m-2 flex items-center justify-center  rounded-full bg-[#fff]">
-                <FaInstagram  className="text-[#000]  sm:text-[23px] text-[19px]" />
-               </div>
-             </div>
-             <div className="flex sm:text-left text-center  items-center text-[14px] ">
-                <p className="sm:ml-4  ml-1 mr-1  sm:mr-3 ">Terms & Condition</p>
-                <p className="sm:ml-4  ml-1 mr-1  sm:mr-3 ">Privacy Policy</p>
-             </div>
-          </div>
-          <div className="w-[100%] sm:flex text-center sm:text-left  items-center  text-[14px] justify-between mt-7 ">
-            <p>© 2023 MiddleMan App. All rights reserved.</p>
-            <p>Powered by Zeek</p>
-          </div>
-        </div>
-        {/* <div className="pt-20">copyright</div> */}
-      </div>
+  const legalLinks = [
+    { name: "Terms & Conditions", to: "/terms" },
+    { name: "Privacy Policy", to: "/privacy" },
+  ];
+
+  return (
+    <Box as="footer" bg="#1a202c" color="white">
+      {/* Newsletter Section */}
+      <Box py={10} bg="">
+        <Container maxW="container.xl">
+          <VStack spacing={6}>
+            <Text fontSize={{ base: "xl", md: "2xl" }} fontWeight="bold" textAlign="center">
+              Subscribe To Our Newsletter
+            </Text>
+            <Flex 
+              direction={{ base: "column", md: "row" }} 
+              w="full" 
+              maxW="600px"
+              justifyContent="center" 
+              alignItems="center"
+              gap={3}
+            >
+              <Box 
+                as="input" 
+                type="email" 
+                placeholder="Enter your email" 
+                py={3} 
+                px={4}
+                borderRadius="md"
+                w={{ base: "full", md: "70%" }}
+                color="#1A202C"
+              />
+              <Box 
+                as="button" 
+                bg="#B38939" 
+                py={3} 
+                px={6} 
+                // borderRadius="md"
+                w={{ base: "full", md: "auto" }}
+                _hover={{ bg: "#718096" }}
+                fontWeight="semibold"
+              >
+                Subscribe Now
+              </Box>
+            </Flex>
+          </VStack>
+        </Container>
+      </Box>
+      
+      {/* Main Footer Content */}
+      <Container className="footer_container" maxW="container.xl" py={12}>
+        <Grid 
+          templateColumns={{ 
+            base: "1fr", 
+            md: "1fr 1fr", 
+            lg: "2fr 1fr 1fr" 
+          }}
+          gap={8}
+        >
+          {/* Logo and Company Info */}
+          <GridItem>
+            <VStack align="flex-start" spacing={5}>
+              <Link to="/" onClick={() => scrollTo("home")}>
+                <Box as="img" src={Logo} alt="MiddleMan Logo" w={{ base: "120px", md: "150px" }} />
+              </Link>
+              <Text fontSize="sm" lineHeight="tall">
+                At Sylo, we're dedicated to providing a seamless and secure
+                experience for all your transactions. Your trust and satisfaction
+                are our top priorities. Our support team is here to help you every
+                step of the way.
+              </Text>
+              <Flex gap={3}>
+                {socialLinks.map((social, index) => (
+                  <Box 
+                    key={index}
+                    as="a" 
+                    href={social.href} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    bg="whiteAlpha.200"
+                    borderRadius="full"
+                    w={{ base: "32px", md: "38px" }}
+                    h={{ base: "32px", md: "38px" }}
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
+                    transition="all 0.3s"
+                    _hover={{ bg: "whiteAlpha.400", transform: "translateY(-3px)" }}
+                  >
+                    <Icon as={social.icon} boxSize={{ base: "15px", md: "18px" }} />
+                  </Box>
+                ))}
+              </Flex>
+            </VStack>
+          </GridItem>
+          
+          {/* Quick Links */}
+          <GridItem>
+            <VStack align="flex-start" spacing={5}>
+              <Text fontSize="lg" fontWeight="bold">Quick Links</Text>
+              <VStack align="flex-start" spacing={3}>
+                {navLinks.map((link, index) => (
+                  <ScrollLink
+                    key={index}
+                    className="cursor-pointer"
+                    to={link.to}
+                    smooth={true}
+                    duration={800}
+                  >
+                    <Text fontSize="sm" _hover={{ color: "gray.300" }} transition="color 0.2s">
+                      {link.name}
+                    </Text>
+                  </ScrollLink>
+                ))}
+              </VStack>
+            </VStack>
+          </GridItem>
+          
+          {/* Contact Info */}
+          <GridItem>
+            <VStack align="flex-start" spacing={5}>
+              <Text fontSize="lg" fontWeight="bold">Contact Us</Text>
+              <VStack align="flex-start" spacing={3}>
+                <Text fontSize="sm">
+                  <Box as="span" fontWeight="semibold">Email:</Box> support@middleman.com
+                </Text>
+                <Text fontSize="sm">
+                  <Box as="span" fontWeight="semibold">Phone:</Box> +234 123 456 7890
+                </Text>
+                <Text fontSize="sm">
+                  <Box as="span" fontWeight="semibold">Address:</Box> Lagos, Nigeria
+                </Text>
+              </VStack>
+            </VStack>
+          </GridItem>
+        </Grid>
+        
+        {/* Footer Bottom */}
+        <Divider my={8} borderColor="gray.700" />
+        <Flex 
+          direction={{ base: "column", md: "row" }} 
+          justify="space-between" 
+          align={{ base: "center", md: "center" }}
+          gap={{ base: 4, md: 0 }}
+        >
+          <Text fontSize="sm" textAlign={{ base: "center", md: "left" }}>
+            © {new Date().getFullYear()} Sylo App. All rights reserved.
+          </Text>
+          <HStack spacing={4} textAlign="center">
+            {legalLinks.map((link, index) => (
+              <Link key={index} to={link.to}>
+                <Text fontSize="sm" _hover={{ color: "gray.300" }} transition="color 0.2s">
+                  {link.name}
+                </Text>
+              </Link>
+            ))}
+          </HStack>
+          <Text fontSize="sm" textAlign={{ base: "center", md: "right" }}>
+            Powered by Zeek
+          </Text>
+        </Flex>
+      </Container>
     </Box>
   );
 };

@@ -3,7 +3,8 @@
   flex-direction: column;
   padding: 120px 20px 50px 20px;
   width: 100%;
-  font-family: "Poppins", sans-serif;
+  /* font-family: "Work Sans", sans-serif; */
+  font-family: "Geist", sans-serif;
 }
 .responsive-image {
   width: 100%;
@@ -38,6 +39,7 @@
   font-weight: 900;
   font-size: 36px;
   line-height: 1.2;
+
 }
 
 @media (min-width: 640px) {
@@ -54,14 +56,14 @@
 
 @media (min-width: 1024px) {
   .hero_heading {
-    font-size: 76px;
+    font-size: 60px;
   }
 }
 
 .hero_subtext {
   font-weight: 400;
   margin-top: 26px;
-  font-size: 15px;
+  font-size: 17px;
   line-height: 1.6;
 }
 
@@ -81,10 +83,8 @@
   background-color: #B38939;
   border: 2px solid #B38939;
   color: #fff;
-  border-radius: 50px;
   padding: 12px 28px;
-  font-size: 14px;
-  font-family: "Poppins", sans-serif;
+  font-size: 17px;
   transition: all 0.3s ease;
 }
 

@@ -9,13 +9,14 @@ const Hero = () => {
     <Box className="hero-container">
       <div className="hero-text-content">
         <Text className="hero_heading">
-          Where Trust Meets Transparency
+          {/* Where Trust Meets Transparency */}
+          Secure Your Deals with Confidence. Welcome to Sylo
         </Text>
         <p className="hero_subtext">
-          Your ultimate solution for secure and transparent business transactions. TrustLink is redefining the way commerce is conducted by providing a seamless, secure, and reliable escrow service. Whether you're buying or selling, our platform guarantees peace of mind, ensuring that transactions are executed with integrity and confidence.
+        Experience peace of mind with Sylo, your trusted partner for secure and transparent business dealings. Our platform ensures that every transaction is handled with integrity, providing a seamless experience for both buyers and sellers.
         </p>
         <div className="hero-btn-wrapper">
-          <Link to="/login" className="start_btn">
+          <Link to="/login" className="start_btn rounded-full font-bold">
             Start Transactions
           </Link>
         </div>

@@ -45,24 +45,24 @@ const FAQ = () => {
   };
 
   return (
-    <Box className="h-[auto] font-[Poppins] text-center md:text-start faq md:flex md:flex-row flex-col-reverse flex w-[100%] pr-5 pl-5 md:pl-[80px] md:pr-[80px] pt-14  pb-14   ">
+    <Box className="h-[auto] text-center md:text-start faq md:flex md:flex-row flex-col-reverse flex w-[100%] pr-5 pl-5 md:pl-[80px] md:pr-[80px] pt-14  pb-14">
       <div className="border md:p-10 p-3  w-[100%] text-left  md:mt-0 mt-14  h-[auto] rounded-3xl  ">
         {/* Accordion */}
         {accordionData.map((item) => (
           <div className="pt-3 pb-3 pl-3 pr-3" key={item.id}>
-            <Text
+            <div
               className="cursor-pointer flex justify-between items-center"
               onClick={() => toggleAccordion(item.id)}
             >
-              <h1 className=" font-[700] accordion_title">
+              <Text className=" font-[700] accordion_title">
                 {item.title}
-              </h1>
+              </Text>
               {openAccordionId === item.id ? (
-                <FaChevronUp className="text-[#192331]" />
+                  <FaChevronUp className="text-[#B38939]" />
               ) : (
-                <FaChevronDown className="text-[#192331]" />
+                <FaChevronDown className="text-[#B38939]" />
               )}
-            </Text>
+            </div>
             {openAccordionId === item.id && (
               <div className=" text-[14px] mt-2 font-[300] ">
                 <Text>{item.content}</Text>
@@ -75,16 +75,14 @@ const FAQ = () => {
         <h1 className="font-bold md:text-left Uppercase  md:text-[50px] leading-[44px] md:leading-[60px]  text-[40px]">
           Frequently Asked Questions
         </h1>
+        <p className=" text-[14px] mt-4 font-bold">What is Sylo Escrow?</p>
         <p className=" text-[14px] mt-4">
-          MiddleMan is an escrow app designed to bring trust and transparency to
-          your transactions. Acting as a reliable intermediary, MiddleMan
-          safeguards your transactions, ensuring that both parties fulfill their
-          commitments before the funds are released.
+          Sylo is a secure, easy-to-use escrow platform that protects both buyers and sellers during online and offline transactions. We act as a trusted third-party, holding funds securely until both parties are satisfied and the deal is complete. Whether it's services, products, or high-value exchanges — Sylo ensures no one gets cheated.
         </p>
         <div className="flex justify-center md:justify-start">
-        <button className="outine-none text-white w-[auto] faq  mt-5  start_btn  pl-7 pr-7  text-[14px] h-[auto] pt-3 pb-3 font-bold flex items-center justify-center   rounded-[50px]  border-2 bg-[#B38939] border-[#B38939]">
-          Get Started
-        </button>
+          <button className="outine-none rounded-full text-white w-[auto] faq mt-5 start_btn  pl-8 pr-8 text-[16px] h[auto] pt-3 pb-3 font-bold flex items-center justify-center border-2 bg-[#B38939] border-[#B38939]">
+            Get Started Now
+          </button>
         </div>
       </div>
     </Box>
