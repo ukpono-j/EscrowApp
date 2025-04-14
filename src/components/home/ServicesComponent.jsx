@@ -17,7 +17,7 @@ const ServicesComponent = () => {
         {/* === buyer */}
         <div className="md:w-[100%] gap-8 h-[auto] sm:mt-16 mt-14  md:flex items-center justify-between  mb-6 ml-auto mr-auto">
           <div className=" md:w-[100%] h-[auto] flex flex-col md:items-start items-center md:text-start text-center">
-            <h1 className="font-[900] text-[40px] service_sub_title">Buyer protection</h1>
+            <h1 className="font-[900] text-[40px] service_sub_title">Buyer Protection</h1>
             <p className="text-[17px] font-bold mt-2 ">
               What you order is what you get — or your money stays safe
             </p>
@@ -55,7 +55,7 @@ const ServicesComponent = () => {
             />
           </div>
           <div className=" md:w-[100%] h-[auto] flex flex-col md:items-start items-center md:text-start text-center">
-            <h1 className="font-[900] text-[40px] service_sub_title">Seller protection</h1>
+            <h1 className="font-[900] text-[40px] service_sub_title">Seller Protection</h1>
 
             <h4 className="text-[17px] mt-2 font-bold">Ship with confidence, knowing your payment is locked in.</h4>
             <p className="text-[17px] mt-2">
@@ -78,7 +78,7 @@ const ServicesComponent = () => {
         {/* ======== Fraud Protection */}
         <div className="md:w-[100%] h-[auto] mt-20 gap-10 md:flex items-center justify-between  mb-6 ml-auto mr-auto">
           <div className=" md:w-[100%] h-[auto] flex flex-col md:items-start items-center md:text-start text-center">
-            <h1 className="font-[900] text-[40px] service_sub_title">Fraud protection</h1>
+            <h1 className="font-[900] text-[40px] service_sub_title">Fraud Protection</h1>
             <h4 className="text-[17px] mt-2 font-bold">We don’t just secure transactions — we help fight fraud.</h4>
             <p className="text-[17px] mt-2">
               At Sylo, your safety goes beyond just holding funds. Every transaction is processed through Bondly’s secure wallets and verification systems, ensuring every user is authenticated and each payment is monitored for legitimacy.
