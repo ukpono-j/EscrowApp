@@ -67,7 +67,7 @@ const Navbar = () => {
           <ThemeToggle />
         </div>
       </div>
-      <div className="flex border items-center">
+      <div className="flex items-center">
 
         <Text className="md:hidden flex items-center">
           <AiOutlineMenu
