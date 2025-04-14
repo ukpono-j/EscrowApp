@@ -10,7 +10,7 @@ const NewsLetter = () => {
 
 
   return (
-    <Box className="md:pl-20 pl-5 font-[Inter] newsletter_container pr-5 md:pr-20 pb-14 pt-10"
+    <Box className="md:pl-20 pl-5 font-[Poppins] newsletter_container pr-5 md:pr-20 pb-14 pt-10"
     bg={mobileNewsLetterBg}
     >
       <div className=" w-[100%] h-[auto] md:pl-20 pl-5 pr-5 md:pr-20  pt-7 pb-7 flex items-center justify-center rounded-3xl">

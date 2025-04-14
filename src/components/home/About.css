@@ -78,7 +78,8 @@
     border: 5px solid #0f1a2e;
 }
 .fade_right h1{
-  font-family: "Bricolage Grotesque", sans-serif;
+  /* font-family: "Bricolage Grotesque", sans-serif; */
+  font-family: "Poppins";
   font-weight: 900;
 
 }

@@ -45,7 +45,7 @@ const FAQ = () => {
   };
 
   return (
-    <Box className="h-[auto] font-[Inter] text-center md:text-start faq md:flex md:flex-row flex-col-reverse flex w-[100%] pr-5 pl-5 md:pl-[80px] md:pr-[80px] pt-14  pb-14   ">
+    <Box className="h-[auto] font-[Poppins] text-center md:text-start faq md:flex md:flex-row flex-col-reverse flex w-[100%] pr-5 pl-5 md:pl-[80px] md:pr-[80px] pt-14  pb-14   ">
       <div className="border md:p-10 p-3  w-[100%] text-left  md:mt-0 mt-14  h-[auto] rounded-3xl  ">
         {/* Accordion */}
         {accordionData.map((item) => (

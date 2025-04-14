@@ -32,7 +32,7 @@ const About = () => {
   return (
     <div
       id="about"
-      className={`w-[100%] pt-14 font-[Inter] md:pl-20 pl-5 md:pb-14  pr-5  md:pr-20 justify-between h-[auto] flex md:flex-row  flex-col-reverse  items-center ${isScrolling ? "fade-in" : "fade-out"
+      className={`w-[100%] pt-14 font-[Poppins] md:pl-20 pl-5 md:pb-14  pr-5  md:pr-20 justify-between h-[auto] flex md:flex-row  flex-col-reverse  items-center ${isScrolling ? "fade-in" : "fade-out"
         }`}
     >
       <div
