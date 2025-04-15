@@ -1,63 +1,93 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
-import MyTransaction from './MyTransaction';
 import Profile from './Profile';
 import BottomNav from './BottomNav';
 import TransactionCreation from './TransactionCreation';
 import MiniNav from './MiniNav';
-// import Sidebar from "../components/dashboard/Sidebar";
-// import MyTransaction from "../components/dashboard/MyTransaction";
-// import Profile from "../components/dashboard/Profile";
-// import BottomNav from "../components/dashboard/BottomNav";
-
 
 const CreateTransaction = () => {
-    const [showToggleContainer, setShowToggleContainer] = useState(true);
-    const [showProfile, setShowProfile] = useState(false);
-  
-    const handleShowProfile = () => {
-      setShowToggleContainer(false);
-      setShowProfile(true);
-    };
-  
-    const handleMyTransaction = () => {
-      setShowToggleContainer(true);
-      setShowProfile(false);
-    };
+  const [showToggleContainer, setShowToggleContainer] = useState(true);
+  const [showProfile, setShowProfile] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
+  // Check if screen is mobile size
+  useEffect(() => {
+    const checkScreenSize = () => {
+      const isMobileView = window.innerWidth < 768;
+      setIsMobile(isMobileView);
+      
+      // Auto-collapse sidebar on mobile by default
+      if (isMobileView) {
+        setIsSidebarCollapsed(true);
+      }
+    };
+    
+    // Initial check
+    checkScreenSize();
+    
+    // Add event listener for resize
+    window.addEventListener('resize', checkScreenSize);
+    
+    // Cleanup
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
 
-    return (
-        <div className="border flex items-center border-black">
-          <Sidebar
-            onShowProfile={handleShowProfile}
-            onShowToggleComponent={handleMyTransaction}
-          />
-          <div
-            style={{ overflowY: "scroll" }}
-            className="layout  bg-[#F4F5F5] fixed right-0 top-0 w-[100%]  md:w-[83.2%] h-[100vh]"
-          >
-            <div
-              className={
-                showToggleContainer ? "h-[auto] toggleContainer" : "hidden"
-              }
-            >
-                 <div>
+  const handleShowProfile = () => {
+    setShowToggleContainer(false);
+    setShowProfile(true);
+  };
+
+  const handleMyTransaction = () => {
+    setShowToggleContainer(true);
+    setShowProfile(false);
+  };
+
+  // Function to handle sidebar collapse state changes
+  const handleSidebarCollapseChange = (isCollapsed) => {
+    setIsSidebarCollapsed(isCollapsed);
+  };
+
+  return (
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
+      <Sidebar
+        onShowProfile={handleShowProfile}
+        onShowToggleComponent={handleMyTransaction}
+        onCollapseChange={handleSidebarCollapseChange}
+      />
+      
+      {/* Main content area with conditional margin only on desktop */}
+      <div 
+        className={`transition-all duration-300 flex-1 h-screen ${
+          !isMobile ? (isSidebarCollapsed ? "ml-[80px]" : "ml-[280px]") : "ml-0"
+        }`}
+      >
+        <div className="h-full overflow-y-auto scrollbar-thin scrollbar-thumb-[#B38939]/20 scrollbar-track-transparent">
+          {showToggleContainer ? (
+            <div className=''>
               <MiniNav />
+              <div className="">
+                <TransactionCreation sidebarCollapsed={isSidebarCollapsed} />
+              </div>
             </div>
-                <TransactionCreation/>
+          ) : (
+            <div className="p-4 md:p-6">
+              <Profile sidebarCollapsed={isSidebarCollapsed} />
             </div>
-            <div className={showProfile ? "profile" : "hidden"}>
-              {/* =============== Profile Component ============= */}
-              <Profile />
-              {/* ===============End of Profile Component ============= */}
-            </div>
-          </div>
-          <BottomNav
-            onShowProfile={handleShowProfile}
-            onShowToggleComponent={handleMyTransaction}
-          />
+          )}
         </div>
-      );
-}
+      </div>
+      
+      {/* Show bottom nav only when sidebar is collapsed on mobile */}
+      {isMobile && isSidebarCollapsed && (
+        <BottomNav
+          onShowProfile={handleShowProfile}
+          onShowToggleComponent={handleMyTransaction}
+          className="fixed bottom-0 left-0 right-0 z-50"
+        />
+      )}
+    </div>
+  );
+};
 
-export default CreateTransaction
+export default CreateTransaction;

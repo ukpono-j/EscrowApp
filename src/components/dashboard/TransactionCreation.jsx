@@ -263,7 +263,7 @@ const TransactionCreation = () => {
   ];
 
   return (
-    <div className="font-[Poppins] bg-[#1A1E21] min-h-[100vh] text-[#E4E4E4] relative   pt-14 md:pr-14 pr-10 pl-10  mt-10  md:pl-14 pb-20 ">
+    <div className="border min-h-[100vh] w-full text-[#E4E4E4] fixed">
       <h1 className="text-[33px] font-bold text-center md:text-start">Create Transaction</h1>
       {acceptTransactionModel && (
         <div className="fixed inset-0 pl-4 pr-4 pt-8 pb-8 flex items-center justify-center bg-black bg-opacity-50 z-50 overflow-y-auto">

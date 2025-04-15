@@ -3,18 +3,31 @@ import { AiFillMessage } from "react-icons/ai";
 import { MdClose, MdMenu, MdNotifications } from "react-icons/md";
 import { Link } from "react-router-dom";
 import axios from "axios";
-import Logo from "../../assets/logo3.png"
-import Logo2 from "../../assets/logo-m.png"
+import Logo from "../../assets/logo3.png";
+import Logo2 from "../../assets/logo-m.png";
 import Menu from "./Menu";
+import { motion, AnimatePresence } from "framer-motion";
 const BASE_URL = import.meta.env.VITE_BASE_URL;
-
-
-
+import { Box, Text, Flex, ScaleFade, useColorModeValue, Avatar } from "@chakra-ui/react";
 
 const MiniNav = () => {
   const [notificationCount, setNotificationCount] = useState(0);
   const [menu, setMenu] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
+  // Function to handle scroll effects
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 10) {
+        setScrolled(true);
+      } else {
+        setScrolled(false);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   useEffect(() => {
     // Fetch notifications count from the server when the component mounts
@@ -35,53 +48,89 @@ const MiniNav = () => {
   }, []); // Empty dependency array ensures the effect runs once after the initial render
 
   const handleMenuToggle = () => {
-    setMenu(!menu)
-  }
+    setMenu(!menu);
+  };
+
+  // Get colors based on theme
+  const bgColor = useColorModeValue("white", "#0F172A");
+  const textColor = useColorModeValue("#1E293B", "white");
+  const shadowColor = useColorModeValue("rgba(0,0,0,0.05)", "rgba(0,0,0,0.2)");
 
   return (
-    <div className="flex items-center justify-between pr-5  md:pl-[60px] md:pr-[60px] pl-5   fixed right-0 z-30 top-0 pr-7 text-[#fff] text-[24px] h-[auto] w-[100%] md:w-[83.2%] bg-[#111518]">
-      <div className="font-bold  flex md:hidden  cursor-pointer  md:text-3xl text-2xl uppercase">
-        <Link to="/dashboard" className="outline-none">
-          <img src={Logo} alt="Logo Detail" className="w-[170px]" />
+    <Box
+      as={motion.div}
+      initial={{ y: -20, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.3 }}
+      className={`flex items-center justify-between md:pl-[60px] md:pr-[60px] px-5 sticky z-30 top-0 h-[70px] w-full ${
+        scrolled ? "shadow-md" : ""
+      }`}
+      style={{
+        backgroundColor: bgColor,
+        boxShadow: scrolled ? `0 4px 20px ${shadowColor}` : "none",
+        transition: "all 0.3s ease",
+      }}
+    >
+      <div className="font-bold flex md:hidden cursor-pointer md:text-3xl text-2xl uppercase">
+        <Link to="/dashboard" className="outline-none flex items-center">
+          <motion.img 
+            src={Logo2} 
+            alt="Logo" 
+            className="h-10 w-auto"
+            whileHover={{ scale: 1.05 }}
+            transition={{ type: "spring", stiffness: 400, damping: 10 }}
+          />
         </Link>
-        {/* 5B51FE */}
       </div>
-      <div className="flex items-center justify-end w-[100%] ">
-        {/* <Link to="/messages" className="relative">
-          <AiFillMessage className="ml-2 mr-2 mt-4 mb-4" />
-        </Link> */}
+
+      <div className="flex items-center justify-end w-full gap-1">
         <Link to="/notifications" className="relative">
-          <MdNotifications className="ml-2 mr-2 mt-4 mb-4" />
-          {notificationCount > 0 && (
-            <div className="text-[#fff] w-[auto] h-[10px] absolute top-[6px] font-[500] text-[11px] right-0">
-              {notificationCount}
-            </div>
-          )}
+          <motion.div
+            className="relative p-3 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <Text color={textColor}>
+              <MdNotifications className="text-2xl text-[#B38939]" />
+            </Text>
+            
+            <AnimatePresence>
+              {notificationCount > 0 && (
+                <motion.div 
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0, opacity: 0 }}
+                  className="absolute top-1 right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"
+                >
+                  {notificationCount > 9 ? '9+' : notificationCount}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
         </Link>
-      </div>
-      <div onClick={handleMenuToggle} className="w-[auto] h-[auto] ml-2 flex md:hidden">
-        <MdMenu />
-      </div>
-      {menu && (
-        <div className="w-[220px] md:hidden block h-[100vh] absolute top-0 p-3 bg-[#111518]
         
-        right-0">
-          {/* logo area */}
-          <div className="flex items-center justify-between">
-            <div>
-              <Link to="/dashboard" className="outline-none">
-                <img src={Logo2} alt="Logo Detail" className="w-[30px]" />
-              </Link>
-            </div>
-            <MdClose className="text-white" onClick={handleMenuToggle} />
-          </div>
-          {/* Mobile side nav contents */}
-          <div className="mt-7">
-            <Menu />
-          </div>
-        </div>
-      )}
-    </div>
+        <motion.div 
+          className="h-8 w-px bg-gray-200 dark:bg-gray-700 mx-1"
+          initial={{ height: 0 }}
+          animate={{ height: 32 }}
+          transition={{ delay: 0.2 }}
+        />
+        
+        <motion.div 
+          className="relative"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <Avatar 
+            size="sm" 
+            name="" 
+            src=""
+            bg="linear-gradient(to bottom right, #B38939, #8A6D2F)"
+            className="cursor-pointer border-2 border-white dark:border-gray-800"
+          />
+        </motion.div>
+      </div>
+    </Box>
   );
 };
 

@@ -339,7 +339,7 @@ const Login = () => {
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           focusBorderColor={accentColor}
-                          bg="gray.700"
+                          // bg="gray.700"
                           color="white"
                           fontSize={{ base: "sm", md: "md" }}
                           borderRadius="md"
@@ -365,7 +365,7 @@ const Login = () => {
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           focusBorderColor={accentColor}
-                          bg="gray.700"
+                          // bg="gray.700"
                           color="white"
                           fontSize={{ base: "sm", md: "md" }}
                           borderRadius="md"

@@ -473,7 +473,7 @@ const Register = () => {
                             value={formData.firstName}
                             onChange={handleChange}
                             focusBorderColor={accentColor}
-                            bg="gray.700"
+                            // bg="gray.700"
                             color="white"
                             fontSize={{ base: "sm", md: "md" }}
                             borderRadius="md"
@@ -502,7 +502,7 @@ const Register = () => {
                             value={formData.lastName}
                             onChange={handleChange}
                             focusBorderColor={accentColor}
-                            bg="gray.700"
+                            // bg="gray.700"
                             color="white"
                             fontSize={{ base: "sm", md: "md" }}
                             borderRadius="md"
@@ -532,7 +532,7 @@ const Register = () => {
                           value={formData.email}
                           onChange={handleChange}
                           focusBorderColor={accentColor}
-                          bg="gray.700"
+                          // bg="gray.700"
                           color="white"
                           fontSize={{ base: "sm", md: "md" }}
                           borderRadius="md"
@@ -560,7 +560,7 @@ const Register = () => {
                           value={formData.dateOfBirth}
                           onChange={handleChange}
                           focusBorderColor={accentColor}
-                          bg="gray.700"
+                          // bg="gray.700"
                           color="white"
                           fontSize={{ base: "sm", md: "md" }}
                           borderRadius="md"
@@ -589,7 +589,7 @@ const Register = () => {
                           value={formData.password}
                           onChange={handleChange}
                           focusBorderColor={accentColor}
-                          bg="gray.700"
+                          // bg="gray.700"
                           color="white"
                           fontSize={{ base: "sm", md: "md" }}
                           borderRadius="md"
@@ -614,7 +614,7 @@ const Register = () => {
                       {/* Password strength indicator */}
                       {formData.password && (
                         <Flex mt={2} align="center">
-                          <Box width="100%" height="4px" bg="gray.700" borderRadius="full" overflow="hidden">
+                          <Box width="100%" height="4px"  borderRadius="full" overflow="hidden">
                             <Box
                               height="100%"
                               width={`${passwordStrength * 20}%`}
@@ -646,7 +646,7 @@ const Register = () => {
                           value={formData.confirmPassword}
                           onChange={handleChange}
                           focusBorderColor={accentColor}
-                          bg="gray.700"
+                          // bg="gray.700"
                           color="white"
                           fontSize={{ base: "sm", md: "md" }}
                           borderRadius="md"
@@ -693,7 +693,7 @@ const Register = () => {
                       borderRadius="lg"
                       fontSize={{ base: "md", md: "md" }}
                       rightIcon={<FiArrowRight />}
-                      className="register-button"
+                      // className="register-button"
                       transition="all 0.3s ease"
                     >
                       Create Account
