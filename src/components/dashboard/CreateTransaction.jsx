@@ -4,6 +4,8 @@ import Profile from './Profile';
 import BottomNav from './BottomNav';
 import TransactionCreation from './TransactionCreation';
 import MiniNav from './MiniNav';
+import { Box, Text, Flex, Avatar } from "@chakra-ui/react";
+
 
 const CreateTransaction = () => {
   const [showToggleContainer, setShowToggleContainer] = useState(true);
@@ -49,7 +51,7 @@ const CreateTransaction = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
+    <Box className="flex h-screen overflow-hidden">
       <Sidebar
         onShowProfile={handleShowProfile}
         onShowToggleComponent={handleMyTransaction}
@@ -86,7 +88,7 @@ const CreateTransaction = () => {
           className="fixed bottom-0 left-0 right-0 z-50"
         />
       )}
-    </div>
+    </Box>
   );
 };
 

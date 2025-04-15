@@ -1,14 +1,43 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Sidebar from "./Sidebar";
 import MyTransaction from "./MyTransaction";
 import Profile from "./Profile";
 import BottomNav from "./BottomNav";
 import MainJoinTransaction from "./MainJoinTransaction";
 import MiniNav from "./MiniNav";
+import { Box } from "@chakra-ui/react";
 
 const JoinTransaction = () => {
   const [showToggleContainer, setShowToggleContainer] = useState(true);
   const [showProfile, setShowProfile] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+
+
+  // Check if screen is mobile size
+  useEffect(() => {
+    const checkScreenSize = () => {
+      const isMobileView = window.innerWidth < 768;
+      setIsMobile(isMobileView);
+
+      // Auto-collapse sidebar on mobile by default
+      if (isMobileView) {
+        setIsSidebarCollapsed(true);
+      }
+    };
+
+    // Initial check
+    checkScreenSize();
+
+    // Add event listener for resize
+    window.addEventListener('resize', checkScreenSize);
+
+    // Cleanup
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
+
+
 
   const handleShowProfile = () => {
     setShowToggleContainer(false);
@@ -20,17 +49,25 @@ const JoinTransaction = () => {
     setShowProfile(false);
   };
 
+  // Function to handle sidebar collapse state changes
+  const handleSidebarCollapseChange = (isCollapsed) => {
+    setIsSidebarCollapsed(isCollapsed);
+  };
+
+
   return (
-    <div className="border flex items-center border-black">
+    <Box className="flex h-screen overflow-hidden">
       <Sidebar
         onShowProfile={handleShowProfile}
         onShowToggleComponent={handleMyTransaction}
+        onCollapseChange={handleSidebarCollapseChange}
       />
-      <div
-        style={{ overflowY: "scroll" }}
-        className="layout   bg-[#1A1E21] text-[#E4E4E4]   fixed right-0 top-0 w-[100%]  md:w-[83.2%] h-[100vh]"
+     <div 
+        className={`transition-all duration-300 flex-1 h-screen ${
+          !isMobile ? (isSidebarCollapsed ? "ml-[80px]" : "ml-[280px]") : "ml-0"
+        }`}
       >
-        <div
+        {/* <div
           className={
             showToggleContainer ? "h-[auto] toggleContainer" : "hidden"
           }
@@ -40,13 +77,28 @@ const JoinTransaction = () => {
           </div>
 
           <MainJoinTransaction />
+        </div> */}
+
+        <div className="h-full overflow-y-auto scrollbar-thin scrollbar-thumb-[#B38939]/20 scrollbar-track-transparent">
+          {showToggleContainer ? (
+            <div className=''>
+              <MiniNav />
+              <div className="">
+                <MainJoinTransaction sidebarCollapsed={isSidebarCollapsed} />
+              </div>
+            </div>
+          ) : (
+            <div className="p-4 md:p-6">
+              <Profile sidebarCollapsed={isSidebarCollapsed} />
+            </div>
+          )}
         </div>
       </div>
       <BottomNav
         onShowProfile={handleShowProfile}
         onShowToggleComponent={handleMyTransaction}
       />
-    </div>
+    </Box>
   );
 };
 

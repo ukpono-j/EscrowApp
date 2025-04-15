@@ -14,19 +14,6 @@ import { MdClose } from "react-icons/md";
 import ConfirmTransactionModal from './ConfirmTransactionModal';
 // import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { FiLoader } from "react-icons/fi";
-
-// Add this Loader component after your existing imports
-const TransactionLoader = () => {
-  return (
-    <div className="flex flex-col items-center justify-center h-[60vh]">
-      <div className="animate-spin text-[#318AE6] text-4xl mb-4">
-        <FiLoader />
-      </div>
-      <p className="text-[#E4E4E4] text-lg font-medium">Loading your transactions...</p>
-    </div>
-  );
-}
 
 const DisplayTransaction = ({ userResponse }) => {
   const [showToggleContainer, setShowToggleContainer] = useState(true);
@@ -87,47 +74,6 @@ const DisplayTransaction = ({ userResponse }) => {
 
     fetchCurrentUser();
   }, [toast]);
-
-
-  useEffect(() => {
-    // Check for pending transactions after payment redirect
-    const checkPendingPayment = async () => {
-      const pendingTxId = localStorage.getItem("pendingPaymentTxId");
-      if (!pendingTxId) return;
-      
-      const token = localStorage.getItem("auth-token");
-      if (!token) return;
-      
-      try {
-        // Check if the transaction is funded
-        const statusRes = await axios.get(
-          `${BASE_URL}/api/transactions/check-funded?transactionId=${pendingTxId}`,
-          { headers: { "auth-token": token } }
-        );
-        
-        if (statusRes.data.funded) {
-          // Clear the pending transaction
-          localStorage.removeItem("pendingPaymentTxId");
-          
-          toast({
-            title: "Payment Successful!",
-            description: "Your transaction has been funded successfully.",
-            status: "success",
-            duration: 5000,
-            isClosable: true,
-          });
-          
-          // Refresh transactions list
-          fetchTransactionData();
-        }
-      } catch (err) {
-        console.error("Error checking pending payment:", err);
-      }
-    };
-    
-    checkPendingPayment();
-  }, []);
-
 
   useEffect(() => {
     const fetchTransactions = async () => {
@@ -377,7 +323,7 @@ const DisplayTransaction = ({ userResponse }) => {
     setModalVisible(true);
   };
 
-
+  
 
   // Updated handleConfirm function
   const handleConfirm = async (transactionId) => {
@@ -404,7 +350,7 @@ const DisplayTransaction = ({ userResponse }) => {
         // currentUser._id === transaction.userId._id &&
         // (!transaction.participants || transaction.participants.length === 0)
         currentUser._id === (transaction.userId._id ? transaction.userId._id : transaction.userId) &&
-        (!transaction.participants || transaction.participants.length === 0)
+      (!transaction.participants || transaction.participants.length === 0)
       ) {
         toast({
           title: "There is no participant in this transaction",
@@ -476,7 +422,6 @@ const DisplayTransaction = ({ userResponse }) => {
     }
   };
 
- 
   const handleFund = async (transaction) => {
     console.log("Initiating payment with transaction:", transaction);
 
@@ -569,7 +514,6 @@ const DisplayTransaction = ({ userResponse }) => {
 
 
 
-
   return (
     <div className="border flex items-center border-black">
       <Sidebar
@@ -579,7 +523,7 @@ const DisplayTransaction = ({ userResponse }) => {
 
       <div
         style={{ overflowY: "scroll" }}
-        className="layout text-[#E4E4E4] fixed right-0 top-0 w-[100%] md:w-[83.2%] h-[100vh]"
+        className="layout bg-[#1A1E21] text-[#E4E4E4]  fixed right-0 top-0 w-[100%]  md:w-[83.2%] h-[100vh]"
       >
         <div
           className={
@@ -589,7 +533,7 @@ const DisplayTransaction = ({ userResponse }) => {
           <div>
             <MiniNav />
           </div>
-          <div className="font-[Poppins]  px-10">
+          <div className="font-[Poppins] pt-14 md:pr-14 pr-7 pl-7  mt-10  md:pl-14 pb-20">
             <h1 className="text-[33px] font-bold">My Transactions</h1>
             <div className="sm:flex sm:flex-row  flex flex-col-reverse  mt-4 mb-4  text-[14px]  items-center justify-between ">
               <div className=" sm:max-w-[280px] w-[100%] border-b border-[#318AE6] rounded   h-[auto]">
@@ -610,59 +554,76 @@ const DisplayTransaction = ({ userResponse }) => {
             {/* ========== Main Active Container ============= */}
             <div className="w-[100%] h-[auto]">
               {transactions.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-[60vh]">
-                  <div className="text-4xl mb-4 text-gray-400">📭</div>
-                  <p className="text-[#E4E4E4] text-lg font-medium">No transactions found</p>
-                  <p className="text-gray-400 mt-2">Create a new transaction to get started</p>
-                </div>
+                <p>No transactions found.</p>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {
                     transactions
                       .filter(transaction =>
                         transaction.paymentName.toLowerCase().includes(searchQuery.toLowerCase())
                       )
                       .map((transaction) => (
-                        <div key={transaction._id} className="transaction-card text-[13px] mt-3 px-6 py-5 bg-[#111518] rounded-2xl border border-gray-800 hover:border-[#318AE6] transition-all shadow-lg hover:shadow-[#318AE630]">
-                          <div className="flex items-center justify-between mb-3">
-                            <h3 className="font-bold text-lg text-white">{transaction.paymentName}</h3>
-                            <button onClick={() => handleChatButton(transaction._id)} className="text-[24px] bg-[#1d2225] p-2 rounded-full hover:bg-[#318AE6] transition-all">
+                        <div key={transaction._id} className="transaction-card text-[13px] mt-3 px-5 py-4 bg-[#111518] rounded-2xl">
+                          <div className="flex items-center justify-between">
+                            <h3>Name: {transaction.paymentName}</h3>
+                            <button onClick={() => handleChatButton(transaction._id)} className="text-[24px]">
+                              {/* <FaFacebookMessenger /> */}
                               <BsChatFill />
                             </button>
                           </div>
-                          <div className="grid grid-cols-2 gap-2 mb-4">
-                            <div className="bg-[#1d2225] rounded-lg p-3">
-                              <p className="text-gray-400 text-xs mb-1">Email</p>
-                              <p className="font-medium truncate">{transaction.email}</p>
-                            </div>
-                            <div className="bg-[#1d2225] rounded-lg p-3">
-                              <p className="text-gray-400 text-xs mb-1">Amount</p>
-                              <p className="font-medium text-[#318AE6]">{transaction.paymentAmount}</p>
-                            </div>
-                            <div className="bg-[#1d2225] rounded-lg p-3">
-                              <p className="text-gray-400 text-xs mb-1">User Type</p>
-                              <p className="font-medium capitalize">{transaction.selectedUserType}</p>
-                            </div>
-                            <div className="bg-[#1d2225] rounded-lg p-3">
-                              <p className="text-gray-400 text-xs mb-1">Status</p>
-                              <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${transaction.status === "completed" ? "bg-green-900 text-green-300" :
-                                transaction.status === "cancelled" ? "bg-red-900 text-red-300" :
-                                  "bg-yellow-900 text-yellow-300"
-                                }`}>
-                                {transaction.status}
-                              </div>
-                            </div>
+                          <h3>Email: {transaction.email}</h3>
+                          <p>Payment Amount: {transaction.paymentAmount}</p>
+                          <p>Description: {transaction.paymentDescription}</p>
+                          <p>Created At: {transaction.createdAt}</p>
+                          <p>Proof of way bill: {transaction.proofOfWaybill}</p>
+                          <p>Selected User Type: {transaction.selectedUserType}</p>
+                          <p>Payment Bank: {transaction.paymentBank}</p>
+                          <p>Transaction ID: {transaction.transactionId}</p>
+                          {/* <p>Participants: {transaction.participants[0]}</p> */}
+                          <p>
+                            Participants: {transaction.participants && transaction.participants.length > 0 ?
+                              transaction.participants.map((participant, index) => {
+                                // Check if participant is a populated object with properties
+                                if (participant && typeof participant === 'object') {
+                                  return (
+                                    <span key={index}>
+                                      {participant.firstName || 'user'} ({participant.email || 'No email'})
+                                      {index < transaction.participants.length - 1 ? ', ' : ''}
+                                    </span>
+                                  );
+                                }
+                                // If it's just an ID (not populated)
+                                else {
+                                  return (
+                                    <span key={index}>
+                                      {participant || 'Unknown participant'}
+                                      {index < transaction.participants.length - 1 ? ', ' : ''}
+                                    </span>
+                                  );
+                                }
+                              })
+                              : 'No participants yet'
+                            }
+                          </p>
+                          <div className="">
+                            <p>Status: {transaction.status}</p>
+                            {/* cancel transaction button */}
+
                           </div>
-                          <div className="flex items-center justify-between gap-2 mt-4">
-                            <button
-                              className="px-4 py-2 rounded-xl font-bold transition-all hover:bg-red-600 bg-red-700 text-white flex-1"
-                              onClick={() => cancelTransaction(transaction._id)}
-                            >
-                              Cancel
-                            </button>
+                          <div className="">
+                            <p>paymentStatus: {transaction.paymentStatus}</p>
+                          </div>
+                          <div className="flex items-center justify-between mt-4">
+                            {/* <button className="px-4 py-2 rounded-xl m-3 font-bold bg-[#318AE6]" onClick={() => handleBuyerWaybillPopup(transaction._id)}>View Waybill</button>
+                            <button className="px-4 py-2 rounded-xl m-3 font-bold bg-[#318AE6]" onClick={() => handleWaybillPopup(transaction._id)}>Input Waybill</button> */}
+                            <div>
+                              <button className="px-3 py-2 rounded-xl font-bold bg-[#318AE6]" onClick={() => cancelTransaction(transaction._id)}>
+                                Cancel Transaction
+                              </button>
+                            </div>
 
                             <button
-                              className="px-4 py-2 bg-[#318AE6] hover:bg-[#2279d8] transition-all rounded-xl font-bold text-white flex-1"
+                              className="px-3 py-2 bg-[#318AE6] rounded-lg font-bold"
                               onClick={() =>
                                 transaction.selectedUserType === "seller"
                                   ? handleWaybillPopup(transaction._id)
@@ -674,145 +635,105 @@ const DisplayTransaction = ({ userResponse }) => {
 
                             {/* ============================ showWaybillPopup =======================  */}
                             {showWaybillPopup[transaction._id] && (
-                              <div style={{ overflowY: "scroll" }} className="modal-container pr-5 pt-5 pb-10 pl-5 fixed z-30 bg-[#111518] left-0 top-0 w-[100%] h-[100vh] backdrop-filter backdrop-blur-sm bg-opacity-95">
-                                <div className="max-w-2xl mx-auto bg-[#1A1E21] p-8 rounded-2xl shadow-xl border border-gray-800">
-                                  <div className="w-[100%]">
+                              // <Modal>
+                              <div style={{ overflowY: "scroll" }} className="modal-container pr-5 pt-5 pb-10 pl-5 fixed z-30 bg-[#111518] left-0 top-0 w-[100%] h-[100vh]">
+                                <div>
+                                  <div className="w-[100%] ">
                                     <button
-                                      onClick={() => ClosehandleWaybillPopup(transaction._id)}
-                                      className="absolute top-5 right-5 text-[30px] hover:text-[#318AE6] transition-all"
-                                    >
+                                      onClick={() => ClosehandleWaybillPopup(transaction._id)} className="absolute top-3 text-[30px]">
                                       <MdClose />
                                     </button>
+                                    {/* <h2 className="text-center text-[30px] font-bold">Transaction Details</h2> */}
                                   </div>
-                                  <form className="h-[auto] mt-6" onSubmit={(e) => { e.preventDefault(); handleWaybillSubmit(transaction._id); }} encType="multipart/form-data">
-                                    <div className="">
-                                      <h1 className="text-3xl font-bold text-center text-white">Seller Waybill Proof</h1>
-                                      <p className="text-lg text-center pt-3 text-gray-300">I, the seller, confirm that I have shipped the goods.</p>
-
-                                      <div className="mt-6 space-y-5">
-                                        <div>
-                                          <h3 className="text-gray-300 mb-2">Item:</h3>
-                                          <input type="text" className="text-white bg-[#111518] border border-[#318AE6] pl-4 outline-none w-full h-12 rounded-xl" value={waybillDetails.item} onChange={(e) => setWaybillDetails({ ...waybillDetails, item: e.target.value })} />
-                                        </div>
-
-                                        <div>
-                                          <h3 className="text-gray-300 mb-2">Image:</h3>
-                                          <div className="border-2 border-dashed border-[#318AE6] rounded-xl p-6 text-center">
-                                            <input
-                                              type="file"
-                                              className="hidden"
-                                              id="waybill-image"
-                                              onChange={(e) => setWaybillDetails({ ...waybillDetails, image: e.target.files[0] })}
-                                            />
-                                            <label htmlFor="waybill-image" className="cursor-pointer flex flex-col items-center">
-                                              <span className="text-3xl mb-2 text-[#318AE6]">📷</span>
-                                              <span className="text-gray-300">Click to upload proof of shipment</span>
-                                            </label>
-                                          </div>
-                                        </div>
-
-                                        <div>
-                                          <h3 className="text-gray-300 mb-2">Price:</h3>
-                                          <input type="number" className="text-white bg-[#111518] border border-[#318AE6] pl-4 outline-none w-full h-12 rounded-xl" value={waybillDetails.price} onChange={(e) => setWaybillDetails({ ...waybillDetails, price: e.target.value })} />
-                                        </div>
-
-                                        <div>
-                                          <h3 className="text-gray-300 mb-2">Shipping Address:</h3>
-                                          <input type="text" className="text-white bg-[#111518] border border-[#318AE6] pl-4 outline-none w-full h-12 rounded-xl" value={waybillDetails.shippingAddress} onChange={(e) => setWaybillDetails({ ...waybillDetails, shippingAddress: e.target.value })} />
-                                        </div>
-
-                                        <div>
-                                          <h3 className="text-gray-300 mb-2">Tracking Number:</h3>
-                                          <input type="text" className="text-white bg-[#111518] border border-[#318AE6] pl-4 outline-none w-full h-12 rounded-xl" value={waybillDetails.trackingNumber} onChange={(e) => setWaybillDetails({ ...waybillDetails, trackingNumber: e.target.value })} />
-                                        </div>
-
-                                        <div>
-                                          <h3 className="text-gray-300 mb-2">Delivery Date:</h3>
-                                          <input type="date" className="text-white bg-[#111518] border border-[#318AE6] pl-4 outline-none w-full h-12 rounded-xl" value={waybillDetails.deliveryDate} onChange={(e) => setWaybillDetails({ ...waybillDetails, deliveryDate: e.target.value })} />
-                                        </div>
-
-                                        <button type="submit" className="font-bold bg-[#318AE6] hover:bg-[#2279d8] transition-all rounded-xl py-3 w-full mt-7 text-white">Submit Waybill</button>
+                                </div>
+                                <form className="h-[auto] mt-10" onSubmit={(e) => { e.preventDefault(); handleWaybillSubmit(transaction._id); }} encType="multipart/form-data">
+                                  <div className="">
+                                    <h1 className="text-[30px] font-bold text-center">Seller Waybill Proof</h1>
+                                    <p className="text-[17px] text-center pt-3">  I' the seller, confirm that I have shipped the goods.</p>
+                                    <div className="mt-3">
+                                      <h3>Item:</h3>
+                                      <div>
+                                        <input type="text" className="text-[white] bg-[transparent] border border-[#318AE6] pl-3 outline-none w-[100%] h-[40px] rounded-xl mt-2" value={waybillDetails.item} onChange={(e) => setWaybillDetails({ ...waybillDetails, item: e.target.value })} />
                                       </div>
                                     </div>
-                                  </form>
-                                </div>
+                                    <div className="mt-3">
+                                      <h3>Image:</h3>
+                                      <input
+                                        type="file"
+                                        onChange={(e) => setWaybillDetails({ ...waybillDetails, image: e.target.files[0] })}
+                                      />
+                                      <div>
+                                        {/* Preview Image */}
+                                      </div>
+                                    </div>
+                                    <div className="mt-3">
+                                      <h3>Price:</h3>
+                                      <input type="number" className="text-[white] bg-[transparent] border border-[#318AE6] pl-3 outline-none w-[100%] h-[40px] rounded-xl mt-2" value={waybillDetails.price} onChange={(e) => setWaybillDetails({ ...waybillDetails, price: e.target.value })} />
+                                    </div>
+                                    <div className="mt-3">
+                                      <h3>Shipping Address:</h3>
+                                      <input type="text" className="text-[white] bg-[transparent] border border-[#318AE6] pl-3 outline-none w-[100%] h-[40px] rounded-xl mt-2" value={waybillDetails.shippingAddress} onChange={(e) => setWaybillDetails({ ...waybillDetails, shippingAddress: e.target.value })} />
+                                    </div>
+                                    <div className="mt-3">
+                                      <h3>Tracking Number:</h3>
+                                      <input type="text" className="text-[white] bg-[transparent] border border-[#318AE6] pl-3 outline-none w-[100%] h-[40px] rounded-xl mt-2" value={waybillDetails.trackingNumber} onChange={(e) => setWaybillDetails({ ...waybillDetails, trackingNumber: e.target.value })} />
+                                    </div>
+                                    <div className="mt-3">
+                                      <h3>Delivery Date:</h3>
+                                      <input type="date" className="text-[white] bg-[transparent] border border-[#318AE6] pl-3 outline-none w-[100%] h-[40px] rounded-xl mt-2" value={waybillDetails.deliveryDate} onChange={(e) => setWaybillDetails({ ...waybillDetails, deliveryDate: e.target.value })} />
+                                    </div>
+                                    <button type="submit" className="font-bold bg-[#318AE6] rounded-2xl py-3 w-[30%] mt-7">Submit</button>
+                                  </div>
+                                </form>
                               </div>
+                              // </Modal>
                             )}
 
                             {/* ============================ buyershowWaybillPopup =======================  */}
 
                             {buyershowWaybillPopup[transaction._id] && (
-                              <div style={{ overflowY: "scroll" }} className="modal-container pr-5 pt-5 pb-10 pl-5 fixed z-30 bg-[#111518] left-0 top-0 w-[100%] h-[100vh] backdrop-filter backdrop-blur-sm bg-opacity-95">
-                                <div className="max-w-2xl mx-auto bg-[#1A1E21] p-8 rounded-2xl shadow-xl border border-gray-800">
-                                  <div className="w-[100%]">
+                              <div style={{ overflowY: "scroll" }} className="modal-container pr-5 pt-5 pb-10 pl-5 fixed z-30 bg-[#111518] left-0 top-0 w-[100%] h-[100vh]">
+                                <div>
+                                  <div className="w-[100%] ">
                                     <button
-                                      onClick={() => ClosehandleBuyerWaybillPopup(transaction._id)}
-                                      className="absolute top-5 right-5 text-[30px] hover:text-[#318AE6] transition-all"
-                                    >
+                                      onClick={() => ClosehandleBuyerWaybillPopup(transaction._id)} className="absolute top-3 text-[30px]">
                                       <MdClose />
                                     </button>
                                   </div>
-                                  <div className="h-[auto] mt-6">
-                                    <h1 className="text-3xl font-bold text-center text-white">Waybill Details</h1>
-                                    {buyerWaybillDetails[transaction._id] ? (
-                                      <div className="mt-6 space-y-5">
-                                        <div className="bg-[#111518] p-4 rounded-xl">
-                                          <p className="text-gray-400 text-sm mb-1">Item</p>
-                                          <p className="text-lg text-white">{buyerWaybillDetails[transaction._id].item}</p>
-                                        </div>
-
-                                        <div className="h-[300px] relative flex justify-center items-center w-full bg-cover rounded-xl my-3 bg-[#111518] overflow-hidden">
-                                          <img src={imageUrl} alt="Waybill" className="w-full object-contain h-full absolute" />
-                                          <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                                            <button
-                                              onClick={() => downloadImage(imageUrl)}
-                                              className="px-4 py-2 bg-[#318AE6] hover:bg-[#2279d8] transition-all text-white rounded-md"
-                                            >
-                                              Download Image
-                                            </button>
-                                          </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-4">
-                                          <div className="bg-[#111518] p-4 rounded-xl">
-                                            <p className="text-gray-400 text-sm mb-1">Price</p>
-                                            <p className="text-lg text-[#318AE6]">{buyerWaybillDetails[transaction._id].price}</p>
-                                          </div>
-
-                                          <div className="bg-[#111518] p-4 rounded-xl">
-                                            <p className="text-gray-400 text-sm mb-1">Delivery Date</p>
-                                            <p className="text-lg text-white">{buyerWaybillDetails[transaction._id].deliveryDate}</p>
-                                          </div>
-                                        </div>
-
-                                        <div className="bg-[#111518] p-4 rounded-xl">
-                                          <p className="text-gray-400 text-sm mb-1">Shipping Address</p>
-                                          <p className="text-lg text-white">{buyerWaybillDetails[transaction._id].shippingAddress}</p>
-                                        </div>
-
-                                        <div className="bg-[#111518] p-4 rounded-xl">
-                                          <p className="text-gray-400 text-sm mb-1">Tracking Number</p>
-                                          <p className="text-lg text-white">{buyerWaybillDetails[transaction._id].trackingNumber}</p>
-                                        </div>
+                                </div>
+                                <div className="h-[auto] mt-10">
+                                  <h1 className="text-[30px] font-bold text-center">Buyer Waybill Proof</h1>
+                                  {buyerWaybillDetails[transaction._id] ? (
+                                    <div className="mt-4">
+                                      <p><strong>Item:</strong> {buyerWaybillDetails[transaction._id].item}</p>
+                                      {/* <p><strong>Image:</strong> <img src={buyerWaybillDetails[transaction._id].image} alt="Waybill item" /></p> */}
+                                      <div className="h-[270px] relative flex justify-center items-center w-[100%] bg-cover rounded-3xl my-3 bg-[#1A1E21]">
+                                        <img src={imageUrl} alt="Waybill" className="w-[100%] object-cover h-[100%] rounded-3xl absolute" />
+                                        <button
+                                          onClick={() => downloadImage(imageUrl)}
+                                          className="px-4 py-2 bg-[#1A1E21] text-white absolute rounded-md"
+                                        >
+                                          Download Image
+                                        </button>
                                       </div>
-                                    ) : (
-                                      <div className="flex flex-col items-center justify-center h-[40vh]">
-                                        <div className="text-4xl mb-4 text-gray-400">📦</div>
-                                        <p className="text-[#E4E4E4] text-lg font-medium">No waybill details available</p>
-                                        <p className="text-gray-400 mt-2">The seller hasn't submitted waybill information yet</p>
-                                      </div>
-                                    )}
-                                  </div>
+                                      <p><strong>Price:</strong> {buyerWaybillDetails[transaction._id].price}</p>
+                                      <p><strong>Shipping Address:</strong> {buyerWaybillDetails[transaction._id].shippingAddress}</p>
+                                      <p><strong>Tracking Number:</strong> {buyerWaybillDetails[transaction._id].trackingNumber}</p>
+                                      <p><strong>Delivery Date:</strong> {buyerWaybillDetails[transaction._id].deliveryDate}</p>
+                                    </div>
+                                  ) : (
+                                    <p>No waybill details available for this transaction.</p>
+                                  )}
                                 </div>
                               </div>
                             )}
 
                           </div>
                           {/* ======================== */}
-                          <div className="flex flex-wrap items-center justify-between gap-2 mt-3">
+                          <div className="flex items-center justify-between">
                             <button
-                              className={`px-4 py-2 rounded-xl font-bold text-white flex-1 transition-all ${transaction.buyerConfirmed && transaction.sellerConfirmed
-                                ? "bg-green-600 cursor-not-allowed"
+                              className={`px-3 mt-3 py-2 rounded-xl font-bold ${transaction.buyerConfirmed && transaction.sellerConfirmed
+                                ? "bg-green-500"
                                 : (transaction.buyerConfirmed || transaction.sellerConfirmed) &&
                                   ((currentUser && transaction.userId && currentUser._id === transaction.userId._id &&
                                     ((transaction.selectedUserType === "buyer" && transaction.buyerConfirmed) ||
@@ -820,23 +741,32 @@ const DisplayTransaction = ({ userResponse }) => {
                                     (currentUser && transaction.userId && currentUser._id !== transaction.userId._id &&
                                       ((transaction.selectedUserType === "buyer" && transaction.sellerConfirmed) ||
                                         (transaction.selectedUserType === "seller" && transaction.buyerConfirmed))))
-                                  ? "bg-yellow-600"
-                                  : "bg-[#318AE6] hover:bg-[#2279d8]"
+                                  ? "bg-yellow-500"
+                                  : "bg-[#318AE6]"
                                 }`}
                               disabled={
+                                // Transaction fully completed
                                 (transaction.buyerConfirmed && transaction.sellerConfirmed) ||
+
+                                // Current user is creator (buyer) and already confirmed
                                 (currentUser && transaction.userId &&
                                   currentUser._id === transaction.userId._id &&
                                   transaction.selectedUserType === "buyer" &&
                                   transaction.buyerConfirmed) ||
+
+                                // Current user is creator (seller) and already confirmed
                                 (currentUser && transaction.userId &&
                                   currentUser._id === transaction.userId._id &&
                                   transaction.selectedUserType === "seller" &&
                                   transaction.sellerConfirmed) ||
+
+                                // Current user is participant (buyer) and already confirmed
                                 (currentUser && transaction.userId &&
                                   currentUser._id !== transaction.userId._id &&
                                   transaction.selectedUserType === "seller" &&
                                   transaction.buyerConfirmed) ||
+
+                                // Current user is participant (seller) and already confirmed
                                 (currentUser && transaction.userId &&
                                   currentUser._id !== transaction.userId._id &&
                                   transaction.selectedUserType === "buyer" &&
@@ -844,32 +774,51 @@ const DisplayTransaction = ({ userResponse }) => {
                               }
                               onClick={() => handleConfirm(transaction._id)}
                             >
+                              {/* Button text logic */}
                               {transaction.buyerConfirmed && transaction.sellerConfirmed
-                                ? "Completed"
-                                : ((currentUser && transaction.userId &&
-                                  (transaction.userId._id ? currentUser._id === transaction.userId._id : currentUser._id === transaction.userId) &&
-                                  ((transaction.selectedUserType === "buyer" && transaction.buyerConfirmed) ||
-                                    (transaction.selectedUserType === "seller" && transaction.sellerConfirmed))) ||
+                                ? "Transaction Completed"
+                                : (
+                                  // Check if the current user has confirmed (either as creator or participant)
+                                  (currentUser && transaction.userId &&
+                                    (transaction.userId._id ? currentUser._id === transaction.userId._id : currentUser._id === transaction.userId) &&
+                                    ((transaction.selectedUserType === "buyer" && transaction.buyerConfirmed) ||
+                                      (transaction.selectedUserType === "seller" && transaction.sellerConfirmed))) ||
                                   (currentUser && transaction.userId &&
                                     (transaction.userId._id ? currentUser._id !== transaction.userId._id : currentUser._id !== transaction.userId) &&
                                     ((transaction.selectedUserType === "buyer" && transaction.sellerConfirmed) ||
-                                      (transaction.selectedUserType === "seller" && transaction.buyerConfirmed))))
-                                  ? "Pending"
-                                  : "Complete"
+                                      (transaction.selectedUserType === "seller" && transaction.buyerConfirmed)))
+                                )
+                                  ? "Pending Completion"
+                                  : "Complete Transaction"
                               }
                             </button>
 
-                            <button
-                              className={`px-4 py-2 rounded-xl font-bold text-white flex-1 transition-all ${transaction.funded
-                                ? "bg-green-600 cursor-not-allowed"
-                                : "bg-[#318AE6] hover:bg-[#2279d8]"
-                                }`}
-                              onClick={() => handleFund(transaction)}
-                              disabled={transaction.funded}
-                            >
-                              {transaction.funded ? "Funded" : "Fund Account"}
-                            </button>
+                            <div className=" text-[13px]">
+                              <button
+                                className="px-3 mt-3 py-2 bg-[#318AE6] rounded-xl font-bold"
+                                onClick={() => handleFund(transaction)}
+                                disabled={transaction.funded}
+                              >
+                                {transaction.funded ? "Funded" : "Fund Account"}
+                              </button>
+                            </div>
                           </div>
+
+                          {/* {
+                            doneModel && (
+                              <>
+                              <h1>are you sure you want to complete this transaction</h1>
+                              <button>No</button>
+                                <button
+                                  onClick={() => completeTransaction(transaction._id)} // Call the completeTransaction function
+                                  className="mt-3 p-2 bg-[#318AE6] rounded-lg font-bold"
+                                >
+                                  Yes
+                                </button>
+
+                              </>
+                            )
+                          } */}
                         </div>
                       ))
                   }

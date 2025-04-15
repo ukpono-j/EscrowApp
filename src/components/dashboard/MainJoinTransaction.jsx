@@ -3,6 +3,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 import "./MainJoinTransaction.css";
+import { Box, Text, VStack } from "@chakra-ui/react";
 
 const MainJoinTransaction = () => {
   const [transactionId, setTransactionId] = useState("");
@@ -26,7 +27,7 @@ const MainJoinTransaction = () => {
     try {
       setIsLoading(true);
       const token = localStorage.getItem("auth-token");
-      
+
       if (!token) {
         setResponseMessage("You must be logged in to join a transaction");
         setMessageType("error");
@@ -47,12 +48,12 @@ const MainJoinTransaction = () => {
       // Handle successful response
       setResponseMessage(`Successfully joined as ${response.data.role}. Redirecting...`);
       setMessageType("success");
-      
+
       // Redirect after a short delay to show the success message
       setTimeout(() => {
         navigate("/transactions/tab");
       }, 2000);
-      
+
     } catch (error) {
       console.error("Error joining transaction:", error);
       if (error.response) {
@@ -67,42 +68,44 @@ const MainJoinTransaction = () => {
   };
 
   return (
-    <div className="font-[Poppins] pt-14 md:pr-14 pr-10 pl-10 mt-10 md:pl-14 pb-10">
-      <h1 className="font-bold text-[35px] text-center md:text-start">Join Transaction</h1>
-      <p className="pt-10 pb-8 text-center md:text-start">
-        Please enter the Transaction ID you received from the person you are transacting with.
-      </p>
-      <form onSubmit={handleConfirm}>
-        <input
-          type="text"
-          required
-          placeholder="Transaction ID"
-          value={transactionId}
-          onChange={(e) => setTransactionId(e.target.value)}
-          className="border-b-2 border-[#318AE6] text-[13px] outline-none bg-[transparent] w-[100%]"
-        />
-        <div className="mt-14 md:w-[70%]">
-          <button
-            type="submit"
-            disabled={isLoading || !transactionId}
-            className={`w-[100%] h-[35px] rounded-3xl cursor-pointer text-[#fff] text-[12px] join_btn font-bold uppercase bg-[#318AE6] ${
-              isLoading || !transactionId ? "cursor-not-allowed opacity-50" : ""
-            }`}
-          >
-            {isLoading ? "Processing..." : "Join Transaction"}
-          </button>
-          {responseMessage && (
-            <p
-              className={`text-center text-[13px] pt-3 ${
-                messageType === "error" ? "text-red-500" : "text-green-500"
-              }`}
+    <Box minH="100vh" className="font-[Poppins] pr-[28px] join_Component pl-[100px] pt-10 md:pl-[10px]" w="full" >
+      <VStack spacing={8} maxW="900px" mx="auto">
+        <Text className="font-bold text-[35px]">Join Transaction</Text>
+        <p className="pb-8 text-[17px]">
+          Please enter the Transaction ID you received from the person you are transacting with.
+        </p>
+        <form onSubmit={handleConfirm} className="w-[98%]">
+          <input
+            type="text"
+            required
+            placeholder="Transaction ID"
+            value={transactionId}
+            onChange={(e) => setTransactionId(e.target.value)}
+            className="border-b-2 border-[#A78136] text-[13px] outline-none bg-[transparent] w-[100%]"
+          />
+          <div className="mt-14 md:w-[100%]">
+            <button
+              type="submit"
+              disabled={isLoading || !transactionId}
+              className={`w-[100%] h-[35px] m-auto rounded-3xl cursor-pointer text-[#fff] text-[12px] join_btn font-bold uppercase bg-[#A78136] ${isLoading || !transactionId ? "cursor-not-allowed opacity-50" : ""
+                }`}
             >
-              {responseMessage}
-            </p>
-          )}
-        </div>
-      </form>
-    </div>
+              {isLoading ? "Processing..." : "Join Transaction"}
+            </button>
+            {responseMessage && (
+              <p
+                className={`text-center text-[13px] pt-3 ${messageType === "error" ? "text-red-500" : "text-green-500"
+                  }`}
+              >
+                {responseMessage}
+              </p>
+            )}
+          </div>
+        </form>
+
+      </VStack>
+
+    </Box>
   );
 };
 

@@ -2,16 +2,16 @@ import React, { useEffect, useState } from "react";
 import { FaShoppingCart, FaCheck, FaTimes, FaStore } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
-import PaystackPop from "@paystack/inline-js";
 import { useToast } from "@chakra-ui/react";
-const BASE_URL = import.meta.env.VITE_BASE_URL;
-import "./NewTransaction.css";
+import { Box, Text, Flex, Avatar, Progress, Button, FormControl, FormLabel, Input, Textarea, Select, Stack, Heading, VStack, HStack, Divider } from "@chakra-ui/react";
 import { MdClose } from "react-icons/md";
 import defaultProfileImage from '../../assets/profile_icon.png';
 
+const BASE_URL = import.meta.env.VITE_BASE_URL;
+
 const TransactionCreation = () => {
-  const [step, setStep] = useState(1); // Track the current step
-  const [nextButtonActive, setNextButtonActive] = useState(false); // Track the next button's active state
+  const [step, setStep] = useState(1);
+  const [nextButtonActive, setNextButtonActive] = useState(false);
   const navigate = useNavigate();
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentBank, setPaymentBank] = useState("");
@@ -19,18 +19,19 @@ const TransactionCreation = () => {
   const [paymentName, setPaymentName] = useState("");
   const [paymentDescription, setPaymentDescription] = useState("");
   const [email, setEmail] = useState("");
-  const [selectedUserType, setSelectedUserType] = useState(""); // Track selected user type
+  const [selectedUserType, setSelectedUserType] = useState(""); 
   const [willUseCourier, setWillUseCourier] = useState(false);
   const toast = useToast();
-  const [acceptTransactionModel, setAcceptTransactionModel] = useState(false)
-  const [profileImage, setProfileImage] = useState(null);
-  const [errors, setErrors] = useState([]);
+  const [acceptTransactionModel, setAcceptTransactionModel] = useState(false);
   const [userDetails, setUserDetails] = useState({});
   const [banks, setBanks] = useState([]);
   const [selectedBankCode, setSelectedBankCode] = useState("");
   const [uniqueBanks, setUniqueBanks] = useState([]);
+  const [errors, setErrors] = useState([]);
 
-
+  // Calculate the transaction fee and total amount
+  const transactionFee = paymentAmount ? (paymentAmount * 0.008).toFixed(2) : "0.00";
+  const totalAmount = paymentAmount ? (parseFloat(paymentAmount) + parseFloat(transactionFee)).toFixed(2) : "0.00";
 
   useEffect(() => {
     const fetchUserDetails = async () => {
@@ -46,7 +47,6 @@ const TransactionCreation = () => {
           },
         });
         setUserDetails(response.data);
-        console.log("User details profile fetched:", response.data); // Log the user details
       } catch (error) {
         console.error("Error fetching user details:", error);
       }
@@ -66,13 +66,10 @@ const TransactionCreation = () => {
     setUniqueBanks(Array.from(bankMap.values()));
   }, [banks]);
 
-
-  // Add this useEffect to fetch banks on component mount
   useEffect(() => {
     const fetchBanks = async () => {
       try {
         const token = localStorage.getItem("auth-token");
-        // Fetch banks from your backend that proxies the Paystack API
         const response = await axios.get(`${BASE_URL}/api/transactions/banks`, {
           headers: {
             "auth-token": token,
@@ -94,37 +91,8 @@ const TransactionCreation = () => {
     fetchBanks();
   }, []);
 
-  // // Example function to fetch profile image from database
-  // const fetchProfileImage = () => {
-  //   // Simulate fetching profile image from database
-  //   const fetchedImage = ''; // Replace with actual logic to fetch image URL from database
-  //   if (fetchedImage) {
-  //     setProfileImage(fetchedImage);
-  //   } else {
-  //     // Set default profile image if no image fetched
-  //     setProfileImage(defaultProfileImage);
-  //   }
-  // };
-
-  // Call fetchProfileImage when modal opens (acceptTransactionModel is true)
-  // useEffect(() => {
-  //   if (acceptTransactionModel) {
-  //     fetchProfileImage();
-  //   }
-  // }, [acceptTransactionModel]);
-
-
-
-  // Calculate the transaction fee and total amount
-  const transactionFee = (paymentAmount * 0.008).toFixed(2);
-  const totalAmount = (parseFloat(paymentAmount) + parseFloat(transactionFee)).toFixed(2);
-
-
-
-
   const acceptTransactionFunction = (e) => {
     e.preventDefault();
-    // Add validation
     if (!selectedBankCode) {
       toast({
         title: "Please select a bank",
@@ -134,14 +102,12 @@ const TransactionCreation = () => {
       });
       return;
     }
-    setAcceptTransactionModel(true)
-  }
+    setAcceptTransactionModel(true);
+  };
   
-
   const createNewTransaction = (e) => {
     e.preventDefault();
 
-    // Add validation here too
     if (!selectedBankCode) {
       toast({
         title: "Bank code is required",
@@ -160,7 +126,7 @@ const TransactionCreation = () => {
       selectedUserType,
       willUseCourier,
       paymentBank,
-      paymentBankCode: selectedBankCode, // Add the bank code
+      paymentBankCode: selectedBankCode,
       paymentAccountNumber,
     };
 
@@ -169,7 +135,6 @@ const TransactionCreation = () => {
       axios.defaults.headers.common["auth-token"] = token;
     }
 
-    // Make an API request to initiate the transaction
     axios
       .post(`${BASE_URL}/api/transactions/create-transaction`, requestData, {
         headers: {
@@ -177,10 +142,7 @@ const TransactionCreation = () => {
         },
       })
       .then((response) => {
-        console.log(response.data);
-        // Extract the transactionId from the response
         const transactionId = response.data.transactionId;
-        // this is a  token  to show successful  transaction
         toast({
           title: "Successfully created a transaction",
           status: "success",
@@ -191,7 +153,6 @@ const TransactionCreation = () => {
       })
       .catch((error) => {
         console.error(error);
-        console.log(requestData);
         if (error.response && error.response.data && error.response.data.errors) {
           setErrors(error.response.data.errors);
         } else {
@@ -202,57 +163,35 @@ const TransactionCreation = () => {
             isClosable: true,
           });
         }
-        // Handle error, for example, display an error message to the user
-        toast({
-          title: "Error occured during transaction",
-          status: "success",
-          duration: 3000,
-          isClosable: true,
-        });
       });
   };
 
-  // accept 
-
-  const form = new FormData();
-  form.append("name", paymentName);
-  form.append("amount", paymentAmount);
-  form.append("description", paymentDescription);
-
   // Function to handle radio button click
   const handleRadioClick = (userType) => {
-    console.log("Selected User Type:", userType);
     setSelectedUserType(userType);
-    setNextButtonActive(true); // Activate the next button
+    setNextButtonActive(true);
   };
 
   // Function to handle radio button click for courier service (yes/no)
   const handleCourierOptionClick = (option) => {
-    setWillUseCourier(option === "yes"); // Set willUseCourier state based on the selected option
-    console.log("Selected Courier:", option);
+    setWillUseCourier(option === "yes");
     setNextButtonActive(true);
   };
 
   // Function to handle "Next" button click
   const handleNextClick = () => {
     if (selectedUserType && step < 3) {
-      setStep(step + 1); // Increment the step
-      // setSelectedUserType(""); // Reset selectedUserType
-      setNextButtonActive(false); // Deactivate the next button
+      setStep(step + 1);
+      setNextButtonActive(false);
     }
   };
 
   // Function to handle "Previous" button click
   const handlePreviousClick = () => {
     if (step > 1) {
-      setStep(step - 1); // Decrement the step
-      setSelectedUserType(""); // Reset selectedUserType
+      setStep(step - 1);
+      setNextButtonActive(false);
     }
-  };
-
-  // Function to determine the active color
-  const getActiveColor = (number) => {
-    return step >= number ? "#0F0821" : "#CECECE";
   };
 
   // Array of titles for each step
@@ -263,416 +202,510 @@ const TransactionCreation = () => {
   ];
 
   return (
-    <div className="border min-h-[100vh] w-full text-[#E4E4E4] fixed">
-      <h1 className="text-[33px] font-bold text-center md:text-start">Create Transaction</h1>
-      {acceptTransactionModel && (
-        <div className="fixed inset-0 pl-4 pr-4 pt-8 pb-8 flex items-center justify-center bg-black bg-opacity-50 z-50 overflow-y-auto">
-          <div className="bg-[#28313A] text-[white] text-[13px] p-6 rounded-lg w-96">
-            <div className="flex justify-between items-center">
-              <div>
-                <h2 className="text-[18px] font-bold text-center">Accept Escrow Transaction</h2>
-                {/* <p className=" text-center text-xl font-bold">Transaction</p> */}
-              </div>
-              <button
-                className="text-[24px] font-bold"
-                onClick={() => setAcceptTransactionModel(false)}
+    <Box minH="100vh" className="font-[Poppins]" w="full" px={4} py={8}>
+      <VStack spacing={8} maxW="900px" mx="auto">
+        <Text as="h1" fontSize={{base: "2xl", md: "3xl"}} className="font-bold" textAlign="center">
+          Create Transaction
+        </Text>
+        
+        {/* Progress bar */}
+        <Box w="full" maxW="500px" position="relative" mb={10}>
+          <Progress 
+            value={(step/3) * 100} 
+            size="sm" 
+            colorScheme="blue" 
+            bg="#1E293B" 
+            borderRadius="full"
+          />
+          <HStack justify="space-between" w="full" position="absolute" top="-16px">
+            {[1, 2, 3].map((number) => (
+              <Flex 
+                key={number} 
+                w="40px" 
+                h="40px" 
+                borderRadius="full" 
+                bg={step >= number ? "#957432" : "#957432"}
+                color="white"
+                justify="center" 
+                align="center"
+                fontWeight="bold"
+                boxShadow="0px 4px 10px rgba(0, 0, 0, 0.2)"
+                transition="all 0.3s ease"
               >
-                <MdClose />
-              </button>
-            </div>
-            <div className="flex items-center mt-4">
-              <div className="h-[40px] w-[40px] flex items-center justify-center rounded-[100%]">
-                {/* {profileImage ? (
-                  <img src={profileImage} alt="Profile Icon" className="h-[40px] w-[40px] rounded-full" />
-                ) : (
-                  <img src={defaultProfileImage} alt="Default Profile Icon" className="h-[40px] w-[100%] bg-cover bg-center rounded-full" />
-                )} */}
-                <img
-                  src={
-                    userDetails.userId === userDetails._id
-                      ? userDetails.avatarImage
-                        ? `${BASE_URL}/${userDetails.avatarImage}`
-                        : defaultProfileImage
-                      : userDetails.avatarImage
-                        ? `${BASE_URL}/${userDetails.avatarImage}`
-                        : defaultProfileImage
-                  }
-                  alt="Avatar"
-                  onError={(e) => { e.target.onerror = null; e.target.src = DefaultProfile; }}
-                  className="w-full h-full bg-cover rounded-full"
-                />
-              </div>
-              <div className="p-2">
-                <p><strong>Name:</strong> {paymentName}</p>
-                <p><strong>Amount:</strong> {paymentAmount}</p>
-              </div>
-            </div>
-            <p className="mt-2">You are about to accept the escrow transaction. Make sure you understand the terms before proceeding.</p>
-            <h3 className="mt-4 font-bold text-[14px]">Terms</h3>
-            <div className="flex justify-between text-[12px] mt-3 items-center">
-              <p className="font-bold">Payment Method</p>
-              <p className="text-end">Wire Transfer</p>
-            </div>
-            <div className="flex justify-between text-[12px] mt-3 items-center">
-              <p className="font-bold">Transaction Amount</p>
-              <p className="text-end">{paymentAmount}</p>
-            </div>
-            <div className="flex justify-between text-[12px] mt-3 items-center">
-              <p className="font-bold">Transaction Fee</p>
-              <p className="text-end">0.8%</p>
-            </div>
-            <div className="flex justify-between mt-3 items-center">
-              <p><strong>Bank:</strong> </p>
-              <p>{paymentBank}</p>
-            </div>
-            <div className="flex justify-between mt-3 items-center">
-              <p><strong>Account Number:</strong></p>
-              <p> {paymentAccountNumber}</p>
-            </div>
-            <div className="flex justify-between items-center text-[12px] mt-3">
-              <p className="font-bold text-[13px]">Total Amount</p>
-              <p className="text-end">{totalAmount} Naira</p>
-            </div>
-            {/* <p><strong>Email:</strong> {email}</p>
-            <p><strong>Description:</strong> {paymentDescription}</p> */}
+                {number}
+              </Flex>
+            ))}
+          </HStack>
+        </Box>
 
-            <button
-              className="mt-4 px-4 py-2 bg-[#318AE6] w-[100%] text-white rounded-2xl"
-              onClick={(e) => {
-                setAcceptTransactionModel(false);
-                createNewTransaction(e);
-              }}
-            >
-              Accept
-            </button>
-
-          </div>
-        </div>
-      )}
-      <form className="h-[auto] flex items-center flex-col justify-center mt-20 w-[100%]">
-        <div className="h-[35px] flex items-center  justify-between w-[200px] sm:w-[300px]">
-          {[1, 2, 3].map((number) => (
-            <div
-              key={number}
-              className={`onActive bg-[#fff] text-[#031420] font-bold w-[33px] h-[33px]  rounded-full flex items-center justify-center text-[13px]`}
-              style={{ borderColor: getActiveColor(number) }}
-            >
-              {number}
-            </div>
-          ))}
-          <div className="h-[2px] w-[300px]  bg-[#CECECE] absolute z-[-1]"></div>
-        </div>
-        <h3 className="pt-32 text-[30px] text-center font-bold pb-7">
+        <Heading 
+          as="h2" 
+          fontSize={{base: "xl", md: "2xl"}} 
+          textAlign="center" 
+          fontWeight="600"
+          mb={8}
+        >
           {stepTitles[step - 1]}
-        </h3>
-        {[1, 2, 3].map((number) => (
-          <div
-            key={number}
-            className={`flex items-center justify-center ${step === number ? "default" : "hidden"
-              }`}
-          >
-            {number === 2 ? (
-              <div className="sm:flex items-center p-3 ">
-                <div
-                  className={`pl-10 shadow-xl hover:border-[#0F0821] bg-[#031420]  hover.borderWidth-2 max-w-[250px] pr-14  m-3 h-[100px] flex items-center rounded-2xl`}
-                  style={{ borderColor: getActiveColor(number) }}
-                >
-                  <input
-                    type="radio"
-                    className="h-[20px] w-[20px]"
-                    name={`userType${number}`}
-                    id={`yes${number}`}
-                    onClick={() => {
-                      handleCourierOptionClick("yes");
-                      document
-                        .getElementById(`nextButton`)
-                        .classList.add("enabled");
-                    }}
-                  />
-                  <div className="flex items-center pl-6">
-                    <span className="text-[#318AE6] text-[30px]">
-                      <FaCheck />
-                    </span>
-                    <h5 className="pl-4">Yes</h5>
-                  </div>
-                </div>
-                <div
-                  className={`pl-10 shadow-xl hover:border-[#0F0821] bg-[#031420]  hover.borderWidth-2 max-w-[250px] pr-14  m-3 h-[100px] flex items-center rounded-2xl`}
-                  style={{ borderColor: getActiveColor(number) }}
-                >
-                  <input
-                    type="radio"
-                    className="h-[20px] w-[20px]"
-                    name={`userType${number}`}
-                    id={`no${number}`}
-                    onClick={() => {
-                      handleCourierOptionClick("no");
-                      document
-                        .getElementById(`nextButton`)
-                        .classList.add("enabled");
-                    }}
-                  />
-                  <div className="flex items-center pl-6">
-                    <span className="text-[#318AE6] text-[30px]">
-                      <FaTimes />
-                    </span>
-                    <h5 className="pl-4">No</h5>
-                  </div>
-                </div>
-              </div>
-            ) : step === 3 ? ( // Show a form for step 3
-              // ====================================
-              // ------------------------------ payment component
-              <div className="md:w-[550px] w-[100%] m-3  ">
-                <div className="w-[100vw] md:w-[100%] pl-6 pr-6 ">
-                  <div className="mb-4">
-                    <label
-                      htmlFor="paymentName"
-                      className="block text-[13px] font-bold  text-[#fff] mb-2"
-                    >
-                      Name
-                    </label>
-                    <input
-                      type="text"
-                      id="paymentName"
-                      name="paymentName"
-                      onChange={(e) => setPaymentName(e.target.value)}
-                      value={paymentName}
-                      className="border-2  border-[#318AE6] bg-[#031420] rounded-[30px] text-[12px] pl-4 pr-3 pt-2 pb-2  outline-none  w-full"
-                      placeholder="Enter Payment Name"
-                      autoComplete="on"
-                    />
-                  </div>
-                  <div className="mb-4">
-                    <label
-                      htmlFor="email"
-                      className="block text-[13px] font-bold  text-[#fff] mb-2"
-                    >
-                      Email Address
-                    </label>
-                    <input
-                      type="text"
-                      id="email"
-                      name="email"
-                      onChange={(e) => setEmail(e.target.value)}
-                      value={email}
-                      className="border-2  border-[#318AE6] bg-[#031420] rounded-[30px] text-[12px] pl-4 pr-3 pt-2 pb-2  outline-none mb-2  w-full"
-                      placeholder="Enter Email Address"
-                      autoComplete="on"
-                    />
-                  </div>
-                  <div className="mb-4">
-                    <label
-                      htmlFor="paymentAmount"
-                      className="block text-[13px] font-bold  text-[#fff] mb-2"
-                    >
-                      Payment Amount
-                    </label>
-                    <input
-                      type="number"
-                      id="paymentAmount"
-                      name="paymentAmount"
-                      onChange={(e) => setPaymentAmount(e.target.value)}
-                      value={paymentAmount}
-                      className="border-2  border-[#318AE6] bg-[#031420] rounded-[30px] text-[12px] pl-4 pr-3 pt-2 pb-2  outline-none mb-2  w-full"
-                      placeholder="Enter payment amount"
-                    />
-                  </div>
-                  <div className="mb-4">
-                    <label
-                      htmlFor="paymentAmount"
-                      className="block text-[13px] font-bold  text-[#fff] mb-2"
-                    >
-                      Bank Name
-                    </label>
-                    {/* <input
-                      type="text"
-                      id="paymentBank"
-                      name="paymentBank"
-                      onChange={(e) => setPaymentBank(e.target.value)}
-                      value={paymentBank}
-                      className="border-2  border-[#318AE6] bg-[#031420] rounded-[30px] text-[12px] pl-4 pr-3 pt-2 pb-2  outline-none mb-2  w-full"
-                      placeholder="Enter payment bank"
-                      autoComplete="on"
-                    /> */}
-                    {/* <select
-                      id="paymentBank"
-                      name="paymentBank"
-                      onChange={(e) => {
-                        const selectedBank = banks.find(bank => bank.code === e.target.value);
-                        setSelectedBankCode(e.target.value);
-                        setPaymentBank(selectedBank ? selectedBank.name : "");
-                      }}
-                      value={selectedBankCode}
-                      className="border-2 border-[#318AE6] bg-[#031420] rounded-[30px] text-[12px] pl-4 pr-3 pt-2 pb-2 outline-none mb-2 w-full"
-                      required
-                    >
-                      <option value="">Select Bank</option>
-                      {banks.map((bank) => (
-                        <option key={bank.code} value={bank.code}>
-                          {bank.name}
-                        </option>
-                      ))}
-                    </select> */}
-                    <select
-                      id="paymentBank"
-                      name="paymentBank"
-                      onChange={(e) => {
-                        const selectedBank = uniqueBanks.find(bank => bank.code === e.target.value);
-                        setSelectedBankCode(e.target.value);
-                        setPaymentBank(selectedBank ? selectedBank.name : "");
-                      }}
-                      value={selectedBankCode}
-                      className="border-2 border-[#318AE6] bg-[#031420] rounded-[30px] text-[12px] pl-4 pr-3 pt-2 pb-2 outline-none mb-2 w-full"
-                      required
-                    >
-                      <option value="">Select Bank</option>
-                      {uniqueBanks.map((bank) => (
-                        <option key={bank.code} value={bank.code}>
-                          {bank.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="mb-4">
-                    <label
-                      htmlFor="paymentAmount"
-                      className="block text-[13px] font-bold  text-[#fff] mb-2"
-                    >
-                      Bank Number
-                    </label>
-                    <input
-                      type="number"
-                      id="paymentAccountNumber"
-                      name="paymentAccountNumber"
-                      onChange={(e) => setPaymentAccountNumber(e.target.value)}
-                      value={paymentAccountNumber}
-                      className="border-2  border-[#318AE6] bg-[#031420] rounded-[30px] text-[12px] pl-4 pr-3 pt-2 pb-2  outline-none mb-2  w-full"
-                      placeholder="Enter payment number"
-                      autoComplete="on"
-                    />
-                  </div>
-                  <div className="mb-5 mt-5 ">
-                    <label
-                      htmlFor="paymentDescription"
-                      className="block text-[13px] font-bold  text-[#fff] mb-2"
-                    >
-                      Payment Description
-                    </label>
-                    <textarea
-                      name=""
-                      id="paymentDescription"
-                      onChange={(e) => setPaymentDescription(e.target.value)}
-                      value={paymentDescription}
-                      className="border-2  border-[#318AE6] h-[100px] bg-[#031420] rounded-[30px]  text-[12px] pl-4 pr-3 pt-2 pb-2  outline-none mb-2  w-full"
-                      placeholder="Payment Description"
-                    ></textarea>
-                  </div>
-                  {/* ============= Modifying the create transaction, by adding a popup =================== */}
-                  <div className="text-center">
-                    <button
-                      type="submit"
-                      // onClick={createNewTransaction}
-                      onClick={acceptTransactionFunction}
-                      className=" rounded-full  text-white text-[13px] font-bold py-2  px-7   bg-[#318AE6] border-2  border-[#318AE6] all_btn   hover:border-2  hover:border-[#318AE6]  hover:bg-[transparent]"
-                    >
-                      Start Transaction
-                    </button>
-                  </div>
+        </Heading>
 
-                </div>
-              </div>
-            ) : (
-              <div className="sm:flex items-center">
-                <div
-                  className={`pl-10 shadow-xl hover:border-[#0F0821] bg-[#031420]  hover.borderWidth-2 max-w-[250px] pr-14  m-3 h-[100px] flex items-center rounded-2xl`}
-                  style={{ borderColor: getActiveColor(number) }}
+        {/* Step 1: User Type */}
+        {step === 1 && (
+          <HStack spacing={6} flexWrap={{base: "wrap", md: "nowrap"}} justify="center">
+            <Box
+              as="label"
+              htmlFor="buyer"
+              cursor="pointer"
+                bg="#1E293B"
+              borderRadius="xl"
+              p={6}
+              w={{base: "full", md: "250px"}}
+              textAlign="center"
+              boxShadow="0px 4px 20px rgba(0, 0, 0, 0.1)"
+              transition="all 0.3s ease"
+              _hover={{ transform: "translateY(-5px)", boxShadow: "0px 8px 25px rgb(141, 110, 48)" }}
+              borderWidth="2px"
+              borderColor={selectedUserType === "buyer" ? "#957432" : "transparent"}
+            >
+              <input
+                type="radio"
+                id="buyer"
+                name="userType"
+                className="sr-only"
+                onClick={() => handleRadioClick("buyer")}
+              />
+              <VStack spacing={4}>
+                <Flex
+                  w="60px"
+                  h="60px"
+                  borderRadius="full"
+                  bg={selectedUserType === "buyer" ? "#957432" : "#2D3748"}
+                  color="white"
+                  justify="center"
+                  align="center"
+                  fontSize="2xl"
+                  mx="auto"
                 >
-                  <input
-                    type="radio"
-                    className="h-[20px] w-[20px]"
-                    // name={`userType${number}`}
-                    name="userType"
-                    id="buyer"
-                    // id={`buyer${number}`}
-                    onClick={() => {
-                      // handleRadioClick(`buyer${number}`);
-                      handleRadioClick(`buyer`);
-                      document
-                        .getElementById(`nextButton`)
-                        .classList.add("enabled");
-                    }}
-                  />
-                  <div className="flex items-center pl-3">
-                    <span className="text-[#318AE6] text-[30px]">
-                      <FaShoppingCart />
-                    </span>
-                    <h5 className="pl-4">Buyer</h5>
-                  </div>
-                </div>
-                <div
-                  className={`pl-10 shadow-xl hover:border-[#0F0821] bg-[#031420]   hover.borderWidth-2 max-w-[250px] pr-14  m-3 h-[100px] flex items-center rounded-2xl`}
-                  style={{ borderColor: getActiveColor(number) }}
+                  <FaShoppingCart />
+                </Flex>
+                <h3 fontSize="lg" className="text-white" fontWeight="bold">Buyer</h3>
+              </VStack>
+            </Box>
+
+            <Box
+              as="label"
+              htmlFor="seller"
+              cursor="pointer"
+              bg="#1E293B"
+              borderRadius="xl"
+              p={6}
+              w={{base: "full", md: "250px"}}
+              textAlign="center"
+              boxShadow="0px 4px 20px rgba(0, 0, 0, 0.1)"
+              transition="all 0.3s ease"
+              _hover={{ transform: "translateY(-5px)", boxShadow: "0px 8px 25px rgb(141, 110, 48)" }}
+              borderWidth="2px"
+              borderColor={selectedUserType === "seller" ? "#957432" : "transparent"}
+            >
+              <input
+                type="radio"
+                id="seller"
+                name="userType"
+                className="sr-only"
+                onClick={() => handleRadioClick("seller")}
+              />
+              <VStack spacing={4}>
+                <Flex
+                  w="60px"
+                  h="60px"
+                  borderRadius="full"
+                  bg={selectedUserType === "seller" ? "#957432" : "#2D3748"}
+                  color="white"
+                  justify="center"
+                  align="center"
+                  fontSize="2xl"
+                  mx="auto"
                 >
-                  <input
-                    type="radio"
-                    className="h-[20px] w-[20px]"
-                    // name={`userType${number}`}
-                    // id={`seller${number}`}
-                    name="userType"
-                    id="seller"
-                    onClick={() => {
-                      handleRadioClick(`seller`);
-                      document
-                        .getElementById(`nextButton`)
-                        .classList.add("enabled");
-                    }}
-                  />
-                  <div className="flex items-center pl-3">
-                    <span className="text-[#318AE6] text-[30px]">
-                      <FaStore />
-                    </span>
-                    <h5 className="pl-4">Seller</h5>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
-        {[1, 2, 3].map((number) => (
-          <div
-            key={number}
-            className={`flex items-center justify-center ${step === number ? "default" : "hidden"
-              }`}
-          >
-            {/* Content for steps 1, 2, and 3 */}
-            {/* <p>
-              Step {number}: Content for step {number} goes here.
-            </p> */}
-          </div>
-        ))}
-        <div className="flex mt-24 space-x-4">
-          <button
-            className={`border-2  border-[#318AE6]   rounded-3xl h-[38px] font-bold w-[130px] ${step === 1 ? "hidden" : ""
-              }`}
-            onClick={handlePreviousClick}
-          >
-            Previous
-          </button>
-          <button
-            id="nextButton"
-            className={`border-2  border-[#318AE6]  rounded-3xl h-[38px] font-bold w-[130px] ${step === 3 ? "hidden" : ""
-              } ${nextButtonActive ? "text-[#fff] border-black" : ""}`}
-            onClick={handleNextClick}
-            disabled={!nextButtonActive}
-          >
-            Next
-          </button>
-        </div>
+                  <FaStore />
+                </Flex>
+                <h3 fontSize="lg" className="text-white" fontWeight="bold">Seller</h3>
+              </VStack>
+            </Box>
+          </HStack>
+        )}
 
-      </form>
+        {/* Step 2: Courier Option */}
+        {step === 2 && (
+          <HStack spacing={6} flexWrap={{base: "wrap", md: "nowrap"}} justify="center">
+            <Box
+              as="label"
+              htmlFor="yes"
+              cursor="pointer"
+              bg="#1E293B"
+              borderRadius="xl"
+              p={6}
+              w={{base: "full", md: "250px"}}
+              textAlign="center"
+              boxShadow="0px 4px 20px rgba(0, 0, 0, 0.1)"
+              transition="all 0.3s ease"
+              _hover={{ transform: "translateY(-5px)", boxShadow: "0px 8px 25px rgb(134, 102, 38)" }}
+              borderWidth="2px"
+              borderColor={willUseCourier ? "#957432" : "transparent"}
+            >
+              <input
+                type="radio"
+                id="yes"
+                name="courierOption"
+                className="sr-only"
+                onClick={() => handleCourierOptionClick("yes")}
+              />
+              <VStack spacing={4}>
+                <Flex
+                  w="60px"
+                  h="60px"
+                  borderRadius="full"
+                  bg={willUseCourier ? "#957432" : "#2D3748"}
+                  color="white"
+                  justify="center"
+                  align="center"
+                  fontSize="2xl"
+                  mx="auto"
+                >
+                  <FaCheck />
+                </Flex>
+                <Text fontSize="lg" fontWeight="medium">Yes</Text>
+              </VStack>
+            </Box>
 
-    </div>
+            <Box
+              as="label"
+              htmlFor="no"
+              cursor="pointer"
+              bg="#1E293B"
+              borderRadius="xl"
+              p={6}
+              w={{base: "full", md: "250px"}}
+              textAlign="center"
+              boxShadow="0px 4px 20px rgba(0, 0, 0, 0.1)"
+              transition="all 0.3s ease"
+              _hover={{ transform: "translateY(-5px)", boxShadow: "0px 8px 25px rgba(49, 138, 230, 0.2)" }}
+              borderWidth="2px"
+              borderColor={willUseCourier === false && nextButtonActive ? "#957432" : "transparent"}
+            >
+              <input
+                type="radio"
+                id="no"
+                name="courierOption"
+                className="sr-only"
+                onClick={() => handleCourierOptionClick("no")}
+              />
+              <VStack spacing={4}>
+                <Flex
+                  w="60px"
+                  h="60px"
+                  borderRadius="full"
+                  bg={willUseCourier === false && nextButtonActive ? "#957432" : "#2D3748"}
+                  color="white"
+                  justify="center"
+                  align="center"
+                  fontSize="2xl"
+                  mx="auto"
+                >
+                  <FaTimes />
+                </Flex>
+                <Text fontSize="lg" fontWeight="medium">No</Text>
+              </VStack>
+            </Box>
+          </HStack>
+        )}
+
+        {/* Step 3: Payment Details */}
+        {step === 3 && (
+          <Box bg="#1E293B" borderRadius="xl" p={6} w="full" maxW="600px" boxShadow="0px 8px 30px rgba(0, 0, 0, 0.15)">
+            <VStack spacing={5} align="start">
+              <FormControl isRequired>
+                <FormLabel fontWeight="bold">Name</FormLabel>
+                <Input
+                  type="text"
+                  placeholder="Enter Payment Name"
+                  value={paymentName}
+                  onChange={(e) => setPaymentName(e.target.value)}
+                  bg="#0F1624"
+                  borderColor="#957432"
+                  borderRadius="full"
+                  _hover={{ borderColor: "#957432" }}
+                  _focus={{ borderColor: "#957432", boxShadow: "0 0 0 1px #957432" }}
+                />
+              </FormControl>
+
+              <FormControl isRequired>
+                <FormLabel fontWeight="bold">Email Address</FormLabel>
+                <Input
+                  type="email"
+                  placeholder="Enter Email Address"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  bg="#0F1624"
+                  borderColor="#957432"
+                  borderRadius="full"
+                  _hover={{ borderColor: "#957432" }}
+                  _focus={{ borderColor: "#957432", boxShadow: "0 0 0 1px #957432" }}
+                />
+              </FormControl>
+
+              <FormControl isRequired>
+                <FormLabel fontWeight="bold">Payment Amount</FormLabel>
+                <Input
+                  type="number"
+                  placeholder="Enter payment amount"
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  bg="#0F1624"
+                  borderColor="#957432"
+                  borderRadius="full"
+                  _hover={{ borderColor: "#957432" }}
+                  _focus={{ borderColor: "#957432", boxShadow: "0 0 0 1px #957432" }}
+                />
+              </FormControl>
+
+              <FormControl isRequired>
+                <FormLabel fontWeight="bold">Bank Name</FormLabel>
+                <Select
+                  placeholder="Select Bank"
+                  value={selectedBankCode}
+                  onChange={(e) => {
+                    const selectedBank = uniqueBanks.find(bank => bank.code === e.target.value);
+                    setSelectedBankCode(e.target.value);
+                    setPaymentBank(selectedBank ? selectedBank.name : "");
+                  }}
+                  bg="#0F1624"
+                  borderColor="#957432"
+                  borderRadius="full"
+                  _hover={{ borderColor: "#957432" }}
+                  _focus={{ borderColor: "#957432", boxShadow: "0 0 0 1px #957432" }}
+                >
+                  {uniqueBanks.map((bank) => (
+                    <option key={bank.code} value={bank.code}>
+                      {bank.name}
+                    </option>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <FormControl isRequired>
+                <FormLabel fontWeight="bold">Account Number</FormLabel>
+                <Input
+                  type="text"
+                  placeholder="Enter account number"
+                  value={paymentAccountNumber}
+                  onChange={(e) => setPaymentAccountNumber(e.target.value)}
+                  bg="#0F1624"
+                  borderColor="#957432"
+                  borderRadius="full"
+                  _hover={{ borderColor: "#957432" }}
+                  _focus={{ borderColor: "#957432", boxShadow: "0 0 0 1px #957432" }}
+                />
+              </FormControl>
+
+              <FormControl>
+                <FormLabel fontWeight="bold">Payment Description</FormLabel>
+                <Textarea
+                  placeholder="Enter payment description"
+                  value={paymentDescription}
+                  onChange={(e) => setPaymentDescription(e.target.value)}
+                  bg="#0F1624"
+                  borderColor="#957432"
+                  borderRadius="xl"
+                  _hover={{ borderColor: "#957432" }}
+                  _focus={{ borderColor: "#957432", boxShadow: "0 0 0 1px #957432" }}
+                  h="100px"
+                />
+              </FormControl>
+
+              {/* Transaction Summary */}
+              <Box w="full" bg="#0F1624" p={4} borderRadius="lg" mt={2}>
+                <Text fontWeight="bold" mb={2}>Transaction Summary</Text>
+                <Flex justify="space-between" mb={1}>
+                  <Text>Amount:</Text>
+                  <Text>{paymentAmount || "0.00"} NGN</Text>
+                </Flex>
+                <Flex justify="space-between" mb={1}>
+                  <Text>Transaction Fee (0.8%):</Text>
+                  <Text>{transactionFee} NGN</Text>
+                </Flex>
+                <Divider my={2} borderColor="gray.600" />
+                <Flex justify="space-between" fontWeight="bold">
+                  <Text>Total Amount:</Text>
+                  <Text>{totalAmount} NGN</Text>
+                </Flex>
+              </Box>
+
+              <Button
+                onClick={acceptTransactionFunction}
+                colorScheme="blue"
+                textColor="White"
+                size="lg"
+                borderRadius="full"
+                w="full"
+                mt={4}
+                bg="#957432"
+                _hover={{ bg: "#957432" }}
+                boxShadow="0px 4px 10px rgb(149, 116, 50)"
+              >
+                Start Transaction
+              </Button>
+            </VStack>
+          </Box>
+        )}
+
+        {/* Navigation Buttons */}
+        <HStack spacing={4} mt={8}>
+          {step > 1 && (
+            <Button
+              onClick={handlePreviousClick}
+              variant="outline"
+              borderColor="#957432"
+              color="white"
+              borderRadius="full"
+              size="lg"
+              px={8}
+              _hover={{ bg: "rgb(144, 111, 44)" }}
+            >
+              Previous
+            </Button>
+          )}
+          
+          {step < 3 && (
+            <Button
+              onClick={handleNextClick}
+              isDisabled={!nextButtonActive}
+              // colorScheme="blue"
+              borderRadius="full"
+              size="lg"
+              px={8}
+              bg={nextButtonActive ? "#957432" : "#1E293B"}
+              _hover={{ bg: nextButtonActive ? "#957432" : "#1E293B" }}
+              boxShadow={nextButtonActive ? "0px 4px 10px rgb(144, 111, 44)" : "none"}
+            >
+              Next
+            </Button>
+          )}
+        </HStack>
+      </VStack>
+
+      {/* Confirmation Modal */}
+      {acceptTransactionModel && (
+        <Box
+          position="fixed"
+          top={0}
+          left={0}
+          right={0}
+          bottom={0}
+          bg="rgba(0, 0, 0, 0.7)"
+          zIndex={999}
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          p={4}
+        >
+          <Box
+            bg="#1E293B"
+            borderRadius="xl"
+            maxW="400px"
+            w="full"
+            overflow="hidden"
+            boxShadow="0px 10px 30px rgba(0, 0, 0, 0.3)"
+          >
+            <Box p={4} bg="#0F1624" borderBottomWidth="1px" borderColor="gray.700">
+              <Flex justify="space-between" align="center">
+                <Heading size="md">Accept Escrow Transaction</Heading>
+                <Button
+                  variant="ghost"
+                  p={1}
+                  onClick={() => setAcceptTransactionModel(false)}
+                  _hover={{ bg: "gray.700" }}
+                >
+                  <MdClose size={24} />
+                </Button>
+              </Flex>
+            </Box>
+
+            <Box p={5}>
+              <Flex align="center" mb={4}>
+                <Avatar
+                  src={
+                    userDetails.avatarImage
+                      ? `${BASE_URL}/${userDetails.avatarImage}`
+                      : defaultProfileImage
+                  }
+                  size="md"
+                />
+                <Box ml={3}>
+                  <Text fontWeight="bold">{paymentName || "Transaction"}</Text>
+                  <Text fontSize="sm">{totalAmount} NGN</Text>
+                </Box>
+              </Flex>
+
+              <Text fontSize="sm" mb={4}>
+                You are about to accept the escrow transaction. Make sure you understand the terms before proceeding.
+              </Text>
+
+              <Box bg="#0F1624" p={4} borderRadius="md" fontSize="sm">
+                <Heading size="xs" mb={3}>Terms</Heading>
+                
+                <Flex justify="space-between" mb={2}>
+                  <Text>Payment Method</Text>
+                  <Text>Wire Transfer</Text>
+                </Flex>
+                
+                <Flex justify="space-between" mb={2}>
+                  <Text>Transaction Amount</Text>
+                  <Text>{paymentAmount} NGN</Text>
+                </Flex>
+                
+                <Flex justify="space-between" mb={2}>
+                  <Text>Transaction Fee</Text>
+                  <Text>0.8%</Text>
+                </Flex>
+                
+                <Flex justify="space-between" mb={2}>
+                  <Text>Bank</Text>
+                  <Text>{paymentBank}</Text>
+                </Flex>
+                
+                <Flex justify="space-between" mb={2}>
+                  <Text>Account Number</Text>
+                  <Text>{paymentAccountNumber}</Text>
+                </Flex>
+                
+                <Divider my={2} borderColor="gray.600" />
+                
+                <Flex justify="space-between" fontWeight="bold">
+                  <Text>Total Amount</Text>
+                  <Text>{totalAmount} NGN</Text>
+                </Flex>
+              </Box>
+
+              <Button
+                colorScheme="blue"
+                size="lg"
+                w="full"
+                textColor="white"
+                mt={4}
+                borderRadius="full"
+                bg="#957432"
+                _hover={{ bg: "#957432" }}
+                onClick={(e) => {
+                  setAcceptTransactionModel(false);
+                  createNewTransaction(e);
+                }}
+              >
+                Accept
+              </Button>
+            </Box>
+          </Box>
+        </Box>
+      )}
+    </Box>
   );
 };
 
