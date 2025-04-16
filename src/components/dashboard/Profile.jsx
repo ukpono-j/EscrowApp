@@ -146,6 +146,7 @@ const Profile = () => {
       });
   };
 
+  
   const handleImageUpload = () => {
     setUploading(true);
     const formData = new FormData();

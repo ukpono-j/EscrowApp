@@ -521,41 +521,71 @@ const Kyc = () => {
     );
   };
 
-  return (
-    <div className="border flex items-center border-black">
-      <Sidebar
-        onShowProfile={handleShowProfile}
-        onShowToggleComponent={handleMyTransaction}
-        onCollapseChange={handleSidebarCollapseChange}
-      />
-      <div
-        className={`fixed top-0 right-0 h-screen overflow-y-auto transition-all duration-300 ${isSidebarCollapsed
-            ? "w-[calc(100%-80px)]"
-            : "w-[calc(100%-280px)]"
-          } md:block hidden`}
+ // Update the return statement to handle both mobile and desktop views properly
+return (
+  <div className="border flex items-center border-black">
+    <Sidebar
+      onShowProfile={handleShowProfile}
+      onShowToggleComponent={handleMyTransaction}
+      onCollapseChange={handleSidebarCollapseChange}
+    />
+    
+    {/* Desktop view */}
+    <div
+      className={`fixed top-0 right-0 h-screen overflow-y-auto transition-all duration-300 ${
+        isSidebarCollapsed
+          ? "w-[calc(100%-80px)]"
+          : "w-[calc(100%-280px)]"
+        } md:block hidden`}
+    >
+      <Box
+        className={showToggleContainer ? "toggleContainer" : "hidden"}
+        h="auto"
+        pb={6}
       >
-        <Box
-          className={showToggleContainer ? "toggleContainer" : "hidden"}
-          h="auto"
+        <Flex
+          direction="column"
+          align="center"
+          justify="center"
+          py={{ base: 16, md: 24 }}
+          px={3}
+          fontFamily="Poppins, sans-serif"
         >
-          <Flex
-            direction="column"
-            align="center"
-            justify="center"
-            py={{ base: 16, md: 24 }}
-            px={3}
-            fontFamily="Poppins, sans-serif"
-          >
-            {renderKycStatus()}
-          </Flex>
-        </Box>
-      </div>
-      <BottomNav
-        onShowProfile={handleShowProfile}
-        onShowToggleComponent={handleMyTransaction}
-      />
+          {renderKycStatus()}
+        </Flex>
+      </Box>
     </div>
-  );
+    
+    {/* Mobile view */}
+    <div
+      className={`fixed top-0 left-0 right-0 h-screen overflow-y-auto pt-[60px] pb-[80px] z-10 bg-gray-900 ${
+        showToggleContainer ? "block" : "hidden"
+      } md:hidden`}
+    >
+      <Box
+        className={showToggleContainer ? "toggleContainer" : "hidden"}
+        h="auto"
+        pb={6}
+      >
+        <Flex
+          direction="column"
+          align="center"
+          justify="center"
+          py={{ base: 8, md: 24 }}
+          px={3}
+          fontFamily="Poppins, sans-serif"
+        >
+          {renderKycStatus()}
+        </Flex>
+      </Box>
+    </div>
+    
+    <BottomNav
+      onShowProfile={handleShowProfile}
+      onShowToggleComponent={handleMyTransaction}
+    />
+  </div>
+);
 };
 
 export default Kyc;
