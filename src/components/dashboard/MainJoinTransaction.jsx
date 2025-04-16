@@ -1,16 +1,46 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import {
+  Box,
+  Button,
+  Container,
+  FormControl,
+  FormLabel,
+  Input,
+  Heading,
+  Text,
+  VStack,
+  useToast,
+  useColorMode,
+  useColorModeValue,
+  Flex,
+  Stack,
+  Alert,
+  AlertIcon,
+  AlertTitle,
+} from "@chakra-ui/react";
+
 const BASE_URL = import.meta.env.VITE_BASE_URL;
-import "./MainJoinTransaction.css";
-import { Box, Text, VStack } from "@chakra-ui/react";
 
 const MainJoinTransaction = () => {
   const [transactionId, setTransactionId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [responseMessage, setResponseMessage] = useState("");
-  const [messageType, setMessageType] = useState(""); // "success" or "error"
+  const [messageType, setMessageType] = useState("");
   const navigate = useNavigate();
+  const toast = useToast();
+  const { colorMode } = useColorMode();
+
+  // Dynamic colors based on color mode
+  const boxBg = useColorModeValue("white", "gray.800");
+  const headingColor = useColorModeValue("gray.800", "white");
+  const textColor = useColorModeValue("gray.600", "gray.300");
+  const borderColor = useColorModeValue("#A27D35", "#A27D35");
+  const buttonBg = useColorModeValue("#AD8537", "#A27D35");
+  const buttonHoverBg = useColorModeValue("#AD8537", "#AD8537");
+  const inputBg = useColorModeValue("white", "gray.700");
+  const shadowColor = useColorModeValue("rgba(0, 0, 0, 0.1)", "rgba(0, 0, 0, 0.3)");
 
   useEffect(() => {
     if (responseMessage) {
@@ -53,7 +83,6 @@ const MainJoinTransaction = () => {
       setTimeout(() => {
         navigate("/transactions/tab");
       }, 2000);
-
     } catch (error) {
       console.error("Error joining transaction:", error);
       if (error.response) {
@@ -68,44 +97,96 @@ const MainJoinTransaction = () => {
   };
 
   return (
-    <Box minH="100vh" className="font-[Poppins] pr-[28px] join_Component pl-[100px] pt-10 md:pl-[10px]" w="full" >
-      <VStack spacing={8} maxW="900px" mx="auto">
-        <Text className="font-bold text-[35px]">Join Transaction</Text>
-        <p className="pb-8 text-[17px]">
-          Please enter the Transaction ID you received from the person you are transacting with.
-        </p>
-        <form onSubmit={handleConfirm} className="w-[98%]">
-          <input
-            type="text"
-            required
-            placeholder="Transaction ID"
-            value={transactionId}
-            onChange={(e) => setTransactionId(e.target.value)}
-            className="border-b-2 border-[#A78136] text-[13px] outline-none bg-[transparent] w-[100%]"
-          />
-          <div className="mt-14 md:w-[100%]">
-            <button
-              type="submit"
-              disabled={isLoading || !transactionId}
-              className={`w-[100%] h-[35px] m-auto rounded-3xl cursor-pointer text-[#fff] text-[12px] join_btn font-bold uppercase bg-[#A78136] ${isLoading || !transactionId ? "cursor-not-allowed opacity-50" : ""
-                }`}
+    <Flex 
+      minHeight="100vh" 
+      width="100%" 
+      align="center" 
+      justify="center"
+      fontFamily="Poppins"
+      bg={useColorModeValue("gray.50", "gray.900")}
+      p={4}
+    >
+      <Box
+        w="100%"
+        maxW="450px"
+        bg={boxBg}
+        boxShadow={`0 4px 20px ${shadowColor}`}
+        borderRadius="lg"
+        overflow="hidden"
+        borderTop="4px solid"
+        borderColor={borderColor}
+      >
+        <Box p={8}>
+          <Stack spacing={6}>
+            <Heading 
+              as="h1"
+              fontSize="2xl"
+              textAlign="center"
+              color={headingColor}
+              fontWeight="bold"
             >
-              {isLoading ? "Processing..." : "Join Transaction"}
-            </button>
-            {responseMessage && (
-              <p
-                className={`text-center text-[13px] pt-3 ${messageType === "error" ? "text-red-500" : "text-green-500"
-                  }`}
-              >
-                {responseMessage}
-              </p>
-            )}
-          </div>
-        </form>
+              Join Transaction
+            </Heading>
+            
+            <Text textAlign="center" color={textColor}>
+              Please enter the Transaction ID you received from the person you are transacting with.
+            </Text>
+            
+            <form onSubmit={handleConfirm}>
+              <Stack spacing={6}>
+                <FormControl isRequired>
+                  <FormLabel htmlFor="transactionId" fontSize="sm" color={textColor}>
+                    Transaction ID
+                  </FormLabel>
+                  <Input
+                    id="transactionId"
+                    type="text"
+                    value={transactionId}
+                    onChange={(e) => setTransactionId(e.target.value)}
+                    placeholder="Enter transaction ID"
+                    size="lg"
+                    bg={inputBg}
+                    borderColor={useColorModeValue("gray.300", "gray.600")}
+                    _hover={{ borderColor: borderColor }}
+                    _focus={{ 
+                      borderColor: borderColor, 
+                      boxShadow: `0 0 0 1px ${borderColor}` 
+                    }}
+                  />
+                </FormControl>
 
-      </VStack>
+                {responseMessage && (
+                  <Alert 
+                    status={messageType} 
+                    variant="subtle"
+                    borderRadius="md"
+                  >
+                    <AlertIcon />
+                    <AlertTitle fontSize="sm">{responseMessage}</AlertTitle>
+                  </Alert>
+                )}
 
-    </Box>
+                <Button
+                  type="submit"
+                  isLoading={isLoading}
+                  loadingText="Processing..."
+                  bg={buttonBg}
+                  color="white"
+                  _hover={{ bg: buttonHoverBg }}
+                  width="full"
+                  size="lg"
+                  borderRadius="md"
+                  fontWeight="medium"
+                  mt={2}
+                >
+                  Join Transaction
+                </Button>
+              </Stack>
+            </form>
+          </Stack>
+        </Box>
+      </Box>
+    </Flex>
   );
 };
 

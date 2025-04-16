@@ -6,18 +6,27 @@ import BottomNav from "./BottomNav";
 
 
 const MainProfile = () => {
-    const [showToggleContainer, setShowToggleContainer] = useState(true);
-    const [showProfile, setShowProfile] = useState(false);
-  
-    const handleShowProfile = () => {
-      setShowToggleContainer(false);
-      setShowProfile(true);
-    };
-  
-    const handleMyTransaction = () => {
-      setShowToggleContainer(true);
-      setShowProfile(false);
-    };
+  const [showToggleContainer, setShowToggleContainer] = useState(true);
+  const [showProfile, setShowProfile] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+
+
+  // Function to handle sidebar collapse state changes
+  const handleSidebarCollapseChange = (isCollapsed) => {
+    setIsSidebarCollapsed(isCollapsed);
+  };
+
+
+  const handleShowProfile = () => {
+    setShowToggleContainer(false);
+    setShowProfile(true);
+  };
+
+  const handleMyTransaction = () => {
+    setShowToggleContainer(true);
+    setShowProfile(false);
+  };
 
 
 
@@ -26,10 +35,13 @@ const MainProfile = () => {
       <Sidebar
         onShowProfile={handleShowProfile}
         onShowToggleComponent={handleMyTransaction}
+        onCollapseChange={handleSidebarCollapseChange}
       />
       <div
-        style={{ overflowY: "scroll" }}
-        className="layout  bg-[#1A1E21] text-[#E4E4E4]   fixed right-0 top-0 w-[100%]  md:w-[83.2%] h-[100vh]"
+        className={`fixed top-0 right-0 overflow-y-auto h-screen transition-all duration-300 ${isSidebarCollapsed
+            ? "w-[calc(100%-80px)]"
+            : "w-[calc(100%-280px)]"
+          } md:block hidden`}
       >
         <div
           className={
@@ -37,7 +49,7 @@ const MainProfile = () => {
           }
         >
           <Profile />
-    
+
         </div>
       </div>
       <BottomNav

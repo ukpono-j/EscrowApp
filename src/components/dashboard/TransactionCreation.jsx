@@ -2,14 +2,47 @@ import React, { useEffect, useState } from "react";
 import { FaShoppingCart, FaCheck, FaTimes, FaStore } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
-import { useToast } from "@chakra-ui/react";
-import { Box, Text, Flex, Avatar, Progress, Button, FormControl, FormLabel, Input, Textarea, Select, Stack, Heading, VStack, HStack, Divider } from "@chakra-ui/react";
+import {
+  useToast,
+  Box,
+  Text,
+  Flex,
+  Avatar,
+  Progress,
+  Button,
+  FormControl,
+  FormLabel,
+  Input,
+  Textarea,
+  Select,
+  Stack,
+  Heading,
+  VStack,
+  HStack,
+  Divider,
+  useColorMode,
+  useColorModeValue
+} from "@chakra-ui/react";
 import { MdClose } from "react-icons/md";
 import defaultProfileImage from '../../assets/profile_icon.png';
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 
 const TransactionCreation = () => {
+  const { colorMode } = useColorMode();
+
+  // Dynamic color values based on color mode
+  const bgMain = useColorModeValue("white", "#0F1624");
+  const bgSecondary = useColorModeValue("#F7FAFC", "#1E293B");
+  const bgTertiary = useColorModeValue("#EDF2F7", "#2D3748");
+  const textColor = useColorModeValue("gray.800", "white");
+  const borderColor = useColorModeValue("#957432", "#957432");
+  const accentColor = "#957432"; // Keep gold accent color for both modes
+  const accentHoverColor = "#A88D50"; // Lighter gold for hover states
+  const shadowColor = useColorModeValue("rgba(0, 0, 0, 0.1)", "rgba(0, 0, 0, 0.3)");
+  const inputBg = useColorModeValue("white", "#0F1624");
+  const cardBorder = useColorModeValue("1px solid #E2E8F0", "none");
+
   const [step, setStep] = useState(1);
   const [nextButtonActive, setNextButtonActive] = useState(false);
   const navigate = useNavigate();
@@ -19,7 +52,7 @@ const TransactionCreation = () => {
   const [paymentName, setPaymentName] = useState("");
   const [paymentDescription, setPaymentDescription] = useState("");
   const [email, setEmail] = useState("");
-  const [selectedUserType, setSelectedUserType] = useState(""); 
+  const [selectedUserType, setSelectedUserType] = useState("");
   const [willUseCourier, setWillUseCourier] = useState(false);
   const toast = useToast();
   const [acceptTransactionModel, setAcceptTransactionModel] = useState(false);
@@ -104,7 +137,7 @@ const TransactionCreation = () => {
     }
     setAcceptTransactionModel(true);
   };
-  
+
   const createNewTransaction = (e) => {
     e.preventDefault();
 
@@ -202,35 +235,58 @@ const TransactionCreation = () => {
   ];
 
   return (
-    <Box minH="100vh" className="font-[Poppins]" w="full" px={4} py={8}>
+    <Box
+      minH="100vh"
+      className="font-[Poppins]"
+      w="full"
+      px={4}
+      py={8}
+      bg={bgMain}
+      color={textColor}
+      transition="background 0.3s ease, color 0.3s ease"
+    >
       <VStack spacing={8} maxW="900px" mx="auto">
-        <Text as="h1" fontSize={{base: "2xl", md: "3xl"}} className="font-bold" textAlign="center">
+        <Text
+          as="h1"
+          fontSize={{ base: "2xl", md: "3xl" }}
+          className="font-bold"
+          textAlign="center"
+          bgGradient={colorMode === "light" ? "linear(to-r, #957432, #C9A55A)" : "linear(to-r, #957432, #C9A55A)"}
+          bgClip="text"
+          letterSpacing="tight"
+        >
           Create Transaction
         </Text>
-        
+
         {/* Progress bar */}
         <Box w="full" maxW="500px" position="relative" mb={10}>
-          <Progress 
-            value={(step/3) * 100} 
-            size="sm" 
-            colorScheme="blue" 
-            bg="#1E293B" 
+          <Progress
+            value={(step / 3) * 100}
+            size="sm"
+            colorScheme="yellow"
+            bg={bgTertiary}
             borderRadius="full"
+            sx={{
+              '& > div': {
+                background: accentColor,
+              }
+            }}
           />
           <HStack justify="space-between" w="full" position="absolute" top="-16px">
             {[1, 2, 3].map((number) => (
-              <Flex 
-                key={number} 
-                w="40px" 
-                h="40px" 
-                borderRadius="full" 
-                bg={step >= number ? "#957432" : "#957432"}
-                color="white"
-                justify="center" 
+              <Flex
+                key={number}
+                w="40px"
+                h="40px"
+                borderRadius="full"
+                bg={step >= number ? accentColor : bgTertiary}
+                color={step >= number ? "white" : textColor}
+                justify="center"
                 align="center"
                 fontWeight="bold"
-                boxShadow="0px 4px 10px rgba(0, 0, 0, 0.2)"
+                boxShadow={`0px 4px 10px ${shadowColor}`}
                 transition="all 0.3s ease"
+                border={step >= number ? "none" : cardBorder}
               >
                 {number}
               </Flex>
@@ -238,33 +294,34 @@ const TransactionCreation = () => {
           </HStack>
         </Box>
 
-        <Heading 
-          as="h2" 
-          fontSize={{base: "xl", md: "2xl"}} 
-          textAlign="center" 
+        <Heading
+          as="h2"
+          fontSize={{ base: "xl", md: "2xl" }}
+          textAlign="center"
           fontWeight="600"
           mb={8}
+          color={textColor}
         >
           {stepTitles[step - 1]}
         </Heading>
 
         {/* Step 1: User Type */}
         {step === 1 && (
-          <HStack spacing={6} flexWrap={{base: "wrap", md: "nowrap"}} justify="center">
+          <HStack spacing={6} flexWrap={{ base: "wrap", md: "nowrap" }} justify="center">
             <Box
               as="label"
               htmlFor="buyer"
               cursor="pointer"
-                bg="#1E293B"
+              bg={bgSecondary}
               borderRadius="xl"
               p={6}
-              w={{base: "full", md: "250px"}}
+              w={{ base: "full", md: "250px" }}
               textAlign="center"
-              boxShadow="0px 4px 20px rgba(0, 0, 0, 0.1)"
+              boxShadow={`0px 4px 20px ${shadowColor}`}
               transition="all 0.3s ease"
-              _hover={{ transform: "translateY(-5px)", boxShadow: "0px 8px 25px rgb(141, 110, 48)" }}
+              _hover={{ transform: "translateY(-5px)", boxShadow: `0px 8px 25px ${shadowColor}` }}
               borderWidth="2px"
-              borderColor={selectedUserType === "buyer" ? "#957432" : "transparent"}
+              borderColor={selectedUserType === "buyer" ? accentColor : "transparent"}
             >
               <input
                 type="radio"
@@ -278,7 +335,7 @@ const TransactionCreation = () => {
                   w="60px"
                   h="60px"
                   borderRadius="full"
-                  bg={selectedUserType === "buyer" ? "#957432" : "#2D3748"}
+                  bg={selectedUserType === "buyer" ? accentColor : bgTertiary}
                   color="white"
                   justify="center"
                   align="center"
@@ -287,7 +344,7 @@ const TransactionCreation = () => {
                 >
                   <FaShoppingCart />
                 </Flex>
-                <h3 fontSize="lg" className="text-white" fontWeight="bold">Buyer</h3>
+                <Text fontSize="lg" fontWeight="bold" color={textColor}>Buyer</Text>
               </VStack>
             </Box>
 
@@ -295,16 +352,16 @@ const TransactionCreation = () => {
               as="label"
               htmlFor="seller"
               cursor="pointer"
-              bg="#1E293B"
+              bg={bgSecondary}
               borderRadius="xl"
               p={6}
-              w={{base: "full", md: "250px"}}
+              w={{ base: "full", md: "250px" }}
               textAlign="center"
-              boxShadow="0px 4px 20px rgba(0, 0, 0, 0.1)"
+              boxShadow={`0px 4px 20px ${shadowColor}`}
               transition="all 0.3s ease"
-              _hover={{ transform: "translateY(-5px)", boxShadow: "0px 8px 25px rgb(141, 110, 48)" }}
+              _hover={{ transform: "translateY(-5px)", boxShadow: `0px 8px 25px ${shadowColor}` }}
               borderWidth="2px"
-              borderColor={selectedUserType === "seller" ? "#957432" : "transparent"}
+              borderColor={selectedUserType === "seller" ? accentColor : "transparent"}
             >
               <input
                 type="radio"
@@ -318,7 +375,7 @@ const TransactionCreation = () => {
                   w="60px"
                   h="60px"
                   borderRadius="full"
-                  bg={selectedUserType === "seller" ? "#957432" : "#2D3748"}
+                  bg={selectedUserType === "seller" ? accentColor : bgTertiary}
                   color="white"
                   justify="center"
                   align="center"
@@ -327,7 +384,7 @@ const TransactionCreation = () => {
                 >
                   <FaStore />
                 </Flex>
-                <h3 fontSize="lg" className="text-white" fontWeight="bold">Seller</h3>
+                <Text fontSize="lg" fontWeight="bold" color={textColor}>Seller</Text>
               </VStack>
             </Box>
           </HStack>
@@ -335,21 +392,21 @@ const TransactionCreation = () => {
 
         {/* Step 2: Courier Option */}
         {step === 2 && (
-          <HStack spacing={6} flexWrap={{base: "wrap", md: "nowrap"}} justify="center">
+          <HStack spacing={6} flexWrap={{ base: "wrap", md: "nowrap" }} justify="center">
             <Box
               as="label"
               htmlFor="yes"
               cursor="pointer"
-              bg="#1E293B"
+              bg={bgSecondary}
               borderRadius="xl"
               p={6}
-              w={{base: "full", md: "250px"}}
+              w={{ base: "full", md: "250px" }}
               textAlign="center"
-              boxShadow="0px 4px 20px rgba(0, 0, 0, 0.1)"
+              boxShadow={`0px 4px 20px ${shadowColor}`}
               transition="all 0.3s ease"
-              _hover={{ transform: "translateY(-5px)", boxShadow: "0px 8px 25px rgb(134, 102, 38)" }}
+              _hover={{ transform: "translateY(-5px)", boxShadow: `0px 8px 25px ${shadowColor}` }}
               borderWidth="2px"
-              borderColor={willUseCourier ? "#957432" : "transparent"}
+              borderColor={willUseCourier ? accentColor : "transparent"}
             >
               <input
                 type="radio"
@@ -363,7 +420,7 @@ const TransactionCreation = () => {
                   w="60px"
                   h="60px"
                   borderRadius="full"
-                  bg={willUseCourier ? "#957432" : "#2D3748"}
+                  bg={willUseCourier ? accentColor : bgTertiary}
                   color="white"
                   justify="center"
                   align="center"
@@ -372,7 +429,7 @@ const TransactionCreation = () => {
                 >
                   <FaCheck />
                 </Flex>
-                <Text fontSize="lg" fontWeight="medium">Yes</Text>
+                <Text fontSize="lg" fontWeight="medium" color={textColor}>Yes</Text>
               </VStack>
             </Box>
 
@@ -380,16 +437,16 @@ const TransactionCreation = () => {
               as="label"
               htmlFor="no"
               cursor="pointer"
-              bg="#1E293B"
+              bg={bgSecondary}
               borderRadius="xl"
               p={6}
-              w={{base: "full", md: "250px"}}
+              w={{ base: "full", md: "250px" }}
               textAlign="center"
-              boxShadow="0px 4px 20px rgba(0, 0, 0, 0.1)"
+              boxShadow={`0px 4px 20px ${shadowColor}`}
               transition="all 0.3s ease"
-              _hover={{ transform: "translateY(-5px)", boxShadow: "0px 8px 25px rgba(49, 138, 230, 0.2)" }}
+              _hover={{ transform: "translateY(-5px)", boxShadow: `0px 8px 25px ${shadowColor}` }}
               borderWidth="2px"
-              borderColor={willUseCourier === false && nextButtonActive ? "#957432" : "transparent"}
+              borderColor={willUseCourier === false && nextButtonActive ? accentColor : "transparent"}
             >
               <input
                 type="radio"
@@ -403,7 +460,7 @@ const TransactionCreation = () => {
                   w="60px"
                   h="60px"
                   borderRadius="full"
-                  bg={willUseCourier === false && nextButtonActive ? "#957432" : "#2D3748"}
+                  bg={willUseCourier === false && nextButtonActive ? accentColor : bgTertiary}
                   color="white"
                   justify="center"
                   align="center"
@@ -412,7 +469,7 @@ const TransactionCreation = () => {
                 >
                   <FaTimes />
                 </Flex>
-                <Text fontSize="lg" fontWeight="medium">No</Text>
+                <Text fontSize="lg" fontWeight="medium" color={textColor}>No</Text>
               </VStack>
             </Box>
           </HStack>
@@ -420,55 +477,66 @@ const TransactionCreation = () => {
 
         {/* Step 3: Payment Details */}
         {step === 3 && (
-          <Box bg="#1E293B" borderRadius="xl" p={6} w="full" maxW="600px" boxShadow="0px 8px 30px rgba(0, 0, 0, 0.15)">
+          <Box
+            bg={bgSecondary}
+            borderRadius="xl"
+            p={6}
+            w="full"
+            maxW="600px"
+            boxShadow={`0px 8px 30px ${shadowColor}`}
+            border={cardBorder}
+          >
             <VStack spacing={5} align="start">
               <FormControl isRequired>
-                <FormLabel fontWeight="bold">Name</FormLabel>
+                <FormLabel fontWeight="bold" color={textColor}>Name</FormLabel>
                 <Input
                   type="text"
                   placeholder="Enter Payment Name"
                   value={paymentName}
                   onChange={(e) => setPaymentName(e.target.value)}
-                  bg="#0F1624"
-                  borderColor="#957432"
+                  bg={inputBg}
+                  color={textColor}
+                  borderColor={borderColor}
                   borderRadius="full"
-                  _hover={{ borderColor: "#957432" }}
-                  _focus={{ borderColor: "#957432", boxShadow: "0 0 0 1px #957432" }}
+                  _hover={{ borderColor: accentColor }}
+                  _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
                 />
               </FormControl>
 
               <FormControl isRequired>
-                <FormLabel fontWeight="bold">Email Address</FormLabel>
+                <FormLabel fontWeight="bold" color={textColor}>Email Address</FormLabel>
                 <Input
                   type="email"
                   placeholder="Enter Email Address"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  bg="#0F1624"
-                  borderColor="#957432"
+                  bg={inputBg}
+                  color={textColor}
+                  borderColor={borderColor}
                   borderRadius="full"
-                  _hover={{ borderColor: "#957432" }}
-                  _focus={{ borderColor: "#957432", boxShadow: "0 0 0 1px #957432" }}
+                  _hover={{ borderColor: accentColor }}
+                  _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
                 />
               </FormControl>
 
               <FormControl isRequired>
-                <FormLabel fontWeight="bold">Payment Amount</FormLabel>
+                <FormLabel fontWeight="bold" color={textColor}>Payment Amount</FormLabel>
                 <Input
                   type="number"
                   placeholder="Enter payment amount"
                   value={paymentAmount}
                   onChange={(e) => setPaymentAmount(e.target.value)}
-                  bg="#0F1624"
-                  borderColor="#957432"
+                  bg={inputBg}
+                  color={textColor}
+                  borderColor={borderColor}
                   borderRadius="full"
-                  _hover={{ borderColor: "#957432" }}
-                  _focus={{ borderColor: "#957432", boxShadow: "0 0 0 1px #957432" }}
+                  _hover={{ borderColor: accentColor }}
+                  _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
                 />
               </FormControl>
 
               <FormControl isRequired>
-                <FormLabel fontWeight="bold">Bank Name</FormLabel>
+                <FormLabel fontWeight="bold" color={textColor}>Bank Name</FormLabel>
                 <Select
                   placeholder="Select Bank"
                   value={selectedBankCode}
@@ -477,11 +545,12 @@ const TransactionCreation = () => {
                     setSelectedBankCode(e.target.value);
                     setPaymentBank(selectedBank ? selectedBank.name : "");
                   }}
-                  bg="#0F1624"
-                  borderColor="#957432"
+                  bg={inputBg}
+                  color={textColor}
+                  borderColor={borderColor}
                   borderRadius="full"
-                  _hover={{ borderColor: "#957432" }}
-                  _focus={{ borderColor: "#957432", boxShadow: "0 0 0 1px #957432" }}
+                  _hover={{ borderColor: accentColor }}
+                  _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
                 >
                   {uniqueBanks.map((bank) => (
                     <option key={bank.code} value={bank.code}>
@@ -492,64 +561,73 @@ const TransactionCreation = () => {
               </FormControl>
 
               <FormControl isRequired>
-                <FormLabel fontWeight="bold">Account Number</FormLabel>
+                <FormLabel fontWeight="bold" color={textColor}>Account Number</FormLabel>
                 <Input
                   type="text"
                   placeholder="Enter account number"
                   value={paymentAccountNumber}
                   onChange={(e) => setPaymentAccountNumber(e.target.value)}
-                  bg="#0F1624"
-                  borderColor="#957432"
+                  bg={inputBg}
+                  color={textColor}
+                  borderColor={borderColor}
                   borderRadius="full"
-                  _hover={{ borderColor: "#957432" }}
-                  _focus={{ borderColor: "#957432", boxShadow: "0 0 0 1px #957432" }}
+                  _hover={{ borderColor: accentColor }}
+                  _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
                 />
               </FormControl>
 
               <FormControl>
-                <FormLabel fontWeight="bold">Payment Description</FormLabel>
+                <FormLabel fontWeight="bold" color={textColor}>Payment Description</FormLabel>
                 <Textarea
                   placeholder="Enter payment description"
                   value={paymentDescription}
                   onChange={(e) => setPaymentDescription(e.target.value)}
-                  bg="#0F1624"
-                  borderColor="#957432"
+                  bg={inputBg}
+                  color={textColor}
+                  borderColor={borderColor}
                   borderRadius="xl"
-                  _hover={{ borderColor: "#957432" }}
-                  _focus={{ borderColor: "#957432", boxShadow: "0 0 0 1px #957432" }}
+                  _hover={{ borderColor: accentColor }}
+                  _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
                   h="100px"
                 />
               </FormControl>
 
               {/* Transaction Summary */}
-              <Box w="full" bg="#0F1624" p={4} borderRadius="lg" mt={2}>
-                <Text fontWeight="bold" mb={2}>Transaction Summary</Text>
+              <Box
+                w="full"
+                bg={useColorModeValue("gray.50", "#0F1624")}
+                p={4}
+                borderRadius="lg"
+                mt={2}
+                border={cardBorder}
+              >
+                <Text fontWeight="bold" mb={2} color={textColor}>Transaction Summary</Text>
                 <Flex justify="space-between" mb={1}>
-                  <Text>Amount:</Text>
-                  <Text>{paymentAmount || "0.00"} NGN</Text>
+                  <Text color={textColor}>Amount:</Text>
+                  <Text color={textColor}>{paymentAmount || "0.00"} NGN</Text>
                 </Flex>
                 <Flex justify="space-between" mb={1}>
-                  <Text>Transaction Fee (0.8%):</Text>
-                  <Text>{transactionFee} NGN</Text>
+                  <Text color={textColor}>Transaction Fee (0.8%):</Text>
+                  <Text color={textColor}>{transactionFee} NGN</Text>
                 </Flex>
-                <Divider my={2} borderColor="gray.600" />
+                <Divider my={2} borderColor={useColorModeValue("gray.300", "gray.600")} />
                 <Flex justify="space-between" fontWeight="bold">
-                  <Text>Total Amount:</Text>
-                  <Text>{totalAmount} NGN</Text>
+                  <Text color={textColor}>Total Amount:</Text>
+                  <Text color={accentColor}>{totalAmount} NGN</Text>
                 </Flex>
               </Box>
 
               <Button
                 onClick={acceptTransactionFunction}
-                colorScheme="blue"
-                textColor="White"
                 size="lg"
                 borderRadius="full"
                 w="full"
                 mt={4}
-                bg="#957432"
-                _hover={{ bg: "#957432" }}
-                boxShadow="0px 4px 10px rgb(149, 116, 50)"
+                bg={accentColor}
+                color="white"
+                _hover={{ bg: accentHoverColor }}
+                boxShadow={`0px 4px 10px ${shadowColor}`}
+                letterSpacing="wide"
               >
                 Start Transaction
               </Button>
@@ -563,28 +641,29 @@ const TransactionCreation = () => {
             <Button
               onClick={handlePreviousClick}
               variant="outline"
-              borderColor="#957432"
-              color="white"
+              borderColor={accentColor}
+              color={textColor}
               borderRadius="full"
               size="lg"
               px={8}
-              _hover={{ bg: "rgb(144, 111, 44)" }}
+              _hover={{ bg: useColorModeValue("gray.100", "rgba(149, 116, 50, 0.2)") }}
             >
               Previous
             </Button>
           )}
-          
+
           {step < 3 && (
             <Button
               onClick={handleNextClick}
               isDisabled={!nextButtonActive}
-              // colorScheme="blue"
               borderRadius="full"
               size="lg"
               px={8}
-              bg={nextButtonActive ? "#957432" : "#1E293B"}
-              _hover={{ bg: nextButtonActive ? "#957432" : "#1E293B" }}
-              boxShadow={nextButtonActive ? "0px 4px 10px rgb(144, 111, 44)" : "none"}
+              color="white"
+              bg={nextButtonActive ? accentColor : useColorModeValue("gray.300", "#2D3748")}
+              opacity={nextButtonActive ? 1 : 0.7}
+              _hover={{ bg: nextButtonActive ? accentHoverColor : useColorModeValue("gray.300", "#2D3748") }}
+              boxShadow={nextButtonActive ? `0px 4px 10px ${shadowColor}` : "none"}
             >
               Next
             </Button>
@@ -608,21 +687,23 @@ const TransactionCreation = () => {
           p={4}
         >
           <Box
-            bg="#1E293B"
+            bg={bgSecondary}
             borderRadius="xl"
             maxW="400px"
             w="full"
             overflow="hidden"
             boxShadow="0px 10px 30px rgba(0, 0, 0, 0.3)"
+            border={cardBorder}
           >
-            <Box p={4} bg="#0F1624" borderBottomWidth="1px" borderColor="gray.700">
+            <Box p={4} bg={useColorModeValue("gray.50", "#0F1624")} borderBottomWidth="1px" borderColor={useColorModeValue("gray.200", "gray.700")}>
               <Flex justify="space-between" align="center">
-                <Heading size="md">Accept Escrow Transaction</Heading>
+                <Heading size="md" color={textColor}>Accept Escrow Transaction</Heading>
                 <Button
                   variant="ghost"
                   p={1}
                   onClick={() => setAcceptTransactionModel(false)}
-                  _hover={{ bg: "gray.700" }}
+                  color={textColor}
+                  _hover={{ bg: useColorModeValue("gray.100", "gray.700") }}
                 >
                   <MdClose size={24} />
                 </Button>
@@ -638,62 +719,69 @@ const TransactionCreation = () => {
                       : defaultProfileImage
                   }
                   size="md"
+                  bg={accentColor}
+                  boxShadow={`0px 2px 8px ${shadowColor}`}
                 />
                 <Box ml={3}>
-                  <Text fontWeight="bold">{paymentName || "Transaction"}</Text>
-                  <Text fontSize="sm">{totalAmount} NGN</Text>
+                  <Text fontWeight="bold" color={textColor}>{paymentName || "Transaction"}</Text>
+                  <Text fontSize="sm" color={accentColor}>{totalAmount} NGN</Text>
                 </Box>
               </Flex>
 
-              <Text fontSize="sm" mb={4}>
+              <Text fontSize="sm" mb={4} color={textColor}>
                 You are about to accept the escrow transaction. Make sure you understand the terms before proceeding.
               </Text>
 
-              <Box bg="#0F1624" p={4} borderRadius="md" fontSize="sm">
-                <Heading size="xs" mb={3}>Terms</Heading>
-                
+              <Box
+                bg={useColorModeValue("gray.50", "#0F1624")}
+                p={4}
+                borderRadius="md"
+                fontSize="sm"
+                border={cardBorder}
+              >
+                <Heading size="xs" mb={3} color={textColor}>Terms</Heading>
+
                 <Flex justify="space-between" mb={2}>
-                  <Text>Payment Method</Text>
-                  <Text>Wire Transfer</Text>
+                  <Text color={textColor}>Payment Method</Text>
+                  <Text color={textColor}>Wire Transfer</Text>
                 </Flex>
-                
+
                 <Flex justify="space-between" mb={2}>
-                  <Text>Transaction Amount</Text>
-                  <Text>{paymentAmount} NGN</Text>
+                  <Text color={textColor}>Transaction Amount</Text>
+                  <Text color={textColor}>{paymentAmount} NGN</Text>
                 </Flex>
-                
+
                 <Flex justify="space-between" mb={2}>
-                  <Text>Transaction Fee</Text>
-                  <Text>0.8%</Text>
+                  <Text color={textColor}>Transaction Fee</Text>
+                  <Text color={textColor}>0.8%</Text>
                 </Flex>
-                
+
                 <Flex justify="space-between" mb={2}>
-                  <Text>Bank</Text>
-                  <Text>{paymentBank}</Text>
+                  <Text color={textColor}>Bank</Text>
+                  <Text color={textColor}>{paymentBank}</Text>
                 </Flex>
-                
+
                 <Flex justify="space-between" mb={2}>
-                  <Text>Account Number</Text>
-                  <Text>{paymentAccountNumber}</Text>
+                  <Text color={textColor}>Account Number</Text>
+                  <Text color={textColor}>{paymentAccountNumber}</Text>
                 </Flex>
-                
-                <Divider my={2} borderColor="gray.600" />
-                
+
+                <Divider my={2} borderColor={useColorModeValue("gray.300", "gray.600")} />
+
                 <Flex justify="space-between" fontWeight="bold">
-                  <Text>Total Amount</Text>
-                  <Text>{totalAmount} NGN</Text>
+                  <Text color={textColor}>Total Amount</Text>
+                  <Text color={accentColor}>{totalAmount} NGN</Text>
                 </Flex>
               </Box>
 
               <Button
-                colorScheme="blue"
                 size="lg"
                 w="full"
-                textColor="white"
                 mt={4}
                 borderRadius="full"
-                bg="#957432"
-                _hover={{ bg: "#957432" }}
+                bg={accentColor}
+                color="white"
+                _hover={{ bg: accentHoverColor }}
                 onClick={(e) => {
                   setAcceptTransactionModel(false);
                   createNewTransaction(e);

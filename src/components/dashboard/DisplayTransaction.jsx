@@ -15,6 +15,13 @@ import ConfirmTransactionModal from './ConfirmTransactionModal';
 // import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { FiLoader } from "react-icons/fi";
+import { Box, Text } from "@chakra-ui/react";
+import { MdContentCopy } from "react-icons/md";
+import { format } from "date-fns";
+import { FiFilter } from "react-icons/fi";
+
+
+
 
 // Add this Loader component after your existing imports
 const TransactionLoader = () => {
@@ -53,6 +60,9 @@ const DisplayTransaction = ({ userResponse }) => {
   const [selectedTransactionId, setSelectedTransactionId] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [activeTab, setActiveTab] = useState("all");
 
 
   useEffect(() => {
@@ -94,21 +104,21 @@ const DisplayTransaction = ({ userResponse }) => {
     const checkPendingPayment = async () => {
       const pendingTxId = localStorage.getItem("pendingPaymentTxId");
       if (!pendingTxId) return;
-      
+
       const token = localStorage.getItem("auth-token");
       if (!token) return;
-      
+
       try {
         // Check if the transaction is funded
         const statusRes = await axios.get(
           `${BASE_URL}/api/transactions/check-funded?transactionId=${pendingTxId}`,
           { headers: { "auth-token": token } }
         );
-        
+
         if (statusRes.data.funded) {
           // Clear the pending transaction
           localStorage.removeItem("pendingPaymentTxId");
-          
+
           toast({
             title: "Payment Successful!",
             description: "Your transaction has been funded successfully.",
@@ -116,7 +126,7 @@ const DisplayTransaction = ({ userResponse }) => {
             duration: 5000,
             isClosable: true,
           });
-          
+
           // Refresh transactions list
           fetchTransactionData();
         }
@@ -124,12 +134,13 @@ const DisplayTransaction = ({ userResponse }) => {
         console.error("Error checking pending payment:", err);
       }
     };
-    
+
     checkPendingPayment();
   }, []);
 
 
   useEffect(() => {
+    setIsLoading(true);
     const fetchTransactions = async () => {
       const token = localStorage.getItem("auth-token");
       try {
@@ -148,6 +159,8 @@ const DisplayTransaction = ({ userResponse }) => {
           duration: 3000,
           isClosable: true,
         });
+      } finally {
+        setIsLoading(false);
       }
     };
     fetchTransactions();
@@ -157,6 +170,35 @@ const DisplayTransaction = ({ userResponse }) => {
     const interval = setInterval(fetchTransactionData, 10000);
     return () => clearInterval(interval);
   }, []);
+
+  // Check if screen is mobile size
+  useEffect(() => {
+    const checkScreenSize = () => {
+      const isMobileView = window.innerWidth < 768;
+      setIsMobile(isMobileView);
+
+      // Auto-collapse sidebar on mobile by default
+      if (isMobileView) {
+        setIsSidebarCollapsed(true);
+      }
+    };
+
+    // Initial check
+    checkScreenSize();
+
+    // Add event listener for resize
+    window.addEventListener('resize', checkScreenSize);
+
+    // Cleanup
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
+
+  // Function to handle sidebar collapse state changes
+  const handleSidebarCollapseChange = (isCollapsed) => {
+    setIsSidebarCollapsed(isCollapsed);
+  };
+
+
 
   const fetchTransactionData = async () => {
     try {
@@ -476,7 +518,7 @@ const DisplayTransaction = ({ userResponse }) => {
     }
   };
 
- 
+
   const handleFund = async (transaction) => {
     console.log("Initiating payment with transaction:", transaction);
 
@@ -566,20 +608,30 @@ const DisplayTransaction = ({ userResponse }) => {
     }
   };
 
-
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text).then(() => {
+      toast({
+        title: "Copied to clipboard",
+        status: "success",
+        duration: 2000,
+        isClosable: true,
+      });
+    });
+  };
 
 
 
   return (
-    <div className="border flex items-center border-black">
+    <Box className=" flex items-center">
       <Sidebar
         onShowProfile={handleShowProfile}
         onShowToggleComponent={handleMyTransaction}
+        onCollapseChange={handleSidebarCollapseChange}
       />
 
       <div
-        style={{ overflowY: "scroll" }}
-        className="layout text-[#E4E4E4] fixed right-0 top-0 w-[100%] md:w-[83.2%] h-[100vh]"
+        className={`transition-all duration-300 flex-1 h-screen ${!isMobile ? (isSidebarCollapsed ? "ml-[80px]" : "ml-[280px]") : "ml-0"
+          }`}
       >
         <div
           className={
@@ -589,27 +641,87 @@ const DisplayTransaction = ({ userResponse }) => {
           <div>
             <MiniNav />
           </div>
-          <div className="font-[Poppins]  px-10">
+          <div className="font-[Poppins] pr-[28px] pl-[100px] pt-10 md:pl-[30px]" w="full">
             <h1 className="text-[33px] font-bold">My Transactions</h1>
-            <div className="sm:flex sm:flex-row  flex flex-col-reverse  mt-4 mb-4  text-[14px]  items-center justify-between ">
-              <div className=" sm:max-w-[280px] w-[100%] border-b border-[#318AE6] rounded   h-[auto]">
-              </div>
-              {/* ================= Search Feature ======= */}
-              <div className="sm:w-[200px] w-[100%] sm:mb-0 mb-6  h-[auto] flex items-center ">
-                <input
-                  type="text"
-                  placeholder="Search"
-                  name=""
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)} // Add onChange handler
-                  className="pr-[20px] text-[#fff]  w-[100%] bg-[transparent] border-[#fff]  border-b text-[13px] pb-2  outline-none"
-                />
-                <FiSearch className="text-[23px] ml-[-3px]" />
+            {/* Enhanced Search Feature */}
+            {/* Transaction Tabs with Search Feature */}
+            <div className="mb-6">
+              <div className="flex flex-col sm:flex-row gap-4 items-center">
+                {/* Tabs Container */}
+                <div className="flex overflow-x-auto bg-[#111518] rounded-xl p-1 border border-gray-800 w-full sm:w-auto flex-1">
+                  <button
+                    onClick={() => setActiveTab("all")}
+                    className={`px-4 py-2 rounded-lg flex-1 text-center transition-all ${activeTab === "all"
+                        ? "bg-[#967532] text-white font-medium"
+                        : "text-gray-400 hover:text-white"
+                      }`}
+                  >
+                    All <span className="ml-1 px-1.5 py-0.5 bg-[#1d2225] rounded-full text-xs">{transactions.length}</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("active")}
+                    className={`px-4 py-2 rounded-lg flex-1 text-center transition-all ${activeTab === "active"
+                        ? "bg-[#967532] text-white font-medium"
+                        : "text-gray-400 hover:text-white"
+                      }`}
+                  >
+                    Active <span className="ml-1 px-1.5 py-0.5 bg-[#1d2225] rounded-full text-xs">
+                      {transactions.filter(t => t.status === "pending").length}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("completed")}
+                    className={`px-4 py-2 rounded-lg flex-1 text-center transition-all ${activeTab === "completed"
+                        ? "bg-[#967532] text-white font-medium"
+                        : "text-gray-400 hover:text-white"
+                      }`}
+                  >
+                    Completed <span className="ml-1 px-1.5 py-0.5 bg-[#1d2225] rounded-full text-xs">
+                      {transactions.filter(t => t.status === "completed").length}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("cancelled")}
+                    className={`px-4 py-2 rounded-lg flex-1 text-center transition-all ${activeTab === "cancelled"
+                        ? "bg-[#967532] text-white font-medium"
+                        : "text-gray-400 hover:text-white"
+                      }`}
+                  >
+                    Cancelled <span className="ml-1 px-1.5 py-0.5 bg-[#1d2225] rounded-full text-xs">
+                      {transactions.filter(t => t.status === "cancelled").length}
+                    </span>
+                  </button>
+                </div>
+
+                {/* Search Component */}
+                <div className="relative w-full sm:w-[300px] group">
+                  <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-[#967532] group-focus-within:text-[#318AE6] transition-colors">
+                    <FiSearch className="text-lg" />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Search transactions..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full py-2.5 pl-10 pr-10 bg-[#111518] border border-[#967532] rounded-xl text-white focus:border-[#967532] focus:outline-none transition-all"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery("")}
+                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-white transition-colors"
+                    >
+                      <MdClose />
+                    </button>
+                  )}
+                  <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-[#318AE6] to-[#5B43D6] scale-x-0 group-focus-within:scale-x-100 transition-transform origin-left"></div>
+                </div>
               </div>
             </div>
             {/* ========== Main Active Container ============= */}
             <div className="w-[100%] h-[auto]">
-              {transactions.length === 0 ? (
+              {isLoading ? (
+                <TransactionLoader />
+              ) : transactions.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-[60vh]">
                   <div className="text-4xl mb-4 text-gray-400">📭</div>
                   <p className="text-[#E4E4E4] text-lg font-medium">No transactions found</p>
@@ -619,9 +731,17 @@ const DisplayTransaction = ({ userResponse }) => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   {
                     transactions
-                      .filter(transaction =>
-                        transaction.paymentName.toLowerCase().includes(searchQuery.toLowerCase())
-                      )
+                      .filter(transaction => {
+                        // First filter by tab selection
+                        if (activeTab === "active" && transaction.status !== "pending") return false;
+                        if (activeTab === "completed" && transaction.status !== "completed") return false;
+                        if (activeTab === "cancelled" && transaction.status !== "cancelled") return false;
+
+                        // Then filter by search query
+                        return transaction.paymentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          transaction._id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          transaction.email.toLowerCase().includes(searchQuery.toLowerCase());
+                      })
                       .map((transaction) => (
                         <div key={transaction._id} className="transaction-card text-[13px] mt-3 px-6 py-5 bg-[#111518] rounded-2xl border border-gray-800 hover:border-[#318AE6] transition-all shadow-lg hover:shadow-[#318AE630]">
                           <div className="flex items-center justify-between mb-3">
@@ -630,6 +750,19 @@ const DisplayTransaction = ({ userResponse }) => {
                               <BsChatFill />
                             </button>
                           </div>
+                          <div className="bg-[#1d2225] rounded-lg p-3 mb-3 flex items-center justify-between">
+                            <div>
+                              <p className="text-gray-400 text-xs mb-1">Transaction ID</p>
+                              <p className="font-medium text-sm truncate">{transaction._id}</p>
+                            </div>
+                            <button
+                              onClick={() => copyToClipboard(transaction._id)}
+                              className="text-gray-400 hover:text-[#318AE6] transition-all"
+                            >
+                              <MdContentCopy size={18} />
+                            </button>
+                          </div>
+
                           <div className="grid grid-cols-2 gap-2 mb-4">
                             <div className="bg-[#1d2225] rounded-lg p-3">
                               <p className="text-gray-400 text-xs mb-1">Email</p>
@@ -652,7 +785,65 @@ const DisplayTransaction = ({ userResponse }) => {
                                 {transaction.status}
                               </div>
                             </div>
+                            <div className="bg-[#1d2225] rounded-lg p-3">
+                              <p className="text-gray-400 text-xs mb-1">Bank</p>
+                              <p className="font-medium truncate">{transaction.paymentBank}</p>
+                            </div>
+                            <div className="bg-[#1d2225] rounded-lg p-3">
+                              <p className="text-gray-400 text-xs mb-1">Account Number</p>
+                              <p className="font-medium">{transaction.paymentAccountNumber}</p>
+                            </div>
+                            <div className="bg-[#1d2225] rounded-lg p-3">
+                              <p className="text-gray-400 text-xs mb-1">Waybill Status</p>
+                              <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${transaction.proofOfWaybill === "confirmed" ? "bg-green-900 text-green-300" : "bg-yellow-900 text-yellow-300"
+                                }`}>
+                                {transaction.proofOfWaybill}
+                              </div>
+                            </div>
+                            <div className="bg-[#1d2225] rounded-lg p-3">
+                              <p className="text-gray-400 text-xs mb-1">Created</p>
+                              <p className="font-medium">{transaction.createdAt ? format(new Date(transaction.createdAt), 'MMM dd, yyyy') : 'N/A'}</p>
+                            </div>
                           </div>
+                          <div className="mt-3">
+                            <details className="bg-[#1d2225] rounded-lg p-3">
+                              <summary className="font-medium cursor-pointer flex items-center justify-between">
+                                <span>Description</span>
+                                <span className="text-xs text-gray-400">Click to expand</span>
+                              </summary>
+                              <p className="mt-2 text-gray-300 text-sm whitespace-pre-wrap">{transaction.paymentDescription}</p>
+                            </details>
+
+                            <details className="bg-[#1d2225] rounded-lg p-3 mt-2">
+                              <summary className="font-medium cursor-pointer flex items-center justify-between">
+                                <span>Participants</span>
+                                <span className="text-xs text-gray-400">Click to expand</span>
+                              </summary>
+                              <div className="mt-2">
+                                {transaction.participants && transaction.participants.length > 0 ? (
+                                  <ul className="space-y-2">
+                                    {transaction.participants.map((participant, index) => (
+                                      <li key={index} className="flex items-center">
+                                        <div className="w-6 h-6 bg-[#318AE6] rounded-full flex items-center justify-center text-xs mr-2">
+                                          {typeof participant === 'object' && participant.name
+                                            ? participant.name.charAt(0).toUpperCase()
+                                            : (index + 1)}
+                                        </div>
+                                        <span className="text-sm">
+                                          {typeof participant === 'object'
+                                            ? (participant.name || participant.email || 'Unknown')
+                                            : participant}
+                                        </span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <p className="text-gray-400 text-sm">No participants yet</p>
+                                )}
+                              </div>
+                            </details>
+                          </div>
+
                           <div className="flex items-center justify-between gap-2 mt-4">
                             <button
                               className="px-4 py-2 rounded-xl font-bold transition-all hover:bg-red-600 bg-red-700 text-white flex-1"
@@ -889,7 +1080,7 @@ const DisplayTransaction = ({ userResponse }) => {
         onShowProfile={handleShowProfile}
         onShowToggleComponent={handleMyTransaction}
       />
-    </div>
+    </Box>
   );
 };
 export default DisplayTransaction;

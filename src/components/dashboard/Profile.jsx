@@ -1,12 +1,52 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { FaEdit, FaUpload } from "react-icons/fa";
+import { FaEdit, FaUpload, FaSave, FaTimes, FaUser, FaCalendarAlt, FaUniversity, FaCreditCard } from "react-icons/fa";
+import { motion } from "framer-motion";
 import UserProfile from "../../assets/profile_icon.png";
+import {
+  Box,
+  Text,
+  useColorMode,
+  useColorModeValue,
+  Button,
+  Flex,
+  Heading,
+  Input,
+  Grid,
+  GridItem,
+  FormLabel,
+  FormControl,
+  Icon,
+  Avatar,
+  Spinner,
+  Badge,
+  Container,
+  useToast
+} from "@chakra-ui/react";
+
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 
-
-
 const Profile = () => {
+  const { colorMode } = useColorMode();
+  const toast = useToast();
+  
+  // Color mode values
+  const cardBg = useColorModeValue("white", "#0F1722");
+  const textColor = useColorModeValue("gray.800", "white");
+  const subtleTextColor = useColorModeValue("gray.600", "gray.300");
+  const labelColor = useColorModeValue("blue.600", "blue.300");
+  const borderColor = useColorModeValue("gray.200", "gray.700");
+  const inputBg = useColorModeValue("gray.50", "#1A2331");
+  const inputHoverBg = useColorModeValue("gray.100", "#232D3F");
+  const gradientStart = useColorModeValue("blue.400", "blue.500");
+  const gradientEnd = useColorModeValue("purple.500", "purple.600");
+  const highlightColor = useColorModeValue("blue.500", "blue.400");
+  const avatarBorderColor = useColorModeValue("blue.400", "blue.500");
+  const cancelBtnBg = useColorModeValue("gray.200", "gray.700");
+  const cancelBtnHoverBg = useColorModeValue("gray.300", "gray.600");
+  const fieldBg = useColorModeValue("gray.50", "#1A2331");
+  
+  // State variables
   const [selectedImageFile, setSelectedImageFile] = useState(null);
   const [userDetails, setUserDetails] = useState(null);
   const [editedUserDetails, setEditedUserDetails] = useState({
@@ -17,8 +57,10 @@ const Profile = () => {
     accountNumber: "",
   });
   const [preview, setPreview] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("auth-token");
@@ -44,8 +86,18 @@ const Profile = () => {
       })
       .catch((error) => {
         console.error("Error fetching user details:", error);
+        toast({
+          title: "Error fetching profile",
+          description: "We couldn't load your profile information",
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+        });
+      })
+      .finally(() => {
+        setLoading(false);
       });
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     if (selectedImageFile) {
@@ -57,7 +109,7 @@ const Profile = () => {
   }, [selectedImageFile]);
 
   const handleUpdateDetails = () => {
-    setLoading(true);
+    setSaving(true);
     axios
       .put(
         `${BASE_URL}/api/users/update-user-details`,
@@ -71,18 +123,31 @@ const Profile = () => {
       .then((response) => {
         setUserDetails(response.data);
         setEditMode(false);
-        console.log("User details updated successfully.");
+        toast({
+          title: "Profile updated",
+          description: "Your profile has been updated successfully",
+          status: "success",
+          duration: 3000,
+          isClosable: true,
+        });
       })
       .catch((error) => {
         console.error("Error updating user details:", error);
+        toast({
+          title: "Update failed",
+          description: "We couldn't update your profile",
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+        });
       })
       .finally(() => {
-        setLoading(false);
+        setSaving(false);
       });
   };
 
   const handleImageUpload = () => {
-    setLoading(true);
+    setUploading(true);
     const formData = new FormData();
     formData.append("image", selectedImageFile);
 
@@ -96,162 +161,450 @@ const Profile = () => {
       .then((response) => {
         setUserDetails(response.data.user);
         setSelectedImageFile(null);
-        console.log("Avatar updated successfully.");
+        toast({
+          title: "Avatar updated",
+          description: "Your profile picture has been updated",
+          status: "success",
+          duration: 3000,
+          isClosable: true,
+        });
       })
       .catch((error) => {
         console.error("Error updating avatar:", error);
+        toast({
+          title: "Upload failed",
+          description: "We couldn't upload your profile picture",
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+        });
       })
       .finally(() => {
-        setLoading(false);
+        setUploading(false);
       });
   };
 
+  const cancelEdit = () => {
+    setEditMode(false);
+    setEditedUserDetails({
+      firstName: userDetails.firstName,
+      lastName: userDetails.lastName,
+      dateOfBirth: userDetails.dateOfBirth,
+      bank: userDetails.bank,
+      accountNumber: userDetails.accountNumber,
+    });
+  };
+
+  if (loading) {
+    return (
+      <Flex minH="100vh" align="center" justify="center" direction="column">
+        <Box position="relative" w="100px" h="100px">
+          <motion.div
+            style={{
+              position: 'absolute',
+              width: '100%',
+              height: '100%',
+              borderRadius: '50%',
+              border: `4px solid ${colorMode === 'dark' ? '#3182CE' : '#63B3ED'}`,
+              borderTopColor: 'transparent',
+              borderBottomColor: 'transparent',
+            }}
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+          />
+          <Box position="absolute" top="35%" left="35%">
+            <Spinner size="lg" color={highlightColor} />
+          </Box>
+        </Box>
+        <Text mt={6} fontSize="xl" fontWeight="semibold" color={highlightColor}>
+          Loading your profile...
+        </Text>
+      </Flex>
+    );
+  }
+
+
   return (
-    <div className="font-[Poppins] pt-7 bg-[#1A1E21] md:pr-14 pr-5 pl-5 mt-0 md:pl-14 pb-10">
-      <h1 className="text-[33px] font-bold">My Profile</h1>
-      {userDetails && (
-        <div className="flex flex-col md:flex-row items-center mt-6">
-          <div className="relative">
-            {/* <img
-              src={preview || (userDetails.avatarImage ? `${BASE_URL}/${userDetails.avatarImage}` : UserProfile)}
-              alt="Profile"
-              className="w-32 h-32 rounded-full bg-cover"
-            /> */}
-            <div className="w-32 h-32 rounded-full overflow-hidden">
-              <img
-                src={preview || `${BASE_URL}/${userDetails.avatarImage}`}
-                alt="Profile"
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.target.onerror = null; // Prevents infinite loop if fallback image fails
-                  e.target.src = UserProfile; // Fallback image
-                }}
-              />
-            </div>
-            <label htmlFor="avatar-upload" className="absolute bottom-0 right-0 bg-[#318AE6] p-2 rounded-full cursor-pointer">
-              <FaUpload className="text-white" />
-            </label>
-            <input
-              id="avatar-upload"
-              type="file"
-              accept="image/*"
-              onChange={(e) => setSelectedImageFile(e.target.files[0])}
-              className="hidden"
+    <Box pt={7} minH="100vh">
+      <Container maxW="4xl" px={4}>
+        <Flex justify="space-between" align="center" mb={8}>
+          <Heading
+            as="h1"
+            fontSize={{ base: "2xl", md: "3xl", lg: "4xl" }}
+            fontWeight="bold"
+            bgGradient={`linear(to-r, ${gradientStart}, ${gradientEnd})`}
+            bgClip="text"
+          >
+            My Profile
+          </Heading>
+          
+          <Button
+            onClick={() => setEditMode(!editMode)}
+            variant="ghost"
+            colorScheme={editMode ? "red" : "blue"}
+            leftIcon={editMode ? <FaTimes /> : <FaEdit />}
+            size="md"
+            fontWeight="medium"
+            _hover={{
+              bg: editMode ? "red.100" : "blue.100",
+              color: editMode ? "red.600" : "blue.600",
+            }}
+          >
+            {editMode ? "Cancel" : "Edit Profile"}
+          </Button>
+        </Flex>
+
+        {userDetails && (
+          <Box
+            bg={cardBg}
+            rounded="xl"
+            shadow="lg"
+            p={{ base: 4, md: 6 }}
+            borderWidth="1px"
+            borderColor={borderColor}
+            overflow="hidden"
+            position="relative"
+          >
+            {/* Decorative background elements */}
+            <Box
+              position="absolute"
+              top="-50px"
+              right="-50px"
+              w="200px"
+              h="200px"
+              borderRadius="full"
+              bg={useColorModeValue("blue.50", "blue.900")}
+              opacity="0.4"
+              zIndex="0"
             />
-            {selectedImageFile && (
-              <button
-                onClick={handleImageUpload}
-                className="absolute bottom-0 left-0 bg-[#318AE6] text-white p-2 rounded-md mt-2"
-              >
-                {loading ? "Uploading..." : "Upload Avatar"}
-              </button>
-            )}
-          </div>
-
-          <div className="ml-0 md:ml-10 mt-4 md:mt-0">
-            <div className="flex justify-end">
-              <button
-                onClick={() => setEditMode(!editMode)}
-                className="flex items-center cursor-pointer bg-[#031420] border-[1px] border-[#318AE6] rounded-md"
-              >
-                <FaEdit color="#318AE6" className="text-[15px] ml-2" />
-                <span className="text-[#318AE6] text-[12px] p-1 pr-2">
-                  {editMode ? "Cancel Edit" : "Edit Profile"}
-                </span>
-              </button>
-            </div>
-
-            <div className="flex md:flex-row flex-col mt-4">
-              <div className="mt-2">
-                <h3 className="text-[12px] text-[#B0B0B0]">First Name</h3>
-                {editMode ? (
+            <Box
+              position="absolute"
+              bottom="-30px"
+              left="-30px"
+              w="150px"
+              h="150px"
+              borderRadius="full"
+              bg={useColorModeValue("purple.50", "purple.900")}
+              opacity="0.3"
+              zIndex="0"
+            />
+            
+            <Grid
+              templateColumns={{ base: "1fr", md: "auto 1fr" }}
+              gap={{ base: 8, md: 10 }}
+              position="relative"
+              zIndex="1"
+            >
+              {/* Left column - Avatar section */}
+              <Flex direction="column" align="center">
+                <Box position="relative" className="group">
+                  <Box
+                    position="relative"
+                    w="150px"
+                    h="150px"
+                    rounded="full"
+                    overflow="hidden"
+                    borderWidth="4px"
+                    borderColor={avatarBorderColor}
+                    boxShadow={`0 0 15px ${useColorModeValue('rgba(66, 153, 225, 0.3)', 'rgba(66, 153, 225, 0.5)')}`}
+                  >
+                    <img
+                      src={preview || `${BASE_URL}/${userDetails.avatarImage}`}
+                      alt="Profile"
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                      }}
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = UserProfile;
+                      }}
+                    />
+                    
+                    <Box
+                      position="absolute"
+                      top="0"
+                      left="0"
+                      w="100%"
+                      h="100%"
+                      bg="blackAlpha.400"
+                      opacity="0"
+                      _groupHover={{ opacity: 1 }}
+                      transition="all 0.3s"
+                      rounded="full"
+                    />
+                  </Box>
+                  
+                  <label htmlFor="avatar-upload">
+                    <Box
+                      position="absolute"
+                      bottom="5px"
+                      right="5px"
+                      bg={highlightColor}
+                      p="10px"
+                      rounded="full"
+                      cursor="pointer"
+                      transform="scale(1)"
+                      _hover={{ transform: "scale(1.1)" }}
+                      transition="all 0.3s"
+                      boxShadow="md"
+                    >
+                      <Icon as={FaUpload} color="white" boxSize="18px" />
+                    </Box>
+                  </label>
+                  
                   <input
-                    type="text"
-                    value={editedUserDetails.firstName}
-                    onChange={(e) => setEditedUserDetails({ ...editedUserDetails, firstName: e.target.value })}
-                    className="w-[100%] rounded-md p-2 bg-[#1A1E21] border-[1px] border-[#318AE6]"
+                    id="avatar-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setSelectedImageFile(e.target.files[0])}
+                    hidden
                   />
-                ) : (
-                  <p className="text-[13px] text-[#fff]">{userDetails.firstName}</p>
+                </Box>
+                
+                {selectedImageFile && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    style={{ width: '100%' }}
+                  >
+                    <Button
+                      mt={4}
+                      onClick={handleImageUpload}
+                      isLoading={uploading}
+                      loadingText="Uploading..."
+                      leftIcon={<FaUpload />}
+                      colorScheme="blue"
+                      bgGradient={`linear(to-r, ${gradientStart}, ${gradientEnd})`}
+                      _hover={{
+                        bgGradient: `linear(to-r, ${useColorModeValue('blue.500', 'blue.600')}, ${useColorModeValue('purple.600', 'purple.700')})`,
+                      }}
+                      size="md"
+                      width="full"
+                    >
+                      Upload Avatar
+                    </Button>
+                  </motion.div>
                 )}
-              </div>
-
-              <div className="md:ml-4 mt-2">
-                <h3 className="text-[12px] text-[#B0B0B0]">Last Name</h3>
-                {editMode ? (
-                  <input
-                    type="text"
-                    value={editedUserDetails.lastName}
-                    onChange={(e) => setEditedUserDetails({ ...editedUserDetails, lastName: e.target.value })}
-                    className="w-[100%] rounded-md p-2 bg-[#1A1E21] border-[1px] border-[#318AE6]"
-                  />
-                ) : (
-                  <p className="text-[13px] text-[#fff]">{userDetails.lastName}</p>
+                
+                <Box mt={6} textAlign="center">
+                  <Text fontSize="2xl" fontWeight="bold" color={textColor}>
+                    {userDetails.firstName} {userDetails.lastName}
+                  </Text>
+                  <Text color={labelColor}>{userDetails.email}</Text>
+                  
+                  <Badge mt={3} colorScheme="blue" fontSize="sm" px={2} py={1} borderRadius="md">
+                    Active User
+                  </Badge>
+                </Box>
+              </Flex>
+              
+              {/* Right column - User details */}
+              <Box flex="1">
+                <Grid templateColumns={{ base: "1fr", md: "1fr 1fr" }} gap={6} mb={6}>
+                  <FormControl>
+                    <Flex align="center" mb={1}>
+                      <Icon as={FaUser} color={labelColor} mr={2} />
+                      <FormLabel color={labelColor} fontSize="sm" fontWeight="medium" mb={0}>
+                        First Name
+                      </FormLabel>
+                    </Flex>
+                    
+                    {editMode ? (
+                      <Input
+                        value={editedUserDetails.firstName}
+                        onChange={(e) => setEditedUserDetails({ ...editedUserDetails, firstName: e.target.value })}
+                        bg={inputBg}
+                        borderColor={borderColor}
+                        _hover={{ bg: inputHoverBg }}
+                        _focus={{ borderColor: highlightColor, boxShadow: `0 0 0 1px ${highlightColor}` }}
+                      />
+                    ) : (
+                      <Box
+                        p={3}
+                        bg={fieldBg}
+                        borderWidth="1px"
+                        borderColor={borderColor}
+                        borderRadius="md"
+                        fontWeight="medium"
+                        fontSize="md"
+                        color={textColor}
+                      >
+                        {userDetails.firstName}
+                      </Box>
+                    )}
+                  </FormControl>
+                  
+                  <FormControl>
+                    <Flex align="center" mb={1}>
+                      <Icon as={FaUser} color={labelColor} mr={2} />
+                      <FormLabel color={labelColor} fontSize="sm" fontWeight="medium" mb={0}>
+                        Last Name
+                      </FormLabel>
+                    </Flex>
+                    
+                    {editMode ? (
+                      <Input
+                        value={editedUserDetails.lastName}
+                        onChange={(e) => setEditedUserDetails({ ...editedUserDetails, lastName: e.target.value })}
+                        bg={inputBg}
+                        borderColor={borderColor}
+                        _hover={{ bg: inputHoverBg }}
+                        _focus={{ borderColor: highlightColor, boxShadow: `0 0 0 1px ${highlightColor}` }}
+                      />
+                    ) : (
+                      <Box
+                        p={3}
+                        bg={fieldBg}
+                        borderWidth="1px"
+                        borderColor={borderColor}
+                        borderRadius="md"
+                        fontWeight="medium"
+                        fontSize="md"
+                        color={textColor}
+                      >
+                        {userDetails.lastName}
+                      </Box>
+                    )}
+                  </FormControl>
+                </Grid>
+                
+                <FormControl mb={6}>
+                  <Flex align="center" mb={1}>
+                    <Icon as={FaCalendarAlt} color={labelColor} mr={2} />
+                    <FormLabel color={labelColor} fontSize="sm" fontWeight="medium" mb={0}>
+                      Date of Birth
+                    </FormLabel>
+                  </Flex>
+                  
+                  {editMode ? (
+                    <Input
+                      type="date"
+                      value={editedUserDetails.dateOfBirth}
+                      onChange={(e) => setEditedUserDetails({ ...editedUserDetails, dateOfBirth: e.target.value })}
+                      bg={inputBg}
+                      borderColor={borderColor}
+                      _hover={{ bg: inputHoverBg }}
+                      _focus={{ borderColor: highlightColor, boxShadow: `0 0 0 1px ${highlightColor}` }}
+                    />
+                  ) : (
+                    <Box
+                      p={3}
+                      bg={fieldBg}
+                      borderWidth="1px"
+                      borderColor={borderColor}
+                      borderRadius="md"
+                      fontWeight="medium"
+                      fontSize="md"
+                      color={textColor}
+                    >
+                      {userDetails.dateOfBirth || "Not Provided"}
+                    </Box>
+                  )}
+                </FormControl>
+                
+                <FormControl mb={6}>
+                  <Flex align="center" mb={1}>
+                    <Icon as={FaUniversity} color={labelColor} mr={2} />
+                    <FormLabel color={labelColor} fontSize="sm" fontWeight="medium" mb={0}>
+                      Bank
+                    </FormLabel>
+                  </Flex>
+                  
+                  {editMode ? (
+                    <Input
+                      value={editedUserDetails.bank}
+                      onChange={(e) => setEditedUserDetails({ ...editedUserDetails, bank: e.target.value })}
+                      bg={inputBg}
+                      borderColor={borderColor}
+                      _hover={{ bg: inputHoverBg }}
+                      _focus={{ borderColor: highlightColor, boxShadow: `0 0 0 1px ${highlightColor}` }}
+                    />
+                  ) : (
+                    <Box
+                      p={3}
+                      bg={fieldBg}
+                      borderWidth="1px"
+                      borderColor={borderColor}
+                      borderRadius="md"
+                      fontWeight="medium"
+                      fontSize="md"
+                      color={textColor}
+                    >
+                      {userDetails.bank || "Not Provided"}
+                    </Box>
+                  )}
+                </FormControl>
+                
+                <FormControl mb={6}>
+                  <Flex align="center" mb={1}>
+                    <Icon as={FaCreditCard} color={labelColor} mr={2} />
+                    <FormLabel color={labelColor} fontSize="sm" fontWeight="medium" mb={0}>
+                      Account Number
+                    </FormLabel>
+                  </Flex>
+                  
+                  {editMode ? (
+                    <Input
+                      value={editedUserDetails.accountNumber}
+                      onChange={(e) => setEditedUserDetails({ ...editedUserDetails, accountNumber: e.target.value })}
+                      bg={inputBg}
+                      borderColor={borderColor}
+                      _hover={{ bg: inputHoverBg }}
+                      _focus={{ borderColor: highlightColor, boxShadow: `0 0 0 1px ${highlightColor}` }}
+                    />
+                  ) : (
+                    <Box
+                      p={3}
+                      bg={fieldBg}
+                      borderWidth="1px"
+                      borderColor={borderColor}
+                      borderRadius="md"
+                      fontWeight="medium"
+                      fontSize="md"
+                      color={textColor}
+                    >
+                      {userDetails.accountNumber || "Not Provided"}
+                    </Box>
+                  )}
+                </FormControl>
+                
+                {editMode && (
+                  <Flex justify="flex-end" mt={8}>
+                    <Button
+                      onClick={cancelEdit}
+                      mr={4}
+                      bg={cancelBtnBg}
+                      color={textColor}
+                      _hover={{ bg: cancelBtnHoverBg }}
+                      size="md"
+                    >
+                      Cancel
+                    </Button>
+                    
+                    <Button
+                      onClick={handleUpdateDetails}
+                      isLoading={saving}
+                      loadingText="Saving..."
+                      leftIcon={<FaSave />}
+                      colorScheme="blue"
+                      bgGradient={`linear(to-r, ${gradientStart}, ${gradientEnd})`}
+                      _hover={{
+                        bgGradient: `linear(to-r, ${useColorModeValue('blue.500', 'blue.600')}, ${useColorModeValue('purple.600', 'purple.700')})`,
+                      }}
+                      size="md"
+                    >
+                      Save Changes
+                    </Button>
+                  </Flex>
                 )}
-              </div>
-            </div>
-
-            <div className="mt-4">
-              <h3 className="text-[12px] text-[#B0B0B0]">Email Address</h3>
-              <p className="text-[13px] text-[#fff]">{userDetails.email}</p>
-            </div>
-
-            <div className="mt-4">
-              <h3 className="text-[12px] text-[#B0B0B0]">Date of Birth</h3>
-              {editMode ? (
-                <input
-                  type="date"
-                  value={editedUserDetails.dateOfBirth}
-                  onChange={(e) => setEditedUserDetails({ ...editedUserDetails, dateOfBirth: e.target.value })}
-                  className="w-[100%] rounded-md p-2 bg-[#1A1E21] border-[1px] border-[#318AE6]"
-                />
-              ) : (
-                <p className="text-[13px] text-[#fff]">{userDetails.dateOfBirth || "Not Provided"}</p>
-              )}
-            </div>
-
-            <div className="mt-4">
-              <h3 className="text-[12px] text-[#B0B0B0]">Bank</h3>
-              {editMode ? (
-                <input
-                  type="text"
-                  value={editedUserDetails.bank}
-                  onChange={(e) => setEditedUserDetails({ ...editedUserDetails, bank: e.target.value })}
-                  className="w-[100%] rounded-md p-2 bg-[#1A1E21] border-[1px] border-[#318AE6]"
-                />
-              ) : (
-                <p className="text-[13px] text-[#fff]">{userDetails.bank || "Not Provided"}</p>
-              )}
-            </div>
-
-            <div className="mt-4">
-              <h3 className="text-[12px] text-[#B0B0B0]">Account Number</h3>
-              {editMode ? (
-                <input
-                  type="text"
-                  value={editedUserDetails.accountNumber}
-                  onChange={(e) => setEditedUserDetails({ ...editedUserDetails, accountNumber: e.target.value })}
-                  className="w-[100%] rounded-md p-2 bg-[#1A1E21] border-[1px] border-[#318AE6]"
-                />
-              ) : (
-                <p className="text-[13px] text-[#fff]">{userDetails.accountNumber || "Not Provided"}</p>
-              )}
-            </div>
-
-            {editMode && (
-              <div className="mt-6 flex justify-end">
-                <button
-                  onClick={handleUpdateDetails}
-                  className="bg-[#318AE6] text-white p-2 rounded-md"
-                >
-                  {loading ? "Saving..." : "Save Changes"}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
+              </Box>
+            </Grid>
+          </Box>
+        )}
+      </Container>
+    </Box>
   );
 };
 

@@ -33,7 +33,7 @@ const UserDashboard = () => {
         onCollapseChange={handleSidebarCollapseChange}
       />
       <div
-        className={`fixed top-0 right-0 h-screen transition-all duration-300 ${
+        className={`fixed top-0 right-0 h-screen overflow-y-auto transition-all duration-300 ${
           isSidebarCollapsed 
             ? "w-[calc(100%-80px)]" 
             : "w-[calc(100%-280px)]"
