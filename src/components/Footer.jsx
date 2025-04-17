@@ -1,8 +1,23 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { Link as ScrollLink, scroller } from "react-scroll";
-import { Box, Flex, Text, Container, Grid, GridItem, Divider, Icon, VStack, HStack } from "@chakra-ui/react";
-import { FaFacebookF, FaInstagram, FaTwitter, FaLinkedinIn } from "react-icons/fa";
+import { 
+  Box, 
+  Flex, 
+  Text, 
+  Container, 
+  Grid, 
+  GridItem, 
+  Divider, 
+  Icon, 
+  VStack, 
+  HStack,
+  Input,
+  Button,
+  Image,
+  useColorModeValue
+} from "@chakra-ui/react";
+import { FaFacebookF, FaInstagram, FaTwitter, FaLinkedinIn, FaEnvelope, FaPhone, FaMapMarkerAlt } from "react-icons/fa";
 import Logo from "../assets/logo1.png";
 
 const Footer = () => {
@@ -15,10 +30,10 @@ const Footer = () => {
   };
   
   const socialLinks = [
-    { icon: FaFacebookF, href: "https://facebook.com" },
-    { icon: FaTwitter, href: "https://twitter.com" },
-    { icon: FaInstagram, href: "https://instagram.com" },
-    { icon: FaLinkedinIn, href: "https://linkedin.com" }
+    { icon: FaFacebookF, href: "https://facebook.com", label: "Facebook" },
+    { icon: FaTwitter, href: "https://twitter.com", label: "Twitter" },
+    { icon: FaInstagram, href: "https://instagram.com", label: "Instagram" },
+    { icon: FaLinkedinIn, href: "https://linkedin.com", label: "LinkedIn" }
   ];
   
   const navLinks = [
@@ -33,14 +48,43 @@ const Footer = () => {
     { name: "Privacy Policy", to: "/privacy" },
   ];
 
+  // Theme colors
+  const bgColor = useColorModeValue("#111827", "#111827");
+  const accentColor = useColorModeValue("#B38939", "#D4A256");
+  const textColor = useColorModeValue("white", "white");
+  const borderColor = useColorModeValue("gray.700", "gray.700");
+  const inputBgColor = useColorModeValue("white", "gray.800");
+
   return (
-    <Box as="footer" bg="#1a202c" color="white">
-      {/* Newsletter Section */}
-      <Box py={10} bg="">
+    <Box as="footer" bg={bgColor} color={textColor} w="100%" overflow="hidden" position="relative" fontFamily="Poppins, sans-serif">
+      {/* Decorative element */}
+      <Box 
+        position="absolute" 
+        top="5%" 
+        right="-5%" 
+        w="300px" 
+        h="300px" 
+        borderRadius="full" 
+        bg={`${accentColor}20`}
+        filter="blur(70px)"
+        zIndex="0"
+      />
+      
+      {/* Newsletter Section with gradient background */}
+      <Box py={14} bg="linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0) 100%)" position="relative" zIndex="1">
         <Container maxW="container.xl">
-          <VStack spacing={6}>
-            <Text fontSize={{ base: "xl", md: "2xl" }} fontWeight="bold" textAlign="center">
+          <VStack spacing={8}>
+            <Text 
+              fontSize={{ base: "2xl", md: "3xl" }} 
+              fontWeight="bold" 
+              textAlign="center"
+              bgGradient={`linear(to-r, ${accentColor}, white)`}
+              bgClip="text"
+            >
               Subscribe To Our Newsletter
+            </Text>
+            <Text textAlign="center" maxW="700px" fontSize={{ base: "sm", md: "md" }} color="gray.300">
+              Stay updated with our latest offers, product updates, and industry news delivered straight to your inbox.
             </Text>
             <Flex 
               direction={{ base: "column", md: "row" }} 
@@ -50,56 +94,70 @@ const Footer = () => {
               alignItems="center"
               gap={3}
             >
-              <Box 
-                as="input" 
+              <Input 
                 type="email" 
                 placeholder="Enter your email" 
-                py={3} 
+                py={6} 
                 px={4}
-                borderRadius="md"
+                borderRadius="full"
+                bg={inputBgColor}
+                color="gray.800"
+                border="none"
+                boxShadow="md"
+                _placeholder={{ color: "gray.500" }}
+                _focus={{ boxShadow: `0 0 0 2px ${accentColor}` }}
                 w={{ base: "full", md: "70%" }}
-                color="#1A202C"
+                fontSize="md"
               />
-              <Box 
-                as="button" 
-                bg="#B38939" 
-                py={3} 
-                px={6} 
-                // borderRadius="md"
+              <Button 
+                bg={accentColor} 
+                py={6} 
+                px={8} 
+                borderRadius="full"
                 w={{ base: "full", md: "auto" }}
-                _hover={{ bg: "#718096" }}
+                _hover={{ bg: `${accentColor}90`, transform: "translateY(-2px)" }}
+                _active={{ transform: "translateY(0)" }}
+                transition="all 0.3s ease"
                 fontWeight="semibold"
+                boxShadow="md"
+                fontSize="md"
               >
                 Subscribe Now
-              </Box>
+              </Button>
             </Flex>
           </VStack>
         </Container>
       </Box>
       
       {/* Main Footer Content */}
-      <Container className="footer_container" maxW="container.xl" py={12}>
+      <Container maxW="container.xl" py={14} position="relative" zIndex="1">
         <Grid 
           templateColumns={{ 
             base: "1fr", 
-            md: "1fr 1fr", 
+            md: "repeat(2, 1fr)", 
             lg: "2fr 1fr 1fr" 
           }}
-          gap={8}
+          gap={{ base: 10, lg: 16 }}
         >
           {/* Logo and Company Info */}
           <GridItem>
-            <VStack align="flex-start" spacing={5}>
+            <VStack align="flex-start" spacing={6}>
               <Link to="/" onClick={() => scrollTo("home")}>
-                <Box as="img" src={Logo} alt="MiddleMan Logo" w={{ base: "120px", md: "150px" }} />
+                <Image 
+                  src={Logo} 
+                  alt="Sylo Logo" 
+                  w={{ base: "140px", md: "170px" }} 
+                  transition="transform 0.3s ease"
+                  _hover={{ transform: "scale(1.05)" }}
+                />
               </Link>
-              <Text fontSize="sm" lineHeight="tall">
+              <Text fontSize={{ base: "sm", md: "md" }} lineHeight="1.8" color="gray.300" maxW="450px">
                 At Sylo, we're dedicated to providing a seamless and secure
                 experience for all your transactions. Your trust and satisfaction
                 are our top priorities. Our support team is here to help you every
                 step of the way.
               </Text>
-              <Flex gap={3}>
+              <Flex gap={4} mt={2}>
                 {socialLinks.map((social, index) => (
                   <Box 
                     key={index}
@@ -107,17 +165,22 @@ const Footer = () => {
                     href={social.href} 
                     target="_blank" 
                     rel="noopener noreferrer"
+                    aria-label={social.label}
                     bg="whiteAlpha.200"
                     borderRadius="full"
-                    w={{ base: "32px", md: "38px" }}
-                    h={{ base: "32px", md: "38px" }}
+                    w="40px"
+                    h="40px"
                     display="flex"
                     alignItems="center"
                     justifyContent="center"
-                    transition="all 0.3s"
-                    _hover={{ bg: "whiteAlpha.400", transform: "translateY(-3px)" }}
+                    transition="all 0.3s ease"
+                    _hover={{ 
+                      bg: accentColor, 
+                      transform: "translateY(-5px)",
+                      boxShadow: "lg" 
+                    }}
                   >
-                    <Icon as={social.icon} boxSize={{ base: "15px", md: "18px" }} />
+                    <Icon as={social.icon} boxSize="18px" />
                   </Box>
                 ))}
               </Flex>
@@ -126,9 +189,25 @@ const Footer = () => {
           
           {/* Quick Links */}
           <GridItem>
-            <VStack align="flex-start" spacing={5}>
-              <Text fontSize="lg" fontWeight="bold">Quick Links</Text>
-              <VStack align="flex-start" spacing={3}>
+            <VStack align={{ base: "flex-start", md: "flex-start" }} spacing={6}>
+              <Text 
+                fontSize={{ base: "lg", md: "xl" }} 
+                fontWeight="bold"
+                position="relative"
+                _after={{
+                  content: '""',
+                  position: "absolute",
+                  bottom: "-8px",
+                  left: "0",
+                  width: "40px",
+                  height: "3px",
+                  bg: accentColor,
+                  borderRadius: "full"
+                }}
+              >
+                Quick Links
+              </Text>
+              <VStack align="flex-start" spacing={4} pt={2}>
                 {navLinks.map((link, index) => (
                   <ScrollLink
                     key={index}
@@ -137,9 +216,36 @@ const Footer = () => {
                     smooth={true}
                     duration={800}
                   >
-                    <Text fontSize="sm" _hover={{ color: "gray.300" }} transition="color 0.2s">
-                      {link.name}
-                    </Text>
+                    <Box 
+                      as="span"
+                      position="relative"
+                      sx={{
+                        "& > span": {
+                          color: accentColor,
+                          opacity: 0,
+                          marginRight: "5px",
+                          transition: "opacity 0.3s ease",
+                        },
+                        "&:hover > span": {
+                          opacity: 1,
+                        },
+                        "&:hover > p": {
+                          color: "white",
+                          transform: "translateX(5px)",
+                        }
+                      }}
+                    >
+                      <Box as="span">{">"}</Box>
+                      <Text 
+                        as="p"
+                        fontSize={{ base: "sm", md: "md" }} 
+                        color="gray.300"
+                        display="inline"
+                        transition="all 0.3s ease"
+                      >
+                        {link.name}
+                      </Text>
+                    </Box>
                   </ScrollLink>
                 ))}
               </VStack>
@@ -148,45 +254,100 @@ const Footer = () => {
           
           {/* Contact Info */}
           <GridItem>
-            <VStack align="flex-start" spacing={5}>
-              <Text fontSize="lg" fontWeight="bold">Contact Us</Text>
-              <VStack align="flex-start" spacing={3}>
-                <Text fontSize="sm">
-                  <Box as="span" fontWeight="semibold">Email:</Box> support@middleman.com
-                </Text>
-                <Text fontSize="sm">
-                  <Box as="span" fontWeight="semibold">Phone:</Box> +234 123 456 7890
-                </Text>
-                <Text fontSize="sm">
-                  <Box as="span" fontWeight="semibold">Address:</Box> Lagos, Nigeria
-                </Text>
+            <VStack align={{ base: "flex-start", md: "flex-start" }} spacing={6}>
+              <Text 
+                fontSize={{ base: "lg", md: "xl" }} 
+                fontWeight="bold"
+                position="relative"
+                _after={{
+                  content: '""',
+                  position: "absolute",
+                  bottom: "-8px",
+                  left: "0",
+                  width: "40px",
+                  height: "3px",
+                  bg: accentColor,
+                  borderRadius: "full"
+                }}
+              >
+                Contact Us
+              </Text>
+              <VStack align="flex-start" spacing={4} pt={2}>
+                <Flex align="center" gap={3}>
+                  <Box 
+                    p={2} 
+                    bg={`${accentColor}30`} 
+                    borderRadius="md"
+                    color={accentColor}
+                  >
+                    <Icon as={FaEnvelope} boxSize={4} />
+                  </Box>
+                  <Text fontSize={{ base: "sm", md: "md" }} color="gray.300">
+                    support@middleman.com
+                  </Text>
+                </Flex>
+                <Flex align="center" gap={3}>
+                  <Box 
+                    p={2} 
+                    bg={`${accentColor}30`} 
+                    borderRadius="md"
+                    color={accentColor}
+                  >
+                    <Icon as={FaPhone} boxSize={4} />
+                  </Box>
+                  <Text fontSize={{ base: "sm", md: "md" }} color="gray.300">
+                    +234 123 456 7890
+                  </Text>
+                </Flex>
+                <Flex align="center" gap={3}>
+                  <Box 
+                    p={2} 
+                    bg={`${accentColor}30`} 
+                    borderRadius="md"
+                    color={accentColor}
+                  >
+                    <Icon as={FaMapMarkerAlt} boxSize={4} />
+                  </Box>
+                  <Text fontSize={{ base: "sm", md: "md" }} color="gray.300">
+                    Lagos, Nigeria
+                  </Text>
+                </Flex>
               </VStack>
             </VStack>
           </GridItem>
         </Grid>
         
         {/* Footer Bottom */}
-        <Divider my={8} borderColor="gray.700" />
+        <Divider my={10} borderColor={borderColor} />
         <Flex 
           direction={{ base: "column", md: "row" }} 
           justify="space-between" 
-          align={{ base: "center", md: "center" }}
-          gap={{ base: 4, md: 0 }}
+          align="center"
+          gap={{ base: 6, md: 0 }}
         >
-          <Text fontSize="sm" textAlign={{ base: "center", md: "left" }}>
+          <Text fontSize={{ base: "xs", md: "sm" }} textAlign={{ base: "center", md: "left" }} color="gray.400">
             © {new Date().getFullYear()} Sylo App. All rights reserved.
           </Text>
-          <HStack spacing={4} textAlign="center">
+          <HStack spacing={6} textAlign="center">
             {legalLinks.map((link, index) => (
               <Link key={index} to={link.to}>
-                <Text fontSize="sm" _hover={{ color: "gray.300" }} transition="color 0.2s">
+                <Text 
+                  fontSize={{ base: "xs", md: "sm" }} 
+                  color="gray.400"
+                  transition="color 0.2s ease"
+                  _hover={{ color: accentColor }}
+                >
                   {link.name}
                 </Text>
               </Link>
             ))}
           </HStack>
-          <Text fontSize="sm" textAlign={{ base: "center", md: "right" }}>
-            Powered by Zeek
+          <Text 
+            fontSize={{ base: "xs", md: "sm" }} 
+            textAlign={{ base: "center", md: "right" }} 
+            color="gray.400"
+          >
+            Powered by <Box as="span" color={accentColor} fontWeight="medium">Zeek</Box>
           </Text>
         </Flex>
       </Container>

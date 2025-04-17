@@ -1,158 +1,137 @@
-.hero-container {
-  display: flex;
-  flex-direction: column;
-  padding: 120px 20px 50px 20px;
-  width: 100%;
-  /* font-family: "Work Sans", sans-serif; */
+.hero-section {
   font-family: "Geist", sans-serif;
-}
-.responsive-image {
-  width: 100%;
-  height: auto;
-  object-fit: contain;
-  display: block;
-  max-width: 100%;
+  position: relative;
+  overflow: hidden;
 }
 
-@media (min-width: 768px) {
-  .hero-container {
-    flex-direction: row;
-    justify-content: space-between;
-    padding: 140px 56px 50px 56px;
+/* Remove default styles that might interfere */
+.hero-section a {
+  text-decoration: none;
+}
+
+/* Animation definitions */
+@keyframes moveUpDown {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-15px); }
+}
+
+@keyframes slideInLeft {
+  0% { transform: translateX(-30px); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideInRight {
+  0% { transform: translateX(30px); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  0% { transform: translateY(20px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 0.5; }
+  70% { transform: scale(2); opacity: 0; }
+  100% { transform: scale(1); opacity: 0; }
+}
+
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 15px rgba(179, 137, 57, 0.6); }
+  50% { box-shadow: 0 0 25px rgba(179, 137, 57, 0.9); }
+}
+
+/* Apply animations to elements */
+.moving-content {
+  animation: moveUpDown 4s ease-in-out infinite alternate;
+}
+
+.platform-showcase {
+  animation: fadeInUp 1s ease-out forwards;
+}
+
+.feature-badge.badge-left {
+  animation: slideInLeft 0.7s ease-out 0.3s forwards;
+}
+
+.feature-badge.badge-right {
+  animation: slideInRight 0.7s ease-out 0.6s forwards;
+}
+
+.stat-card {
+  animation: fadeInUp 0.5s ease-out forwards;
+  animation-fill-mode: both;
+}
+
+.stat-card:nth-child(1) {
+  animation-delay: 0.4s;
+}
+
+.stat-card:nth-child(2) {
+  animation-delay: 0.6s;
+}
+
+.stat-card:nth-child(3) {
+  animation-delay: 0.8s;
+}
+
+.stat-card:nth-child(4) {
+  animation-delay: 1s;
+}
+
+.glow-button {
+  animation: glow 3s infinite;
+}
+
+/* For mobile-first design */
+@media (max-width: 768px) {
+  .hero-section {
+    text-align: center;
+  }
+  
+  .feature-badge.badge-left {
+    left: 10px;
+  }
+  
+  .feature-badge.badge-right {
+    right: 10px;
   }
 }
 
-.hero-text-content {
-  width: 100%;
-  text-align: center;
+/* Improve focus states for accessibility */
+.hero-section button:focus,
+.hero-section a:focus {
+  outline: 2px solid #B38939;
+  outline-offset: 2px;
 }
 
-@media (min-width: 768px) {
-  .hero-text-content {
-    width: 50%;
-    text-align: left;
-    padding-right: 40px;
-  }
-}
-
-.hero_heading {
-  font-weight: 900;
-  font-size: 36px;
-  line-height: 1.2;
-
-}
-
-@media (min-width: 640px) {
-  .hero_heading {
-    font-size: 42px;
-  }
-}
-
-@media (min-width: 768px) {
-  .hero_heading {
-    font-size: 54px;
-  }
-}
-
-@media (min-width: 1024px) {
-  .hero_heading {
-    font-size: 60px;
-  }
-}
-
-.hero_subtext {
-  font-weight: 400;
-  margin-top: 26px;
-  font-size: 17px;
-  line-height: 1.6;
-}
-
-.hero-btn-wrapper {
-  display: flex;
-  justify-content: center;
-  margin-top: 40px;
-}
-
-@media (min-width: 768px) {
-  .hero-btn-wrapper {
-    justify-content: flex-start;
-  }
-}
-
-.start_btn {
-  background-color: #B38939;
-  border: 2px solid #B38939;
-  color: #fff;
-  padding: 12px 28px;
-  font-size: 17px;
+/* Add smooth transition for all elements */
+.hero-section * {
   transition: all 0.3s ease;
 }
 
-.start_btn:hover {
-  background-color: #a17732;
-}
-
-.hero-image-section {
-  width: 100%;
-  position: relative;
-  margin-top: 50px;
-  display: flex;
-  justify-content: center;
-}
-
-@media (min-width: 768px) {
-  .hero-image-section {
-    width: 50%;
-    margin-top: 0;
+/* High-contrast mode support */
+@media (forced-colors: active) {
+  .hero-section button {
+    border: 2px solid currentColor;
   }
 }
 
-.hero_img_one {
-  width: 100%;
-  max-width: 600px;
-  position: relative;
-  background-image: url(../../assets/gateway.png);
-  background-size: contain; /* instead of 100% 100% */
-  background-repeat: no-repeat;
-  background-position: center;
+/* Additional hover effects for buttons */
+.hero-section button:active {
+  transform: translateY(1px);
 }
 
-.hero_main_image {
-  width: 100%;
-  animation: moveUpDown 3.5s infinite alternate cubic-bezier(0.25, 0.1, 0.25, 0.2);
-}
-
-.hero-badge {
-  animation: bounceAnimation 3s infinite;
-  background-color: #192331;
-  color: white;
-  border-radius: 12px;
-  padding: 12px 16px;
-  position: absolute;
-  top: 45%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 10;
-  max-width: 180px;
-  text-align: center;
-}
-
-@keyframes moveUpDown {
-  0% {
-    transform: translateY(0);
+/* Fix for any potential animation issues on mobile */
+@media (max-width: 480px) {
+  .moving-content {
+    animation-duration: 3s;
   }
-
-  100% {
-    transform: translateY(-20px);
+  
+  .stat-card {
+    animation-delay: 0.2s;
   }
 }
 
-@keyframes bounceAnimation {
-  0%, 100% {
-    transform: translateY(0);
-  }
-
-  50% {
-    transform: translateY(-20px);
-  }
-}
+/* Dark mode specific adjustments handled by Chakra UI props */
+/* No need for additional CSS for dark mode as we're using Chakra's useColorMode */

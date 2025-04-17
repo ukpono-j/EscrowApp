@@ -1,22 +1,231 @@
-.faq{
-    /* font-family: "Bricolage Grotesque", sans-serif; */
-    font-family: "Geist", sans-serif;
+.faq {
+  /* font-family: "Geist", sans-serif; */
+  font-family: "Poppins";
+  overflow-x: hidden;
 }
 
-.faq_button:before{
-    transition: all 0.3s ease;
-    z-index: -1;
+/* FAQ Title styling with gradient */
+.faq h1 {
+  /* background: linear-gradient(135deg, #B38939 0%, #E2C07C 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent; */
+  margin-bottom: 1rem;
+}
+
+/* Accordion styling */
+.accordion-container {
+  border-radius: 16px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  background: var(--accordion-bg);
+  overflow: hidden;
+}
+
+.accordion-item {
+  border-bottom: 1px solid var(--border-color);
+  transition: all 0.3s ease;
+}
+
+.accordion-item:last-child {
+  border-bottom: none;
+}
+
+.accordion-header {
+  padding: 20px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.3s ease;
+}
+
+.accordion-header:hover {
+  background-color: var(--hover-bg);
+}
+
+.accordion_title {
+  font-size: 18px;
+  position: relative;
+  z-index: 1;
+  transition: all 0.3s ease;
+}
+
+.accordion_title::before {
+  content: "";
+  position: absolute;
+  height: 10px;
+  width: 0;
+  bottom: 2px;
+  left: 0;
+  background-color: rgba(179, 137, 57, 0.2);
+  z-index: -1;
+  transition: width 0.3s ease;
+}
+
+.accordion-header:hover .accordion_title::before {
+  width: 100%;
+}
+
+.accordion-content {
+  padding: 0 20px 20px;
+  line-height: 1.6;
+  font-size: 16px;
+  animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
   }
-  .faq_button:hover{
-    display: inline-block;
-    position: relative;
-    overflow: hidden;
-    border-radius: 50px;
-    border: 1.5px solid rgba(219, 155, 30, 1);
-    /* color: #fff; */
-    z-index: 1;
-    background: linear-gradient(60deg, rgba(37, 137, 172, 1) 0%, rgba(219, 155, 30, 1) 100%);
-    padding: 14px 38px 14px 38px !important;
-    transition: all 0.3s ease;
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Toggle Button Animation */
+.toggle-icon {
+  transition: all 0.3s ease;
+  background-color: rgba(179, 137, 57, 0.1);
+  width: 24px;
+  height: 24px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 50%;
+}
+
+.accordion-header:hover .toggle-icon {
+  transform: scale(1.1);
+  background-color: rgba(179, 137, 57, 0.2);
+}
+
+/* Button styling */
+.start_btn {
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+  box-shadow: 0 4px 15px rgba(179, 137, 57, 0.2);
+}
+
+.start_btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(179, 137, 57, 0.3);
+}
+
+.start_btn:active {
+  transform: translateY(-1px);
+}
+
+/* Side decorative element */
+.faq-decorative {
+  position: relative;
+}
+
+.faq-decorative::before {
+  content: '';
+  position: absolute;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: rgba(179, 137, 57, 0.05);
+  z-index: -1;
+  top: -50px;
+  right: -50px;
+}
+
+.faq-decorative::after {
+  content: '';
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(179, 137, 57, 0.08);
+  z-index: -1;
+  bottom: 30px;
+  left: -20px;
+}
+
+/* Enhanced responsive styling */
+@media (max-width: 992px) {
+  .faq h1 {
+    font-size: 42px;
+    line-height: 48px;
     text-align: center;
   }
+  
+  .faq p {
+    text-align: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .faq h1 {
+    font-size: 36px;
+    line-height: 42px;
+    text-align: center;
+    margin-bottom: 1rem;
+  }
+  
+  .accordion_title {
+    font-size: 16px;
+  }
+  
+  .accordion-content {
+    font-size: 15px;
+  }
+  
+  .faq-text-container {
+    margin-bottom: 2rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .faq h1 {
+    font-size: 30px;
+    line-height: 36px;
+  }
+  
+  .accordion-header {
+    padding: 16px;
+  }
+  
+  .accordion_title {
+    font-size: 15px;
+    width: 80%;
+  }
+  
+  .accordion-content {
+    padding: 0 16px 16px;
+    font-size: 14px;
+  }
+}
+
+/* Card styling */
+.faq-card {
+  border-radius: 16px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.faq-card:hover {
+  box-shadow: 0 10px 30px rgba(179, 137, 57, 0.15);
+  transform: translateY(-5px);
+}
+
+/* Theme support for dark/light mode */
+:root {
+  --accordion-bg: rgba(255, 255, 255, 0.8);
+  --border-color: rgba(0, 0, 0, 0.1);
+  --hover-bg: rgba(179, 137, 57, 0.05);
+}
+
+[data-theme="dark"] {
+  --accordion-bg: rgba(30, 30, 30, 0.8);
+  --border-color: rgba(255, 255, 255, 0.1);
+  --hover-bg: rgba(179, 137, 57, 0.15);
+}

@@ -103,7 +103,7 @@ const MainJoinTransaction = () => {
       align="center" 
       justify="center"
       fontFamily="Poppins"
-      bg={useColorModeValue("gray.50", "gray.900")}
+      // bg={useColorModeValue("gray.50", "gray.900")}
       p={4}
     >
       <Box

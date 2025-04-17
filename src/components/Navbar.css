@@ -1,54 +1,93 @@
 .navbar {
-    font-family: "Geist", sans-serif;
-    transition: 0.4s;
+  font-family: "Geist", sans-serif;
+  transition: 0.4s;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.logo_icon {
+  font-family: "Geist", sans-serif;
+}
+
+/* Better breakpoint handling */
+@media (max-width: 1024px) {
+  .desktop-menu {
+    display: none !important;
   }
   
-  .logo_icon {
-    font-family: "Geist", sans-serif;
+  .mobile-menu-button {
+    display: flex !important;
+  }
+}
+
+/* Show mobile menu at a larger breakpoint */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .navbar .hidden.md\:flex {
+    display: none !important;
+  }
+}
+
+/* Mobile menu animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulseGlow {
+  0% {
+    box-shadow: 0 0 5px rgba(179, 137, 57, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(179, 137, 57, 0.8);
+  }
+  100% {
+    box-shadow: 0 0 5px rgba(179, 137, 57, 0.5);
+  }
+}
+
+/* Additional effects for menu items */
+.menu-item:hover {
+  letter-spacing: 0.5px;
+}
+
+/* Custom hover effect for buttons */
+.button-effect:hover {
+  transform: translateY(-3px) !important;
+  box-shadow: 0 10px 20px rgba(179, 137, 57, 0.3) !important;
+}
+
+/* Adding 3D perspective to the menu container */
+.menu-content {
+  transform-style: preserve-3d;
+  perspective: 1000px;
+}
+
+/* Special effects for theme toggle when menu is open */
+.theme-toggle-active {
+  animation: pulseGlow 2s infinite;
+}
+
+/* Enhanced responsive adjustments */
+@media (max-width: 768px) {
+  .navbar {
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .navbar {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
   }
   
-  /* Mobile menu animations */
-  @keyframes fadeInUp {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+  .navbar img {
+    width: 110px !important;
   }
-  
-  @keyframes pulseGlow {
-    0% {
-      box-shadow: 0 0 5px rgba(179, 137, 57, 0.5);
-    }
-    50% {
-      box-shadow: 0 0 20px rgba(179, 137, 57, 0.8);
-    }
-    100% {
-      box-shadow: 0 0 5px rgba(179, 137, 57, 0.5);
-    }
-  }
-  
-  /* Additional effects for menu items */
-  .menu-item:hover {
-    letter-spacing: 0.5px;
-  }
-  
-  /* Custom hover effect for buttons */
-  .button-effect:hover {
-    transform: translateY(-3px) !important;
-    box-shadow: 0 10px 20px rgba(179, 137, 57, 0.3) !important;
-  }
-  
-  /* Adding 3D perspective to the menu container */
-  .menu-content {
-    transform-style: preserve-3d;
-    perspective: 1000px;
-  }
-  
-  /* Special effects for theme toggle when menu is open */
-  .theme-toggle-active {
-    animation: pulseGlow 2s infinite;
-  }
+}

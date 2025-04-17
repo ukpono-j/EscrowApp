@@ -237,11 +237,11 @@ const TransactionCreation = () => {
   return (
     <Box
       minH="100vh"
-      className="font-[Poppins]"
+      className="font-[Poppins] pr-[28px] pl-[100px] pt-10 md:pl-[30px]"
       w="full"
-      px={4}
-      py={8}
-      bg={bgMain}
+      // px={4}
+      // py={8}
+      // bg={bgMain}
       color={textColor}
       transition="background 0.3s ease, color 0.3s ease"
     >

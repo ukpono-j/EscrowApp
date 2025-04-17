@@ -83,7 +83,7 @@ const JoinTransaction = () => {
           {showToggleContainer ? (
             <div className=''>
               <MiniNav />
-              <div className="">
+              <div  className="font-[Poppins] pr-[28px] pl-[100px] pt-10 md:pl-[30px]">
                 <MainJoinTransaction sidebarCollapsed={isSidebarCollapsed} />
               </div>
             </div>

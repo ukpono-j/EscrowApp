@@ -6,12 +6,12 @@ import { Link } from "react-router-dom";
 import Logo from "../assets/logo1.png";
 import "./Navbar.css";
 import ThemeToggle from "../ThemeToggle";
-import { 
-  Box, 
-  Text, 
-  Flex, 
-  ScaleFade, 
-  useColorModeValue 
+import {
+  Box,
+  Text,
+  Flex,
+  ScaleFade,
+  useColorModeValue
 } from "@chakra-ui/react";
 import { motion } from "framer-motion";
 
@@ -55,8 +55,8 @@ const Navbar = () => {
 
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
-    visible: { 
-      opacity: 1, 
+    visible: {
+      opacity: 1,
       y: 0,
       transition: { duration: 0.5 }
     }
@@ -96,7 +96,7 @@ const Navbar = () => {
   };
 
   return (
-    <Box 
+    <Box
       className="navbar pl-5 pr-5 md:pl-[60px] md:pr-[60px] left-0 justify-between fixed z-50 top-0 pt-5 pb-5 w-[100%] flex items-center"
       bg={mobileMenuBg}
       style={{
@@ -110,7 +110,7 @@ const Navbar = () => {
         </Link>
       </div>
       <div className="flex w-full justify-end">
-        <Text className="hidden text-[16px] md:flex space-x-6 items-center">
+        <Text className="hidden lg:flex text-[16px] space-x-6 items-center desktop-menu">
           <ScrollLink className="cursor-pointer hover:text-[#B38939] transition-colors duration-300" to="about" smooth={true} duration={800}>
             About Us
           </ScrollLink>
@@ -141,11 +141,11 @@ const Navbar = () => {
         </div>
       </div>
       <div className="flex items-center">
-        <Box 
-          className="md:hidden flex items-center"
+        <Box
+          className="lg:hidden flex items-center mobile-menu-button"
           onClick={() => setIsMenuOpen(!isMenuOpen)}
         >
-          <Box 
+          <Box
             as={isMenuOpen ? AiOutlineClose : AiOutlineMenu}
             className="text-3xl cursor-pointer"
             transition="transform 0.3s ease"
@@ -154,7 +154,7 @@ const Navbar = () => {
           />
         </Box>
       </div>
-      
+
       {/* Mobile Menu with Enhanced Styling */}
       <ScaleFade in={isMenuOpen} initialScale={0.9}>
         {isMenuOpen && (
@@ -169,7 +169,7 @@ const Navbar = () => {
               WebkitBackdropFilter: "blur(10px)"
             }}
           >
-            <Box 
+            <Box
               className="menu-content py-8 px-6 flex flex-col"
               bg={useColorModeValue("rgba(255, 255, 255, 0.95)", "rgba(26, 32, 44, 0.95)")}
               h="100%"
@@ -179,7 +179,7 @@ const Navbar = () => {
               <Box position="absolute" top="5%" right="10%" w="40px" h="40px" borderRadius="full" bg={`${accentColor}30`} />
               <Box position="absolute" top="30%" left="10%" w="25px" h="25px" borderRadius="full" bg={`${accentColor}20`} />
               <Box position="absolute" bottom="20%" right="20%" w="60px" h="60px" borderRadius="full" bg={`${accentColor}15`} />
-              
+
               {/* Menu Items with animations */}
               <Flex direction="column" align="center" justify="center" mt={6} position="relative" zIndex={2}>
                 {menuItems.map((item) => (
@@ -228,12 +228,12 @@ const Navbar = () => {
                     )}
                   </MotionBox>
                 ))}
-                
+
                 {/* Login and Register Buttons with animations */}
-                <MotionBox 
-                  variants={itemVariants} 
-                  width="full" 
-                  maxWidth="280px" 
+                <MotionBox
+                  variants={itemVariants}
+                  width="full"
+                  maxWidth="280px"
                   mt={4}
                 >
                   <Link
@@ -248,11 +248,11 @@ const Navbar = () => {
                     Log In
                   </Link>
                 </MotionBox>
-                
-                <MotionBox 
-                  variants={itemVariants} 
-                  width="full" 
-                  maxWidth="280px" 
+
+                <MotionBox
+                  variants={itemVariants}
+                  width="full"
+                  maxWidth="280px"
                   mt={4}
                 >
                   <Link
@@ -266,12 +266,12 @@ const Navbar = () => {
                     Register
                   </Link>
                 </MotionBox>
-                
+
                 {/* Social Media Icons or Additional Elements */}
-                <MotionBox 
-                  variants={itemVariants} 
-                  mt={12} 
-                  display="flex" 
+                <MotionBox
+                  variants={itemVariants}
+                  mt={12}
+                  display="flex"
                   justifyContent="center"
                   gap={6}
                 >
