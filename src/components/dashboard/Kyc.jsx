@@ -284,7 +284,7 @@ const Kyc = () => {
             color="blue.500"
             size="xl"
           />
-          <Text mt={4} color="white" fontWeight="medium">Loading your KYC status...</Text>
+          <Text mt={4} fontWeight="medium">Loading your KYC status...</Text>
         </Flex>
       );
     }
