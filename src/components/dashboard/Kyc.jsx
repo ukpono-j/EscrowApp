@@ -148,6 +148,38 @@ const Kyc = () => {
     }));
   };
 
+  // useEffect(() => {
+  //   // Fetch KYC status from your backend
+  //   const fetchKycStatus = async () => {
+  //     try {
+  //       setIsLoading(true);
+  //       const token = localStorage.getItem("auth-token");
+  //       if (token) {
+  //         axios.defaults.headers.common["auth-token"] = token;
+  //       }
+  //       const response = await axios.get(`${BASE_URL}/api/kyc/kyc-details`, {
+  //         headers: {
+  //           "auth-token": token,
+  //         },
+  //       });
+
+  //       setIsKycSubmitted(response.data.isKycSubmitted);
+  //     } catch (error) {
+  //       console.error("Error fetching KYC status:", error);
+  //       toast({
+  //         title: "Error fetching KYC status",
+  //         status: "error",
+  //         duration: 3000,
+  //         isClosable: true,
+  //       });
+  //     } finally {
+  //       setIsLoading(false);
+  //     }
+  //   };
+
+  //   fetchKycStatus();
+  // }, [toast]);
+
   useEffect(() => {
     // Fetch KYC status from your backend
     const fetchKycStatus = async () => {
@@ -166,12 +198,28 @@ const Kyc = () => {
         setIsKycSubmitted(response.data.isKycSubmitted);
       } catch (error) {
         console.error("Error fetching KYC status:", error);
-        toast({
-          title: "Error fetching KYC status",
-          status: "error",
-          duration: 3000,
-          isClosable: true,
-        });
+        // Check if the error is because user doesn't have KYC data yet
+        if (error.response && error.response.status === 404) {
+          // User doesn't have KYC yet, show a friendly prompt instead of an error
+          toast({
+            title: "KYC Required",
+            description: "Please complete your KYC verification to continue.",
+            status: "info",
+            duration: 5000,
+            isClosable: true,
+          });
+          // Set isKycSubmitted to false since user hasn't submitted KYC
+          setIsKycSubmitted(false);
+        } else {
+          // This is an actual error with the API or connection
+          toast({
+            title: "Connection Error",
+            description: "Unable to check KYC status. Please try again later.",
+            status: "error",
+            duration: 3000,
+            isClosable: true,
+          });
+        }
       } finally {
         setIsLoading(false);
       }
@@ -179,6 +227,8 @@ const Kyc = () => {
 
     fetchKycStatus();
   }, [toast]);
+
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -521,71 +571,69 @@ const Kyc = () => {
     );
   };
 
- // Update the return statement to handle both mobile and desktop views properly
-return (
-  <div className="border flex items-center border-black">
-    <Sidebar
-      onShowProfile={handleShowProfile}
-      onShowToggleComponent={handleMyTransaction}
-      onCollapseChange={handleSidebarCollapseChange}
-    />
-    
-    {/* Desktop view */}
-    <div
-      className={`fixed top-0 right-0 h-screen overflow-y-auto transition-all duration-300 ${
-        isSidebarCollapsed
-          ? "w-[calc(100%-80px)]"
-          : "w-[calc(100%-280px)]"
-        } md:block hidden`}
-    >
-      <Box
-        className={showToggleContainer ? "toggleContainer" : "hidden"}
-        h="auto"
-        pb={6}
+  // Update the return statement to handle both mobile and desktop views properly
+  return (
+    <div className="border flex items-center border-black">
+      <Sidebar
+        onShowProfile={handleShowProfile}
+        onShowToggleComponent={handleMyTransaction}
+        onCollapseChange={handleSidebarCollapseChange}
+      />
+
+      {/* Desktop view */}
+      <div
+        className={`fixed top-0 right-0 h-screen overflow-y-auto transition-all duration-300 ${isSidebarCollapsed
+            ? "w-[calc(100%-80px)]"
+            : "w-[calc(100%-280px)]"
+          } md:block hidden`}
       >
-        <Flex
-          direction="column"
-          align="center"
-          justify="center"
-          py={{ base: 16, md: 24 }}
-          px={3}
-          fontFamily="Poppins, sans-serif"
+        <Box
+          className={showToggleContainer ? "toggleContainer" : "hidden"}
+          h="auto"
+          pb={6}
         >
-          {renderKycStatus()}
-        </Flex>
-      </Box>
-    </div>
-    
-    {/* Mobile view */}
-    <div
-      className={`fixed top-0 left-0 right-0 h-screen overflow-y-auto pt-[60px] pb-[80px] z-10 bg-gray-900 ${
-        showToggleContainer ? "block" : "hidden"
-      } md:hidden`}
-    >
-      <Box
-        className={showToggleContainer ? "toggleContainer" : "hidden"}
-        h="auto"
-        pb={6}
+          <Flex
+            direction="column"
+            align="center"
+            justify="center"
+            py={{ base: 16, md: 24 }}
+            px={3}
+            fontFamily="Poppins, sans-serif"
+          >
+            {renderKycStatus()}
+          </Flex>
+        </Box>
+      </div>
+
+      {/* Mobile view */}
+      <div
+        className={`fixed top-0 left-0 right-0 h-screen overflow-y-auto pt-[60px] pb-[80px] z-10 bg-gray-900 ${showToggleContainer ? "block" : "hidden"
+          } md:hidden`}
       >
-        <Flex
-          direction="column"
-          align="center"
-          justify="center"
-          py={{ base: 8, md: 24 }}
-          px={3}
-          fontFamily="Poppins, sans-serif"
+        <Box
+          className={showToggleContainer ? "toggleContainer" : "hidden"}
+          h="auto"
+          pb={6}
         >
-          {renderKycStatus()}
-        </Flex>
-      </Box>
+          <Flex
+            direction="column"
+            align="center"
+            justify="center"
+            py={{ base: 8, md: 24 }}
+            px={3}
+            fontFamily="Poppins, sans-serif"
+          >
+            {renderKycStatus()}
+          </Flex>
+        </Box>
+      </div>
+
+      <BottomNav
+        onShowProfile={handleShowProfile}
+        onShowToggleComponent={handleMyTransaction}
+      />
     </div>
-    
-    <BottomNav
-      onShowProfile={handleShowProfile}
-      onShowToggleComponent={handleMyTransaction}
-    />
-  </div>
-);
+  );
 };
 
 export default Kyc;

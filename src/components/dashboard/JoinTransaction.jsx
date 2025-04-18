@@ -67,19 +67,7 @@ const JoinTransaction = () => {
           !isMobile ? (isSidebarCollapsed ? "ml-[80px]" : "ml-[280px]") : "ml-0"
         }`}
       >
-        {/* <div
-          className={
-            showToggleContainer ? "h-[auto] toggleContainer" : "hidden"
-          }
-        >
-          <div>
-            <MiniNav />
-          </div>
-
-          <MainJoinTransaction />
-        </div> */}
-
-        <div className="h-full overflow-y-auto scrollbar-thin scrollbar-thumb-[#B38939]/20 scrollbar-track-transparent">
+        <div className="h-full w-full overflow-y-auto scrollbar-thin scrollbar-thumb-[#B38939]/20 scrollbar-track-transparent">
           {showToggleContainer ? (
             <div className=''>
               <MiniNav />
