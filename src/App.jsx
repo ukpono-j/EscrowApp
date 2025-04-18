@@ -18,6 +18,8 @@ import Settings from './components/dashboard/Settings';
 import Admin from './components/admin/Admin';
 import PrivateRoute from './components/PrivateRoute';
 import PublicRoute from './components/PublicRoute';
+import ForgotPassword from './pages/ForgotPassword';
+
 
 function App() {
   useEffect(() => {
@@ -66,6 +68,7 @@ function App() {
         <Route path="/" element={<PublicRoute element={Home} />} />
         <Route path="/login" element={<PublicRoute element={LogIn} />} />
         <Route path="/register" element={<PublicRoute element={Register} />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/dashboard" element={<PrivateRoute element={UserDashboard} />} />
         <Route path="/create-transaction" element={<PrivateRoute element={CreateTransaction} />} />
         <Route path="/profile" element={<PrivateRoute element={MainProfile} />} />

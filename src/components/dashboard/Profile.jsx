@@ -30,7 +30,7 @@ const Profile = () => {
   const { colorMode } = useColorMode();
   const toast = useToast();
   
-  // Color mode values
+  // Color mode values - MOVE ALL useColorModeValue CALLS HERE
   const cardBg = useColorModeValue("white", "#0F1722");
   const textColor = useColorModeValue("gray.800", "white");
   const subtleTextColor = useColorModeValue("gray.600", "gray.300");
@@ -45,6 +45,10 @@ const Profile = () => {
   const cancelBtnBg = useColorModeValue("gray.200", "gray.700");
   const cancelBtnHoverBg = useColorModeValue("gray.300", "gray.600");
   const fieldBg = useColorModeValue("gray.50", "#1A2331");
+  const blueShadow = useColorModeValue('rgba(66, 153, 225, 0.3)', 'rgba(66, 153, 225, 0.5)');
+  const backgroundBlue = useColorModeValue("blue.50", "blue.900");
+  const backgroundPurple = useColorModeValue("purple.50", "purple.900");
+  const hoverGradient = `linear(to-r, ${useColorModeValue('blue.500', 'blue.600')}, ${useColorModeValue('purple.600', 'purple.700')})`;
   
   // State variables
   const [selectedImageFile, setSelectedImageFile] = useState(null);
@@ -196,6 +200,7 @@ const Profile = () => {
     });
   };
 
+  // Render loading state outside the main return to avoid conditional Hook calls
   if (loading) {
     return (
       <Flex minH="100vh" align="center" justify="center" direction="column">
@@ -223,7 +228,6 @@ const Profile = () => {
       </Flex>
     );
   }
-
 
   return (
     <Box pt={7} minH="100vh">
@@ -274,7 +278,7 @@ const Profile = () => {
               w="200px"
               h="200px"
               borderRadius="full"
-              bg={useColorModeValue("blue.50", "blue.900")}
+              bg={backgroundBlue}
               opacity="0.4"
               zIndex="0"
             />
@@ -285,7 +289,7 @@ const Profile = () => {
               w="150px"
               h="150px"
               borderRadius="full"
-              bg={useColorModeValue("purple.50", "purple.900")}
+              bg={backgroundPurple}
               opacity="0.3"
               zIndex="0"
             />
@@ -307,7 +311,7 @@ const Profile = () => {
                     overflow="hidden"
                     borderWidth="4px"
                     borderColor={avatarBorderColor}
-                    boxShadow={`0 0 15px ${useColorModeValue('rgba(66, 153, 225, 0.3)', 'rgba(66, 153, 225, 0.5)')}`}
+                    boxShadow={`0 0 15px ${blueShadow}`}
                   >
                     <img
                       src={preview || `${BASE_URL}/${userDetails.avatarImage}`}
@@ -379,7 +383,7 @@ const Profile = () => {
                       colorScheme="blue"
                       bgGradient={`linear(to-r, ${gradientStart}, ${gradientEnd})`}
                       _hover={{
-                        bgGradient: `linear(to-r, ${useColorModeValue('blue.500', 'blue.600')}, ${useColorModeValue('purple.600', 'purple.700')})`,
+                        bgGradient: hoverGradient,
                       }}
                       size="md"
                       width="full"
@@ -592,7 +596,7 @@ const Profile = () => {
                       colorScheme="blue"
                       bgGradient={`linear(to-r, ${gradientStart}, ${gradientEnd})`}
                       _hover={{
-                        bgGradient: `linear(to-r, ${useColorModeValue('blue.500', 'blue.600')}, ${useColorModeValue('purple.600', 'purple.700')})`,
+                        bgGradient: hoverGradient,
                       }}
                       size="md"
                     >

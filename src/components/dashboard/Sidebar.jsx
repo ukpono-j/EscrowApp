@@ -1,4 +1,3 @@
-// Modified Sidebar.jsx
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MdLogout, MdDashboard, MdAddCircle, MdPerson, MdSecurity, MdMenu, MdClose } from "react-icons/md";
@@ -140,9 +139,7 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
     <div className="group relative">
       {children}
       <div className={`absolute left-full ml-2 px-2 py-1 bg-gray-800 text-xs rounded-md whitespace-nowrap opacity-0 invisible transition-all duration-300 z-50 ${isCollapsed ? "group-hover:opacity-100 group-hover:visible" : ""}`}>
-        <Text>
-          {label}
-        </Text>
+        {label}
       </div>
     </div>
   );
@@ -276,9 +273,7 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
                         </span>
 
                         {!isCollapsed && (
-                          <Text>
-                            <span className="text-sm whitespace-nowrap">{link.label}</span>
-                          </Text>
+                          <span className="text-sm whitespace-nowrap">{link.label}</span>
                         )}
 
                         {!isCollapsed && activeLink === link.to && (
@@ -297,7 +292,7 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
               {/* Settings Section */}
               {!isCollapsed && (
                 <div className="mt-8 mb-2">
-                  <Text className="px-4 text-xs uppercase tracking-wider font-bold mb-3">Settings</Text>
+                  <span className="px-4 text-xs uppercase tracking-wider font-bold mb-3 block">Settings</span>
                 </div>
               )}
 
@@ -325,7 +320,7 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
                             {link.icon}
                           </span>
                           {!isCollapsed && (
-                            <Text className="text-sm whitespace-nowrap">{link.label}</Text>
+                            <span className="text-sm whitespace-nowrap">{link.label}</span>
                           )}
                         </div>
 
@@ -368,7 +363,7 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
                                 <span className={activeLink === settingLink.to ? "text-[#B38939]" : "text-[#A88136]"}>
                                   {settingLink.icon}
                                 </span>
-                                <Text className="text-sm">{settingLink.label}</Text>
+                                <span className="text-sm">{settingLink.label}</span>
                               </Link>
                             </motion.div>
                           ))}
@@ -386,9 +381,7 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
             {!isCollapsed ? (
               <div className="p-5">
                 <div className="flex items-center justify-between mb-4">
-                  <Text>
-                    <p className="text-xs">© 2025 EscrowPay</p>
-                  </Text>
+                  <span className="text-xs">© 2025 EscrowPay</span>
                   <ThemeToggle />
                 </div>
                 <button

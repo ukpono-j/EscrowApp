@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
-import { 
-  useToast, Box, Text, Input, Button, FormControl, FormLabel, 
-  VStack, Flex, Container, Heading, InputGroup, InputRightElement, 
-  ScaleFade, useColorModeValue 
+import {
+  useToast, Box, Text, Input, Button, FormControl, FormLabel,
+  VStack, Flex, Container, Heading, InputGroup, InputRightElement,
+  ScaleFade, useColorModeValue
 } from "@chakra-ui/react";
 import { motion } from "framer-motion";
 import { FiEye, FiEyeOff, FiArrowRight, FiMail, FiLock } from "react-icons/fi";
@@ -103,7 +103,7 @@ const Login = () => {
 
         // Redirect with animation delay
         setTimeout(() => {
-          navigate("/dashboard"); 
+          navigate("/dashboard");
         }, 500);
       } else {
         toast({
@@ -116,21 +116,64 @@ const Login = () => {
       }
     } catch (error) {
       console.error(error);
-      toast({
-        title: "Login Failed",
-        description: error.response?.data?.message || "Unable to connect to the server",
-        status: "error",
-        duration: 5000,
-        isClosable: true,
-      });
+
+      // Check for specific error responses
+      if (error.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        if (error.response.status === 404) {
+          toast({
+            title: "User Not Found",
+            description: "No account exists with this email address",
+            status: "error",
+            duration: 5000,
+            isClosable: true,
+          });
+        } else if (error.response.status === 401) {
+          toast({
+            title: "Incorrect Password",
+            description: "The password you entered is incorrect",
+            status: "error",
+            duration: 5000,
+            isClosable: true,
+          });
+        } else {
+          // Handle other status codes
+          toast({
+            title: "Login Failed",
+            description: error.response.data?.message || "Authentication failed",
+            status: "error",
+            duration: 5000,
+            isClosable: true,
+          });
+        }
+      } else if (error.request) {
+        // The request was made but no response was received
+        toast({
+          title: "Connection Error",
+          description: "Unable to connect to the server. Please check your internet connection.",
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+        });
+      } else {
+        // Something happened in setting up the request that triggered an Error
+        toast({
+          title: "Login Error",
+          description: "An unexpected error occurred. Please try again.",
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+        });
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <Box 
-      className="login-page" 
+    <Box
+      className="login-page"
       minHeight="100vh"
       bgGradient="linear(to-br, #1A202C, #1A202C, #1A202C)"
       position="relative"
@@ -138,18 +181,18 @@ const Login = () => {
     >
       {/* Animated Background Elements */}
       <Box className="background-shapes">
-        <MotionBox 
-          position="absolute" 
-          top="15%" 
+        <MotionBox
+          position="absolute"
+          top="15%"
           right={{ base: "-5%", md: "10%" }}
           width={{ base: "200px", md: "300px" }}
           height={{ base: "200px", md: "300px" }}
-          borderRadius="full" 
+          borderRadius="full"
           background={`${accentColor}15`}
           filter="blur(60px)"
           initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ 
-            scale: mounted ? 1 : 0.8, 
+          animate={{
+            scale: mounted ? 1 : 0.8,
             opacity: mounted ? 0.7 : 0,
             y: [0, -20, 0],
           }}
@@ -159,18 +202,18 @@ const Login = () => {
             scale: { duration: 1.5 }
           }}
         />
-        <MotionBox 
-          position="absolute" 
-          bottom="5%" 
+        <MotionBox
+          position="absolute"
+          bottom="5%"
           left={{ base: "-5%", md: "5%" }}
           width={{ base: "150px", md: "200px" }}
           height={{ base: "150px", md: "200px" }}
-          borderRadius="full" 
+          borderRadius="full"
           background={`${accentColor}10`}
           filter="blur(50px)"
           initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ 
-            scale: mounted ? 1 : 0.8, 
+          animate={{
+            scale: mounted ? 1 : 0.8,
             opacity: mounted ? 0.6 : 0,
             y: [0, 20, 0],
           }}
@@ -180,18 +223,18 @@ const Login = () => {
             scale: { duration: 1.5, delay: 0.5 }
           }}
         />
-        <MotionBox 
-          position="absolute" 
-          top="60%" 
+        <MotionBox
+          position="absolute"
+          top="60%"
           right={{ base: "10%", md: "30%" }}
           width={{ base: "100px", md: "150px" }}
           height={{ base: "100px", md: "150px" }}
-          borderRadius="full" 
+          borderRadius="full"
           background={`${buttonBgColor}15`}
           filter="blur(40px)"
           initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ 
-            scale: mounted ? 1 : 0.8, 
+          animate={{
+            scale: mounted ? 1 : 0.8,
             opacity: mounted ? 0.5 : 0,
             x: [0, 15, 0],
           }}
@@ -204,7 +247,7 @@ const Login = () => {
       </Box>
 
       {/* Top Navigation Bar with Logo */}
-        {/* <MotionBox
+      {/* <MotionBox
           initial={{ y: -50, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.7, ease: "easeOut" }}
@@ -244,9 +287,9 @@ const Login = () => {
           variants={itemVariants}
         >
           {/* Left Column - Brand Message */}
-          <MotionBox 
-            flex="1" 
-            display={{ base: "none", lg: "flex" }} 
+          <MotionBox
+            flex="1"
+            display={{ base: "none", lg: "flex" }}
             flexDirection="column"
             alignItems="flex-start"
             justifyContent="center"
@@ -258,9 +301,9 @@ const Login = () => {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8, delay: 0.5 }}
             >
-              <Heading 
-                as="h1" 
-                size="2xl" 
+              <Heading
+                as="h1"
+                size="2xl"
                 bgGradient={`linear(to-r, ${accentColor}, #B38939)`}
                 bgClip="text"
                 lineHeight="1.2"
@@ -270,10 +313,10 @@ const Login = () => {
               >
                 Welcome Back!
               </Heading>
-              
-              <Text 
-                fontSize="lg" 
-                color="#fff" 
+
+              <Text
+                fontSize="lg"
+                color="#fff"
                 lineHeight="tall"
                 maxW="500px"
                 mb={8}
@@ -282,11 +325,11 @@ const Login = () => {
                 Sign in to continue your journey with our secure escrow service.
                 Protecting your transactions every step of the way.
               </Text>
-              
-              <Box 
-                width="100px" 
-                height="4px" 
-                background={accentColor} 
+
+              <Box
+                width="100px"
+                height="4px"
+                background={accentColor}
                 borderRadius="md"
                 className="accent-bar"
               />
@@ -311,9 +354,9 @@ const Login = () => {
                 className="form-container"
               >
                 {/* Form Header - Mobile Version */}
-                <VStack 
-                  spacing={1} 
-                  mb={6} 
+                <VStack
+                  spacing={1}
+                  mb={6}
                   align="flex-start"
                   display={{ base: "flex", lg: "flex" }}
                 >
@@ -392,10 +435,10 @@ const Login = () => {
                     </FormControl>
 
                     <Box alignSelf="flex-end">
-                      <Link to="#">
-                        <Text 
-                          fontSize="sm" 
-                          color="gray.300" 
+                      <Link to="/forgot-password">  {/* Change this line from "#" to "/forgot-password" */}
+                        <Text
+                          fontSize="sm"
+                          color="gray.300"
                           fontWeight="medium"
                           _hover={{ color: accentColor, textDecoration: "underline" }}
                           className="forgot-password"
@@ -415,12 +458,12 @@ const Login = () => {
                       fontWeight="medium"
                       borderWidth="2px"
                       borderColor={accentColor}
-                      _hover={{ 
+                      _hover={{
                         bg: buttonHoverBgColor,
                         transform: "translateY(-2px)",
                         boxShadow: "lg"
                       }}
-                      _active={{ 
+                      _active={{
                         transform: "translateY(0)",
                         boxShadow: "md"
                       }}
@@ -458,9 +501,9 @@ const Login = () => {
               <Text fontSize={{ base: "sm", md: "md" }} color="gray.600">
                 Don't have an account?{" "}
                 <Link to="/register">
-                  <Text 
-                    as="span" 
-                    color={accentColor} 
+                  <Text
+                    as="span"
+                    color={accentColor}
                     fontWeight="bold"
                     _hover={{ textDecoration: "underline" }}
                     className="register-link"
