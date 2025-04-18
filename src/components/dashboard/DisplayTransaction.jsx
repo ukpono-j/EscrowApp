@@ -300,6 +300,24 @@ const DisplayTransaction = ({ userResponse }) => {
 
 
   const handleWaybillSubmit = async (transactionId) => {
+    // Validate form fields
+    const newErrors = {};
+    if (!waybillDetails.item) newErrors.item = "Item name is required";
+    if (!waybillDetails.price) newErrors.price = "Price is required";
+    if (!waybillDetails.shippingAddress) newErrors.shippingAddress = "Shipping address is required";
+    if (!waybillDetails.trackingNumber) newErrors.trackingNumber = "Tracking number is required";
+    if (!waybillDetails.deliveryDate) newErrors.deliveryDate = "Delivery date is required";
+    if (!waybillDetails.image) newErrors.image = "Image proof is required";
+
+    // If there are errors, set them and stop form submission
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    // Clear any existing errors
+    setErrors({});
+
     const token = localStorage.getItem("auth-token");
     const formData = new FormData();
 
@@ -317,7 +335,7 @@ const DisplayTransaction = ({ userResponse }) => {
     try {
       const response = await axios.post(
         `${BASE_URL}/api/transactions/submit-waybill`,
-        formData, // Pass the FormData directly
+        formData,
         {
           headers: {
             "auth-token": token,
@@ -652,8 +670,8 @@ const DisplayTransaction = ({ userResponse }) => {
                   <button
                     onClick={() => setActiveTab("all")}
                     className={`px-4 py-2 rounded-lg flex-1 text-center transition-all ${activeTab === "all"
-                        ? "bg-[#967532] text-white font-medium"
-                        : "text-gray-400 hover:text-white"
+                      ? "bg-[#967532] text-white font-medium"
+                      : "text-gray-400 hover:text-white"
                       }`}
                   >
                     All <span className="ml-1 px-1.5 py-0.5 bg-[#1d2225] rounded-full text-xs">{transactions.length}</span>
@@ -661,8 +679,8 @@ const DisplayTransaction = ({ userResponse }) => {
                   <button
                     onClick={() => setActiveTab("active")}
                     className={`px-4 py-2 rounded-lg flex-1 text-center transition-all ${activeTab === "active"
-                        ? "bg-[#967532] text-white font-medium"
-                        : "text-gray-400 hover:text-white"
+                      ? "bg-[#967532] text-white font-medium"
+                      : "text-gray-400 hover:text-white"
                       }`}
                   >
                     Active <span className="ml-1 px-1.5 py-0.5 bg-[#1d2225] rounded-full text-xs">
@@ -672,8 +690,8 @@ const DisplayTransaction = ({ userResponse }) => {
                   <button
                     onClick={() => setActiveTab("completed")}
                     className={`px-4 py-2 rounded-lg flex-1 text-center transition-all ${activeTab === "completed"
-                        ? "bg-[#967532] text-white font-medium"
-                        : "text-gray-400 hover:text-white"
+                      ? "bg-[#967532] text-white font-medium"
+                      : "text-gray-400 hover:text-white"
                       }`}
                   >
                     Completed <span className="ml-1 px-1.5 py-0.5 bg-[#1d2225] rounded-full text-xs">
@@ -683,8 +701,8 @@ const DisplayTransaction = ({ userResponse }) => {
                   <button
                     onClick={() => setActiveTab("cancelled")}
                     className={`px-4 py-2 rounded-lg flex-1 text-center transition-all ${activeTab === "cancelled"
-                        ? "bg-[#967532] text-white font-medium"
-                        : "text-gray-400 hover:text-white"
+                      ? "bg-[#967532] text-white font-medium"
+                      : "text-gray-400 hover:text-white"
                       }`}
                   >
                     Cancelled <span className="ml-1 px-1.5 py-0.5 bg-[#1d2225] rounded-full text-xs">
@@ -903,12 +921,12 @@ const DisplayTransaction = ({ userResponse }) => {
                                         </div>
 
                                         <div>
-                                          <h3 className="text-gray-300 mb-2">Price:</h3>
+                                          <h3 className="text-gray-300 mb-2">Price of waybill:</h3>
                                           <input type="number" className="text-white bg-[#111518] border border-[#318AE6] pl-4 outline-none w-full h-12 rounded-xl" value={waybillDetails.price} onChange={(e) => setWaybillDetails({ ...waybillDetails, price: e.target.value })} />
                                         </div>
 
                                         <div>
-                                          <h3 className="text-gray-300 mb-2">Shipping Address:</h3>
+                                          <h3 className="text-gray-300 mb-2">Shipping / Receiver’s Address:</h3>
                                           <input type="text" className="text-white bg-[#111518] border border-[#318AE6] pl-4 outline-none w-full h-12 rounded-xl" value={waybillDetails.shippingAddress} onChange={(e) => setWaybillDetails({ ...waybillDetails, shippingAddress: e.target.value })} />
                                         </div>
 

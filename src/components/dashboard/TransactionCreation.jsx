@@ -61,6 +61,7 @@ const TransactionCreation = () => {
   const [selectedBankCode, setSelectedBankCode] = useState("");
   const [uniqueBanks, setUniqueBanks] = useState([]);
   const [errors, setErrors] = useState([]);
+  const [formValid, setFormValid] = useState(false);
 
   // Calculate the transaction fee and total amount
   const transactionFee = paymentAmount ? (paymentAmount * 0.008).toFixed(2) : "0.00";
@@ -124,26 +125,44 @@ const TransactionCreation = () => {
     fetchBanks();
   }, []);
 
+  // Check if all required fields are filled
+  useEffect(() => {
+    if (
+      paymentName.trim() !== "" &&
+      email.trim() !== "" &&
+      paymentAmount.trim() !== "" &&
+      selectedBankCode.trim() !== "" &&
+      paymentAccountNumber.trim() !== ""
+    ) {
+      setFormValid(true);
+    } else {
+      setFormValid(false);
+    }
+  }, [paymentName, email, paymentAmount, selectedBankCode, paymentAccountNumber]);
+
   const acceptTransactionFunction = (e) => {
     e.preventDefault();
-    if (!selectedBankCode) {
+    
+    // Additional form validation
+    if (!formValid) {
       toast({
-        title: "Please select a bank",
+        title: "Please fill all required fields",
         status: "error",
         duration: 3000,
         isClosable: true,
       });
       return;
     }
+    
     setAcceptTransactionModel(true);
   };
 
   const createNewTransaction = (e) => {
     e.preventDefault();
 
-    if (!selectedBankCode) {
+    if (!formValid) {
       toast({
-        title: "Bank code is required",
+        title: "Please fill all required fields",
         status: "error",
         duration: 3000,
         isClosable: true,
@@ -239,9 +258,6 @@ const TransactionCreation = () => {
       minH="100vh"
       className="font-[Poppins] pr-[28px] pl-[100px] pt-10 md:pl-[30px]"
       w="full"
-      // px={4}
-      // py={8}
-      // bg={bgMain}
       color={textColor}
       transition="background 0.3s ease, color 0.3s ease"
     >
@@ -329,6 +345,7 @@ const TransactionCreation = () => {
                 name="userType"
                 className="sr-only"
                 onClick={() => handleRadioClick("buyer")}
+                required
               />
               <VStack spacing={4}>
                 <Flex
@@ -369,6 +386,7 @@ const TransactionCreation = () => {
                 name="userType"
                 className="sr-only"
                 onClick={() => handleRadioClick("seller")}
+                required
               />
               <VStack spacing={4}>
                 <Flex
@@ -414,6 +432,7 @@ const TransactionCreation = () => {
                 name="courierOption"
                 className="sr-only"
                 onClick={() => handleCourierOptionClick("yes")}
+                required
               />
               <VStack spacing={4}>
                 <Flex
@@ -454,6 +473,7 @@ const TransactionCreation = () => {
                 name="courierOption"
                 className="sr-only"
                 onClick={() => handleCourierOptionClick("no")}
+                required
               />
               <VStack spacing={4}>
                 <Flex
@@ -486,152 +506,165 @@ const TransactionCreation = () => {
             boxShadow={`0px 8px 30px ${shadowColor}`}
             border={cardBorder}
           >
-            <VStack spacing={5} align="start">
-              <FormControl isRequired>
-                <FormLabel fontWeight="bold" color={textColor}>Name</FormLabel>
-                <Input
-                  type="text"
-                  placeholder="Enter Payment Name"
-                  value={paymentName}
-                  onChange={(e) => setPaymentName(e.target.value)}
-                  bg={inputBg}
-                  color={textColor}
-                  borderColor={borderColor}
-                  borderRadius="full"
-                  _hover={{ borderColor: accentColor }}
-                  _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
-                />
-              </FormControl>
+            <form id="paymentForm" onSubmit={acceptTransactionFunction}>
+              <VStack spacing={5} align="start">
+                <FormControl isRequired>
+                  <FormLabel fontWeight="bold" color={textColor}>Name</FormLabel>
+                  <Input
+                    type="text"
+                    placeholder="Enter Payment Name"
+                    value={paymentName}
+                    onChange={(e) => setPaymentName(e.target.value)}
+                    bg={inputBg}
+                    color={textColor}
+                    borderColor={borderColor}
+                    borderRadius="full"
+                    _hover={{ borderColor: accentColor }}
+                    _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
+                    required
+                  />
+                </FormControl>
 
-              <FormControl isRequired>
-                <FormLabel fontWeight="bold" color={textColor}>Email Address</FormLabel>
-                <Input
-                  type="email"
-                  placeholder="Enter Email Address"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  bg={inputBg}
-                  color={textColor}
-                  borderColor={borderColor}
-                  borderRadius="full"
-                  _hover={{ borderColor: accentColor }}
-                  _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
-                />
-              </FormControl>
+                <FormControl isRequired>
+                  <FormLabel fontWeight="bold" color={textColor}>Email Address</FormLabel>
+                  <Input
+                    type="email"
+                    placeholder="Enter Email Address"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    bg={inputBg}
+                    color={textColor}
+                    borderColor={borderColor}
+                    borderRadius="full"
+                    _hover={{ borderColor: accentColor }}
+                    _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
+                    required
+                  />
+                </FormControl>
 
-              <FormControl isRequired>
-                <FormLabel fontWeight="bold" color={textColor}>Payment Amount</FormLabel>
-                <Input
-                  type="number"
-                  placeholder="Enter payment amount"
-                  value={paymentAmount}
-                  onChange={(e) => setPaymentAmount(e.target.value)}
-                  bg={inputBg}
-                  color={textColor}
-                  borderColor={borderColor}
-                  borderRadius="full"
-                  _hover={{ borderColor: accentColor }}
-                  _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
-                />
-              </FormControl>
+                <FormControl isRequired>
+                  <FormLabel fontWeight="bold" color={textColor}>Payment Amount</FormLabel>
+                  <Input
+                    type="number"
+                    placeholder="Enter payment amount"
+                    value={paymentAmount}
+                    onChange={(e) => setPaymentAmount(e.target.value)}
+                    bg={inputBg}
+                    color={textColor}
+                    borderColor={borderColor}
+                    borderRadius="full"
+                    _hover={{ borderColor: accentColor }}
+                    _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
+                    required
+                    min="1"
+                  />
+                </FormControl>
 
-              <FormControl isRequired>
-                <FormLabel fontWeight="bold" color={textColor}>Bank Name</FormLabel>
-                <Select
-                  placeholder="Select Bank"
-                  value={selectedBankCode}
-                  onChange={(e) => {
-                    const selectedBank = uniqueBanks.find(bank => bank.code === e.target.value);
-                    setSelectedBankCode(e.target.value);
-                    setPaymentBank(selectedBank ? selectedBank.name : "");
-                  }}
-                  bg={inputBg}
-                  color={textColor}
-                  borderColor={borderColor}
-                  borderRadius="full"
-                  _hover={{ borderColor: accentColor }}
-                  _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
+                <FormControl isRequired>
+                  <FormLabel fontWeight="bold" color={textColor}>Bank Name</FormLabel>
+                  <Select
+                    placeholder="Select Bank"
+                    value={selectedBankCode}
+                    onChange={(e) => {
+                      const selectedBank = uniqueBanks.find(bank => bank.code === e.target.value);
+                      setSelectedBankCode(e.target.value);
+                      setPaymentBank(selectedBank ? selectedBank.name : "");
+                    }}
+                    bg={inputBg}
+                    color={textColor}
+                    borderColor={borderColor}
+                    borderRadius="full"
+                    _hover={{ borderColor: accentColor }}
+                    _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
+                    required
+                  >
+                    {uniqueBanks.map((bank) => (
+                      <option key={bank.code} value={bank.code}>
+                        {bank.name}
+                      </option>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                <FormControl isRequired>
+                  <FormLabel fontWeight="bold" color={textColor}>Account Number</FormLabel>
+                  <Input
+                    type="text"
+                    placeholder="Enter account number"
+                    value={paymentAccountNumber}
+                    onChange={(e) => setPaymentAccountNumber(e.target.value)}
+                    bg={inputBg}
+                    color={textColor}
+                    borderColor={borderColor}
+                    borderRadius="full"
+                    _hover={{ borderColor: accentColor }}
+                    _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
+                    required
+                    pattern="[0-9]+"
+                    title="Please enter a valid account number (numbers only)"
+                    minLength={10}
+                    maxLength={10}
+                  />
+                </FormControl>
+
+                <FormControl isRequired>
+                  <FormLabel fontWeight="bold" color={textColor}>Payment Description</FormLabel>
+                  <Textarea
+                    placeholder="Enter payment description"
+                    value={paymentDescription}
+                    onChange={(e) => setPaymentDescription(e.target.value)}
+                    bg={inputBg}
+                    required
+                    color={textColor}
+                    borderColor={borderColor}
+                    borderRadius="xl"
+                    _hover={{ borderColor: accentColor }}
+                    _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
+                    h="100px"
+                  />
+                </FormControl>
+
+                {/* Transaction Summary */}
+                <Box
+                  w="full"
+                  bg={useColorModeValue("gray.50", "#0F1624")}
+                  p={4}
+                  borderRadius="lg"
+                  mt={2}
+                  border={cardBorder}
                 >
-                  {uniqueBanks.map((bank) => (
-                    <option key={bank.code} value={bank.code}>
-                      {bank.name}
-                    </option>
-                  ))}
-                </Select>
-              </FormControl>
+                  <Text fontWeight="bold" mb={2} color={textColor}>Transaction Summary</Text>
+                  <Flex justify="space-between" mb={1}>
+                    <Text color={textColor}>Amount:</Text>
+                    <Text color={textColor}>{paymentAmount || "0.00"} NGN</Text>
+                  </Flex>
+                  <Flex justify="space-between" mb={1}>
+                    <Text color={textColor}>Transaction Fee (0.8%):</Text>
+                    <Text color={textColor}>{transactionFee} NGN</Text>
+                  </Flex>
+                  <Divider my={2} borderColor={useColorModeValue("gray.300", "gray.600")} />
+                  <Flex justify="space-between" fontWeight="bold">
+                    <Text color={textColor}>Total Amount:</Text>
+                    <Text color={accentColor}>{totalAmount} NGN</Text>
+                  </Flex>
+                </Box>
 
-              <FormControl isRequired>
-                <FormLabel fontWeight="bold" color={textColor}>Account Number</FormLabel>
-                <Input
-                  type="text"
-                  placeholder="Enter account number"
-                  value={paymentAccountNumber}
-                  onChange={(e) => setPaymentAccountNumber(e.target.value)}
-                  bg={inputBg}
-                  color={textColor}
-                  borderColor={borderColor}
+                <Button
+                  type="submit"
+                  size="lg"
                   borderRadius="full"
-                  _hover={{ borderColor: accentColor }}
-                  _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
-                />
-              </FormControl>
-
-              <FormControl>
-                <FormLabel fontWeight="bold" color={textColor}>Payment Description</FormLabel>
-                <Textarea
-                  placeholder="Enter payment description"
-                  value={paymentDescription}
-                  onChange={(e) => setPaymentDescription(e.target.value)}
-                  bg={inputBg}
-                  color={textColor}
-                  borderColor={borderColor}
-                  borderRadius="xl"
-                  _hover={{ borderColor: accentColor }}
-                  _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
-                  h="100px"
-                />
-              </FormControl>
-
-              {/* Transaction Summary */}
-              <Box
-                w="full"
-                bg={useColorModeValue("gray.50", "#0F1624")}
-                p={4}
-                borderRadius="lg"
-                mt={2}
-                border={cardBorder}
-              >
-                <Text fontWeight="bold" mb={2} color={textColor}>Transaction Summary</Text>
-                <Flex justify="space-between" mb={1}>
-                  <Text color={textColor}>Amount:</Text>
-                  <Text color={textColor}>{paymentAmount || "0.00"} NGN</Text>
-                </Flex>
-                <Flex justify="space-between" mb={1}>
-                  <Text color={textColor}>Transaction Fee (0.8%):</Text>
-                  <Text color={textColor}>{transactionFee} NGN</Text>
-                </Flex>
-                <Divider my={2} borderColor={useColorModeValue("gray.300", "gray.600")} />
-                <Flex justify="space-between" fontWeight="bold">
-                  <Text color={textColor}>Total Amount:</Text>
-                  <Text color={accentColor}>{totalAmount} NGN</Text>
-                </Flex>
-              </Box>
-
-              <Button
-                onClick={acceptTransactionFunction}
-                size="lg"
-                borderRadius="full"
-                w="full"
-                mt={4}
-                bg={accentColor}
-                color="white"
-                _hover={{ bg: accentHoverColor }}
-                boxShadow={`0px 4px 10px ${shadowColor}`}
-                letterSpacing="wide"
-              >
-                Start Transaction
-              </Button>
-            </VStack>
+                  w="full"
+                  mt={4}
+                  bg={formValid ? accentColor : useColorModeValue("gray.300", "#2D3748")}
+                  color="white"
+                  _hover={{ bg: formValid ? accentHoverColor : useColorModeValue("gray.300", "#2D3748") }}
+                  boxShadow={formValid ? `0px 4px 10px ${shadowColor}` : "none"}
+                  isDisabled={!formValid}
+                >
+                  Start Transaction
+                </Button>
+              </VStack>
+            </form>
           </Box>
         )}
 
