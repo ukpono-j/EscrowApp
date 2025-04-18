@@ -100,7 +100,7 @@ const Hero = () => {
               gap={4} 
               direction={{ base: "column", sm: "row" }}
               justify={{ base: "flef-start", lg: "flex-start" }}
-              align="center"
+              align="start"
             >
               <Link to="/login">
                 <Box
