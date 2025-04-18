@@ -26,7 +26,7 @@ const Hero = () => {
       bg={isDark ? "gray.900" : "linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)"}
       color={isDark ? "white" : "gray.800"}
       py={{base: "130px", md: "140px", lg: "160px"}}
-      px={{base: 1, md: 6, lg: 8}}
+      px={{base: 0, md: 6, lg: 8}}
     >
       {/* Background elements */}
       <Box 
