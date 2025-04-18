@@ -54,11 +54,11 @@ const About = () => {
               </div>
               
               <div className="text-content">
-                <p>
+                {/* <p>
                   At Sylo, we believe that trust is the currency of every successful transaction. 
                   Whether you're dealing with digital goods, services, or high-stake purchases, 
                   uncertainty shouldn't be part of the deal. That's where we come in.
-                </p>
+                </p> */}
                 
                 <p>
                   We're a modern, tech-forward escrow platform built to protect both buyers and sellers, 

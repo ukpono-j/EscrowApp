@@ -22,21 +22,21 @@ const FAQ = () => {
   const accordionData = [
     {
       id: 1,
-      title: "What is TrustLink Escrow?",
+      title: "What is Sylo Escrow?",
       content:
-        "TrustLink Escrow is a secure payment service that acts as a trusted third party between a buyer and a seller. It ensures that the funds are held safely until both parties fulfill their obligations in a transaction.",
+        "Sylo is a secure payment service that acts as a trusted third party between a buyer and a seller. It ensures that the funds are held safely until both parties fulfill their obligations in a transaction.",
     },
     {
       id: 2,
-      title: "How does TrustLink Escrow work?",
+      title: "How does Sylo work?",
       content:
-        "When a buyer and seller agree on a transaction, the buyer sends the payment to TrustLink Escrow. TrustLink holds the funds until the buyer confirms receipt of the goods or services. Once the buyer is satisfied, TrustLink releases the funds to the seller.",
+        "When a buyer and seller agree on a transaction, the buyer sends the payment to Sylo. Sylo holds the funds until the buyer confirms receipt of the goods or services. Once the buyer is satisfied, Sylo releases the funds to the seller.",
     },
     {
       id: 3,
-      title: "Is TrustLink Escrow safe to use?",
+      title: "Is Sylo safe to use?",
       content:
-        "Yes, TrustLink Escrow is highly secure and uses encryption and other security measures to protect your transactions. We verify the identity of all users to ensure a safe and reliable escrow service.",
+        "Yes, Sylo is highly secure and uses encryption and other security measures to protect your transactions. We verify the identity of all users to ensure a safe and reliable escrow service.",
     },
     {
       id: 4,
@@ -48,7 +48,7 @@ const FAQ = () => {
       id: 5,
       title: "What types of payments are accepted?",
       content:
-        "TrustLink Escrow accepts various payment methods, including credit cards, bank transfers, and digital wallets. We provide a convenient and secure way for buyers and sellers to transact online.",
+        "Sylo Escrow accepts various payment methods, including credit cards, bank transfers, and digital wallets. We provide a convenient and secure way for buyers and sellers to transact online.",
     },
   ];
 

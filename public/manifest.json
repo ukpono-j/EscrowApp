@@ -1,6 +1,6 @@
 {
-  "short_name": "Middleman",
-  "name": "Middleman",
+  "short_name": "Sylo",
+  "name": "Sylo",
   "description": "Your most trusted escrow app for transaction",
   "start_url": "/",
   "display": "standalone",

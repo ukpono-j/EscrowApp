@@ -283,7 +283,7 @@ const Footer = () => {
                     <Icon as={FaEnvelope} boxSize={4} />
                   </Box>
                   <Text fontSize={{ base: "sm", md: "md" }} color="gray.300">
-                    support@middleman.com
+                    support@sylo.com
                   </Text>
                 </Flex>
                 <Flex align="center" gap={3}>

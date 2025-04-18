@@ -211,7 +211,7 @@ const MyTransaction = ({ sidebarCollapsed = true }) => {
         {/* Features Section */}
         <div className="mt-24 mb-12">
           <h3 className="text-3xl font-[900] mb-12 text-[#9B7933]">
-            Why Choose EscrowPay
+            Why Choose Sylo
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
