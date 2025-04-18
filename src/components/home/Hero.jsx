@@ -26,7 +26,7 @@ const Hero = () => {
       bg={isDark ? "gray.900" : "linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)"}
       color={isDark ? "white" : "gray.800"}
       py={{base: "130px", md: "140px", lg: "160px"}}
-      px={{base: 4, md: 6, lg: 8}}
+      px={{base: 1, md: 6, lg: 8}}
     >
       {/* Background elements */}
       <Box 
@@ -41,6 +41,7 @@ const Hero = () => {
         pointerEvents="none"
       />
       
+
       <Container maxW="1440px" position="relative" zIndex="1">
         <Flex
           direction={{ base: "column", lg: "row" }}
