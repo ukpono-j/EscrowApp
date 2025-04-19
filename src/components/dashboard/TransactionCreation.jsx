@@ -104,17 +104,33 @@ const TransactionCreation = () => {
     const fetchBanks = async () => {
       try {
         const token = localStorage.getItem("auth-token");
+
+        console.log("Attempting to fetch banks from:", `${BASE_URL}/api/transactions/banks`);
+
         const response = await axios.get(`${BASE_URL}/api/transactions/banks`, {
           headers: {
             "auth-token": token,
           },
         });
 
-        setBanks(response.data.data);
+        if (response.data && response.data.data && Array.isArray(response.data.data)) {
+          console.log("Banks fetched successfully:", response.data.data.length);
+          setBanks(response.data.data);
+        } else {
+          console.error("Invalid banks data format:", response.data);
+          toast({
+            title: "Error loading banks",
+            description: "Invalid data format received",
+            status: "error",
+            duration: 3000,
+            isClosable: true,
+          });
+        }
       } catch (error) {
         console.error("Error fetching banks:", error);
         toast({
           title: "Error fetching banks",
+          description: error.response?.data?.message || "Network error occurred",
           status: "error",
           duration: 3000,
           isClosable: true,
@@ -140,9 +156,87 @@ const TransactionCreation = () => {
     }
   }, [paymentName, email, paymentAmount, selectedBankCode, paymentAccountNumber]);
 
+  useEffect(() => {
+    // If banks array is empty after 3 seconds, it might be failing in production
+    const fallbackTimer = setTimeout(() => {
+      if (banks.length === 0) {
+        console.log("Using fallback banks mechanism");
+        // Use a cached/hardcoded list of major Nigerian banks as fallback
+        const fallbackBanks = [
+          { name: "Access Bank", code: "044" },
+          { name: "First Bank of Nigeria", code: "011" },
+          { name: "Guaranty Trust Bank", code: "058" },
+          { name: "United Bank for Africa", code: "033" },
+          { name: "Zenith Bank", code: "057" },
+          { name: "Fidelity Bank", code: "070" },
+          { name: "Ecobank Nigeria", code: "050" },
+          { name: "Union Bank of Nigeria", code: "032" },
+          { name: "Stanbic IBTC Bank", code: "221" },
+          { name: "Sterling Bank", code: "232" },
+          { name: "Wema Bank", code: "035" },
+          { name: "First City Monument Bank", code: "214" },
+          { name: "Polaris Bank", code: "076" }
+        ];
+        setBanks(fallbackBanks);
+      }
+    }, 3000);
+
+    return () => clearTimeout(fallbackTimer);
+  }, [banks]);
+
+  // Add this function to verify account numbers
+  const verifyBankAccount = async () => {
+    if (!selectedBankCode || !paymentAccountNumber || paymentAccountNumber.length !== 10) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("auth-token");
+
+      toast({
+        title: "Verifying account...",
+        status: "info",
+        duration: 2000,
+        isClosable: true,
+      });
+
+      const response = await axios.post(
+        `${BASE_URL}/api/transactions/bank/verify`,
+        {
+          account_number: paymentAccountNumber,
+          bank_code: selectedBankCode
+        },
+        {
+          headers: {
+            "auth-token": token,
+          },
+        }
+      );
+
+      if (response.data.status) {
+        toast({
+          title: "Account verified!",
+          description: `${response.data.data.account_name}`,
+          status: "success",
+          duration: 3000,
+          isClosable: true,
+        });
+      }
+    } catch (error) {
+      console.error("Error verifying account:", error.response || error);
+      toast({
+        title: "Verification failed",
+        description: error.response?.data?.message || "Could not verify account details",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
   const acceptTransactionFunction = (e) => {
     e.preventDefault();
-    
+
     // Additional form validation
     if (!formValid) {
       toast({
@@ -153,7 +247,7 @@ const TransactionCreation = () => {
       });
       return;
     }
-    
+
     setAcceptTransactionModel(true);
   };
 
@@ -593,6 +687,11 @@ const TransactionCreation = () => {
                     placeholder="Enter account number"
                     value={paymentAccountNumber}
                     onChange={(e) => setPaymentAccountNumber(e.target.value)}
+                    onBlur={() => {
+                      if (paymentAccountNumber.length === 10 && selectedBankCode) {
+                        verifyBankAccount();
+                      }
+                    }}
                     bg={inputBg}
                     color={textColor}
                     borderColor={borderColor}
