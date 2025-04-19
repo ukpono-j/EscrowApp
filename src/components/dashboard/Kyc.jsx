@@ -114,7 +114,6 @@ const Kyc = () => {
     setIsSidebarCollapsed(isCollapsed);
   };
 
-
   const handleShowProfile = () => {
     setShowToggleContainer(false);
     setShowProfile(true);
@@ -125,60 +124,203 @@ const Kyc = () => {
     setShowProfile(false);
   };
 
-  const handleInputChange = (e) => {
-    const { name, value, files } = e.target;
-    let file = null;
-
-    if (name === "documentPhoto" || name === "personalPhoto") {
-      file = files ? files[0] : null;
-      // Update file preview based on the input name
-      if (name === "documentPhoto") {
-        setDocumentPhotoPreview(file ? URL.createObjectURL(file) : null);
-      } else if (name === "personalPhoto") {
-        setPersonalPhotoPreview(file ? URL.createObjectURL(file) : null);
+  // Function to convert a File to base64 string
+  const fileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      if (!file) {
+        resolve(null);
+        return;
       }
-    }
-
-    setFormData((prevData) => ({
-      ...prevData,
-      [name]: files ? file : value,
-      firstName: name === "firstName" ? value : prevData.firstName,
-      lastName: name === "lastName" ? value : prevData.lastName,
-      dateOfBirth: name === "dateOfBirth" ? value : prevData.dateOfBirth,
-    }));
+      
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = (error) => reject(error);
+    });
   };
 
-  // useEffect(() => {
-  //   // Fetch KYC status from your backend
-  //   const fetchKycStatus = async () => {
-  //     try {
-  //       setIsLoading(true);
-  //       const token = localStorage.getItem("auth-token");
-  //       if (token) {
-  //         axios.defaults.headers.common["auth-token"] = token;
-  //       }
-  //       const response = await axios.get(`${BASE_URL}/api/kyc/kyc-details`, {
-  //         headers: {
-  //           "auth-token": token,
-  //         },
-  //       });
+  // Function to convert base64 string back to File
+  const base64ToFile = async (dataUrl, fileName, mimeType) => {
+    if (!dataUrl) return null;
+    
+    const res = await fetch(dataUrl);
+    const blob = await res.blob();
+    return new File([blob], fileName, { type: mimeType });
+  };
 
-  //       setIsKycSubmitted(response.data.isKycSubmitted);
-  //     } catch (error) {
-  //       console.error("Error fetching KYC status:", error);
-  //       toast({
-  //         title: "Error fetching KYC status",
-  //         status: "error",
-  //         duration: 3000,
-  //         isClosable: true,
-  //       });
-  //     } finally {
-  //       setIsLoading(false);
-  //     }
-  //   };
+  // Function to save form data with image files to localStorage
+  const saveFormDataToLocalStorage = async () => {
+    // Convert File objects to base64 strings
+    let documentPhotoBase64 = null;
+    let personalPhotoBase64 = null;
+    
+    if (formData.documentPhoto) {
+      documentPhotoBase64 = await fileToBase64(formData.documentPhoto);
+    }
+    
+    if (formData.personalPhoto) {
+      personalPhotoBase64 = await fileToBase64(formData.personalPhoto);
+    }
+    
+    const dataToSave = {
+      documentType: formData.documentType,
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      dateOfBirth: formData.dateOfBirth,
+      // Store base64 data and metadata for the files
+      documentPhoto: documentPhotoBase64 ? {
+        data: documentPhotoBase64,
+        name: formData.documentPhoto?.name || 'document-photo.jpg',
+        type: formData.documentPhoto?.type || 'image/jpeg'
+      } : null,
+      personalPhoto: personalPhotoBase64 ? {
+        data: personalPhotoBase64,
+        name: formData.personalPhoto?.name || 'personal-photo.jpg',
+        type: formData.personalPhoto?.type || 'image/jpeg'
+      } : null
+    };
+    
+    try {
+      localStorage.setItem('kycFormData', JSON.stringify(dataToSave));
+    } catch (error) {
+      // Handle cases where localStorage might be full
+      console.error("Error saving to localStorage:", error);
+      toast({
+        title: "Warning",
+        description: "Unable to save your form progress locally due to storage limitations.",
+        status: "warning",
+        duration: 5000,
+        isClosable: true,
+      });
+      
+      // Try to save without the images as fallback
+      const smallerDataToSave = {
+        documentType: formData.documentType,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        dateOfBirth: formData.dateOfBirth
+      };
+      localStorage.setItem('kycFormData', JSON.stringify(smallerDataToSave));
+    }
+  };
 
-  //   fetchKycStatus();
-  // }, [toast]);
+  // Function to load saved form data including images
+  const loadSavedFormData = async () => {
+    try {
+      const savedData = localStorage.getItem('kycFormData');
+      if (!savedData) return;
+      
+      const parsedData = JSON.parse(savedData);
+      
+      // Set text fields
+      setFormData(prevData => ({
+        ...prevData,
+        documentType: parsedData.documentType || '',
+        firstName: parsedData.firstName || '',
+        lastName: parsedData.lastName || '',
+        dateOfBirth: parsedData.dateOfBirth || ''
+      }));
+      
+      // Restore document photo if available
+      if (parsedData.documentPhoto?.data) {
+        const documentFile = await base64ToFile(
+          parsedData.documentPhoto.data,
+          parsedData.documentPhoto.name,
+          parsedData.documentPhoto.type
+        );
+        
+        if (documentFile) {
+          setFormData(prevData => ({
+            ...prevData,
+            documentPhoto: documentFile
+          }));
+          setDocumentPhotoPreview(parsedData.documentPhoto.data);
+        }
+      }
+      
+      // Restore personal photo if available
+      if (parsedData.personalPhoto?.data) {
+        const personalFile = await base64ToFile(
+          parsedData.personalPhoto.data,
+          parsedData.personalPhoto.name,
+          parsedData.personalPhoto.type
+        );
+        
+        if (personalFile) {
+          setFormData(prevData => ({
+            ...prevData,
+            personalPhoto: personalFile
+          }));
+          setPersonalPhotoPreview(parsedData.personalPhoto.data);
+        }
+      }
+    } catch (error) {
+      console.error("Error loading saved form data:", error);
+    }
+  };
+
+  // Function to clear saved form data
+  const clearSavedFormData = () => {
+    localStorage.removeItem('kycFormData');
+  };
+
+  // Call saveFormDataToLocalStorage whenever form data changes
+  useEffect(() => {
+    // Don't save if KYC is already submitted
+    if (isKycSubmitted) return;
+    
+    // Only save if there's actual data to save
+    if (formData.documentType || formData.firstName || formData.lastName || formData.dateOfBirth ||
+        formData.documentPhoto || formData.personalPhoto) {
+      // Debounce the save operation to prevent excessive storage operations
+      const saveTimeout = setTimeout(() => {
+        saveFormDataToLocalStorage();
+      }, 500);
+      
+      return () => clearTimeout(saveTimeout);
+    }
+  }, [formData, isKycSubmitted]);
+
+  // Load saved form data on component mount
+  useEffect(() => {
+    // Only load saved data if KYC hasn't been submitted yet
+    if (!isKycSubmitted && !isLoading) {
+      loadSavedFormData();
+    }
+  }, [isKycSubmitted, isLoading]);
+
+  // Modified handleInputChange for better image handling
+  const handleInputChange = (e) => {
+    const { name, value, files } = e.target;
+    
+    if (name === "documentPhoto" || name === "personalPhoto") {
+      const file = files ? files[0] : null;
+      
+      if (file) {
+        // Create a preview URL
+        const previewUrl = URL.createObjectURL(file);
+        
+        // Update preview state
+        if (name === "documentPhoto") {
+          setDocumentPhotoPreview(previewUrl);
+        } else if (name === "personalPhoto") {
+          setPersonalPhotoPreview(previewUrl);
+        }
+        
+        // Update form data
+        setFormData(prevData => ({
+          ...prevData,
+          [name]: file
+        }));
+      }
+    } else {
+      // Handle regular input fields
+      setFormData(prevData => ({
+        ...prevData,
+        [name]: value
+      }));
+    }
+  };
 
   useEffect(() => {
     // Fetch KYC status from your backend
@@ -227,8 +369,6 @@ const Kyc = () => {
 
     fetchKycStatus();
   }, [toast]);
-
-
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -285,6 +425,9 @@ const Kyc = () => {
       });
       setDocumentPhotoPreview(null);
       setPersonalPhotoPreview(null);
+      
+      // Clear saved form data from localStorage
+      clearSavedFormData();
 
       // Update KYC status
       setIsKycSubmitted(true);
