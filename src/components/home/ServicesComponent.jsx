@@ -57,10 +57,10 @@ const ServicesComponent = () => {
           {/* Main Title */}
           <Box 
             className="service_title" 
-            textAlign="center" 
+            textAlign="left" 
             mb={{ base: 12, md: 16 }}
             fontWeight="900"
-            fontSize={{ base: "40px", md: "50px" }}
+            fontSize={{ base: "34px", md: "50px" }}
             lineHeight={{ base: "44px", md: "60px" }}
             mx="auto"
             maxW={{ base: "100%", md: "560px" }}
@@ -82,8 +82,8 @@ const ServicesComponent = () => {
               flex="1"
               display="flex"
               flexDirection="column"
-              alignItems={{ base: "center", md: "flex-start" }}
-              textAlign={{ base: "center", md: "left" }}
+              alignItems={{ base: "flex-start", md: "flex-start" }}
+              textAlign={{ base: "left", md: "left" }}
             >
               <h1 className="font-[900] text-[40px] service_sub_title">
                 Buyer Protection
@@ -106,12 +106,14 @@ const ServicesComponent = () => {
                 <span className="highlight-text">Start using Sylo today and experience next-level buyer confidence.</span>
               </Box>
               
-              <Link
+             <div className="flex w-full border">
+             <Link
                 to="/register"
                 className="mt-5 flex rounded-full items-center nav-btn font-bold justify-center px-8 py-3 text-[#fff] text-[17px] bg-[#B38939] border-2 border-[#B38939] login_btn"
               >
                 Get Started now
               </Link>
+             </div>
             </Box>
             
             <Box 
@@ -183,8 +185,8 @@ const ServicesComponent = () => {
               flex="1"
               display="flex"
               flexDirection="column"
-              alignItems={{ base: "center", md: "flex-start" }}
-              textAlign={{ base: "center", md: "left" }}
+              alignItems={{ base: "flex-start", md: "flex-start" }}
+              textAlign={{ base: "left", md: "left" }}
             >
               <h1 className="font-[900] text-[40px] service_sub_title">
                 Seller Protection
@@ -209,7 +211,7 @@ const ServicesComponent = () => {
               
               <Link
                 to="/register"
-                className="mt-5 rounded-full flex items-center nav-btn justify-center font-bold px-10 py-3 text-[#fff] text-[17px] bg-[#B38939] border-2 border-[#B38939] login_btn"
+                className="mt-5 rounded-full flex nav-btn justify-center font-bold px-10 py-3 text-[#fff] text-[17px] bg-[#B38939] border-2 border-[#B38939] login_btn"
               >
                 Get Started now
               </Link>
@@ -220,7 +222,7 @@ const ServicesComponent = () => {
           <Flex 
             ref={addToRefs}
             direction={{ base: "column", md: "row" }}
-            align="center"
+            align="flex-start"
             justify="space-between"
             gap={10}
             mb={6}
@@ -230,8 +232,8 @@ const ServicesComponent = () => {
               flex="1"
               display="flex"
               flexDirection="column"
-              alignItems={{ base: "center", md: "flex-start" }}
-              textAlign={{ base: "center", md: "left" }}
+              alignItems={{ base: "flex-start", md: "flex-start" }}
+              textAlign={{ base: "left", md: "left" }}
             >
               <h1 className="font-[900] text-[40px] service_sub_title">
                 Fraud Protection

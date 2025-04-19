@@ -186,6 +186,7 @@ const FAQ = () => {
                   </Box>
                 </Flex>
                 
+
                 <ScaleFade in={openAccordionId === item.id}>
                   {openAccordionId === item.id && (
                     <Box 
@@ -243,7 +244,7 @@ const FAQ = () => {
                 fontWeight="bold"
                 fontSize={{ base: "36px", md: "42px", lg: "50px" }}
                 lineHeight={{ base: "44px", md: "60px" }}
-                textAlign={{ base: "center", md: "left" }}
+                textAlign={{ base: "left", md: "left" }}
                 textTransform="uppercase"
                 mb={4}
               >
@@ -256,7 +257,7 @@ const FAQ = () => {
                 fontWeight="bold" 
                 mt={4} 
                 fontSize={{ base: "14px", md: "15px" }}
-                textAlign={{ base: "center", md: "left" }}
+                textAlign={{ base: "left", md: "left" }}
               >
                 What is Sylo Escrow?
               </Text>
@@ -267,7 +268,7 @@ const FAQ = () => {
                 mt={4} 
                 fontSize={{ base: "14px", md: "15px" }}
                 lineHeight="1.8"
-                textAlign={{ base: "center", md: "left" }}
+                textAlign={{ base: "left", md: "left" }}
               >
                 Sylo is a secure, easy-to-use escrow platform that protects both buyers and sellers during online and offline transactions. We act as a trusted third-party, holding funds securely until both parties are satisfied and the deal is complete. Whether it's services, products, or high-value exchanges — Sylo ensures no one gets cheated.
               </Text>
@@ -276,12 +277,12 @@ const FAQ = () => {
             <MotionBox 
               variants={itemVariants}
               display="flex"
-              justifyContent={{ base: "center", md: "flex-start" }}
+              justifyContent={{ base: "flex-start", md: "flex-start" }}
               mt={6}
             >
               <Link to="/register">
                 <Button
-                  className="start_btn"
+                  className="start_btn w-full"
                   bg="#B38939"
                   color="white"
                   borderRadius="full"

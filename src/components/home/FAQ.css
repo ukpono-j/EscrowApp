@@ -154,11 +154,6 @@
   .faq h1 {
     font-size: 42px;
     line-height: 48px;
-    text-align: center;
-  }
-  
-  .faq p {
-    text-align: center;
   }
 }
 
@@ -166,7 +161,6 @@
   .faq h1 {
     font-size: 36px;
     line-height: 42px;
-    text-align: center;
     margin-bottom: 1rem;
   }
   
