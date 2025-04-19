@@ -19,7 +19,7 @@ const About = () => {
 
     // Initial check
     handleScroll();
-    
+
     window.addEventListener("scroll", handleScroll);
     return () => {
       window.removeEventListener("scroll", handleScroll);
@@ -43,37 +43,39 @@ const About = () => {
               <div className="floating-element blue-square"></div>
             </div>
           </div>
-          
+
           {/* Content Column */}
           <div className={`about-content-column ${isVisible ? "animate-in" : ""}`}>
             <div className="content-wrapper">
               <div className="heading-container">
-                <span className="subheading">Who We Are</span>
-                <h2 className="main-heading">Trustworthy Escrow Services</h2>
+                <span className="subheading font-bold">Who We Are</span>
+                <h2 className="main-heading">Built for Trust, Powered by Security</h2>
                 <div className="heading-accent"></div>
               </div>
-              
+
               <div className="text-content">
                 {/* <p>
                   At Sylo, we believe that trust is the currency of every successful transaction. 
                   Whether you're dealing with digital goods, services, or high-stake purchases, 
                   uncertainty shouldn't be part of the deal. That's where we come in.
                 </p> */}
-                
+
                 <p>
-                  We're a modern, tech-forward escrow platform built to protect both buyers and sellers, 
-                  no matter the industry. From freelancers and online sellers to real estate investors 
-                  and everyday users, Sylo acts as your secure middle ground, holding funds safely until 
-                  both sides are satisfied.
+                  Sylo bridges the gap between buyers and sellers in Nigeria. Our escrow process holds funds safely until delivery is confirmed, eliminating fraud and fear. From freelancers to small businesses, Sylo gives everyone a fair chance in digital trade.
                 </p>
-                
+
                 <div className="highlight-box">
                   <span>With Sylo, no one gets paid until the job is done right.</span>
                 </div>
-                
-                <Link to="/transactions" className="gold-button rounded-full">
-                  Start Transactions
-                </Link>
+
+                <div className="flex w-full">
+                  <Link
+                    to="/register"
+                    className="mt-5 flex w-full rounded-full items-center font-bold justify-center px-8 py-3 text-[#fff] text-[17px] bg-[#B38939] border-2 border-[#B38939]"
+                  >
+                    Get Started now
+                  </Link>
+                </div>
               </div>
             </div>
           </div>

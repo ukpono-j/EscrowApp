@@ -80,7 +80,7 @@ const Hero = () => {
               mb={6}
               letterSpacing="-0.02em"
             >
-              Secure Your Deals with Confidence
+              Sylo: Trade with Confidence, Every Time
             </Text>
             
             <Text
@@ -92,9 +92,12 @@ const Hero = () => {
               maxW={{ base: "100%", md: "90%", lg: "100%" }}
               // mx={{ base: "auto", lg: "0" }}
             >
+               <Text as="span" fontWeight="600" color="#B38939">Sylo</Text> is Nigeria’s trusted escrow platform — protecting buyers and sellers by securely holding funds until delivery is confirmed. Whether you're buying a phone on Instagram or selling goods to rural customers, our platform ensures that every transaction is handled with integrity and security, especially in the $6.7 billion off-grid market.
+{/* 
               Experience peace of mind with <Text as="span" fontWeight="600" color="#B38939">Sylo</Text>, 
-              your trusted partner for secure and transparent business dealings. Our platform ensures that 
-              every transaction is handled with integrity, providing a seamless experience for both buyers and sellers.
+              your trusted partner for secure and transparent business dealings.  */}
+              {/* Our platform ensures that 
+              every transaction is handled with integrity, providing a seamless experience for both buyers and sellers. */}
             </Text>
             
             <Flex 

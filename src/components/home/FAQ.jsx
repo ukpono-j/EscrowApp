@@ -24,31 +24,31 @@ const FAQ = () => {
       id: 1,
       title: "What is Sylo Escrow?",
       content:
-        "Sylo is a secure payment service that acts as a trusted third party between a buyer and a seller. It ensures that the funds are held safely until both parties fulfill their obligations in a transaction.",
+        "Sylo is a secure, easy-to-use escrow platform that protects buyers and sellers during online and offline transactions. We hold funds until both parties are satisfied with the deal.",
     },
     {
       id: 2,
       title: "How does Sylo work?",
       content:
-        "When a buyer and seller agree on a transaction, the buyer sends the payment to Sylo. Sylo holds the funds until the buyer confirms receipt of the goods or services. Once the buyer is satisfied, Sylo releases the funds to the seller.",
+        "Buyers deposit money into Sylo escrow. Once the product or service is delivered and approved, Sylo releases the funds to the seller.",
     },
     {
       id: 3,
       title: "Is Sylo safe to use?",
       content:
-        "Yes, Sylo is highly secure and uses encryption and other security measures to protect your transactions. We verify the identity of all users to ensure a safe and reliable escrow service.",
+        "Yes! Sylo uses top-tier encryption and user verification to ensure maximum safety.",
     },
     {
       id: 4,
       title: "How long does the escrow process take?",
       content:
-        "The length of the escrow process depends on the agreement between the buyer and seller and the type of transaction. It can vary from a few days to several weeks, depending on the terms of the deal.",
+        "Typically between 1–5 business days depending on confirmation.",
     },
     {
       id: 5,
       title: "What types of payments are accepted?",
       content:
-        "Sylo Escrow accepts various payment methods, including credit cards, bank transfers, and digital wallets. We provide a convenient and secure way for buyers and sellers to transact online.",
+        "We support mobile money, bank transfers, and major payment methods in Nigeria.",
     },
   ];
 
