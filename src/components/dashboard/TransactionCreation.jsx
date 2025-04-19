@@ -25,6 +25,8 @@ import {
 } from "@chakra-ui/react";
 import { MdClose } from "react-icons/md";
 import defaultProfileImage from '../../assets/profile_icon.png';
+import nigeriaBanks, { getBankNameFromCode } from "../../data/banksList";
+
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 
@@ -106,9 +108,8 @@ const TransactionCreation = () => {
         const token = localStorage.getItem("auth-token");
         setErrors([]);
 
-        console.log("Fetching banks from:", `${BASE_URL}/api/transactions/banks`);
+        console.log("Attempting to fetch banks from:", `${BASE_URL}/api/transactions/banks`);
 
-        // Add timeout to prevent infinite loading
         const response = await axios.get(`${BASE_URL}/api/transactions/banks`, {
           headers: {
             "auth-token": token,
@@ -118,15 +119,16 @@ const TransactionCreation = () => {
 
         if (response.data && response.data.data && Array.isArray(response.data.data)) {
           console.log("Banks fetched successfully:", response.data.data.length);
-          setBanks(response.data.data);
-
-          // Immediately set up fallback banks if the fetched list is empty
-          if (response.data.data.length === 0) {
-            setFallbackBanks();
+          if (response.data.data.length > 0) {
+            setBanks(response.data.data);
+          } else {
+            // Use fallback if API returned empty array
+            console.log("API returned empty array, using fallback banks");
+            setBanks(nigeriaBanks);
           }
         } else {
           console.error("Invalid banks data format:", response.data);
-          setFallbackBanks();
+          setBanks(nigeriaBanks);
           toast({
             title: "Using default bank list",
             description: "Could not load live bank data",
@@ -137,7 +139,7 @@ const TransactionCreation = () => {
         }
       } catch (error) {
         console.error("Error fetching banks:", error);
-        setFallbackBanks();
+        setBanks(nigeriaBanks);
         toast({
           title: "Using default bank list",
           description: "Network error occurred",
@@ -148,29 +150,9 @@ const TransactionCreation = () => {
       }
     };
 
-    // Add this function to set fallback banks
-    const setFallbackBanks = () => {
-      console.log("Using fallback banks list");
-      const fallbackBanks = [
-        { name: "Access Bank", code: "044" },
-        { name: "First Bank of Nigeria", code: "011" },
-        { name: "Guaranty Trust Bank", code: "058" },
-        { name: "United Bank for Africa", code: "033" },
-        { name: "Zenith Bank", code: "057" },
-        { name: "Fidelity Bank", code: "070" },
-        { name: "Ecobank Nigeria", code: "050" },
-        { name: "Union Bank of Nigeria", code: "032" },
-        { name: "Stanbic IBTC Bank", code: "221" },
-        { name: "Sterling Bank", code: "232" },
-        { name: "Wema Bank", code: "035" },
-        { name: "First City Monument Bank", code: "214" },
-        { name: "Polaris Bank", code: "076" }
-      ];
-      setBanks(fallbackBanks);
-    };
-
     fetchBanks();
   }, [toast]);
+
 
   // Check if all required fields are filled
   useEffect(() => {
@@ -217,12 +199,34 @@ const TransactionCreation = () => {
 
   // Add this function to verify account numbers
 
+  const handleBankSelection = (e) => {
+    const code = e.target.value;
+    setSelectedBankCode(code);
 
+    // Use the helper function to get bank name from code
+    const name = getBankNameFromCode(code);
+    setPaymentBank(name);
+  };
+
+
+
+  // Enhanced bank account verification with better error handling
   const verifyBankAccount = async () => {
-    if (!selectedBankCode || !paymentAccountNumber || paymentAccountNumber.length !== 10) {
+    if (!selectedBankCode || !paymentAccountNumber) {
       toast({
         title: "Validation Error",
-        description: "Please provide a valid 10-digit account number and select a bank",
+        description: "Please provide an account number and select a bank",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    if (paymentAccountNumber.length !== 10) {
+      toast({
+        title: "Invalid Account Number",
+        description: "Please enter a valid 10-digit account number",
         status: "error",
         duration: 3000,
         isClosable: true,
@@ -233,8 +237,10 @@ const TransactionCreation = () => {
     try {
       const token = localStorage.getItem("auth-token");
 
+      // Show verification in progress
       toast({
         title: "Verifying account...",
+        description: `${getBankNameFromCode(selectedBankCode)} - ${paymentAccountNumber}`,
         status: "info",
         duration: 2000,
         isClosable: true,
@@ -250,21 +256,27 @@ const TransactionCreation = () => {
           headers: {
             "auth-token": token,
           },
-          timeout: 8000
+          timeout: 10000
         }
       );
 
       if (response.data.status) {
+        // Success - account verified
+        const accountName = response.data.data.account_name;
         toast({
           title: "Account verified!",
-          description: `${response.data.data.account_name}`,
+          description: accountName,
           status: "success",
           duration: 3000,
           isClosable: true,
         });
-        // Set account name to verified name
-        setPaymentName(response.data.data.account_name);
+
+        // Optionally update the payment name field with the verified account name
+        if (!paymentName.trim()) {
+          setPaymentName(accountName);
+        }
       } else {
+        // API returned success: false
         toast({
           title: "Verification failed",
           description: response.data.message || "Could not verify account details",
@@ -274,12 +286,30 @@ const TransactionCreation = () => {
         });
       }
     } catch (error) {
-      console.error("Error verifying account:", error.response || error);
+      console.error("Error verifying account:", error);
+
+      // Provide more specific error messaging based on error type
+      let errorMessage = "Network error or invalid account details";
+
+      if (error.response) {
+        // Server responded with error status
+        if (error.response.status === 422) {
+          errorMessage = "Invalid account details";
+        } else if (error.response.status === 403 || error.response.status === 401) {
+          errorMessage = "Authorization error. Please re-login";
+        } else if (error.response?.data?.message) {
+          errorMessage = error.response.data.message;
+        }
+      } else if (error.request) {
+        // Request made but no response received
+        errorMessage = "No response from server. Check your internet connection";
+      }
+
       toast({
         title: "Verification failed",
-        description: error.response?.data?.message || "Network error or invalid account details",
+        description: errorMessage,
         status: "error",
-        duration: 3000,
+        duration: 4000,
         isClosable: true,
       });
     }
@@ -710,11 +740,7 @@ const TransactionCreation = () => {
                   <Select
                     placeholder="Select Bank"
                     value={selectedBankCode}
-                    onChange={(e) => {
-                      const selectedBank = uniqueBanks.find(bank => bank.code === e.target.value);
-                      setSelectedBankCode(e.target.value);
-                      setPaymentBank(selectedBank ? selectedBank.name : "");
-                    }}
+                    onChange={handleBankSelection}
                     bg={inputBg}
                     color={textColor}
                     borderColor={borderColor}
