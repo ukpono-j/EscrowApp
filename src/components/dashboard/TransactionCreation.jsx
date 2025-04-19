@@ -104,42 +104,73 @@ const TransactionCreation = () => {
     const fetchBanks = async () => {
       try {
         const token = localStorage.getItem("auth-token");
+        setErrors([]);
 
-        console.log("Attempting to fetch banks from:", `${BASE_URL}/api/transactions/banks`);
+        console.log("Fetching banks from:", `${BASE_URL}/api/transactions/banks`);
 
+        // Add timeout to prevent infinite loading
         const response = await axios.get(`${BASE_URL}/api/transactions/banks`, {
           headers: {
             "auth-token": token,
           },
+          timeout: 10000
         });
 
         if (response.data && response.data.data && Array.isArray(response.data.data)) {
           console.log("Banks fetched successfully:", response.data.data.length);
           setBanks(response.data.data);
+
+          // Immediately set up fallback banks if the fetched list is empty
+          if (response.data.data.length === 0) {
+            setFallbackBanks();
+          }
         } else {
           console.error("Invalid banks data format:", response.data);
+          setFallbackBanks();
           toast({
-            title: "Error loading banks",
-            description: "Invalid data format received",
-            status: "error",
+            title: "Using default bank list",
+            description: "Could not load live bank data",
+            status: "warning",
             duration: 3000,
             isClosable: true,
           });
         }
       } catch (error) {
         console.error("Error fetching banks:", error);
+        setFallbackBanks();
         toast({
-          title: "Error fetching banks",
-          description: error.response?.data?.message || "Network error occurred",
-          status: "error",
+          title: "Using default bank list",
+          description: "Network error occurred",
+          status: "warning",
           duration: 3000,
           isClosable: true,
         });
       }
     };
 
+    // Add this function to set fallback banks
+    const setFallbackBanks = () => {
+      console.log("Using fallback banks list");
+      const fallbackBanks = [
+        { name: "Access Bank", code: "044" },
+        { name: "First Bank of Nigeria", code: "011" },
+        { name: "Guaranty Trust Bank", code: "058" },
+        { name: "United Bank for Africa", code: "033" },
+        { name: "Zenith Bank", code: "057" },
+        { name: "Fidelity Bank", code: "070" },
+        { name: "Ecobank Nigeria", code: "050" },
+        { name: "Union Bank of Nigeria", code: "032" },
+        { name: "Stanbic IBTC Bank", code: "221" },
+        { name: "Sterling Bank", code: "232" },
+        { name: "Wema Bank", code: "035" },
+        { name: "First City Monument Bank", code: "214" },
+        { name: "Polaris Bank", code: "076" }
+      ];
+      setBanks(fallbackBanks);
+    };
+
     fetchBanks();
-  }, []);
+  }, [toast]);
 
   // Check if all required fields are filled
   useEffect(() => {
@@ -156,37 +187,46 @@ const TransactionCreation = () => {
     }
   }, [paymentName, email, paymentAmount, selectedBankCode, paymentAccountNumber]);
 
-  useEffect(() => {
-    // If banks array is empty after 3 seconds, it might be failing in production
-    const fallbackTimer = setTimeout(() => {
-      if (banks.length === 0) {
-        console.log("Using fallback banks mechanism");
-        // Use a cached/hardcoded list of major Nigerian banks as fallback
-        const fallbackBanks = [
-          { name: "Access Bank", code: "044" },
-          { name: "First Bank of Nigeria", code: "011" },
-          { name: "Guaranty Trust Bank", code: "058" },
-          { name: "United Bank for Africa", code: "033" },
-          { name: "Zenith Bank", code: "057" },
-          { name: "Fidelity Bank", code: "070" },
-          { name: "Ecobank Nigeria", code: "050" },
-          { name: "Union Bank of Nigeria", code: "032" },
-          { name: "Stanbic IBTC Bank", code: "221" },
-          { name: "Sterling Bank", code: "232" },
-          { name: "Wema Bank", code: "035" },
-          { name: "First City Monument Bank", code: "214" },
-          { name: "Polaris Bank", code: "076" }
-        ];
-        setBanks(fallbackBanks);
-      }
-    }, 3000);
+  // useEffect(() => {
+  //   // If banks array is empty after 3 seconds, it might be failing in production
+  //   const fallbackTimer = setTimeout(() => {
+  //     if (banks.length === 0) {
+  //       console.log("Using fallback banks mechanism");
+  //       // Use a cached/hardcoded list of major Nigerian banks as fallback
+  //       const fallbackBanks = [
+  //         { name: "Access Bank", code: "044" },
+  //         { name: "First Bank of Nigeria", code: "011" },
+  //         { name: "Guaranty Trust Bank", code: "058" },
+  //         { name: "United Bank for Africa", code: "033" },
+  //         { name: "Zenith Bank", code: "057" },
+  //         { name: "Fidelity Bank", code: "070" },
+  //         { name: "Ecobank Nigeria", code: "050" },
+  //         { name: "Union Bank of Nigeria", code: "032" },
+  //         { name: "Stanbic IBTC Bank", code: "221" },
+  //         { name: "Sterling Bank", code: "232" },
+  //         { name: "Wema Bank", code: "035" },
+  //         { name: "First City Monument Bank", code: "214" },
+  //         { name: "Polaris Bank", code: "076" }
+  //       ];
+  //       setBanks(fallbackBanks);
+  //     }
+  //   }, 3000);
 
-    return () => clearTimeout(fallbackTimer);
-  }, [banks]);
+  //   return () => clearTimeout(fallbackTimer);
+  // }, [banks]);
 
   // Add this function to verify account numbers
+
+
   const verifyBankAccount = async () => {
     if (!selectedBankCode || !paymentAccountNumber || paymentAccountNumber.length !== 10) {
+      toast({
+        title: "Validation Error",
+        description: "Please provide a valid 10-digit account number and select a bank",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
       return;
     }
 
@@ -210,6 +250,7 @@ const TransactionCreation = () => {
           headers: {
             "auth-token": token,
           },
+          timeout: 8000
         }
       );
 
@@ -221,12 +262,22 @@ const TransactionCreation = () => {
           duration: 3000,
           isClosable: true,
         });
+        // Set account name to verified name
+        setPaymentName(response.data.data.account_name);
+      } else {
+        toast({
+          title: "Verification failed",
+          description: response.data.message || "Could not verify account details",
+          status: "error",
+          duration: 3000,
+          isClosable: true,
+        });
       }
     } catch (error) {
       console.error("Error verifying account:", error.response || error);
       toast({
         title: "Verification failed",
-        description: error.response?.data?.message || "Could not verify account details",
+        description: error.response?.data?.message || "Network error or invalid account details",
         status: "error",
         duration: 3000,
         isClosable: true,
