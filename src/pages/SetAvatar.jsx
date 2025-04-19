@@ -54,13 +54,13 @@ const SetAvatar = () => {
         if (token) {
           axios.defaults.headers.common["auth-token"] = token;
         }
-        console.log("Token from localStorage:", token);
+        // console.log("Token from localStorage:", token);
         const response = await axios.get(`${BASE_URL}/user-details`, {
           headers: {
             "auth-token": token,
           },
         });
-        console.log(response.data);
+        // console.log(response.data);
       } catch (error) {
         console.error("Error fetching user data:", error);
         // Handle the error accordingly, e.g., redirect to login page
@@ -98,7 +98,7 @@ const SetAvatar = () => {
       });
 
       if (response.data.success) {
-        console.log("Avatar successfully uploaded:", response.data.user);
+        // console.log("Avatar successfully uploaded:", response.data.user);
         toast.success("Profile picture updated successfully!", toastOptions);
         navigate("/messages");
       } else {

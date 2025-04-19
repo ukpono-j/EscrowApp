@@ -37,7 +37,7 @@ const MyTransaction = ({ sidebarCollapsed = true }) => {
     },
     {
       icon: <FaHandshake />,
-      title: "No Middlemen",
+      title: "No Intermediaries",
       description: "Direct peer-to-peer transactions without intermediaries"
     },
     {

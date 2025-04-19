@@ -27,7 +27,7 @@ function App() {
     const handleBeforeInstallPrompt = (event) => {
       // Prevent the default prompt
       event.preventDefault();
-      console.log('beforeinstallprompt event triggered');
+      // console.log('beforeinstallprompt event triggered');
       // Stash the event so it can be triggered later
       deferredPrompt = event;
 
@@ -43,15 +43,15 @@ function App() {
           // Wait for the user's response
           deferredPrompt.userChoice.then((choiceResult) => {
             if (choiceResult.outcome === 'accepted') {
-              console.log('User accepted the A2HS prompt');
+              // console.log('User accepted the A2HS prompt');
             } else {
-              console.log('User dismissed the A2HS prompt');
+              // console.log('User dismissed the A2HS prompt');
             }
             deferredPrompt = null;
           });
         });
       }
-      console.log('PWA install prompt captured but not shown');
+      // console.log('PWA install prompt captured but not shown');
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);

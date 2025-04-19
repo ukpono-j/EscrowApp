@@ -81,7 +81,7 @@ const DisplayTransaction = ({ userResponse }) => {
           },
         });
         setCurrentUser(response.data);
-        console.log(response.data)
+        // console.log(response.data)
       } catch (error) {
         console.error("Error fetching current user:", error);
         toast({
@@ -150,7 +150,7 @@ const DisplayTransaction = ({ userResponse }) => {
           },
         });
         setTransactions(response.data);
-        console.log(response.data)
+        // console.log(response.data)
       } catch (error) {
         console.error("Error fetching transactions:", error);
         toast({
@@ -232,7 +232,7 @@ const DisplayTransaction = ({ userResponse }) => {
             "auth-token": token,
           },
         });
-      console.log("Chatroom created with ID:", response.data.chatroomId); // Add logging
+      // console.log("Chatroom created with ID:", response.data.chatroomId); // Add logging
       navigate(`/chat/${response.data.chatroomId}`); // Navigate to MessageBox component with chatroomId
     } catch (error) {
       console.error("Error creating chatroom:", error);
@@ -247,20 +247,20 @@ const DisplayTransaction = ({ userResponse }) => {
 
   const handleWaybillPopup = (transactionId) => {
     setShowWaybillPopup({ [transactionId]: true });
-    console.log("waybillDetails")
+    // console.log("waybillDetails")
   };
   const ClosehandleWaybillPopup = (transactionId) => {
     setShowWaybillPopup({ [transactionId]: false });
-    console.log("Close waybillDetails")
+    // console.log("Close waybillDetails")
   };
   const handleBuyerWaybillPopup = async (transactionId) => {
     setBuyerShowWaybillPopup({ [transactionId]: true });
     await fetchBuyerWaybillDetails(transactionId);
-    console.log("waybillDetails")
+    // console.log("waybillDetails")
   };
   const ClosehandleBuyerWaybillPopup = (transactionId) => {
     setBuyerShowWaybillPopup({ [transactionId]: false });
-    console.log("Close waybillDetails")
+    // console.log("Close waybillDetails")
   };
 
   const fetchBuyerWaybillDetails = async (transactionId) => {
@@ -274,8 +274,8 @@ const DisplayTransaction = ({ userResponse }) => {
       const { image, item, price, shippingAddress, trackingNumber, deliveryDate } = response.data.waybillDetails || {};
       const imagePath = image ? `${BASE_URL}/${image}` : ""; // Ensure imagePath is correctly formed
       setImageUrl(imagePath);
-      console.log(imagePath);
-      console.log(response.data)
+      // console.log(imagePath);
+      // console.log(response.data)
       setBuyerWaybillDetails({
         [transactionId]: {
           item,
@@ -343,7 +343,7 @@ const DisplayTransaction = ({ userResponse }) => {
           },
         }
       );
-      console.log("Waybill details submitted:", response.data);
+      // console.log("Waybill details submitted:", response.data);
       toast({
         title: "Waybill details submitted successfully",
         status: "success",
@@ -410,7 +410,7 @@ const DisplayTransaction = ({ userResponse }) => {
       });
 
       // Handle the response
-      console.log('Transaction completed:', response.data);
+      // console.log('Transaction completed:', response.data);
       toast({
         title: "Transaction completed successfully",
         status: "success",
@@ -480,7 +480,7 @@ const DisplayTransaction = ({ userResponse }) => {
         return;
       }
 
-      console.log("Confirming transaction:", transactionId);
+      // console.log("Confirming transaction:", transactionId);
 
       const response = await axios.post(
         `${BASE_URL}/api/transactions/confirm`,
@@ -488,7 +488,7 @@ const DisplayTransaction = ({ userResponse }) => {
         { headers: { "auth-token": token } }
       );
 
-      console.log("Confirmation response:", response.data);
+      // console.log("Confirmation response:", response.data);
 
       if (response.data.buyerConfirmed && response.data.sellerConfirmed) {
         toast({
@@ -538,7 +538,7 @@ const DisplayTransaction = ({ userResponse }) => {
 
 
   const handleFund = async (transaction) => {
-    console.log("Initiating payment with transaction:", transaction);
+    // console.log("Initiating payment with transaction:", transaction);
 
     // Destructure necessary properties from transaction
     const {
@@ -564,7 +564,7 @@ const DisplayTransaction = ({ userResponse }) => {
     const token = localStorage.getItem("auth-token");
 
     try {
-      console.log("Sending payment request with data:", requestData);
+      // console.log("Sending payment request with data:", requestData);
 
       const response = await axios.post(
         `${BASE_URL}/api/transactions/initiate`,
@@ -576,7 +576,7 @@ const DisplayTransaction = ({ userResponse }) => {
         }
       );
 
-      console.log("Payment initiation response:", response.data);
+      // console.log("Payment initiation response:", response.data);
 
       if (response.data && response.data.authorization_url) {
         // Redirect to Paystack payment page
@@ -590,7 +590,7 @@ const DisplayTransaction = ({ userResponse }) => {
               { headers: { "auth-token": token } }
             );
 
-            console.log("Payment status check:", statusRes.data);
+            // console.log("Payment status check:", statusRes.data);
 
             if (statusRes.data.funded) {
               clearInterval(interval);

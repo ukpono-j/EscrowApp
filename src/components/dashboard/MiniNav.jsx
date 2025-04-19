@@ -169,7 +169,7 @@ const MiniNav = () => {
                   alt={`${userData.firstName}'s avatar`}
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   onError={(e) => {
-                    console.log("Image failed to load");
+                    // console.log("Image failed to load");
                     e.target.onerror = null;
                     e.target.src = UserProfile; // Make sure to import this default image
                   }}

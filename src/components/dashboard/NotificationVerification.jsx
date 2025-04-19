@@ -14,7 +14,7 @@ const NotificationVerification = ({}) => {
       try {
         const response = await axios.get(`${BASE_URL}/api/notifications/notifications`);
         setNotifications(response.data)
-        console.log(response.data)
+        // console.log(response.data)
       } catch (error) {
         console.error("Error fetching notifications:", error);
       }

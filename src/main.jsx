@@ -21,11 +21,11 @@ if (typeof window !== "undefined" && !window.ethereum) {
     Object.defineProperty(window, "ethereum", {
       value: {
         request: async ({ method, params }) => {
-          console.log(`Ethereum method called: ${method}`, params);
+          // console.log(`Ethereum method called: ${method}`, params);
           return null;
         },
         on: (eventName, callback) => {
-          console.log(`Ethereum event listener added: ${eventName}`);
+          // console.log(`Ethereum event listener added: ${eventName}`);
           return null;
         },
         isConnected: () => false,
@@ -34,7 +34,7 @@ if (typeof window !== "undefined" && !window.ethereum) {
       configurable: true
     });
   } catch (error) {
-    console.log("Failed to define ethereum:", error);
+    // console.log("Failed to define ethereum:", error);
   }
 }
 

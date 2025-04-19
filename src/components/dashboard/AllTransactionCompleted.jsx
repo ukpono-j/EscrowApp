@@ -106,7 +106,7 @@ const AllTransactionCompleted = ({
             },
           })
           .then((notificationResponse) => {
-            console.log("Notification created:", notificationResponse.data);
+            // console.log("Notification created:", notificationResponse.data);
           })
           .catch((notificationError) => {
             console.error("Error creating notification:", notificationError);
@@ -119,11 +119,11 @@ const AllTransactionCompleted = ({
       // ref: "unique_transaction_reference",
       callback: function (response) {
         // Handle Paystack response here
-        console.log(response);
+        // console.log(response);
       },
       onClose: function () {
         // Handle transaction close event
-        console.log("Transaction closed.");
+        // console.log("Transaction closed.");
       },
     });
     // For demonstration purposes, let's show a dummy success message
@@ -165,7 +165,7 @@ const AllTransactionCompleted = ({
         }
       );
 
-      console.log("Proof of waybill confirmed:", response.data);
+      // console.log("Proof of waybill confirmed:", response.data);
       toast({
         title: "Proof of waybill confirmed",
         status: "success",
@@ -215,7 +215,7 @@ const AllTransactionCompleted = ({
       });
   
       const transactionData = transactionResponse.data;
-      console.log("Transaction Data:", transactionData); // Log the transaction data
+      // console.log("Transaction Data:", transactionData); // Log the transaction data
   
       const userId = transactionData.userId;
   
@@ -231,7 +231,7 @@ const AllTransactionCompleted = ({
         return;
       }
   
-      console.log({ transactionId, userId });
+      // console.log({ transactionId, userId });
   
       // Proceed with creating the chatroom if necessary
       const response = await axios.post(
