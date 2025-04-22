@@ -533,7 +533,7 @@ const DisplayTransaction = ({ userResponse }) => {
           <div>
             <MiniNav />
           </div>
-          <div className="font-[Poppins] pt-14 md:pr-14 pr-7 pl-7  mt-10  md:pl-14 pb-20">
+          <div className="pt-14 md:pr-14 pr-7 pl-7  mt-10  md:pl-14 pb-20">
             <h1 className="text-[33px] font-bold">My Transactions</h1>
             <div className="sm:flex sm:flex-row  flex flex-col-reverse  mt-4 mb-4  text-[14px]  items-center justify-between ">
               <div className=" sm:max-w-[280px] w-[100%] border-b border-[#318AE6] rounded   h-[auto]">

@@ -64,7 +64,7 @@ const BottomNav = () => {
   ];
 
   return (
-    <div className="w-[100%] sm:text-[14px] text-[12px] text-[#fff] font-[Poppins] flex items-center justify-center h-[0px] md:hidden bg-[#031420] fixed bottom-0">
+    <div className="w-[100%] sm:text-[14px] text-[12px] text-[#fff] flex items-center justify-center h-[0px] md:hidden bg-[#031420] fixed bottom-0">
       {/* {links.map((link) => (
         <Link
           key={link.to}

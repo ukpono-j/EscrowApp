@@ -188,7 +188,7 @@ const MessageBox = () => {
   }
 
   return (
-    <div className="bg-[#111518] h-screen flex flex-col text-white font-[Poppins]">
+    <div className="bg-[#111518] h-screen flex flex-col text-white">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 bg-[#1A1E21] border-b border-[#28313A]">
         <div className="flex items-center">

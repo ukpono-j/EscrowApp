@@ -67,7 +67,7 @@ const Menu = () => {
 
 
   return (
-    <div className="w-[100%] sm:text-[14px] text-[11px] text-[#fff] font-[Poppins] block items-center justify-center h-[60px] md:hidden">
+    <div className="w-[100%] sm:text-[14px] text-[11px] text-[#fff] block items-center justify-center h-[60px] md:hidden">
       {links.map((link) => (
         <Link
           key={link.to}

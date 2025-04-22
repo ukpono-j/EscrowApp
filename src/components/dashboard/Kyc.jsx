@@ -741,7 +741,6 @@ const Kyc = () => {
             justify="center"
             py={{ base: 16, md: 24 }}
             px={3}
-            fontFamily="Poppins, sans-serif"
           >
             {renderKycStatus()}
           </Flex>
@@ -764,7 +763,6 @@ const Kyc = () => {
             justify="center"
             py={{ base: 8, md: 24 }}
             px={3}
-            fontFamily="Poppins, sans-serif"
           >
             {renderKycStatus()}
           </Flex>

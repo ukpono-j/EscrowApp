@@ -1,12 +1,8 @@
 .navbar {
-  font-family: "Geist", sans-serif;
+  font-family: "Raleway", sans-serif !important;
   transition: 0.4s;
   width: 100%;
   box-sizing: border-box;
-}
-
-.logo_icon {
-  font-family: "Geist", sans-serif;
 }
 
 /* Better breakpoint handling */

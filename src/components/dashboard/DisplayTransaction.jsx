@@ -81,7 +81,7 @@ const DisplayTransaction = ({ userResponse }) => {
           },
         });
         setCurrentUser(response.data);
-        // console.log(response.data)
+        console.log(response.data)
       } catch (error) {
         console.error("Error fetching current user:", error);
         toast({
@@ -150,7 +150,7 @@ const DisplayTransaction = ({ userResponse }) => {
           },
         });
         setTransactions(response.data);
-        // console.log(response.data)
+        console.log(response.data)
       } catch (error) {
         console.error("Error fetching transactions:", error);
         toast({
@@ -232,7 +232,7 @@ const DisplayTransaction = ({ userResponse }) => {
             "auth-token": token,
           },
         });
-      // console.log("Chatroom created with ID:", response.data.chatroomId); // Add logging
+      console.log("Chatroom created with ID:", response.data.chatroomId); // Add logging
       navigate(`/chat/${response.data.chatroomId}`); // Navigate to MessageBox component with chatroomId
     } catch (error) {
       console.error("Error creating chatroom:", error);
@@ -247,20 +247,20 @@ const DisplayTransaction = ({ userResponse }) => {
 
   const handleWaybillPopup = (transactionId) => {
     setShowWaybillPopup({ [transactionId]: true });
-    // console.log("waybillDetails")
+    console.log("waybillDetails")
   };
   const ClosehandleWaybillPopup = (transactionId) => {
     setShowWaybillPopup({ [transactionId]: false });
-    // console.log("Close waybillDetails")
+    console.log("Close waybillDetails")
   };
   const handleBuyerWaybillPopup = async (transactionId) => {
     setBuyerShowWaybillPopup({ [transactionId]: true });
     await fetchBuyerWaybillDetails(transactionId);
-    // console.log("waybillDetails")
+    console.log("waybillDetails")
   };
   const ClosehandleBuyerWaybillPopup = (transactionId) => {
     setBuyerShowWaybillPopup({ [transactionId]: false });
-    // console.log("Close waybillDetails")
+    console.log("Close waybillDetails")
   };
 
   const fetchBuyerWaybillDetails = async (transactionId) => {
@@ -274,8 +274,8 @@ const DisplayTransaction = ({ userResponse }) => {
       const { image, item, price, shippingAddress, trackingNumber, deliveryDate } = response.data.waybillDetails || {};
       const imagePath = image ? `${BASE_URL}/${image}` : ""; // Ensure imagePath is correctly formed
       setImageUrl(imagePath);
-      // console.log(imagePath);
-      // console.log(response.data)
+      console.log(imagePath);
+      console.log(response.data)
       setBuyerWaybillDetails({
         [transactionId]: {
           item,
@@ -343,7 +343,7 @@ const DisplayTransaction = ({ userResponse }) => {
           },
         }
       );
-      // console.log("Waybill details submitted:", response.data);
+      console.log("Waybill details submitted:", response.data);
       toast({
         title: "Waybill details submitted successfully",
         status: "success",
@@ -402,34 +402,34 @@ const DisplayTransaction = ({ userResponse }) => {
     }
   };
 
-  const completeTransaction = async (transactionId) => {
-    const token = localStorage.getItem("auth-token");
-    try {
-      const response = await axios.put(`${BASE_URL}/api/transactions/complete-transaction/${transactionId}`, {
-        headers: { "auth-token": token },
-      });
+  // const completeTransaction = async (transactionId) => {
+  //   const token = localStorage.getItem("auth-token");
+  //   try {
+  //     const response = await axios.put(`${BASE_URL}/api/transactions/complete-transaction/${transactionId}`, {
+  //       headers: { "auth-token": token },
+  //     });
 
-      // Handle the response
-      // console.log('Transaction completed:', response.data);
-      toast({
-        title: "Transaction completed successfully",
-        status: "success",
-        duration: 3000,
-        isClosable: true,
-      });
+  //     // Handle the response
+  //     console.log('Transaction completed:', response.data);
+  //     toast({
+  //       title: "Transaction completed successfully",
+  //       status: "success",
+  //       duration: 3000,
+  //       isClosable: true,
+  //     });
 
-      // Refresh transactions list after cancellation
-      setTransactions(transactions.filter(transaction => transaction._id !== transactionId));
-    } catch (error) {
-      console.error('Error completing transaction:', error);
-      toast({
-        title: "Failed to complete transaction",
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
-    }
-  };
+  //     // Refresh transactions list after cancellation
+  //     setTransactions(transactions.filter(transaction => transaction._id !== transactionId));
+  //   } catch (error) {
+  //     console.error('Error completing transaction:', error);
+  //     toast({
+  //       title: "Failed to complete transaction",
+  //       status: "error",
+  //       duration: 3000,
+  //       isClosable: true,
+  //     });
+  //   }
+  // };
 
 
   const handleDoneClick = (transactionId) => {
@@ -440,6 +440,105 @@ const DisplayTransaction = ({ userResponse }) => {
 
 
   // Updated handleConfirm function
+  // const handleConfirm = async (transactionId) => {
+  //   try {
+  //     const token = localStorage.getItem("auth-token");
+  //     if (!token) {
+  //       toast({
+  //         title: "User not authenticated",
+  //         status: "error",
+  //         duration: 3000,
+  //         isClosable: true,
+  //       });
+  //       return;
+  //     }
+
+
+  //     // First check if there are participants (if user is creator)
+  //     const transaction = transactions.find(t => t._id === transactionId);
+
+  //     // If current user is creator and there are no participants yet
+  //     if (
+  //       transaction &&
+  //       currentUser &&
+  //       // currentUser._id === transaction.userId._id &&
+  //       // (!transaction.participants || transaction.participants.length === 0)
+  //       currentUser._id === (transaction.userId._id ? transaction.userId._id : transaction.userId) &&
+  //       (!transaction.participants || transaction.participants.length === 0)
+  //     ) {
+  //       toast({
+  //         title: "There is no participant in this transaction",
+  //         description: "Please wait for someone to join.",
+  //         status: "error",
+  //         duration: 5000,
+  //         isClosable: true,
+  //       });
+  //       return;
+  //     }
+
+  //     if (!window.confirm("Are you sure you want to complete this transaction? This action cannot be undone.")) {
+  //       return;
+  //     }
+
+  //     console.log("Confirming transaction:", transactionId);
+
+  //     const response = await axios.post(
+  //       `${BASE_URL}/api/transactions/confirm`,
+  //       { transactionId },
+  //       { headers: { "auth-token": token } }
+  //     );
+
+  //     console.log("Confirmation response:", response.data);
+
+  //     if (response.data.buyerConfirmed && response.data.sellerConfirmed) {
+  //       toast({
+  //         title: "Transaction completed successfully",
+  //         description: "Payout has been initiated to the seller.",
+  //         status: "success",
+  //         duration: 5000,
+  //         isClosable: true,
+  //       });
+  //     } else {
+  //       toast({
+  //         title: "Confirmation recorded",
+  //         description: "Waiting for the other party to confirm.",
+  //         status: "info",
+  //         duration: 5000,
+  //         isClosable: true,
+  //       });
+  //     }
+
+  //     // Refresh transaction data
+  //     fetchTransactionData();
+  //   } catch (error) {
+  //     console.error("Confirmation error:", error);
+  //     console.error("Confirmation error details:", {
+  //       message: error.message,
+  //       response: error.response ? {
+  //         status: error.response.status,
+  //         data: error.response.data
+  //       } : 'No response',
+  //       request: error.request ? 'Request sent but no response received' : 'Request setup failed'
+  //     });
+  //     let errorMessage = "Could not complete transaction. Please try again.";
+
+  //     if (error.response && error.response.data && error.response.data.message) {
+  //       errorMessage = error.response.data.message;
+  //     }
+
+  //     toast({
+  //       title: "Error",
+  //       description: errorMessage,
+  //       status: "error",
+  //       duration: 5000,
+  //       isClosable: true,
+  //     });
+  //   }
+  // };
+
+
+  // Updated handleConfirm function with modal integration
+ 
   const handleConfirm = async (transactionId) => {
     try {
       const token = localStorage.getItem("auth-token");
@@ -453,7 +552,6 @@ const DisplayTransaction = ({ userResponse }) => {
         return;
       }
 
-
       // First check if there are participants (if user is creator)
       const transaction = transactions.find(t => t._id === transactionId);
 
@@ -461,8 +559,6 @@ const DisplayTransaction = ({ userResponse }) => {
       if (
         transaction &&
         currentUser &&
-        // currentUser._id === transaction.userId._id &&
-        // (!transaction.participants || transaction.participants.length === 0)
         currentUser._id === (transaction.userId._id ? transaction.userId._id : transaction.userId) &&
         (!transaction.participants || transaction.participants.length === 0)
       ) {
@@ -476,11 +572,45 @@ const DisplayTransaction = ({ userResponse }) => {
         return;
       }
 
-      if (!window.confirm("Are you sure you want to complete this transaction? This action cannot be undone.")) {
-        return;
+      // Show the confirmation modal instead of window.confirm
+      setSelectedTransactionId(transactionId);
+      setModalVisible(true);
+
+      // The actual confirmation logic is now moved to completeTransaction function
+      // which will be called from the modal's onConfirm prop
+    } catch (error) {
+      console.error("Confirmation error:", error);
+      console.error("Confirmation error details:", {
+        message: error.message,
+        response: error.response ? {
+          status: error.response.status,
+          data: error.response.data
+        } : 'No response',
+        request: error.request ? 'Request sent but no response received' : 'Request setup failed'
+      });
+
+      let errorMessage = "Could not complete transaction. Please try again.";
+
+      if (error.response && error.response.data && error.response.data.message) {
+        errorMessage = error.response.data.message;
       }
 
-      // console.log("Confirming transaction:", transactionId);
+      toast({
+        title: "Error",
+        description: errorMessage,
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+  };
+
+  // Add this new function to handle the actual confirmation after modal confirmation
+  const completeTransaction = async (transactionId) => {
+    try {
+      const token = localStorage.getItem("auth-token");
+
+      console.log("Confirming transaction:", transactionId);
 
       const response = await axios.post(
         `${BASE_URL}/api/transactions/confirm`,
@@ -488,7 +618,7 @@ const DisplayTransaction = ({ userResponse }) => {
         { headers: { "auth-token": token } }
       );
 
-      // console.log("Confirmation response:", response.data);
+      console.log("Confirmation response:", response.data);
 
       if (response.data.buyerConfirmed && response.data.sellerConfirmed) {
         toast({
@@ -512,14 +642,6 @@ const DisplayTransaction = ({ userResponse }) => {
       fetchTransactionData();
     } catch (error) {
       console.error("Confirmation error:", error);
-      console.error("Confirmation error details:", {
-        message: error.message,
-        response: error.response ? {
-          status: error.response.status,
-          data: error.response.data
-        } : 'No response',
-        request: error.request ? 'Request sent but no response received' : 'Request setup failed'
-      });
       let errorMessage = "Could not complete transaction. Please try again.";
 
       if (error.response && error.response.data && error.response.data.message) {
@@ -536,9 +658,8 @@ const DisplayTransaction = ({ userResponse }) => {
     }
   };
 
-
   const handleFund = async (transaction) => {
-    // console.log("Initiating payment with transaction:", transaction);
+    console.log("Initiating payment with transaction:", transaction);
 
     // Destructure necessary properties from transaction
     const {
@@ -564,7 +685,7 @@ const DisplayTransaction = ({ userResponse }) => {
     const token = localStorage.getItem("auth-token");
 
     try {
-      // console.log("Sending payment request with data:", requestData);
+      console.log("Sending payment request with data:", requestData);
 
       const response = await axios.post(
         `${BASE_URL}/api/transactions/initiate`,
@@ -576,7 +697,7 @@ const DisplayTransaction = ({ userResponse }) => {
         }
       );
 
-      // console.log("Payment initiation response:", response.data);
+      console.log("Payment initiation response:", response.data);
 
       if (response.data && response.data.authorization_url) {
         // Redirect to Paystack payment page
@@ -590,7 +711,7 @@ const DisplayTransaction = ({ userResponse }) => {
               { headers: { "auth-token": token } }
             );
 
-            // console.log("Payment status check:", statusRes.data);
+            console.log("Payment status check:", statusRes.data);
 
             if (statusRes.data.funded) {
               clearInterval(interval);
@@ -659,7 +780,7 @@ const DisplayTransaction = ({ userResponse }) => {
           <div>
             <MiniNav />
           </div>
-          <div className="font-[Poppins] pr-[28px] pl-[100px] pt-10 md:pl-[30px]" w="full">
+          <div className="pr-[28px] pl-[100px] pt-10 md:pl-[30px]" w="full">
             <h1 className="text-[33px] font-bold">My Transactions</h1>
             {/* Enhanced Search Feature */}
             {/* Transaction Tabs with Search Feature */}

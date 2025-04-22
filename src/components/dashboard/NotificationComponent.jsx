@@ -63,7 +63,11 @@ const NotificationComponent = () => {
     const fetchData = async () => {
       try {
         const res = await axios.get(`${BASE_URL}/api/notifications/notifications`);
-        setNotifications(res.data);
+        // Sort notifications by timestamp (newer first)
+        const sortedNotifications = res.data.sort((a, b) => 
+          new Date(b.timestamp) - new Date(a.timestamp)
+        );
+        setNotifications(sortedNotifications);
       } catch (err) {
         console.error(err);
         toast({
@@ -111,9 +115,11 @@ const NotificationComponent = () => {
     try {
       // Fixed endpoint path
       await axios.patch(`${BASE_URL}/api/notifications/notifications/${id}`, { status });
-      setNotifications((prev) => 
-        prev.map((n) => (n._id === id ? { ...n, status } : n))
-      );
+      setNotifications((prev) => {
+        // Update the status while maintaining the sort order
+        const updated = prev.map((n) => (n._id === id ? { ...n, status } : n));
+        return updated.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      });
       toast({
         title: `Status updated to ${status}`,
         status: "success",
@@ -150,7 +156,7 @@ const NotificationComponent = () => {
   };
 
   return (
-    <Box mt={10} px={{ base: 4, md: 8 }}>
+    <Box mt={10} mb={20} px={{ base: 4, md: 8 }}>
       <Flex 
         direction={{ base: "column", md: "row" }} 
         justify="space-between" 
@@ -284,7 +290,6 @@ const NotificationComponent = () => {
                         <Tooltip label="Transaction ID">
                           <Text 
                             as="span" 
-                            fontFamily="mono" 
                             fontSize="xs" 
                             bg={monoBg} 
                             p={1} 

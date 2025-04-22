@@ -1,7 +1,7 @@
 .hero-section {
-  font-family: "Geist", sans-serif;
   position: relative;
   overflow: hidden;
+  font-family: "Raleway", sans-serif !important;
 }
 
 /* Remove default styles that might interfere */

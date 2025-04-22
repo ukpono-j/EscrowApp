@@ -119,7 +119,7 @@ const SetAvatar = () => {
           <img src={Loader} alt="loader" />
         </div>
       ) : (
-        <div className="font-[Poppins] flex items-center justify-center flex-col w-[100vw] min-h-[100vh]  bg-[#131324]">
+        <div className="flex items-center justify-center flex-col w-[100vw] min-h-[100vh]  bg-[#131324]">
           <div className="title_container">
             <h1 className="text-[#fff] mb-3">
               Pick a Picture  has a profile picture...

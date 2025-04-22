@@ -3,8 +3,7 @@
   padding: 100px 0;
   position: relative;
   overflow: hidden;
-  /* font-family: "Geist", sans-serif; */
-  font-family: "Poppins";
+  font-family: "Raleway", sans-serif !important;
 }
 
 .about-container {

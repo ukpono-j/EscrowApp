@@ -19,6 +19,7 @@ import Admin from './components/admin/Admin';
 import PrivateRoute from './components/PrivateRoute';
 import PublicRoute from './components/PublicRoute';
 import ForgotPassword from './pages/ForgotPassword';
+import axios from 'axios';
 
 
 function App() {
@@ -61,6 +62,38 @@ function App() {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     };
   }, []);
+
+
+  useEffect(() => {
+    // Setup axios interceptor for handling token expiration
+    const responseInterceptor = axios.interceptors.response.use(
+      response => response,
+      error => {
+        // Check if error response exists and has status code 401
+        if (error.response && error.response.status === 401) {
+          // Check if the error is specifically for token expiration
+          if (error.response.data.tokenExpired) {
+            // Clear the token from localStorage
+            localStorage.removeItem('auth-token');
+            
+            // Show notification to user
+            alert('Your session has expired. Please login again.');
+            
+            // Redirect to login page
+            window.location.href = '/login';
+          }
+        }
+        return Promise.reject(error);
+      }
+    );
+    
+    // Cleanup function
+    return () => {
+      // Remove the interceptor when component unmounts
+      axios.interceptors.response.eject(responseInterceptor);
+    };
+  }, []);
+
 
   return (
     <>

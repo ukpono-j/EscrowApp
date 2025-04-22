@@ -69,7 +69,7 @@ const ChatInput = ({ handleSendMessage }) => {
             placeholder="Type Message"
             value={msg}
             onChange={(e) => setMsg(e.target.value)}
-            className="p-2 h-[33px]  border border-[#0F1A2E] rounded-3xl text-[13px] font-[Poppins] w-[100%]"
+            className="p-2 h-[33px]  border border-[#0F1A2E] rounded-3xl text-[13px] w-[100%]"
           />
           <button className="submit ml-2 rounded-xl pl-3 h-[33px] border  w-[80px] flex items-center justify-center   pr-3   pt-2 pb-2     bg-[#152D5D] text-[#fff]">
             <BsSend />

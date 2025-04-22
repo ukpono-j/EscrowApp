@@ -57,7 +57,7 @@ const ServicesComponent = () => {
           {/* Main Title */}
           <Box
             className="service_title"
-            textAlign="left"
+            textAlign={{base: "left", md:"center"}}
             mb={{ base: 12, md: 16 }}
             fontWeight="900"
             fontSize={{ base: "34px", md: "50px" }}

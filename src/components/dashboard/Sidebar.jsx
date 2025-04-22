@@ -205,7 +205,7 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
             </div>
 
             {/* User Profile Section */}
-            <div className={`px-5 font-[Poppins] pb-5 ${isCollapsed ? "flex justify-center" : ""}`}>
+            <div className={`px-5 pb-5 ${isCollapsed ? "flex justify-center" : ""}`}>
               <AnimatePresence>
                 {!isCollapsed ? (
                   <motion.div
@@ -248,7 +248,7 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
           </div>
 
           {/* Scrollable content area */}
-          <div className="flex-grow font-[Poppins] font-[500] overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-[#B38939]/20 scrollbar-track-transparent">
+          <div className="flex-grow font-[500] overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-[#B38939]/20 scrollbar-track-transparent">
             {/* Navigation Links */}
             <div className={`px-3 py-5 ${isCollapsed ? "flex flex-col items-center" : ""}`}>
               <div className="space-y-1">
@@ -377,7 +377,7 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
           </div>
 
           {/* Fixed footer section */}
-          <div className="flex-shrink-0 font-[Poppins] mt-auto border-t border-white/10">
+          <div className="flex-shrink-0  mt-auto border-t border-white/10">
             {!isCollapsed ? (
               <div className="p-5">
                 <div className="flex items-center justify-between mb-4">

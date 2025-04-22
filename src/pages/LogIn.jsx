@@ -61,6 +61,116 @@ const Login = () => {
     },
   };
 
+  // const handleSubmit = async (e) => {
+  //   e.preventDefault();
+  //   setIsLoading(true);
+
+  //   if (!email || !password) {
+  //     toast({
+  //       title: "Missing fields",
+  //       description: "Please fill in all required fields",
+  //       status: "warning",
+  //       duration: 3000,
+  //       isClosable: true,
+  //       position: "top",
+  //     });
+  //     setIsLoading(false);
+  //     return;
+  //   }
+
+  //   try {
+  //     const response = await axios.post(`${BASE_URL}/api/auth/login`, {
+  //       email,
+  //       password,
+  //     });
+  //     const { message, token } = response.data;
+
+  //     if (message === "Login successful!") {
+  //       // Store the token in localStorage
+  //       localStorage.setItem("auth-token", token);
+
+  //       // Set the authentication token in Axios headers
+  //       axios.defaults.headers.common["auth-token"] = token;
+
+  //       toast({
+  //         title: "Login Successful",
+  //         description: "Welcome back!",
+  //         status: "success",
+  //         duration: 5000,
+  //         isClosable: true,
+  //         position: "top",
+  //       });
+
+  //       // Redirect with animation delay
+  //       setTimeout(() => {
+  //         navigate("/dashboard");
+  //       }, 500);
+  //     } else {
+  //       toast({
+  //         title: "Invalid Credentials",
+  //         description: "Please check your email and password",
+  //         status: "error",
+  //         duration: 5000,
+  //         isClosable: true,
+  //       });
+  //     }
+  //   } catch (error) {
+  //     console.error(error);
+
+  //     // Check for specific error responses
+  //     if (error.response) {
+  //       // The request was made and the server responded with a status code
+  //       // that falls out of the range of 2xx
+  //       if (error.response.status === 404) {
+  //         toast({
+  //           title: "User Not Found",
+  //           description: "No account exists with this email address",
+  //           status: "error",
+  //           duration: 5000,
+  //           isClosable: true,
+  //         });
+  //       } else if (error.response.status === 401) {
+  //         toast({
+  //           title: "Incorrect Password",
+  //           description: "The password you entered is incorrect",
+  //           status: "error",
+  //           duration: 5000,
+  //           isClosable: true,
+  //         });
+  //       } else {
+  //         // Handle other status codes
+  //         toast({
+  //           title: "Login Failed",
+  //           description: error.response.data?.message || "Authentication failed",
+  //           status: "error",
+  //           duration: 5000,
+  //           isClosable: true,
+  //         });
+  //       }
+  //     } else if (error.request) {
+  //       // The request was made but no response was received
+  //       toast({
+  //         title: "Connection Error",
+  //         description: "Unable to connect to the server. Please check your internet connection.",
+  //         status: "error",
+  //         duration: 5000,
+  //         isClosable: true,
+  //       });
+  //     } else {
+  //       // Something happened in setting up the request that triggered an Error
+  //       toast({
+  //         title: "Login Error",
+  //         description: "An unexpected error occurred. Please try again.",
+  //         status: "error",
+  //         duration: 5000,
+  //         isClosable: true,
+  //       });
+  //     }
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -124,11 +234,16 @@ const Login = () => {
         if (error.response.status === 404) {
           toast({
             title: "User Not Found",
-            description: "No account exists with this email address",
-            status: "error",
-            duration: 5000,
+            description: "Redirecting you to register with this email",
+            status: "info",
+            duration: 3000,
             isClosable: true,
           });
+
+          // Short delay before redirecting to registration page
+          setTimeout(() => {
+            navigate("/register", { state: { email } });
+          }, 1500);
         } else if (error.response.status === 401) {
           toast({
             title: "Incorrect Password",
@@ -170,6 +285,7 @@ const Login = () => {
       setIsLoading(false);
     }
   };
+
 
   return (
     <Box

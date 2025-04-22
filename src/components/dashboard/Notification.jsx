@@ -54,10 +54,10 @@ const Notification = () => {
             </div>
 
             {/* ============= Notification */}
-            <div className="pl-4 pr-4  font-[Poppins] ">
+            <div className="pl-4 pr-4">
               <NotificationComponent />
             </div>
-            {/* <div className="pl-4 pr-4  font-[Poppins] ">
+            {/* <div className="pl-4 pr-4">
               <NotificationVerification />
             </div> */}
           </div>

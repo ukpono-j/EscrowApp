@@ -52,7 +52,7 @@ const LogoSection = () => {
   };
 
   return (
-    <div className="logo-slider font-[Poppins] text-[13px] md:pt-8 pt-4 md:pl-14 md:pr-14 pl-3 pb-4 md:pb-8 ">
+    <div className="logo-slider text-[13px] md:pt-8 pt-4 md:pl-14 md:pr-14 pl-3 pb-4 md:pb-8 ">
       <Slider
         {...slickSettings}
         className="flex items-center logo-container "

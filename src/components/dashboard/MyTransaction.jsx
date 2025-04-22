@@ -59,7 +59,7 @@ const MyTransaction = ({ sidebarCollapsed = true }) => {
     };
 
   return (
-    <div className={`min-h-screen general_Structure relative overflow-hidden font-[Poppins] transition-all duration-300 ${getMarginClass()}`}>
+    <div className={`min-h-screen general_Structure relative overflow-hidden transition-all duration-300 ${getMarginClass()}`}>
       {/* Decorative background elements */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
         <div className="absolute top-1/3 -left-20 w-64 h-64 bg-gradient-to-br from-yellow-400/10 to-yellow-600/5 rounded-full blur-3xl" />

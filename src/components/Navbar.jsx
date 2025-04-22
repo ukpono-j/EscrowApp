@@ -18,11 +18,17 @@ import { motion } from "framer-motion";
 const MotionBox = motion(Box);
 
 const Navbar = () => {
+  // Move all Hooks to the top level, ensure they're called in the same order every time
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const mobileMenuBg = useColorModeValue("#FAFAFA", "#1A202C");
-  const accentColor = "#B38939";
-  const textHoverColor = useColorModeValue("#B38939", "#E2C07C");
   const [scrollPosition, setScrollPosition] = useState(0);
+  
+  // Call all useColorModeValue hooks unconditionally at the top
+  const mobileMenuBg = useColorModeValue("#FAFAFA", "#1A202C");
+  const menuBgColor = useColorModeValue("rgba(255, 255, 255, 0.95)", "rgba(26, 32, 44, 0.95)");
+  const textHoverColor = useColorModeValue("#B38939", "#E2C07C");
+  
+  // Constants that don't need to be re-computed
+  const accentColor = "#B38939";
 
   // Track scroll position to add effects
   useEffect(() => {
@@ -171,7 +177,7 @@ const Navbar = () => {
           >
             <Box
               className="menu-content py-8 px-6 flex flex-col"
-              bg={useColorModeValue("rgba(255, 255, 255, 0.95)", "rgba(26, 32, 44, 0.95)")}
+              bg={menuBgColor}
               h="100%"
               boxShadow="0px -4px 20px rgba(0, 0, 0, 0.1)"
             >

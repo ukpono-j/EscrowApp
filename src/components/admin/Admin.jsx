@@ -37,7 +37,7 @@ const Admin = () => {
             </div> */}
 
             {/* ============= Admin */}
-            <div className="p-4 font-[Poppins] relative ">
+            <div className="p-4 relative ">
                    Admin
             </div>
           </div>

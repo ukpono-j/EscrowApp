@@ -56,7 +56,7 @@ const Footer = () => {
   const inputBgColor = useColorModeValue("white", "gray.800");
 
   return (
-    <Box as="footer" bg={bgColor} color={textColor} w="100%" overflow="hidden" position="relative" fontFamily="Poppins, sans-serif">
+    <Box as="footer" bg={bgColor} color={textColor} w="100%" overflow="hidden" position="relative">
       {/* Decorative element */}
       <Box 
         position="absolute" 
