@@ -89,7 +89,7 @@ const MiniNav = () => {
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.3 }}
-      className={`flex items-center justify-between md:pl-[60px] md:pr-[60px] px-5 sticky z-30 top-0 h-[70px] w-full ${scrolled ? "shadow-md" : ""
+      className={`flex items-center justify-between md:pl-[60px] md:pr-[60px] px-5 fixed right-0 z-30 top-0 h-[70px] w-full ${scrolled ? "shadow-md" : ""
         }`}
       style={{
         backgroundColor: bgColor,
@@ -99,13 +99,13 @@ const MiniNav = () => {
     >
       <div className="font-bold flex md:hidden cursor-pointer md:text-3xl text-2xl uppercase">
         <Link to="/dashboard" className="outline-none flex items-center">
-          <motion.img
+          {/* <motion.img
             src={Logo2}
             alt="Logo"
             className="h-10 w-auto"
             whileHover={{ scale: 1.05 }}
             transition={{ type: "spring", stiffness: 400, damping: 10 }}
-          />
+          /> */}
         </Link>
       </div>
 

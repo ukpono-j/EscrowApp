@@ -12,16 +12,16 @@ const MyTransaction = ({ sidebarCollapsed = true }) => {
   const [activeTab, setActiveTab] = useState("create");
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
-   // Track window resizing
-   useEffect(() => {
+  // Track window resizing
+  useEffect(() => {
     const handleResize = () => {
       setWindowWidth(window.innerWidth);
     };
-    
+
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-  
+
 
 
   const imageURL = {
@@ -33,47 +33,47 @@ const MyTransaction = ({ sidebarCollapsed = true }) => {
     {
       icon: <FaShieldAlt />,
       title: "100% Secure",
-      description: "Bank-level encryption protects every transaction"
+      description: "Bank-level encryption protects your funds and data."
     },
     {
       icon: <FaHandshake />,
-      title: "No Intermediaries",
-      description: "Direct peer-to-peer transactions without intermediaries"
+      title: "Insurance - Money back guarantee",
+      description: "Sylo insures against fraud or disputes, ensuring peace of mind."
     },
     {
       icon: <FaLock />,
-      title: "Escrow Protection",
-      description: "Funds released only when conditions are met"
+      title: "Absolute Fairplay",
+      description: "Funds stay locked until all terms are met, protecting both parties."
     }
   ];
 
-    // Calculate dynamic margin based on sidebar state
-    const getMarginClass = () => {
-      if (windowWidth < 768) {
-        // On mobile, use minimal margin when sidebar is collapsed
-        return sidebarCollapsed ? "ml-[80px]" : "ml-0";
-      } else {
-        // On desktop, adjust margin based on sidebar state
-        return sidebarCollapsed ? "ml-[10px]" : "ml-[280px]";
-      }
-    };
+  // Calculate dynamic margin based on sidebar state
+  const getMarginClass = () => {
+    if (windowWidth < 768) {
+      // On mobile, use minimal margin when sidebar is collapsed
+      return sidebarCollapsed ? "ml-[0px]" : "ml-0";
+    } else {
+      // On desktop, adjust margin based on sidebar state
+      return sidebarCollapsed ? "ml-[10px]" : "ml-[280px]";
+    }
+  };
 
   return (
-    <div className={`min-h-screen general_Structure relative overflow-hidden transition-all duration-300 ${getMarginClass()}`}>
+    <div className={`min-h-screen pt-28 general_Structure relative overflow-hidden transition-all duration-300 ${getMarginClass()}`}>
       {/* Decorative background elements */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
         <div className="absolute top-1/3 -left-20 w-64 h-64 bg-gradient-to-br from-yellow-400/10 to-yellow-600/5 rounded-full blur-3xl" />
         <div className="absolute bottom-1/4 right-0 w-80 h-80 bg-gradient-to-bl from-yellow-500/10 to-amber-700/5 rounded-full blur-3xl" />
       </div>
 
-      <div className="relative z-10">
+      <div className="relative z-10 w-full">
         {/* Header */}
-        <Text className="text-4xl sm:text-4xl font-bold leading-tight text-center sm:text-left mb-3">
-          Confident Transactions
+        <Text className="text-4xl sm:text-3xl font-bold leading-tight sm:text-left mb-3">
+          Scam-Free Transactions
         </Text>
-
-        <Text className="max-w-xl text-center sm:text-left mb-12 text-lg">
-          Secure, transparent, and effortless—experience the future of digital transactions
+        <Text className=" text-left mb-12 md:text-lg">
+          Make risk-free, scam-free transactions with Sylo.
+          The Only middleman you need.
         </Text>
 
         {/* Tabs */}
@@ -87,9 +87,9 @@ const MyTransaction = ({ sidebarCollapsed = true }) => {
               <Text className={`relative font-bold z-10 ${activeTab === tab ? "" : ""}`}>
                 {tab === "create" ? "Create Transaction" : "Join Transaction"}
               </Text>
-              
+
               {/* Simple underline for active tab */}
-              <div 
+              <div
                 className={`absolute bottom-0 left-0 h-1 bg-[#987733] rounded-t-md transition-all duration-300 ${activeTab === tab ? 'w-full' : 'w-0'}`}
               />
             </button>
@@ -97,17 +97,32 @@ const MyTransaction = ({ sidebarCollapsed = true }) => {
         </div>
 
         {/* Content */}
-        <div className="mt-8 flex flex-col lg:flex-row items-center justify-between gap-12 lg:gap-16">
+        <div className="mt-8 flex flex-col lg:flex-row items-start justify-between gap-12 lg:gap-16">
           {/* Left Content */}
           <div className="w-full lg:w-1/2">
             {activeTab === "create" ? (
               <>
-                <Text className="text-3xl sm:text-4xl font-bold mb-4">
-                  Start a Transaction with Confidence
+                <Text className="text-xl sm:text-xl font-bold mb-4">
+                  Make Payments, Receive Payments while sylo protects you.
+                  What you ordered is EXACTLY what you get.
+
                 </Text>
-                <Text className="mb-8 leading-relaxed">
-                  Whether you're buying or selling, EscrowPay ensures every deal is safe, streamlined, and stress-free. No risks, no surprises — just guaranteed peace of mind.
+                <Text className="mb-3 font-bold leading-relaxed">
+                  How Does Sylo Secure Your Deals?
                 </Text>
+                <Text className="mb-8 text-sm leading-relaxed">
+                  Sylo protects every transaction with a simple, secure process, ensuring buyers and sellers both get EXACTLY what they expect, no risks, no scams.
+                </Text>
+                <div>
+                  <div className="mb-5">
+                    <h3 className="font-bold mb-1">Funds Stay Safe Until Terms Are Met</h3>
+                    <p className="text-sm"> Funds are locked with Sylo until both buyer and seller fulfill their agreed terms, guaranteeing ABSOLUTE FAIRPLAY</p>
+                  </div>
+                  <div className="mb-5">
+                    <h3 className="font-bold mb-1">Transactions Backed by Insurance</h3>
+                    <p className="text-sm">Every deal is protected with insurance, covering losses from fraud or disputes, so you can transact with confidence.</p>
+                  </div>
+                </div>
 
                 <div className="space-y-6 mb-8">
                   <h4 className="font-bold text-xl text-[#9B7933]">
@@ -121,7 +136,7 @@ const MyTransaction = ({ sidebarCollapsed = true }) => {
                       </div>
                       <div>
                         <Text className="font-bold mb-1">Create a New Transaction</Text>
-                        <Text className="text-sm">Launch a secure deal as a buyer or seller. Set the terms, invite the other party, and let us handle the rest.</Text>
+                        <Text className="text-sm">Start a deal as a buyer or seller. Define terms, invite the other party, while Sylo secures it.</Text>
                       </div>
                     </div>
                   </div>
@@ -133,7 +148,9 @@ const MyTransaction = ({ sidebarCollapsed = true }) => {
                       </div>
                       <div>
                         <Text className="font-bold mb-1">Join a Transaction</Text>
-                        <Text className="text-sm">Got an invite? Join the deal, review the terms, and move forward with trust.</Text>
+                        <Text className="text-sm">Got an invite code? Paste it to join the deal.
+                          Review terms, agree, and proceed with our coverage.
+                        </Text>
                       </div>
                     </div>
                   </div>
@@ -209,7 +226,7 @@ const MyTransaction = ({ sidebarCollapsed = true }) => {
         </div>
 
         {/* Features Section */}
-        <div className="mt-24 mb-12">
+        <div className="mt-24">
           <h3 className="text-3xl font-[900] mb-12 text-[#9B7933]">
             Why Choose Sylo
           </h3>

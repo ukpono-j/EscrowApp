@@ -23,20 +23,25 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isSidebarVisible, setIsSidebarVisible] = useState(true);
 
   // Check if screen is mobile size
   useEffect(() => {
     const checkScreenSize = () => {
-      setIsMobile(window.innerWidth < 768);
+      const mobileView = window.innerWidth < 768;
+      setIsMobile(mobileView);
+
+      // Update sidebar visibility based on screen size
+      if (mobileView) {
+        setIsSidebarVisible(false); // Hide sidebar on mobile by default
+      } else {
+        setIsSidebarVisible(true); // Always show sidebar on larger screens
+        setIsCollapsed(window.innerWidth < 1024); // Auto-collapse on medium screens
+      }
     };
 
     // Initial check
     checkScreenSize();
-
-    // Auto-collapse on mobile
-    if (window.innerWidth < 768) {
-      setIsCollapsed(true);
-    }
 
     // Add event listener for resize
     window.addEventListener('resize', checkScreenSize);
@@ -76,15 +81,15 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
   // Add this effect to notify parent component when collapse state changes
   useEffect(() => {
     if (onCollapseChange) {
-      onCollapseChange(isCollapsed);
+      onCollapseChange(isMobile ? isSidebarVisible : isCollapsed);
     }
-  }, [isCollapsed, onCollapseChange]);
+  }, [isCollapsed, isSidebarVisible, isMobile, onCollapseChange]);
 
-  const toggleCollapse = () => {
-    setIsCollapsed(!isCollapsed);
-    // If you want immediate notification, you can also call it here
-    if (onCollapseChange) {
-      onCollapseChange(!isCollapsed);
+  const toggleSidebar = () => {
+    if (isMobile) {
+      setIsSidebarVisible(!isSidebarVisible);
+    } else {
+      setIsCollapsed(!isCollapsed);
     }
   };
 
@@ -108,9 +113,9 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
     setActiveLink(to);
     setSettingLinks(false); // Close the dropdown when a link is clicked
 
-    // Auto-collapse on mobile after link click
+    // Auto-hide sidebar on mobile after link click
     if (isMobile) {
-      setIsCollapsed(true);
+      setIsSidebarVisible(false);
     }
   };
 
@@ -144,19 +149,36 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
     </div>
   );
 
+  // Mobile hamburger toggle button (fixed to the top)
+  const MobileToggle = () => (
+    <button
+      onClick={toggleSidebar}
+      className="fixed top-4 left-4 z-50 flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-[#B38939] to-[#8A6D2F] shadow-lg"
+      aria-label="Toggle Sidebar"
+    >
+      {/* Only show menu icon, never the close icon */}
+      <MdMenu className="text-white text-xl" />
+    </button>
+  );
+
+  // Return just the mobile toggle if on mobile and sidebar is hidden
+  if (isMobile && !isSidebarVisible) {
+    return <MobileToggle />;
+  }
+
   return (
     <>
+      {/* Mobile Toggle Button (always visible on mobile) */}
+      {/* {isMobile && <MobileToggle />} */}
+
       {/* Overlay for mobile when sidebar is expanded */}
-      {isMobile && !isCollapsed && (
-        <div
-          className="fixed inset-0 dashboard_sidebar bg-black/50 z-30 lg:hidden"
-          onClick={toggleCollapse}
-        />
-      )}
+      {isMobile && !isSidebarVisible && <MobileToggle />}
 
       <Box
-        className={`fixed left-0 top-0 h-screen bg-gradient-to-br from-[#] to-[#1E293B] flex flex-col shadow-xl transition-all duration-300 ${isMobile ? 'z-40' : 'z-30'
-          } ${isCollapsed ? "w-[80px]" : "w-[280px]"
+        className={`fixed left-0 top-0 h-screen bg-gradient-to-br flex flex-col shadow-xl transition-all duration-300 z-40
+          ${isMobile
+            ? isSidebarVisible ? "translate-x-0" : "-translate-x-full"
+            : isCollapsed ? "w-[80px]" : "w-[280px]"
           }`}
         // Add a solid background color that adapts to theme mode
         bg={useColorModeValue("white", "#0F172A")}
@@ -164,6 +186,7 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
         style={{
           backdropFilter: "none", // Ensure no blur effect
           background: useColorModeValue("white", "#0F172A"), // Solid background based on theme
+          width: isMobile ? "280px" : (isCollapsed ? "80px" : "280px")
         }}
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
@@ -174,7 +197,7 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
           <div className="flex-shrink-0 border-b border-white/10">
             {/* Logo and toggle button */}
             <div className="flex items-center justify-between p-5">
-              {!isCollapsed && (
+              {(!isCollapsed || isMobile) && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -184,30 +207,34 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
                   <Link to="/dashboard" className="block">
                     <img
                       src={Logo}
-                      alt="EscrowPay"
+                      alt="Sylo"
                       className="h-8 w-auto transition-all duration-300 hover:opacity-80"
                     />
                   </Link>
                 </motion.div>
               )}
 
+              {/* Toggle button - show for desktop (collapsed/expanded) or mobile (close only) */}
               <button
-                onClick={toggleCollapse}
-                className={`flex items-center justify-center w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 transition-colors duration-200 ${isCollapsed ? "mx-auto" : ""
-                  }`}
+                onClick={toggleSidebar}
+                className={`flex items-center justify-center w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 transition-colors duration-200 ${isCollapsed && !isMobile ? "mx-auto" : ""}`}
               >
-                {isCollapsed ? (
-                  <MdMenu className="text-[#9C7933]" />
-                ) : (
+                {isMobile ? (
                   <MdClose className="text-[#9C7933]" />
+                ) : (
+                  isCollapsed ? (
+                    <MdMenu className="text-[#9C7933]" />
+                  ) : (
+                    <MdClose className="text-[#9C7933]" />
+                  )
                 )}
               </button>
             </div>
 
             {/* User Profile Section */}
-            <div className={`px-5 pb-5 ${isCollapsed ? "flex justify-center" : ""}`}>
+            <div className={`px-5 pb-5 ${isCollapsed && !isMobile ? "flex justify-center" : ""}`}>
               <AnimatePresence>
-                {!isCollapsed ? (
+                {(!isCollapsed || isMobile) ? (
                   <motion.div
                     key="expanded-profile"
                     initial={{ opacity: 0, y: -20 }}
@@ -250,20 +277,21 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
           {/* Scrollable content area */}
           <div className="flex-grow font-[500] overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-[#B38939]/20 scrollbar-track-transparent">
             {/* Navigation Links */}
-            <div className={`px-3 py-5 ${isCollapsed ? "flex flex-col items-center" : ""}`}>
+            <div className={`px-3 py-5 ${isCollapsed && !isMobile ? "flex flex-col items-center" : ""}`}>
               <div className="space-y-1">
                 {links.map((link, index) => (
-                  <Tooltip key={index} label={isCollapsed ? link.label : ""}>
+                  <Tooltip key={index} label={isCollapsed && !isMobile ? link.label : ""}>
                     <motion.div
-                      whileHover={{ x: isCollapsed ? 0 : 4 }}
+                      whileHover={{ x: (isCollapsed && !isMobile) ? 0 : 4 }}
                       whileTap={{ scale: 0.98 }}
                       transition={{ duration: 0.2 }}
                     >
                       <Link
                         to={link.to}
                         onClick={() => handleLinkClick(link.to)}
-                        className={`flex items-center gap-3 px-4 side_links py-3 rounded-xl transition-all duration-300 ${isCollapsed ? "justify-center" : ""
-                          } ${activeLink === link.to
+                        className={`flex items-center gap-3 px-4 side_links py-3 rounded-xl transition-all duration-300 
+                          ${(isCollapsed && !isMobile) ? "justify-center" : ""} 
+                          ${activeLink === link.to
                             ? "bg-gradient-to-r from-[#B38939] to-[#8A6D2F] font-medium shadow-lg"
                             : "font-[500] hover:bg-white/5"
                           }`}
@@ -272,11 +300,11 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
                           {link.icon}
                         </span>
 
-                        {!isCollapsed && (
+                        {(!isCollapsed || isMobile) && (
                           <span className="text-sm whitespace-nowrap">{link.label}</span>
                         )}
 
-                        {!isCollapsed && activeLink === link.to && (
+                        {(!isCollapsed || isMobile) && activeLink === link.to && (
                           <motion.div
                             layoutId="active-pill"
                             className="absolute right-3 w-1.5 h-1.5 rounded-full bg-white"
@@ -290,41 +318,41 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
               </div>
 
               {/* Settings Section */}
-              {!isCollapsed && (
+              {(!isCollapsed || isMobile) && (
                 <div className="mt-8 mb-2">
                   <span className="px-4 text-xs uppercase tracking-wider font-bold mb-3 block">Settings</span>
                 </div>
               )}
 
-              {isCollapsed && (
+              {isCollapsed && !isMobile && (
                 <div className="my-8 w-8 h-px bg-gray-700/30" />
               )}
 
               {setting_links.map((link, index) => (
-                <Tooltip key={index} label={isCollapsed ? link.label : ""}>
+                <Tooltip key={index} label={isCollapsed && !isMobile ? link.label : ""}>
                   <div className="relative">
                     <motion.div
-                      whileHover={{ x: isCollapsed ? 0 : 4 }}
+                      whileHover={{ x: (isCollapsed && !isMobile) ? 0 : 4 }}
                       whileTap={{ scale: 0.98 }}
                       transition={{ duration: 0.2 }}
                     >
                       <button
                         onClick={() => handleSettingLinkClick(link.to)}
-                        className={`w-full flex items-center ${isCollapsed ? "justify-center" : "justify-between"} px-4 py-3 rounded-xl transition-all duration-300 ${activeLink === link.to
+                        className={`w-full flex items-center ${(isCollapsed && !isMobile) ? "justify-center" : "justify-between"} px-4 py-3 rounded-xl transition-all duration-300 ${activeLink === link.to
                           ? "bg-gradient-to-r from-[#B38939] to-[#8A6D2F] font-medium shadow-lg"
                           : "hover:bg-white/5"
                           }`}
                       >
-                        <div className={`flex items-center gap-3 ${isCollapsed ? "justify-center" : ""}`}>
+                        <div className={`flex items-center gap-3 ${(isCollapsed && !isMobile) ? "justify-center" : ""}`}>
                           <span className={activeLink === link.to ? "text-white" : "text-[#B38939]"}>
                             {link.icon}
                           </span>
-                          {!isCollapsed && (
+                          {(!isCollapsed || isMobile) && (
                             <span className="text-sm whitespace-nowrap">{link.label}</span>
                           )}
                         </div>
 
-                        {!isCollapsed && (
+                        {(!isCollapsed || isMobile) && (
                           <motion.div
                             animate={{ rotate: settingLinks ? 180 : 0 }}
                             transition={{ duration: 0.3 }}
@@ -337,7 +365,7 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
                     </motion.div>
 
                     {/* Dropdown Content with Animation */}
-                    {!isCollapsed && (
+                    {(!isCollapsed || isMobile) && (
                       <motion.div
                         initial={false}
                         animate={{ height: settingLinks ? "auto" : 0, opacity: settingLinks ? 1 : 0 }}
@@ -377,11 +405,11 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
           </div>
 
           {/* Fixed footer section */}
-          <div className="flex-shrink-0  mt-auto border-t border-white/10">
-            {!isCollapsed ? (
+          <div className="flex-shrink-0 mt-auto border-t border-white/10">
+            {(!isCollapsed || isMobile) ? (
               <div className="p-5">
                 <div className="flex items-center justify-between mb-4">
-                  <span className="text-xs">© 2025 EscrowPay</span>
+                  <span className="text-xs">© 2025 Sylo</span>
                   <ThemeToggle />
                 </div>
                 <button

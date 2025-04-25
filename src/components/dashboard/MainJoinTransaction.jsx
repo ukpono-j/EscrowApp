@@ -107,6 +107,7 @@ const MainJoinTransaction = () => {
     >
       <Box
         w="100%"
+        mt={20}
         maxW="450px"
         bg={boxBg}
         boxShadow={`0 4px 20px ${shadowColor}`}

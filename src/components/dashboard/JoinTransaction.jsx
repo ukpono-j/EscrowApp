@@ -71,7 +71,7 @@ const JoinTransaction = () => {
           {showToggleContainer ? (
             <div className=''>
               <MiniNav />
-              <div  className="pr-[28px] pl-[100px] pt-10 md:pl-[30px]">
+              <div  className="px-3">
                 <MainJoinTransaction sidebarCollapsed={isSidebarCollapsed} />
               </div>
             </div>

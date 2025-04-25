@@ -156,7 +156,7 @@ const NotificationComponent = () => {
   };
 
   return (
-    <Box mt={10} mb={20} px={{ base: 4, md: 8 }}>
+    <Box mt={24} mb={20} px={{ base: 4, md: 8 }}>
       <Flex 
         direction={{ base: "column", md: "row" }} 
         justify="space-between" 

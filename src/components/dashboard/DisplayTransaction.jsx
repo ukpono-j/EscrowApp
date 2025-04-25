@@ -19,7 +19,9 @@ import { Box, Text } from "@chakra-ui/react";
 import { MdContentCopy } from "react-icons/md";
 import { format } from "date-fns";
 import { FiFilter } from "react-icons/fi";
-
+import { FiEdit } from "react-icons/fi";
+import { Select } from "@chakra-ui/react";
+import { nigeriaBanks } from "../../data/banksList";
 
 
 
@@ -34,6 +36,15 @@ const TransactionLoader = () => {
     </div>
   );
 }
+
+<style jsx>{`
+  @media (min-width: 475px) {
+    .xs\\:grid-cols-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+`}</style>
+
 
 const DisplayTransaction = ({ userResponse }) => {
   const [showToggleContainer, setShowToggleContainer] = useState(true);
@@ -63,6 +74,14 @@ const DisplayTransaction = ({ userResponse }) => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
+  const [showPaymentDetailsModal, setShowPaymentDetailsModal] = useState(false);
+  const [currentTransaction, setCurrentTransaction] = useState(null);
+  const [paymentDetails, setPaymentDetails] = useState({
+    paymentBank: '',
+    paymentAccountNumber: '',
+    selectedBankCode: ''
+  });
+
 
 
   useEffect(() => {
@@ -538,7 +557,7 @@ const DisplayTransaction = ({ userResponse }) => {
 
 
   // Updated handleConfirm function with modal integration
- 
+
   const handleConfirm = async (transactionId) => {
     try {
       const token = localStorage.getItem("auth-token");
@@ -759,6 +778,83 @@ const DisplayTransaction = ({ userResponse }) => {
   };
 
 
+  // Add this function to handle editing payment details
+  const handleEditPaymentDetails = (transaction) => {
+    setCurrentTransaction(transaction);
+    setPaymentDetails({
+      paymentBank: transaction.paymentBank || '',
+      paymentAccountNumber: transaction.paymentAccountNumber || '',
+      selectedBankCode: transaction.selectedBankCode || ''
+    });
+    setShowPaymentDetailsModal(true);
+  };
+
+  // Add a function to close the modal
+  const closePaymentDetailsModal = () => {
+    setShowPaymentDetailsModal(false);
+    setCurrentTransaction(null);
+  };
+
+  // Add a function to handle payment details submission
+  const submitPaymentDetails = async (e) => {
+    e.preventDefault();
+    if (!currentTransaction) return;
+
+    try {
+      const token = localStorage.getItem("auth-token");
+      if (!token) {
+        toast({
+          title: "User not authenticated",
+          status: "error",
+          duration: 3000,
+          isClosable: true,
+        });
+        return;
+      }
+
+      const response = await axios.put(
+        `${BASE_URL}/api/transactions/update-payment-details/${currentTransaction._id}`,
+        {
+          paymentBank: paymentDetails.paymentBank,
+          paymentAccountNumber: paymentDetails.paymentAccountNumber,
+          selectedBankCode: paymentDetails.selectedBankCode
+        },
+        { headers: { "auth-token": token } }
+      );
+
+      toast({
+        title: "Payment details updated",
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+
+      closePaymentDetailsModal();
+      fetchTransactionData(); // Refresh transaction data
+    } catch (error) {
+      console.error("Error updating payment details:", error);
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Could not update payment details",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+  };
+
+  // Function to handle bank selection
+  const handleBankSelection = (e) => {
+    const bankCode = e.target.value;
+    const selectedBank = nigeriaBanks.find(bank => bank.code === bankCode);
+
+    setPaymentDetails({
+      ...paymentDetails,
+      selectedBankCode: bankCode,
+      paymentBank: selectedBank ? selectedBank.name : ''
+    });
+  };
+
 
   return (
     <Box className=" flex items-center">
@@ -780,14 +876,14 @@ const DisplayTransaction = ({ userResponse }) => {
           <div>
             <MiniNav />
           </div>
-          <div className="pr-[28px] pl-[100px] pt-10 md:pl-[30px]" w="full">
+          <div className="md:px-6 px-3 lg:px-8 pt-24 md:pt-24 md:pb-20 pb-20 w-full max-w-screen-xl mx-auto">
             <h1 className="text-[33px] font-bold">My Transactions</h1>
             {/* Enhanced Search Feature */}
             {/* Transaction Tabs with Search Feature */}
             <div className="mb-6">
               <div className="flex flex-col sm:flex-row gap-4 items-center">
                 {/* Tabs Container */}
-                <div className="flex overflow-x-auto bg-[#111518] rounded-xl p-1 border border-gray-800 w-full sm:w-auto flex-1">
+                <div className="flex overflow-x-auto bg-[#111518] rounded-xl border border-gray-800 w-full flex-1 max-w-full">
                   <button
                     onClick={() => setActiveTab("all")}
                     className={`px-4 py-2 rounded-lg flex-1 text-center transition-all ${activeTab === "all"
@@ -884,13 +980,30 @@ const DisplayTransaction = ({ userResponse }) => {
                       .map((transaction) => (
                         <div key={transaction._id} className="transaction-card text-[13px] mt-3 px-6 py-5 bg-[#111518] rounded-2xl border border-gray-800 hover:border-[#318AE6] transition-all shadow-lg hover:shadow-[#318AE630]">
                           <div className="flex items-center justify-between mb-3">
-                            <h3 className="font-bold text-lg text-white">{transaction.paymentName}</h3>
-                            <button onClick={() => handleChatButton(transaction._id)} className="text-[24px] bg-[#1d2225] p-2 rounded-full hover:bg-[#318AE6] transition-all">
-                              <BsChatFill />
-                            </button>
+                            <h3 className="font-bold text-lg text-white truncate max-w-[70%]">{transaction.paymentName}</h3>
+                            <div className="flex items-center gap-2">
+                              {/* Show edit button only for sellers and if payment details are missing */}
+                              {console.log("Transaction:", transaction.selectedUserType, "Bank:", !!transaction.paymentBank, "Account:", !!transaction.paymentAccountNumber)}
+                              {/* {(transaction.selectedUserType === "seller" || transaction.selectedUserType === "Seller") &&
+                                (!transaction.paymentBank || !transaction.paymentAccountNumber || transaction.paymentBank === "" || transaction.paymentAccountNumber === "") && ( */}
+                              <button
+                                onClick={() => handleEditPaymentDetails(transaction)}
+                                className="text-[20px] sm:text-[24px] bg-[#1d2225] p-1.5 sm:p-2 rounded-full hover:bg-[#967532] text-white transition-all"
+                                title="Edit Payment Details"
+                              >
+                                <FiEdit size={18} />
+                              </button>
+                              {/* )} */}
+                              <button
+                                onClick={() => handleChatButton(transaction._id)}
+                                className="text-[20px] sm:text-[24px] bg-[#1d2225] p-1.5 sm:p-2 rounded-full hover:bg-[#318AE6] transition-all"
+                              >
+                                <BsChatFill />
+                              </button>
+                            </div>
                           </div>
-                          <div className="bg-[#1d2225] rounded-lg p-3 mb-3 flex items-center justify-between">
-                            <div>
+                          <div className="bg-[#1d2225] rounded-lg p-2 sm:p-3 mb-3 flex items-center justify-between">
+                            <div className="max-w-[85%]">
                               <p className="text-gray-400 text-xs mb-1">Transaction ID</p>
                               <p className="font-medium text-sm truncate">{transaction._id}</p>
                             </div>
@@ -902,20 +1015,20 @@ const DisplayTransaction = ({ userResponse }) => {
                             </button>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-2 mb-4">
-                            <div className="bg-[#1d2225] rounded-lg p-3">
+                          <div className="grid grid-cols-1 xs:grid-cols-2 gap-2 mb-4">
+                            <div className="bg-[#1d2225] rounded-lg p-2 sm:p-3">
                               <p className="text-gray-400 text-xs mb-1">Email</p>
-                              <p className="font-medium truncate">{transaction.email}</p>
+                              <p className="font-medium text-xs sm:text-sm truncate">{transaction.email}</p>
                             </div>
-                            <div className="bg-[#1d2225] rounded-lg p-3">
+                            <div className="bg-[#1d2225] rounded-lg p-2 sm:p-3">
                               <p className="text-gray-400 text-xs mb-1">Amount</p>
-                              <p className="font-medium text-[#318AE6]">{transaction.paymentAmount}</p>
+                              <p className="font-medium text-xs sm:text-sm text-[#318AE6]">{transaction.paymentAmount}</p>
                             </div>
-                            <div className="bg-[#1d2225] rounded-lg p-3">
+                            <div className="bg-[#1d2225] rounded-lg p-2 sm:p-3">
                               <p className="text-gray-400 text-xs mb-1">User Type</p>
-                              <p className="font-medium capitalize">{transaction.selectedUserType}</p>
+                              <p className="font-medium text-xs sm:text-sm capitalize">{transaction.selectedUserType}</p>
                             </div>
-                            <div className="bg-[#1d2225] rounded-lg p-3">
+                            <div className="bg-[#1d2225] rounded-lg p-2 sm:p-3">
                               <p className="text-gray-400 text-xs mb-1">Status</p>
                               <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${transaction.status === "completed" ? "bg-green-900 text-green-300" :
                                 transaction.status === "cancelled" ? "bg-red-900 text-red-300" :
@@ -924,28 +1037,28 @@ const DisplayTransaction = ({ userResponse }) => {
                                 {transaction.status}
                               </div>
                             </div>
-                            <div className="bg-[#1d2225] rounded-lg p-3">
+                            <div className="bg-[#1d2225] rounded-lg p-2 sm:p-3">
                               <p className="text-gray-400 text-xs mb-1">Bank</p>
                               <p className="font-medium truncate">{transaction.paymentBank}</p>
                             </div>
-                            <div className="bg-[#1d2225] rounded-lg p-3">
+                            <div className="bg-[#1d2225] rounded-lg p-2 sm:p-3">
                               <p className="text-gray-400 text-xs mb-1">Account Number</p>
                               <p className="font-medium">{transaction.paymentAccountNumber}</p>
                             </div>
-                            <div className="bg-[#1d2225] rounded-lg p-3">
+                            <div className="bg-[#1d2225] rounded-lg p-2 sm:p-3">
                               <p className="text-gray-400 text-xs mb-1">Waybill Status</p>
                               <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${transaction.proofOfWaybill === "confirmed" ? "bg-green-900 text-green-300" : "bg-yellow-900 text-yellow-300"
                                 }`}>
                                 {transaction.proofOfWaybill}
                               </div>
                             </div>
-                            <div className="bg-[#1d2225] rounded-lg p-3">
+                            <div className="bg-[#1d2225] rounded-lg p-2 sm:p-3">
                               <p className="text-gray-400 text-xs mb-1">Created</p>
                               <p className="font-medium">{transaction.createdAt ? format(new Date(transaction.createdAt), 'MMM dd, yyyy') : 'N/A'}</p>
                             </div>
                           </div>
                           <div className="mt-3">
-                            <details className="bg-[#1d2225] rounded-lg p-3">
+                            <details className="bg-[#1d2225] rounded-lg p-2 sm:p-3">
                               <summary className="font-medium cursor-pointer flex items-center justify-between">
                                 <span>Description</span>
                                 <span className="text-xs text-gray-400">Click to expand</span>
@@ -953,7 +1066,7 @@ const DisplayTransaction = ({ userResponse }) => {
                               <p className="mt-2 text-gray-300 text-sm whitespace-pre-wrap">{transaction.paymentDescription}</p>
                             </details>
 
-                            <details className="bg-[#1d2225] rounded-lg p-3 mt-2">
+                            <details className="bg-gray-800 rounded-lg p-2 sm:p-3 mt-2">
                               <summary className="font-medium cursor-pointer flex items-center justify-between">
                                 <span>Participants</span>
                                 <span className="text-xs text-gray-400">Click to expand</span>
@@ -961,38 +1074,76 @@ const DisplayTransaction = ({ userResponse }) => {
                               <div className="mt-2">
                                 {transaction.participants && transaction.participants.length > 0 ? (
                                   <ul className="space-y-2">
+                                    {/* Display the participants */}
                                     {transaction.participants.map((participant, index) => (
                                       <li key={index} className="flex items-center">
-                                        <div className="w-6 h-6 bg-[#318AE6] rounded-full flex items-center justify-center text-xs mr-2">
-                                          {typeof participant === 'object' && participant.name
-                                            ? participant.name.charAt(0).toUpperCase()
-                                            : (index + 1)}
+                                        <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-xs mr-2">
+                                          {typeof participant === 'object' && participant.firstName
+                                            ? participant.firstName.charAt(0).toUpperCase()
+                                            : typeof participant === 'object' && participant.email
+                                              ? participant.email.charAt(0).toUpperCase()
+                                              : "P"}
                                         </div>
                                         <span className="text-sm">
                                           {typeof participant === 'object'
-                                            ? (participant.name || participant.email || 'Unknown')
-                                            : participant}
+                                            ? participant.firstName && participant.lastName
+                                              ? `${participant.firstName} ${participant.lastName}`
+                                              : participant.email || 'Loading...'
+                                            : 'Loading...'}
+                                          <span className="ml-2 text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">
+                                            {transaction.selectedUserType === "buyer" ? "Seller" : "Buyer"}
+                                          </span>
                                         </span>
                                       </li>
                                     ))}
+
+                                    {/* Display the transaction creator */}
+                                    <li className="flex items-center">
+                                      <div className="w-6 h-6 bg-yellow-600 rounded-full flex items-center justify-center text-xs mr-2">
+                                        {transaction.email ? transaction.email.charAt(0).toUpperCase() : "C"}
+                                      </div>
+                                      <span className="text-sm">
+                                        {transaction.email || 'Creator'}
+                                        <span className="ml-2 text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">
+                                          {transaction.selectedUserType}
+                                        </span>
+                                      </span>
+                                    </li>
                                   </ul>
                                 ) : (
-                                  <p className="text-gray-400 text-sm">No participants yet</p>
+                                  <div>
+                                    {/* Only display the creator if there are no participants yet */}
+                                    <ul className="space-y-2">
+                                      <li className="flex items-center">
+                                        <div className="w-6 h-6 bg-yellow-600 rounded-full flex items-center justify-center text-xs mr-2">
+                                          {transaction.email ? transaction.email.charAt(0).toUpperCase() : "C"}
+                                        </div>
+                                        <span className="text-sm">
+                                          {transaction.email || 'Creator'}
+                                          <span className="ml-2 text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">
+                                            {transaction.selectedUserType}
+                                          </span>
+                                        </span>
+                                      </li>
+                                    </ul>
+                                    <p className="text-gray-400 text-sm mt-2">No other participants yet</p>
+                                  </div>
                                 )}
                               </div>
                             </details>
+
                           </div>
 
                           <div className="flex items-center justify-between gap-2 mt-4">
                             <button
-                              className="px-4 py-2 rounded-xl font-bold transition-all hover:bg-red-600 bg-red-700 text-white flex-1"
+                              className="px-2 sm:px-4 py-2 rounded-xl font-bold transition-all hover:bg-red-600 bg-red-700 text-white flex-1 text-xs sm:text-sm"
                               onClick={() => cancelTransaction(transaction._id)}
                             >
                               Cancel
                             </button>
 
                             <button
-                              className="px-4 py-2 bg-[#318AE6] hover:bg-[#2279d8] transition-all rounded-xl font-bold text-white flex-1"
+                              className="px-2 sm:px-4 py-2 bg-[#318AE6] hover:bg-[#2279d8] transition-all rounded-xl font-bold text-white flex-1 text-xs sm:text-sm"
                               onClick={() =>
                                 transaction.selectedUserType === "seller"
                                   ? handleWaybillPopup(transaction._id)
@@ -1004,29 +1155,29 @@ const DisplayTransaction = ({ userResponse }) => {
 
                             {/* ============================ showWaybillPopup =======================  */}
                             {showWaybillPopup[transaction._id] && (
-                              <div style={{ overflowY: "scroll" }} className="modal-container pr-5 pt-5 pb-10 pl-5 fixed z-30 bg-[#111518] left-0 top-0 w-[100%] h-[100vh] backdrop-filter backdrop-blur-sm bg-opacity-95">
+                              <div style={{ overflowY: "auto" }} className="modal-container fixed z-30 inset-0 bg-[#111518] backdrop-filter backdrop-blur-sm bg-opacity-95 px-4 py-6">
                                 <div className="max-w-2xl mx-auto bg-[#1A1E21] p-8 rounded-2xl shadow-xl border border-gray-800">
                                   <div className="w-[100%]">
                                     <button
                                       onClick={() => ClosehandleWaybillPopup(transaction._id)}
-                                      className="absolute top-5 right-5 text-[30px] hover:text-[#318AE6] transition-all"
+                                      className="absolute top-2 right-2 sm:top-5 sm:right-5 text-[24px] sm:text-[30px] hover:text-[#318AE6] transition-all"
                                     >
                                       <MdClose />
                                     </button>
                                   </div>
-                                  <form className="h-[auto] mt-6" onSubmit={(e) => { e.preventDefault(); handleWaybillSubmit(transaction._id); }} encType="multipart/form-data">
+                                  <form className="h-auto mt-4 sm:mt-6" onSubmit={(e) => { e.preventDefault(); handleWaybillSubmit(transaction._id); }} encType="multipart/form-data">
                                     <div className="">
-                                      <h1 className="text-3xl font-bold text-center text-white">Seller Waybill Proof</h1>
-                                      <p className="text-lg text-center pt-3 text-gray-300">I, the seller, confirm that I have shipped the goods.</p>
+                                      <h1 className="text-xl sm:text-3xl font-bold text-center text-white">Seller Waybill Proof</h1>
+                                      <p className="text-base sm:text-lg text-center pt-3 text-gray-300">I, the seller, confirm that I have shipped the goods.</p>
 
-                                      <div className="mt-6 space-y-5">
+                                      <div className="mt-4 sm:mt-6 space-y-4 sm:space-y-5">
                                         <div>
-                                          <h3 className="text-gray-300 mb-2">Item:</h3>
+                                          <h3 className="text-gray-300 text-sm sm:text-base mb-2">Item:</h3>
                                           <input type="text" className="text-white bg-[#111518] border border-[#318AE6] pl-4 outline-none w-full h-12 rounded-xl" value={waybillDetails.item} onChange={(e) => setWaybillDetails({ ...waybillDetails, item: e.target.value })} />
                                         </div>
 
                                         <div>
-                                          <h3 className="text-gray-300 mb-2">Image:</h3>
+                                          <h3 className="text-gray-300 text-sm sm:text-base mb-2">Image:</h3>
                                           <div className="border-2 border-dashed border-[#318AE6] rounded-xl p-6 text-center">
                                             <input
                                               type="file"
@@ -1042,7 +1193,7 @@ const DisplayTransaction = ({ userResponse }) => {
                                         </div>
 
                                         <div>
-                                          <h3 className="text-gray-300 mb-2">Price of waybill:</h3>
+                                          <h3 className="text-gray-300 text-sm sm:text-base mb-2">Price of waybill:</h3>
                                           <input type="number" className="text-white bg-[#111518] border border-[#318AE6] pl-4 outline-none w-full h-12 rounded-xl" value={waybillDetails.price} onChange={(e) => setWaybillDetails({ ...waybillDetails, price: e.target.value })} />
                                         </div>
 
@@ -1072,7 +1223,7 @@ const DisplayTransaction = ({ userResponse }) => {
                             {/* ============================ buyershowWaybillPopup =======================  */}
 
                             {buyershowWaybillPopup[transaction._id] && (
-                              <div style={{ overflowY: "scroll" }} className="modal-container pr-5 pt-5 pb-10 pl-5 fixed z-30 bg-[#111518] left-0 top-0 w-[100%] h-[100vh] backdrop-filter backdrop-blur-sm bg-opacity-95">
+                              <div style={{ overflowY: "auto" }} className="modal-container fixed z-30 inset-0 bg-[#111518] backdrop-filter backdrop-blur-sm bg-opacity-95 px-4 py-6">
                                 <div className="max-w-2xl mx-auto bg-[#1A1E21] p-8 rounded-2xl shadow-xl border border-gray-800">
                                   <div className="w-[100%]">
                                     <button
@@ -1219,6 +1370,65 @@ const DisplayTransaction = ({ userResponse }) => {
         onShowProfile={handleShowProfile}
         onShowToggleComponent={handleMyTransaction}
       />
+
+      {showPaymentDetailsModal && currentTransaction && (
+        <div className="modal-container fixed z-30 inset-0 overflow-y-auto bg-black bg-opacity-75 backdrop-blur-sm">
+          <div className="flex items-center justify-center min-h-screen px-4">
+            <div className="bg-[#1A1E21] w-full max-w-md p-4 sm:p-6 rounded-2xl shadow-xl border border-gray-800">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg sm:text-xl font-bold text-white">Update Payment Details</h2>
+                <button onClick={closePaymentDetailsModal} className="text-gray-400 hover:text-white">
+                  <MdClose size={24} />
+                </button>
+              </div>
+
+              <form onSubmit={submitPaymentDetails}>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-1">Bank Name</label>
+                    <Select
+                      placeholder="Select Bank"
+                      value={paymentDetails.selectedBankCode}
+                      onChange={handleBankSelection}
+                      className="w-full bg-[#111518] border border-gray-700 rounded-xl text-white py-2 px-3 text-sm"
+                      required
+                    >
+                      {nigeriaBanks.map((bank) => (
+                        <option key={bank.code} value={bank.code}>
+                          {bank.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-1">Account Number</label>
+                    <input
+                      type="text"
+                      value={paymentDetails.paymentAccountNumber}
+                      onChange={(e) => setPaymentDetails({ ...paymentDetails, paymentAccountNumber: e.target.value })}
+                      className="w-full bg-[#111518] border border-gray-700 rounded-xl text-white py-2 px-3 text-sm"
+                      placeholder="Enter account number"
+                      required
+                      pattern="[0-9]+"
+                      title="Please enter a valid account number (numbers only)"
+                      minLength={10}
+                      maxLength={10}
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full bg-[#967532] hover:bg-[#86692d] text-white font-bold py-2 rounded-xl transition-all mt-4 text-sm sm:text-base"
+                  >
+                    Save Payment Details
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </Box>
   );
 };
