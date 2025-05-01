@@ -842,3 +842,72 @@ const DisplayTransaction = ({ userResponse }) => {
   );
 };
 export default DisplayTransaction;
+
+
+
+
+   <details className="bg-gray-800 rounded-lg p-2 sm:p-3 mt-2">
+                              <summary className="font-medium cursor-pointer flex items-center justify-between">
+                                <span>Participants</span>
+                                <span className="text-xs text-gray-400">Click to expand</span>
+                              </summary>
+                              <div className="mt-2">
+                                {transaction.participants && transaction.participants.length > 0 ? (
+                                  <ul className="space-y-2">
+                                    {/* Display the participants */}
+                                    {transaction.participants.map((participant, index) => (
+                                      <li key={index} className="flex items-center">
+                                        <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-xs mr-2">
+                                          {typeof participant === 'object' && participant.firstName
+                                            ? participant.firstName.charAt(0).toUpperCase()
+                                            : typeof participant === 'object' && participant.email
+                                              ? participant.email.charAt(0).toUpperCase()
+                                              : "P"}
+                                        </div>
+                                        <span className="text-sm">
+                                          {typeof participant === 'object'
+                                            ? participant.firstName && participant.lastName
+                                              ? `${participant.firstName} ${participant.lastName}`
+                                              : participant.email || 'Loading...'
+                                            : 'Loading...'}
+                                          <span className="ml-2 text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">
+                                            {transaction.selectedUserType === "buyer" ? "Seller" : "Buyer"}
+                                          </span>
+                                        </span>
+                                      </li>
+                                    ))}
+
+                                    {/* Display the transaction creator */}
+                                    <li className="flex items-center">
+                                      <div className="w-6 h-6 bg-yellow-600 rounded-full flex items-center justify-center text-xs mr-2">
+                                        {transaction.email ? transaction.email.charAt(0).toUpperCase() : "C"}
+                                      </div>
+                                      <span className="text-sm">
+                                        {transaction.email || 'Creator'}
+                                        <span className="ml-2 text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">
+                                          {transaction.selectedUserType}
+                                        </span>
+                                      </span>
+                                    </li>
+                                  </ul>
+                                ) : (
+                                  <div>
+                                    {/* Only display the creator if there are no participants yet */}
+                                    <ul className="space-y-2">
+                                      <li className="flex items-center">
+                                        <div className="w-6 h-6 bg-yellow-600 rounded-full flex items-center justify-center text-xs mr-2">
+                                          {transaction.email ? transaction.email.charAt(0).toUpperCase() : "C"}
+                                        </div>
+                                        <span className="text-sm">
+                                          {transaction.email || 'Creator'}
+                                          <span className="ml-2 text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">
+                                            {transaction.selectedUserType}
+                                          </span>
+                                        </span>
+                                      </li>
+                                    </ul>
+                                    <p className="text-gray-400 text-sm mt-2">No other participants yet</p>
+                                  </div>
+                                )}
+                              </div>
+                            </details>

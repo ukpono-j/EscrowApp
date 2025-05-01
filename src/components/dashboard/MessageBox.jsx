@@ -127,13 +127,13 @@ const MessageBox = () => {
         timestamp: new Date().toISOString(),
         avatarImage: userDetails.avatarImage,
       };
-      
+
       // Clear input right away for better UX
       setMessage("");
       if (messageInputRef.current) {
         messageInputRef.current.focus();
       }
-      
+
       // Emit the message to other participants
       socketRef.current.emit("message", newMessage);
 
@@ -158,11 +158,11 @@ const MessageBox = () => {
   const handleChatExit = () => {
     navigate("/transactions/tab");
   };
-  
+
   const toggleInfoPanel = () => {
     setShowInfo(!showInfo);
   };
-  
+
   const formatMessageTimestamp = (timestamp) => {
     try {
       return format(new Date(timestamp), 'h:mm a');
@@ -170,7 +170,7 @@ const MessageBox = () => {
       return '';
     }
   };
-  
+
   const getInitials = (name) => {
     if (!name) return "?";
     return name.charAt(0).toUpperCase();
@@ -192,29 +192,37 @@ const MessageBox = () => {
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 bg-[#1A1E21] border-b border-[#28313A]">
         <div className="flex items-center">
-          <button 
-            onClick={handleChatExit} 
+          <button
+            onClick={handleChatExit}
             className="mr-3 p-2 rounded-full hover:bg-[#28313A] transition-colors"
           >
             <FiArrowLeft size={20} />
           </button>
-          
+
           <div className="flex items-center">
             <div className="h-10 w-10 bg-[#318AE6] rounded-full flex items-center justify-center text-white font-semibold">
               <BsChatLeftText size={18} />
             </div>
-            <div className="ml-3">
+            {/* <div className="ml-3">
               <h1 className="font-bold text-lg">{transactionDetails.paymentName || "Chat Room"}</h1>
               <p className="text-xs text-gray-400">
                 {participants && participants.length 
                   ? `${participants.length} participants` 
                   : "Loading participants..."}
               </p>
+            </div> */}
+
+            <div className="ml-3">
+              <p className="font-bold text-lg">
+                {participants && participants.length
+                  ? participants.map(p => `${p.firstName || ''}`).join(', ')
+                  : "Loading participants..."}
+              </p>
             </div>
           </div>
         </div>
-        
-        <button 
+
+        <button
           onClick={toggleInfoPanel}
           className={`p-2 rounded-full ${showInfo ? 'bg-[#318AE6]' : 'hover:bg-[#28313A]'} transition-colors`}
         >
@@ -238,7 +246,7 @@ const MessageBox = () => {
               messages.map((msg, index) => {
                 const isSentByCurrentUser = msg.userId === userDetails._id;
                 const showAvatar = index === 0 || messages[index - 1].userId !== msg.userId;
-                
+
                 return (
                   <div key={index} className={`flex ${isSentByCurrentUser ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-[75%] flex ${isSentByCurrentUser ? 'flex-row-reverse' : 'flex-row'}`}>
@@ -255,7 +263,7 @@ const MessageBox = () => {
                           </div>
                         </div>
                       )}
-                      
+
                       {/* Message content */}
                       <div className={`flex flex-col ${isSentByCurrentUser ? 'items-end' : 'items-start'}`}>
                         {showAvatar && (
@@ -263,12 +271,11 @@ const MessageBox = () => {
                             {isSentByCurrentUser ? 'You' : msg.userFirstName}
                           </span>
                         )}
-                        
-                        <div className={`rounded-2xl px-4 py-2 break-words ${
-                          isSentByCurrentUser 
-                            ? 'bg-[#318AE6] text-white' 
+
+                        <div className={`rounded-2xl px-4 py-2 break-words ${isSentByCurrentUser
+                            ? 'bg-[#318AE6] text-white'
                             : 'bg-[#28313A] text-gray-100'
-                        }`}>
+                          }`}>
                           {msg.message}
                           <span className="text-xs opacity-70 ml-2 inline-block">
                             {formatMessageTimestamp(msg.timestamp)}
@@ -282,7 +289,7 @@ const MessageBox = () => {
             )}
             <div ref={messagesEndRef} />
           </div>
-          
+
           {/* Message input */}
           <div className="p-4 bg-[#1A1E21] border-t border-[#28313A]">
             <div className="flex items-center bg-[#28313A] rounded-full overflow-hidden">
@@ -295,55 +302,53 @@ const MessageBox = () => {
                 placeholder="Type a message..."
                 className="flex-1 px-4 py-3 bg-transparent outline-none text-white"
               />
-              <button 
+              <button
                 onClick={sendMessage}
                 disabled={!message.trim()}
-                className={`p-3 rounded-full mr-1 ${
-                  message.trim() 
-                    ? 'bg-[#318AE6] hover:bg-[#2571c5] text-white' 
+                className={`p-3 rounded-full mr-1 ${message.trim()
+                    ? 'bg-[#318AE6] hover:bg-[#2571c5] text-white'
                     : 'bg-[#1d2329] text-gray-500'
-                } transition-colors`}
+                  } transition-colors`}
               >
                 <MdSend size={20} />
               </button>
             </div>
           </div>
         </div>
-        
+
         {/* Info panel (transaction details and participants) */}
         {showInfo && (
           <div className="w-80 bg-[#1A1E21] border-l border-[#28313A] hidden md:block overflow-y-auto">
             <div className="p-4">
               <h2 className="text-lg font-bold mb-4">Transaction Details</h2>
-              
+
               <div className="space-y-4">
                 <div className="bg-[#28313A] p-3 rounded-lg">
                   <p className="text-xs text-gray-400 mb-1">ID</p>
                   <p className="text-sm font-medium truncate">{transactionDetails._id}</p>
                 </div>
-                
+
                 <div className="bg-[#28313A] p-3 rounded-lg">
                   <p className="text-xs text-gray-400 mb-1">Amount</p>
                   <p className="text-base font-medium text-[#318AE6]">{transactionDetails.paymentAmount}</p>
                 </div>
-                
+
                 <div className="bg-[#28313A] p-3 rounded-lg">
                   <p className="text-xs text-gray-400 mb-1">Description</p>
                   <p className="text-sm">{transactionDetails.paymentDescription || "No description"}</p>
                 </div>
-                
+
                 <div className="bg-[#28313A] p-3 rounded-lg">
                   <p className="text-xs text-gray-400 mb-1">Status</p>
-                  <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                    transactionDetails.status === "completed" ? "bg-green-900 text-green-300" :
-                    transactionDetails.status === "cancelled" ? "bg-red-900 text-red-300" :
-                    "bg-yellow-900 text-yellow-300"
-                  }`}>
+                  <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${transactionDetails.status === "completed" ? "bg-green-900 text-green-300" :
+                      transactionDetails.status === "cancelled" ? "bg-red-900 text-red-300" :
+                        "bg-yellow-900 text-yellow-300"
+                    }`}>
                     {transactionDetails.status || "pending"}
                   </div>
                 </div>
               </div>
-              
+
               <h3 className="text-lg font-bold mt-6 mb-4">Participants</h3>
               <div className="space-y-2">
                 {participants && participants.length > 0 ? (

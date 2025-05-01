@@ -421,142 +421,10 @@ const DisplayTransaction = ({ userResponse }) => {
     }
   };
 
-  // const completeTransaction = async (transactionId) => {
-  //   const token = localStorage.getItem("auth-token");
-  //   try {
-  //     const response = await axios.put(`${BASE_URL}/api/transactions/complete-transaction/${transactionId}`, {
-  //       headers: { "auth-token": token },
-  //     });
-
-  //     // Handle the response
-  //     console.log('Transaction completed:', response.data);
-  //     toast({
-  //       title: "Transaction completed successfully",
-  //       status: "success",
-  //       duration: 3000,
-  //       isClosable: true,
-  //     });
-
-  //     // Refresh transactions list after cancellation
-  //     setTransactions(transactions.filter(transaction => transaction._id !== transactionId));
-  //   } catch (error) {
-  //     console.error('Error completing transaction:', error);
-  //     toast({
-  //       title: "Failed to complete transaction",
-  //       status: "error",
-  //       duration: 3000,
-  //       isClosable: true,
-  //     });
-  //   }
-  // };
-
-
   const handleDoneClick = (transactionId) => {
     setSelectedTransactionId(transactionId);
     setModalVisible(true);
   };
-
-
-
-  // Updated handleConfirm function
-  // const handleConfirm = async (transactionId) => {
-  //   try {
-  //     const token = localStorage.getItem("auth-token");
-  //     if (!token) {
-  //       toast({
-  //         title: "User not authenticated",
-  //         status: "error",
-  //         duration: 3000,
-  //         isClosable: true,
-  //       });
-  //       return;
-  //     }
-
-
-  //     // First check if there are participants (if user is creator)
-  //     const transaction = transactions.find(t => t._id === transactionId);
-
-  //     // If current user is creator and there are no participants yet
-  //     if (
-  //       transaction &&
-  //       currentUser &&
-  //       // currentUser._id === transaction.userId._id &&
-  //       // (!transaction.participants || transaction.participants.length === 0)
-  //       currentUser._id === (transaction.userId._id ? transaction.userId._id : transaction.userId) &&
-  //       (!transaction.participants || transaction.participants.length === 0)
-  //     ) {
-  //       toast({
-  //         title: "There is no participant in this transaction",
-  //         description: "Please wait for someone to join.",
-  //         status: "error",
-  //         duration: 5000,
-  //         isClosable: true,
-  //       });
-  //       return;
-  //     }
-
-  //     if (!window.confirm("Are you sure you want to complete this transaction? This action cannot be undone.")) {
-  //       return;
-  //     }
-
-  //     console.log("Confirming transaction:", transactionId);
-
-  //     const response = await axios.post(
-  //       `${BASE_URL}/api/transactions/confirm`,
-  //       { transactionId },
-  //       { headers: { "auth-token": token } }
-  //     );
-
-  //     console.log("Confirmation response:", response.data);
-
-  //     if (response.data.buyerConfirmed && response.data.sellerConfirmed) {
-  //       toast({
-  //         title: "Transaction completed successfully",
-  //         description: "Payout has been initiated to the seller.",
-  //         status: "success",
-  //         duration: 5000,
-  //         isClosable: true,
-  //       });
-  //     } else {
-  //       toast({
-  //         title: "Confirmation recorded",
-  //         description: "Waiting for the other party to confirm.",
-  //         status: "info",
-  //         duration: 5000,
-  //         isClosable: true,
-  //       });
-  //     }
-
-  //     // Refresh transaction data
-  //     fetchTransactionData();
-  //   } catch (error) {
-  //     console.error("Confirmation error:", error);
-  //     console.error("Confirmation error details:", {
-  //       message: error.message,
-  //       response: error.response ? {
-  //         status: error.response.status,
-  //         data: error.response.data
-  //       } : 'No response',
-  //       request: error.request ? 'Request sent but no response received' : 'Request setup failed'
-  //     });
-  //     let errorMessage = "Could not complete transaction. Please try again.";
-
-  //     if (error.response && error.response.data && error.response.data.message) {
-  //       errorMessage = error.response.data.message;
-  //     }
-
-  //     toast({
-  //       title: "Error",
-  //       description: errorMessage,
-  //       status: "error",
-  //       duration: 5000,
-  //       isClosable: true,
-  //     });
-  //   }
-  // };
-
-
-  // Updated handleConfirm function with modal integration
 
   const handleConfirm = async (transactionId) => {
     try {
@@ -978,14 +846,22 @@ const DisplayTransaction = ({ userResponse }) => {
                           transaction.email.toLowerCase().includes(searchQuery.toLowerCase());
                       })
                       .map((transaction) => (
-                        <div key={transaction._id} className="transaction-card text-[13px] mt-3 px-6 py-5 bg-[#111518] rounded-2xl border border-gray-800 hover:border-[#318AE6] transition-all shadow-lg hover:shadow-[#318AE630]">
+                        <Box key={transaction._id} className="transaction-card text-[13px] text-gray-400 mt-3 px-6 py-5 bg-[#111518] rounded-2xl border border-gray-800  transition-all  hover:shadow-[#318AE630]">
+                          {/* // Modified code for the transaction title section */}
                           <div className="flex items-center justify-between mb-3">
-                            <h3 className="font-bold text-lg text-white truncate max-w-[70%]">{transaction.paymentName}</h3>
+                            <div className="flex flex-col">
+                              {/* <h3 className="font-bold text-lg text-white truncate">{transaction.paymentName}</h3> */}
+                              {transaction.participants && transaction.participants.length > 0 ? (
+                                <p className="font-bold text-lg text-white truncate">
+                                  {typeof transaction.participants[0] === 'object' && transaction.participants[0].firstName
+                                    ? `${transaction.participants[0].firstName} ${transaction.participants[0].lastName || ''}`
+                                    : "Participant joined"}
+                                </p>
+                              ) : (
+                                <p className="text-sm text-gray-400">No participant yet</p>
+                              )}
+                            </div>
                             <div className="flex items-center gap-2">
-                              {/* Show edit button only for sellers and if payment details are missing */}
-                              {console.log("Transaction:", transaction.selectedUserType, "Bank:", !!transaction.paymentBank, "Account:", !!transaction.paymentAccountNumber)}
-                              {/* {(transaction.selectedUserType === "seller" || transaction.selectedUserType === "Seller") &&
-                                (!transaction.paymentBank || !transaction.paymentAccountNumber || transaction.paymentBank === "" || transaction.paymentAccountNumber === "") && ( */}
                               <button
                                 onClick={() => handleEditPaymentDetails(transaction)}
                                 className="text-[20px] sm:text-[24px] bg-[#1d2225] p-1.5 sm:p-2 rounded-full hover:bg-[#967532] text-white transition-all"
@@ -993,7 +869,6 @@ const DisplayTransaction = ({ userResponse }) => {
                               >
                                 <FiEdit size={18} />
                               </button>
-                              {/* )} */}
                               <button
                                 onClick={() => handleChatButton(transaction._id)}
                                 className="text-[20px] sm:text-[24px] bg-[#1d2225] p-1.5 sm:p-2 rounded-full hover:bg-[#318AE6] transition-all"
@@ -1002,9 +877,13 @@ const DisplayTransaction = ({ userResponse }) => {
                               </button>
                             </div>
                           </div>
+
                           <div className="bg-[#1d2225] rounded-lg p-2 sm:p-3 mb-3 flex items-center justify-between">
                             <div className="max-w-[85%]">
-                              <p className="text-gray-400 text-xs mb-1">Transaction ID</p>
+                              <div className="flex items-center">
+                                {/* <p className="text-gray-400 text-xs mb-1">Transaction ID</p> */}
+                                <p className=" text-xs mb-1">Copy the Transaction ID and send to the other party</p>
+                              </div>
                               <p className="font-medium text-sm truncate">{transaction._id}</p>
                             </div>
                             <button
@@ -1065,73 +944,6 @@ const DisplayTransaction = ({ userResponse }) => {
                               </summary>
                               <p className="mt-2 text-gray-300 text-sm whitespace-pre-wrap">{transaction.paymentDescription}</p>
                             </details>
-
-                            <details className="bg-gray-800 rounded-lg p-2 sm:p-3 mt-2">
-                              <summary className="font-medium cursor-pointer flex items-center justify-between">
-                                <span>Participants</span>
-                                <span className="text-xs text-gray-400">Click to expand</span>
-                              </summary>
-                              <div className="mt-2">
-                                {transaction.participants && transaction.participants.length > 0 ? (
-                                  <ul className="space-y-2">
-                                    {/* Display the participants */}
-                                    {transaction.participants.map((participant, index) => (
-                                      <li key={index} className="flex items-center">
-                                        <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-xs mr-2">
-                                          {typeof participant === 'object' && participant.firstName
-                                            ? participant.firstName.charAt(0).toUpperCase()
-                                            : typeof participant === 'object' && participant.email
-                                              ? participant.email.charAt(0).toUpperCase()
-                                              : "P"}
-                                        </div>
-                                        <span className="text-sm">
-                                          {typeof participant === 'object'
-                                            ? participant.firstName && participant.lastName
-                                              ? `${participant.firstName} ${participant.lastName}`
-                                              : participant.email || 'Loading...'
-                                            : 'Loading...'}
-                                          <span className="ml-2 text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">
-                                            {transaction.selectedUserType === "buyer" ? "Seller" : "Buyer"}
-                                          </span>
-                                        </span>
-                                      </li>
-                                    ))}
-
-                                    {/* Display the transaction creator */}
-                                    <li className="flex items-center">
-                                      <div className="w-6 h-6 bg-yellow-600 rounded-full flex items-center justify-center text-xs mr-2">
-                                        {transaction.email ? transaction.email.charAt(0).toUpperCase() : "C"}
-                                      </div>
-                                      <span className="text-sm">
-                                        {transaction.email || 'Creator'}
-                                        <span className="ml-2 text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">
-                                          {transaction.selectedUserType}
-                                        </span>
-                                      </span>
-                                    </li>
-                                  </ul>
-                                ) : (
-                                  <div>
-                                    {/* Only display the creator if there are no participants yet */}
-                                    <ul className="space-y-2">
-                                      <li className="flex items-center">
-                                        <div className="w-6 h-6 bg-yellow-600 rounded-full flex items-center justify-center text-xs mr-2">
-                                          {transaction.email ? transaction.email.charAt(0).toUpperCase() : "C"}
-                                        </div>
-                                        <span className="text-sm">
-                                          {transaction.email || 'Creator'}
-                                          <span className="ml-2 text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">
-                                            {transaction.selectedUserType}
-                                          </span>
-                                        </span>
-                                      </li>
-                                    </ul>
-                                    <p className="text-gray-400 text-sm mt-2">No other participants yet</p>
-                                  </div>
-                                )}
-                              </div>
-                            </details>
-
                           </div>
 
                           <div className="flex items-center justify-between gap-2 mt-4">
@@ -1290,7 +1102,7 @@ const DisplayTransaction = ({ userResponse }) => {
 
                           </div>
                           {/* ======================== */}
-                          <div className="flex flex-wrap items-center justify-between gap-2 mt-3">
+                          {/* <div className="flex flex-wrap items-center justify-between gap-2 mt-3">
                             <button
                               className={`px-4 py-2 rounded-xl font-bold text-white flex-1 transition-all ${transaction.buyerConfirmed && transaction.sellerConfirmed
                                 ? "bg-green-600 cursor-not-allowed"
@@ -1350,8 +1162,72 @@ const DisplayTransaction = ({ userResponse }) => {
                             >
                               {transaction.funded ? "Funded" : "Fund Account"}
                             </button>
+                          </div> */}
+                          <div className="flex flex-wrap items-center justify-between gap-2 mt-3">
+                            <button
+                              className={`px-4 py-2 rounded-xl font-bold text-white flex-1 transition-all ${transaction.buyerConfirmed && transaction.sellerConfirmed
+                                  ? "bg-green-600 cursor-not-allowed"
+                                  : (transaction.buyerConfirmed || transaction.sellerConfirmed) &&
+                                    ((currentUser && transaction.userId && currentUser._id === transaction.userId._id &&
+                                      ((transaction.selectedUserType === "buyer" && transaction.buyerConfirmed) ||
+                                        (transaction.selectedUserType === "seller" && transaction.sellerConfirmed))) ||
+                                      (currentUser && transaction.userId && currentUser._id !== transaction.userId._id &&
+                                        ((transaction.selectedUserType === "buyer" && transaction.sellerConfirmed) ||
+                                          (transaction.selectedUserType === "seller" && transaction.buyerConfirmed))))
+                                    ? "bg-yellow-600"
+                                    : "bg-[#318AE6] hover:bg-[#2279d8]"
+                                }`}
+                              disabled={
+                                (transaction.buyerConfirmed && transaction.sellerConfirmed) ||
+                                (currentUser && transaction.userId &&
+                                  currentUser._id === transaction.userId._id &&
+                                  transaction.selectedUserType === "buyer" &&
+                                  transaction.buyerConfirmed) ||
+                                (currentUser && transaction.userId &&
+                                  currentUser._id === transaction.userId._id &&
+                                  transaction.selectedUserType === "seller" &&
+                                  transaction.sellerConfirmed) ||
+                                (currentUser && transaction.userId &&
+                                  currentUser._id !== transaction.userId._id &&
+                                  transaction.selectedUserType === "seller" &&
+                                  transaction.buyerConfirmed) ||
+                                (currentUser && transaction.userId &&
+                                  currentUser._id !== transaction.userId._id &&
+                                  transaction.selectedUserType === "buyer" &&
+                                  transaction.sellerConfirmed)
+                              }
+                              onClick={() => handleConfirm(transaction._id)}
+                            >
+                              {transaction.buyerConfirmed && transaction.sellerConfirmed
+                                ? "Completed"
+                                : ((currentUser && transaction.userId &&
+                                  (transaction.userId._id ? currentUser._id === transaction.userId._id : currentUser._id === transaction.userId) &&
+                                  ((transaction.selectedUserType === "buyer" && transaction.buyerConfirmed) ||
+                                    (transaction.selectedUserType === "seller" && transaction.sellerConfirmed))) ||
+                                  (currentUser && transaction.userId &&
+                                    (transaction.userId._id ? currentUser._id !== transaction.userId._id : currentUser._id !== transaction.userId) &&
+                                    ((transaction.selectedUserType === "buyer" && transaction.sellerConfirmed) ||
+                                      (transaction.selectedUserType === "seller" && transaction.buyerConfirmed))))
+                                  ? "Pending"
+                                  : "Complete"
+                              }
+                            </button>
+
+                            {/* Only show Fund Account button if the user type is buyer */}
+                            {transaction.selectedUserType === "buyer" && (
+                              <button
+                                className={`px-4 py-2 rounded-xl font-bold text-white flex-1 transition-all ${transaction.funded
+                                    ? "bg-green-600 cursor-not-allowed"
+                                    : "bg-[#318AE6] hover:bg-[#2279d8]"
+                                  }`}
+                                onClick={() => handleFund(transaction)}
+                                disabled={transaction.funded}
+                              >
+                                {transaction.funded ? "Funded" : "Fund Account"}
+                              </button>
+                            )}
                           </div>
-                        </div>
+                        </Box>
                       ))
                   }
                 </div>

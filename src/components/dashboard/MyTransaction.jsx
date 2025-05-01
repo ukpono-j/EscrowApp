@@ -68,8 +68,8 @@ const MyTransaction = ({ sidebarCollapsed = true }) => {
 
       <div className="relative z-10 w-full">
         {/* Header */}
-        <Text className="text-4xl sm:text-3xl font-bold leading-tight sm:text-left mb-3">
-          Scam-Free Transactions
+        <Text className="text-5xl sm:text-3xl font-bold leading-tight sm:text-left mb-3">
+        Secure Escrow Against Scams
         </Text>
         <Text className=" text-left mb-12 md:text-lg">
           Make risk-free, scam-free transactions with Sylo.
@@ -103,15 +103,15 @@ const MyTransaction = ({ sidebarCollapsed = true }) => {
             {activeTab === "create" ? (
               <>
                 <Text className="text-xl sm:text-xl font-bold mb-4">
-                  Make Payments, Receive Payments while sylo protects you.
-                  What you ordered is EXACTLY what you get.
+                Pay and receive money with confidence. 
 
                 </Text>
                 <Text className="mb-3 font-bold leading-relaxed">
                   How Does Sylo Secure Your Deals?
                 </Text>
                 <Text className="mb-8 text-sm leading-relaxed">
-                  Sylo protects every transaction with a simple, secure process, ensuring buyers and sellers both get EXACTLY what they expect, no risks, no scams.
+                Sylo locks funds until both parties meet agreed terms, ensuring scam-free transactions.
+                You get EXACTLY what you agreed for.
                 </Text>
                 <div>
                   <div className="mb-5">
