@@ -205,8 +205,23 @@ const Register = () => {
       setTimeout(() => {
         navigate("/login");
       }, 1500);
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
+      console.error('Registration error:', error.response?.data || error);
+      let errorMessage = 'An error occurred during registration. Please try again.';
+
+      if (error.response) {
+        if (error.response.status === 400) {
+          if (error.response.data.error.includes('Email already in use')) {
+            errorMessage = 'This email is already registered. Please use a different email.';
+          } else if (error.response.data.error.includes('Duplicate key error')) {
+            errorMessage = `Registration failed: ${error.response.data.details ? JSON.stringify(error.response.data.details) : 'Duplicate data exists.'}`;
+          } else {
+            errorMessage = error.response.data.error || errorMessage;
+          }
+        } else if (error.response.status === 500) {
+          errorMessage = 'Server error. Please try again later.';
+        }
+      }
       toast({
         title: "Registration Failed",
         description: err.response?.data?.message || "Unable to create account",
@@ -614,7 +629,7 @@ const Register = () => {
                       {/* Password strength indicator */}
                       {formData.password && (
                         <Flex mt={2} align="center">
-                          <Box width="100%" height="4px"  borderRadius="full" overflow="hidden">
+                          <Box width="100%" height="4px" borderRadius="full" overflow="hidden">
                             <Box
                               height="100%"
                               width={`${passwordStrength * 20}%`}

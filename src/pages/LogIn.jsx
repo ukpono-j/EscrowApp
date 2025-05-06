@@ -61,116 +61,6 @@ const Login = () => {
     },
   };
 
-  // const handleSubmit = async (e) => {
-  //   e.preventDefault();
-  //   setIsLoading(true);
-
-  //   if (!email || !password) {
-  //     toast({
-  //       title: "Missing fields",
-  //       description: "Please fill in all required fields",
-  //       status: "warning",
-  //       duration: 3000,
-  //       isClosable: true,
-  //       position: "top",
-  //     });
-  //     setIsLoading(false);
-  //     return;
-  //   }
-
-  //   try {
-  //     const response = await axios.post(`${BASE_URL}/api/auth/login`, {
-  //       email,
-  //       password,
-  //     });
-  //     const { message, token } = response.data;
-
-  //     if (message === "Login successful!") {
-  //       // Store the token in localStorage
-  //       localStorage.setItem("auth-token", token);
-
-  //       // Set the authentication token in Axios headers
-  //       axios.defaults.headers.common["auth-token"] = token;
-
-  //       toast({
-  //         title: "Login Successful",
-  //         description: "Welcome back!",
-  //         status: "success",
-  //         duration: 5000,
-  //         isClosable: true,
-  //         position: "top",
-  //       });
-
-  //       // Redirect with animation delay
-  //       setTimeout(() => {
-  //         navigate("/dashboard");
-  //       }, 500);
-  //     } else {
-  //       toast({
-  //         title: "Invalid Credentials",
-  //         description: "Please check your email and password",
-  //         status: "error",
-  //         duration: 5000,
-  //         isClosable: true,
-  //       });
-  //     }
-  //   } catch (error) {
-  //     console.error(error);
-
-  //     // Check for specific error responses
-  //     if (error.response) {
-  //       // The request was made and the server responded with a status code
-  //       // that falls out of the range of 2xx
-  //       if (error.response.status === 404) {
-  //         toast({
-  //           title: "User Not Found",
-  //           description: "No account exists with this email address",
-  //           status: "error",
-  //           duration: 5000,
-  //           isClosable: true,
-  //         });
-  //       } else if (error.response.status === 401) {
-  //         toast({
-  //           title: "Incorrect Password",
-  //           description: "The password you entered is incorrect",
-  //           status: "error",
-  //           duration: 5000,
-  //           isClosable: true,
-  //         });
-  //       } else {
-  //         // Handle other status codes
-  //         toast({
-  //           title: "Login Failed",
-  //           description: error.response.data?.message || "Authentication failed",
-  //           status: "error",
-  //           duration: 5000,
-  //           isClosable: true,
-  //         });
-  //       }
-  //     } else if (error.request) {
-  //       // The request was made but no response was received
-  //       toast({
-  //         title: "Connection Error",
-  //         description: "Unable to connect to the server. Please check your internet connection.",
-  //         status: "error",
-  //         duration: 5000,
-  //         isClosable: true,
-  //       });
-  //     } else {
-  //       // Something happened in setting up the request that triggered an Error
-  //       toast({
-  //         title: "Login Error",
-  //         description: "An unexpected error occurred. Please try again.",
-  //         status: "error",
-  //         duration: 5000,
-  //         isClosable: true,
-  //       });
-  //     }
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -193,9 +83,9 @@ const Login = () => {
         email,
         password,
       });
-      const { message, token } = response.data;
+      const { success, message, token, user } = response.data;
 
-      if (message === "Login successful!") {
+      if (success && message === "Login successful") {
         // Store the token in localStorage
         localStorage.setItem("auth-token", token);
 
@@ -216,76 +106,61 @@ const Login = () => {
           navigate("/dashboard");
         }, 500);
       } else {
-        toast({
-          title: "Invalid Credentials",
-          description: "Please check your email and password",
-          status: "error",
-          duration: 5000,
-          isClosable: true,
-        });
+        throw new Error("Unexpected response from server");
       }
     } catch (error) {
-      console.error(error);
+      console.error('Login error:', error.response?.data || error);
+      let errorMessage = "An unexpected error occurred. Please try again.";
+      let errorTitle = "Login Failed";
 
-      // Check for specific error responses
       if (error.response) {
-        // The request was made and the server responded with a status code
-        // that falls out of the range of 2xx
-        if (error.response.status === 404) {
-          toast({
-            title: "User Not Found",
-            description: "Redirecting you to register with this email",
-            status: "info",
-            duration: 3000,
-            isClosable: true,
-          });
-
-          // Short delay before redirecting to registration page
+        if (error.response.status === 400) {
+          errorTitle = "Invalid Input";
+          errorMessage = "Please provide both email and password.";
+        } else if (error.response.status === 404) {
+          errorTitle = "User Not Found";
+          errorMessage = "No account exists with this email. Would you like to register?";
           setTimeout(() => {
             navigate("/register", { state: { email } });
-          }, 1500);
+          }, 3000);
         } else if (error.response.status === 401) {
-          toast({
-            title: "Incorrect Password",
-            description: "The password you entered is incorrect",
-            status: "error",
-            duration: 5000,
-            isClosable: true,
-          });
+          errorTitle = "Invalid Credentials";
+          errorMessage = "Incorrect email or password. Try resetting your password if you forgot it.";
+        } else if (error.response.status === 500) {
+          errorTitle = "Server Error";
+          errorMessage = "Something went wrong on the server. Please try again later.";
         } else {
-          // Handle other status codes
-          toast({
-            title: "Login Failed",
-            description: error.response.data?.message || "Authentication failed",
-            status: "error",
-            duration: 5000,
-            isClosable: true,
-          });
+          errorMessage = error.response.data?.error || errorMessage;
         }
       } else if (error.request) {
-        // The request was made but no response was received
-        toast({
-          title: "Connection Error",
-          description: "Unable to connect to the server. Please check your internet connection.",
-          status: "error",
-          duration: 5000,
-          isClosable: true,
-        });
-      } else {
-        // Something happened in setting up the request that triggered an Error
-        toast({
-          title: "Login Error",
-          description: "An unexpected error occurred. Please try again.",
-          status: "error",
-          duration: 5000,
-          isClosable: true,
-        });
+        errorTitle = "Connection Error";
+        errorMessage = "Unable to connect to the server. Please check your internet connection.";
       }
+
+      toast({
+        title: errorTitle,
+        description: (
+          <>
+            {errorMessage}
+            {error.response?.status === 401 && (
+              <>
+                {" "}
+                <Link to="/forgot-password" style={{ color: accentColor, textDecoration: "underline" }}>
+                  Reset Password
+                </Link>
+              </>
+            )}
+          </>
+        ),
+        status: "error",
+        duration: 7000,
+        isClosable: true,
+        position: "top",
+      });
     } finally {
       setIsLoading(false);
     }
   };
-
 
   return (
     <Box
@@ -361,24 +236,6 @@ const Login = () => {
           }}
         />
       </Box>
-
-      {/* Top Navigation Bar with Logo */}
-      {/* <MotionBox
-          initial={{ y: -50, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.7, ease: "easeOut" }}
-          position="absolute"
-          top={{ base: "20px", md: "40px" }}
-          left={{ base: "30px", md: "60px" }}
-          transform={{ base: "translateX(-50%)", md: "translateX(0)" }}
-          zIndex="5"
-        >
-          <Link to="/">
-            <Box className="logo-container">
-              <img src={Logo} alt="Logo" className="login-logo" width="180px" />
-            </Box>
-          </Link>
-        </MotionBox> */}
 
       {/* Main Content Container */}
       <MotionContainer
@@ -498,11 +355,9 @@ const Login = () => {
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           focusBorderColor={accentColor}
-                          // bg="gray.700"
                           color="white"
                           fontSize={{ base: "sm", md: "md" }}
                           borderRadius="md"
-                          // className="input-field"
                           pl={10}
                           _hover={{ bg: "gray.600" }}
                           _focus={{ bg: "gray.600" }}
@@ -524,11 +379,9 @@ const Login = () => {
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           focusBorderColor={accentColor}
-                          // bg="gray.700"
                           color="white"
                           fontSize={{ base: "sm", md: "md" }}
                           borderRadius="md"
-                          // className="input-field"
                           pl={10}
                           _hover={{ bg: "gray.600" }}
                           _focus={{ bg: "gray.600" }}
@@ -551,7 +404,7 @@ const Login = () => {
                     </FormControl>
 
                     <Box alignSelf="flex-end">
-                      <Link to="/forgot-password">  {/* Change this line from "#" to "/forgot-password" */}
+                      <Link to="/forgot-password">
                         <Text
                           fontSize="sm"
                           color="gray.300"
