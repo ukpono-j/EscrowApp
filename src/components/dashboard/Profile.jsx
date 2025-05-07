@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { FaEdit, FaUpload, FaSave, FaTimes, FaUser, FaCalendarAlt, FaUniversity, FaCreditCard, FaWallet } from "react-icons/fa";
+import { FaEdit, FaUpload, FaSave, FaTimes, FaUser, FaCalendarAlt, FaUniversity, FaCreditCard, FaWallet, FaSync, FaCopy, FaCheck, FaExclamationTriangle } from "react-icons/fa";
 import { motion } from "framer-motion";
 import UserProfile from "../../assets/profile_icon.png";
 import {
@@ -13,7 +13,6 @@ import {
   Heading,
   Input,
   Grid,
-  GridItem,
   FormLabel,
   FormControl,
   Icon,
@@ -35,9 +34,135 @@ import {
   NumberInputStepper,
   NumberIncrementStepper,
   NumberDecrementStepper,
+  Divider,
 } from "@chakra-ui/react";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
+
+// Payment Information Modal Component
+const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck }) => {
+  const [copiedItems, setCopiedItems] = useState({});
+  const toast = useToast();
+  
+  // Color mode values
+  const cardBg = useColorModeValue("white", "#0F1722");
+  const textColor = useColorModeValue("gray.800", "white");
+  const subtleTextColor = useColorModeValue("gray.600", "gray.300");
+  const labelColor = useColorModeValue("blue.600", "blue.300");
+  const borderColor = useColorModeValue("gray.200", "gray.700");
+  const highlightColor = useColorModeValue("blue.500", "blue.400");
+  const gradientStart = useColorModeValue("blue.400", "blue.500");
+  const gradientEnd = useColorModeValue("purple.500", "purple.600");
+  const hoverGradient = `linear(to-r, ${useColorModeValue('blue.500', 'blue.600')}, ${useColorModeValue('purple.600', 'purple.700')})`;
+  const boxBgColor = useColorModeValue("blue.50", "gray.700");
+  
+  if (!paymentDetails) return null;
+  
+  const { virtualAccount, reference, amount } = paymentDetails;
+  
+  const copyToClipboard = (text, itemKey) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedItems({ ...copiedItems, [itemKey]: true });
+      setTimeout(() => {
+        setCopiedItems({ ...copiedItems, [itemKey]: false });
+      }, 3000);
+      
+      toast({
+        title: "Copied to clipboard",
+        status: "success",
+        duration: 2000,
+        isClosable: true,
+      });
+    });
+  };
+  
+  const PaymentItem = ({ label, value, itemKey }) => (
+    <Box 
+      mb={3} 
+      p={3} 
+      borderRadius="md" 
+      bg={boxBgColor} 
+      position="relative"
+    >
+      <Text fontSize="sm" fontWeight="medium" color={subtleTextColor} mb={1}>
+        {label}
+      </Text>
+      <Flex align="center" justify="space-between">
+        <Text fontSize="md" fontWeight="bold" color={textColor} mb={0}>
+          {value}
+        </Text>
+        <Button
+          size="sm"
+          colorScheme={copiedItems[itemKey] ? "green" : "blue"}
+          variant="ghost"
+          onClick={() => copyToClipboard(value, itemKey)}
+          leftIcon={copiedItems[itemKey] ? <FaCheck /> : <FaCopy />}
+        >
+          {copiedItems[itemKey] ? "Copied" : "Copy"}
+        </Button>
+      </Flex>
+    </Box>
+  );
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} isCentered size="sm">
+      <ModalOverlay />
+      <ModalContent bg={cardBg} borderColor={borderColor}>
+        <ModalHeader>
+          <Flex align="center">
+            <Icon as={FaWallet} color={highlightColor} mr={2} />
+            <Text color={textColor} fontWeight="bold">
+              Fund Your Wallet
+            </Text>
+          </Flex>
+        </ModalHeader>
+        <ModalCloseButton />
+        <ModalBody>
+          <Box mb={4}>
+            <Flex justify="space-between" align="center" mb={2}>
+              <Text fontWeight="bold" color={textColor}>Amount to Transfer:</Text>
+              <Badge colorScheme="green" fontSize="md" px={2} py={1}>
+                ₦{amount}
+              </Badge>
+            </Flex>
+            <Text fontSize="sm" color={subtleTextColor} mb={4}>
+              Please transfer exactly this amount to the account below
+            </Text>
+          </Box>
+          
+          <PaymentItem label="Bank Name" value={virtualAccount.bankName} itemKey="bankName" />
+          <PaymentItem label="Account Number" value={virtualAccount.accountNumber} itemKey="accountNumber" />
+          <PaymentItem label="Account Name" value={virtualAccount.accountName} itemKey="accountName" />
+          <PaymentItem label="Reference" value={reference} itemKey="reference" />
+          
+          <Box mt={3} p={3} borderRadius="md" bg="orange.50" borderLeftWidth="4px" borderLeftColor="orange.400">
+            <Flex>
+              <Icon as={FaExclamationTriangle} color="orange.500" mt={1} mr={2} />
+              <Text fontSize="sm" color="orange.700">
+                Please don't close this window until after your transfer. 
+                Your payment will be confirmed within 5-10 minutes.
+              </Text>
+            </Flex>
+          </Box>
+        </ModalBody>
+        <Divider my={2} />
+        <ModalFooter>
+          <Button
+            onClick={onStatusCheck}
+            colorScheme="blue"
+            bgGradient={`linear(to-r, ${gradientStart}, ${gradientEnd})`}
+            _hover={{
+              bgGradient: hoverGradient,
+            }}
+            w="100%"
+          >
+            Check Payment Status
+          </Button>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
+  );
+};
 
 const Profile = () => {
   const { colorMode } = useColorMode();
@@ -84,111 +209,150 @@ const Profile = () => {
   const [isFunding, setIsFunding] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [checkStatusInterval, setCheckStatusInterval] = useState(null);
+  const [refreshingBalance, setRefreshingBalance] = useState(false);
+  
+  // New state variables for payment modal
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [paymentDetails, setPaymentDetails] = useState(null);
 
-  // Improved pollPaymentStatus function
-  const pollPaymentStatus = (reference, maxAttempts = 30) => {
+  // Function to format date to YYYY-MM-DD
+  const formatDate = (dateString) => {
+    if (!dateString) return "Not Provided";
+    const date = new Date(dateString);
+    return date.toISOString().split('T')[0]; // Extracts YYYY-MM-DD
+  };
+
+  // Improved pollPaymentStatus function with corrected endpoint
+  const pollPaymentStatus = (reference, maxAttempts = 60) => {
     if (!reference) return;
 
-    // Clear any existing interval
     if (checkStatusInterval) {
       clearInterval(checkStatusInterval);
     }
 
-    // Show toast only once at the start
     const toastId = toast({
-      title: "Payment Processing",
-      description: "We're checking your payment status. This may take a moment.",
-      status: "info",
-      duration: null, // Keep toast until explicitly closed
+      title: 'Payment Processing',
+      description: 'Checking your payment status. This may take a few minutes.',
+      status: 'info',
+      duration: null,
       isClosable: true,
     });
 
     let attempts = 0;
+    let retryCount = 0;
+    const maxRetries = 5;
 
     const checkInterval = setInterval(async () => {
       attempts += 1;
       try {
         const response = await axios.get(
-          `${BASE_URL}/api/wallet/verify-funding/${reference}`,
+          `${BASE_URL}/api/wallet/verify-funding/${reference}`, // Fixed endpoint to match backend route
           {
             headers: {
-              "auth-token": localStorage.getItem("auth-token"),
+              'auth-token': localStorage.getItem('auth-token'),
             },
+            timeout: 15000,
           }
         );
 
+        retryCount = 0;
+
         if (response.data.success) {
-          // Payment successful
           clearInterval(checkInterval);
           setCheckStatusInterval(null);
-          toast.close(toastId); // Close the processing toast
+          toast.close(toastId);
 
-          setWalletBalance({
-            balance: response.data.data.newBalance,
-            currency: walletBalance?.currency || 'NGN',
-          });
+          setRefreshingBalance(true);
+          await fetchWalletBalance();
+          setRefreshingBalance(false);
+          
+          // Close payment modal if successful
+          setPaymentModalOpen(false);
+          setPaymentDetails(null);
 
           toast({
-            title: "Funding Successful",
+            title: 'Funding Successful',
             description: `Your wallet has been funded with ${response.data.data.transaction.amount} ${walletBalance?.currency || 'NGN'}`,
-            status: "success",
+            status: 'success',
             duration: 5000,
             isClosable: true,
           });
 
-          localStorage.removeItem("pendingPaymentRef");
+          localStorage.removeItem('pendingPaymentRef');
         } else if (response.data.data?.transaction?.status === 'failed') {
-          // Payment failed
           clearInterval(checkInterval);
           setCheckStatusInterval(null);
           toast.close(toastId);
 
           toast({
-            title: "Payment Failed",
-            description: "Your payment couldn't be processed. Please try again.",
-            status: "error",
+            title: 'Payment Failed',
+            description: 'Your payment could not be processed. Please try again.',
+            status: 'error',
             duration: 5000,
             isClosable: true,
           });
 
-          localStorage.removeItem("pendingPaymentRef");
+          localStorage.removeItem('pendingPaymentRef');
         } else if (attempts >= maxAttempts) {
-          // Timeout after max attempts (~5 minutes)
           clearInterval(checkInterval);
           setCheckStatusInterval(null);
           toast.close(toastId);
 
           toast({
-            title: "Payment Timeout",
-            description: "Payment verification timed out. Please check your payment status later.",
-            status: "warning",
+            title: 'Payment Verification Timeout',
+            description: 'Payment verification took too long. Please check your wallet later or contact support.',
+            status: 'warning',
             duration: 5000,
             isClosable: true,
           });
 
-          localStorage.removeItem("pendingPaymentRef");
+          localStorage.removeItem('pendingPaymentRef');
         }
       } catch (error) {
-        console.error("Error checking payment status:", error);
-        if (attempts >= maxAttempts) {
+        console.error('Error checking payment status:', {
+          reference,
+          message: error.message,
+          status: error.response?.status,
+        });
+        retryCount += 1;
+        if (error.response?.status === 404 || error.code === 'ECONNABORTED' || retryCount >= maxRetries) {
           clearInterval(checkInterval);
           setCheckStatusInterval(null);
           toast.close(toastId);
 
           toast({
-            title: "Payment Timeout",
-            description: "Payment verification timed out. Please check your payment status later.",
-            status: "warning",
+            title: 'Payment Verification Error',
+            description: 'Unable to verify payment. Please try again later or contact support.',
+            status: 'error',
             duration: 5000,
             isClosable: true,
           });
 
-          localStorage.removeItem("pendingPaymentRef");
+          localStorage.removeItem('pendingPaymentRef');
         }
       }
-    }, 10000); // Check every 10 seconds
+    }, 10000);
 
     setCheckStatusInterval(checkInterval);
+  };
+
+  // Fetch wallet balance
+  const fetchWalletBalance = async () => {
+    try {
+      const response = await axios.get(`${BASE_URL}/api/wallet/balance`, {
+        headers: { 'auth-token': localStorage.getItem('auth-token') },
+      });
+      setWalletBalance(response.data);
+    } catch (error) {
+      console.error('Error fetching wallet balance:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to refresh wallet balance',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    }
   };
 
   // Consolidated useEffect for initialization and polling
@@ -206,11 +370,10 @@ const Profile = () => {
     }
     axios.defaults.headers.common["auth-token"] = token;
 
-    // Fetch user details and wallet balance
     const fetchUserDetails = axios.get(`${BASE_URL}/api/users/user-details`);
-    const fetchWalletBalance = axios.get(`${BASE_URL}/api/wallet/balance`);
+    const fetchWalletBalanceInitial = axios.get(`${BASE_URL}/api/wallet/balance`);
 
-    Promise.all([fetchUserDetails, fetchWalletBalance])
+    Promise.all([fetchUserDetails, fetchWalletBalanceInitial])
       .then(([userResponse, walletResponse]) => {
         setUserDetails(userResponse.data);
         setEditedUserDetails({
@@ -222,7 +385,6 @@ const Profile = () => {
         });
         setWalletBalance(walletResponse.data);
 
-        // Check for pending payment reference
         const pendingRef = localStorage.getItem("pendingPaymentRef");
         if (pendingRef && !checkStatusInterval) {
           pollPaymentStatus(pendingRef);
@@ -242,23 +404,22 @@ const Profile = () => {
         setLoading(false);
       });
 
-    // Cleanup interval on unmount
     return () => {
       if (checkStatusInterval) {
         clearInterval(checkStatusInterval);
       }
     };
-  }, []); // Empty dependency array to run once on mount
+  }, []);
 
-  // Handle URL callback for PaymentPoint verification
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const reference = urlParams.get('reference');
-    if (reference) {
-      verifyFunding(reference);
+    if (reference && !checkStatusInterval) {
+      localStorage.setItem('pendingPaymentRef', reference);
+      pollPaymentStatus(reference);
       window.history.replaceState({}, document.title, window.location.pathname);
     }
-  }, []);
+  }, [checkStatusInterval]);
 
   useEffect(() => {
     if (selectedImageFile) {
@@ -356,6 +517,7 @@ const Profile = () => {
     });
   };
 
+  // Updated initiateFunding function
   const initiateFunding = async () => {
     if (fundingAmount <= 0) {
       toast({
@@ -392,93 +554,72 @@ const Profile = () => {
           headers: {
             "auth-token": localStorage.getItem("auth-token"),
           },
+          timeout: 15000,
         }
       );
 
       if (response.data.success) {
-        toast({
-          title: "Funding Initiated",
-          description: "Virtual account has been created for your payment",
-          status: "success",
-          duration: 5000,
-          isClosable: true,
+        const { virtualAccount, reference } = response.data.data;
+        
+        // Store payment details for the modal
+        setPaymentDetails({
+          virtualAccount,
+          reference,
+          amount: fundingAmount
         });
-
-        if (response.data.data.virtualAccount) {
-          const { accountNumber, accountName, bankName } = response.data.data.virtualAccount;
-          toast({
-            title: "Payment Details",
-            description: `Transfer ${fundingAmount} NGN to ${accountNumber} (${bankName}) under ${accountName}`,
-            status: "info",
-            duration: 15000,
-            isClosable: true,
-          });
-        }
-
-        localStorage.setItem("pendingPaymentRef", response.data.data.reference);
-        pollPaymentStatus(response.data.data.reference); // Start polling immediately
+        
+        // Store reference in localStorage for tracking
+        localStorage.setItem("pendingPaymentRef", reference);
+        
+        // Close the funding modal and open payment info modal
+        onClose();
+        setPaymentModalOpen(true);
+        
+        // Start polling in the background
+        pollPaymentStatus(reference);
       } else {
-        throw new Error(response.data.message || "Failed to initialize payment");
+        throw new Error(response.data.message || "Failed to initiate funding");
       }
     } catch (error) {
-      console.error("Error initiating funding:", error);
+      console.error("Funding error:", {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+      const errorMessage =
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        error.message ||
+        "An unexpected error occurred during funding";
       toast({
         title: "Funding Error",
-        description: error.response?.data?.error || error.message || "We couldn't process your funding request",
+        description: errorMessage,
         status: "error",
         duration: 5000,
         isClosable: true,
       });
     } finally {
       setIsFunding(false);
-      onClose();
       setFundingAmount(0);
       setPhoneNumber('');
     }
   };
 
-  const verifyFunding = (reference) => {
-    axios
-      .get(`${BASE_URL}/api/wallet/verify-funding/${reference}`, {
-        headers: {
-          "auth-token": localStorage.getItem("auth-token"),
-        },
-      })
-      .then((response) => {
-        if (response.data.success) {
-          setWalletBalance({
-            balance: response.data.data.newBalance,
-            currency: walletBalance?.currency || 'NGN',
-          });
-          toast({
-            title: "Funding Successful",
-            description: `Your wallet has been funded with ${response.data.data.transaction.amount} ${walletBalance?.currency || 'NGN'}`,
-            status: "success",
-            duration: 5000,
-            isClosable: true,
-          });
-          localStorage.removeItem("pendingPaymentRef");
-          if (checkStatusInterval) {
-            clearInterval(checkStatusInterval);
-            setCheckStatusInterval(null);
-          }
-        } else {
-          throw new Error(response.data.message || "Payment verification failed");
-        }
-      })
-      .catch((error) => {
-        console.error("Error verifying funding:", error);
-        toast({
-          title: "Funding Failed",
-          description: error.message || "We couldn't verify your payment",
-          status: "error",
-          duration: 5000,
-          isClosable: true,
-        });
+  // Function to manually check payment status
+  const checkPaymentStatus = () => {
+    if (paymentDetails?.reference) {
+      toast({
+        title: "Checking Payment Status",
+        description: "Please wait while we verify your payment...",
+        status: "info",
+        duration: 3000,
+        isClosable: true,
       });
+      pollPaymentStatus(paymentDetails.reference);
+    }
   };
 
-  if (loading) {
+  if (loading || refreshingBalance) {
     return (
       <Flex minH="100vh" align="center" justify="center" direction="column">
         <Box position="relative" w="100px" h="100px">
@@ -500,7 +641,7 @@ const Profile = () => {
           </Box>
         </Box>
         <Text mt={6} fontSize="xl" fontWeight="semibold" color={highlightColor}>
-          Loading your profile...
+          {loading ? 'Loading your profile...' : 'Refreshing wallet balance...'}
         </Text>
       </Flex>
     );
@@ -678,27 +819,47 @@ const Profile = () => {
                     Active User
                   </Badge>
 
-                  {/* Wallet Balance Display */}
                   <Box mt={4}>
                     <Text fontSize="lg" fontWeight="semibold" color={textColor}>
                       Wallet Balance
                     </Text>
                     <Text fontSize="2xl" fontWeight="bold" color={highlightColor}>
-                      {walletBalance ? `${walletBalance.balance} ${walletBalance.currency}` : "Loading..."}
+                      {refreshingBalance ? (
+                        <Spinner size="sm" color={highlightColor} />
+                      ) : walletBalance ? (
+                        `${walletBalance.balance} ${walletBalance.currency}`
+                      ) : (
+                        "Loading..."
+                      )}
                     </Text>
-                    <Button
-                      mt={3}
-                      onClick={onOpen}
-                      leftIcon={<FaWallet />}
-                      colorScheme="blue"
-                      bgGradient={`linear(to-r, ${gradientStart}, ${gradientEnd})`}
-                      _hover={{
-                        bgGradient: hoverGradient,
-                      }}
-                      size="md"
-                    >
-                      Fund Wallet
-                    </Button>
+                    <Flex mt={3} gap={2}>
+                      <Button
+                        onClick={onOpen}
+                        leftIcon={<FaWallet />}
+                        colorScheme="blue"
+                        bgGradient={`linear(to-r, ${gradientStart}, ${gradientEnd})`}
+                        _hover={{
+                          bgGradient: hoverGradient,
+                        }}
+                        size="md"
+                      >
+                        Fund Wallet
+                      </Button>
+                      <Button
+                        onClick={async () => {
+                          setRefreshingBalance(true);
+                          await fetchWalletBalance();
+                          setRefreshingBalance(false);
+                        }}
+                        leftIcon={<FaSync />}
+                        colorScheme="gray"
+                        variant="outline"
+                        size="md"
+                        isLoading={refreshingBalance}
+                      >
+                        Refresh Balance
+                      </Button>
+                    </Flex>
                   </Box>
                 </Box>
               </Flex>
@@ -801,7 +962,7 @@ const Profile = () => {
                       fontSize="md"
                       color={textColor}
                     >
-                      {userDetails.dateOfBirth || "Not Provided"}
+                      {formatDate(userDetails.dateOfBirth)}
                     </Box>
                   )}
                 </FormControl>
@@ -979,6 +1140,13 @@ const Profile = () => {
             </ModalFooter>
           </ModalContent>
         </Modal>
+
+        <PaymentInfoModal
+          isOpen={paymentModalOpen}
+          onClose={() => setPaymentModalOpen(false)}
+          paymentDetails={paymentDetails}
+          onStatusCheck={checkPaymentStatus}
+        />
       </Container>
     </Box>
   );
