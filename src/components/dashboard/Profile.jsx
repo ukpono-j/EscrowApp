@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import { FaEdit, FaUpload, FaSave, FaTimes, FaUser, FaCalendarAlt, FaUniversity, FaCreditCard, FaWallet, FaSync, FaCopy, FaCheck, FaExclamationTriangle } from "react-icons/fa";
 import { motion } from "framer-motion";
@@ -37,14 +37,13 @@ import {
   Divider,
 } from "@chakra-ui/react";
 
-const BASE_URL = import.meta.env.VITE_BASE_URL;
+const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3001";
 
 // Payment Information Modal Component
-const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck }) => {
+const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, userName }) => {
   const [copiedItems, setCopiedItems] = useState({});
   const toast = useToast();
-  
-  // Color mode values
+
   const cardBg = useColorModeValue("white", "#0F1722");
   const textColor = useColorModeValue("gray.800", "white");
   const subtleTextColor = useColorModeValue("gray.600", "gray.300");
@@ -55,18 +54,18 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck }) =>
   const gradientEnd = useColorModeValue("purple.500", "purple.600");
   const hoverGradient = `linear(to-r, ${useColorModeValue('blue.500', 'blue.600')}, ${useColorModeValue('purple.600', 'purple.700')})`;
   const boxBgColor = useColorModeValue("blue.50", "gray.700");
-  
+
   if (!paymentDetails) return null;
-  
+
   const { virtualAccount, reference, amount } = paymentDetails;
-  
+
   const copyToClipboard = (text, itemKey) => {
     navigator.clipboard.writeText(text).then(() => {
       setCopiedItems({ ...copiedItems, [itemKey]: true });
       setTimeout(() => {
         setCopiedItems({ ...copiedItems, [itemKey]: false });
       }, 3000);
-      
+
       toast({
         title: "Copied to clipboard",
         status: "success",
@@ -75,13 +74,13 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck }) =>
       });
     });
   };
-  
+
   const PaymentItem = ({ label, value, itemKey }) => (
-    <Box 
-      mb={3} 
-      p={3} 
-      borderRadius="md" 
-      bg={boxBgColor} 
+    <Box
+      mb={3}
+      p={3}
+      borderRadius="md"
+      bg={boxBgColor}
       position="relative"
     >
       <Text fontSize="sm" fontWeight="medium" color={subtleTextColor} mb={1}>
@@ -126,20 +125,24 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck }) =>
               </Badge>
             </Flex>
             <Text fontSize="sm" color={subtleTextColor} mb={4}>
-              Please transfer exactly this amount to the account below
+              Please transfer exactly this amount to the secure PaymentPoint intermediary account below. Use the provided reference to ensure your payment is credited to your wallet.
             </Text>
           </Box>
-          
+
           <PaymentItem label="Bank Name" value={virtualAccount.bankName} itemKey="bankName" />
           <PaymentItem label="Account Number" value={virtualAccount.accountNumber} itemKey="accountNumber" />
-          <PaymentItem label="Account Name" value={virtualAccount.accountName} itemKey="accountName" />
+          <PaymentItem
+            label="Account Name"
+            value={`PaymentPoint Intermediary (for ${userName})`}
+            itemKey="accountName"
+          />
           <PaymentItem label="Reference" value={reference} itemKey="reference" />
-          
+
           <Box mt={3} p={3} borderRadius="md" bg="orange.50" borderLeftWidth="4px" borderLeftColor="orange.400">
             <Flex>
               <Icon as={FaExclamationTriangle} color="orange.500" mt={1} mr={2} />
               <Text fontSize="sm" color="orange.700">
-                Please don't close this window until after your transfer. 
+                Please don't close this window until after your transfer.
                 Your payment will be confirmed within 5-10 minutes.
               </Text>
             </Flex>
@@ -169,7 +172,6 @@ const Profile = () => {
   const toast = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
-  // Color mode values
   const cardBg = useColorModeValue("white", "#0F1722");
   const textColor = useColorModeValue("gray.800", "white");
   const subtleTextColor = useColorModeValue("gray.600", "gray.300");
@@ -189,7 +191,6 @@ const Profile = () => {
   const backgroundPurple = useColorModeValue("purple.50", "purple.900");
   const hoverGradient = `linear(to-r, ${useColorModeValue('blue.500', 'blue.600')}, ${useColorModeValue('purple.600', 'purple.700')})`;
 
-  // State variables
   const [selectedImageFile, setSelectedImageFile] = useState(null);
   const [userDetails, setUserDetails] = useState(null);
   const [editedUserDetails, setEditedUserDetails] = useState({
@@ -210,23 +211,37 @@ const Profile = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [checkStatusInterval, setCheckStatusInterval] = useState(null);
   const [refreshingBalance, setRefreshingBalance] = useState(false);
-  
-  // New state variables for payment modal
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentDetails, setPaymentDetails] = useState(null);
+  const [fetchAttempts, setFetchAttempts] = useState(0);
+  const previousBalanceRef = useRef(null);
+  const maxFetchAttempts = 3;
+  const isMountedRef = useRef(false);
 
-  // Function to format date to YYYY-MM-DD
   const formatDate = (dateString) => {
     if (!dateString) return "Not Provided";
     const date = new Date(dateString);
-    return date.toISOString().split('T')[0]; // Extracts YYYY-MM-DD
+    return date.toISOString().split('T')[0];
   };
 
-  // Improved pollPaymentStatus function with corrected endpoint
   const pollPaymentStatus = (reference, maxAttempts = 60) => {
-    if (!reference) return;
+    if (!reference) {
+      console.error('No reference provided for polling payment status');
+      toast({
+        title: 'Error',
+        description: 'No payment reference available. Please initiate a new funding request.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      setPaymentModalOpen(false);
+      localStorage.removeItem('pendingPaymentRef');
+      return;
+    }
 
+    // Check if already polling
     if (checkStatusInterval) {
+      console.log('Clearing existing polling interval for reference:', reference);
       clearInterval(checkStatusInterval);
     }
 
@@ -243,10 +258,20 @@ const Profile = () => {
     const maxRetries = 5;
 
     const checkInterval = setInterval(async () => {
+      if (!isMountedRef.current) {
+        clearInterval(checkInterval);
+        setCheckStatusInterval(null);
+        toast.close(toastId);
+        localStorage.removeItem('pendingPaymentRef');
+        return;
+      }
+
       attempts += 1;
+      console.log('Polling payment status:', { reference, attempt: attempts });
+
       try {
         const response = await axios.get(
-          `${BASE_URL}/api/wallet/verify-funding/${reference}`, // Fixed endpoint to match backend route
+          `${BASE_URL}/api/wallet/verify-funding/${reference}`,
           {
             headers: {
               'auth-token': localStorage.getItem('auth-token'),
@@ -255,30 +280,30 @@ const Profile = () => {
           }
         );
 
+        console.log('Payment status response:', response.data);
+
         retryCount = 0;
 
-        if (response.data.success) {
+        if (response.data.success && response.data.data.transaction.status === 'completed') {
           clearInterval(checkInterval);
           setCheckStatusInterval(null);
           toast.close(toastId);
 
           setRefreshingBalance(true);
-          await fetchWalletBalance();
+          const balanceResponse = await fetchWalletBalance();
           setRefreshingBalance(false);
-          
-          // Close payment modal if successful
+
           setPaymentModalOpen(false);
           setPaymentDetails(null);
+          localStorage.removeItem('pendingPaymentRef');
 
           toast({
             title: 'Funding Successful',
-            description: `Your wallet has been funded with ${response.data.data.transaction.amount} ${walletBalance?.currency || 'NGN'}`,
+            description: `Your wallet has been funded with ₦${response.data.data.transaction.amount.toFixed(2)}`,
             status: 'success',
             duration: 5000,
             isClosable: true,
           });
-
-          localStorage.removeItem('pendingPaymentRef');
         } else if (response.data.data?.transaction?.status === 'failed') {
           clearInterval(checkInterval);
           setCheckStatusInterval(null);
@@ -292,27 +317,48 @@ const Profile = () => {
             isClosable: true,
           });
 
+          setPaymentModalOpen(false);
+          setPaymentDetails(null);
           localStorage.removeItem('pendingPaymentRef');
         } else if (attempts >= maxAttempts) {
           clearInterval(checkInterval);
           setCheckStatusInterval(null);
           toast.close(toastId);
 
-          toast({
-            title: 'Payment Verification Timeout',
-            description: 'Payment verification took too long. Please check your wallet later or contact support.',
-            status: 'warning',
-            duration: 5000,
-            isClosable: true,
-          });
+          setRefreshingBalance(true);
+          const balanceResponse = await fetchWalletBalance();
+          setRefreshingBalance(false);
 
-          localStorage.removeItem('pendingPaymentRef');
+          if (balanceResponse && previousBalanceRef.current !== null && balanceResponse.balance > previousBalanceRef.current) {
+            toast({
+              title: 'Funding Successful',
+              description: `Your wallet has been funded with ₦${(balanceResponse.balance - previousBalanceRef.current).toFixed(2)}`,
+              status: 'success',
+              duration: 5000,
+              isClosable: true,
+            });
+            setPaymentModalOpen(false);
+            setPaymentDetails(null);
+            localStorage.removeItem('pendingPaymentRef');
+          } else {
+            toast({
+              title: 'Payment Verification Timeout',
+              description: 'Payment verification took too long. Please check your wallet later or contact support.',
+              status: 'warning',
+              duration: 5000,
+              isClosable: true,
+            });
+            setPaymentModalOpen(false);
+            setPaymentDetails(null);
+            localStorage.removeItem('pendingPaymentRef');
+          }
         }
       } catch (error) {
         console.error('Error checking payment status:', {
           reference,
           message: error.message,
           status: error.response?.status,
+          data: error.response?.data,
         });
         retryCount += 1;
         if (error.response?.status === 404 || error.code === 'ECONNABORTED' || retryCount >= maxRetries) {
@@ -320,15 +366,33 @@ const Profile = () => {
           setCheckStatusInterval(null);
           toast.close(toastId);
 
-          toast({
-            title: 'Payment Verification Error',
-            description: 'Unable to verify payment. Please try again later or contact support.',
-            status: 'error',
-            duration: 5000,
-            isClosable: true,
-          });
+          setRefreshingBalance(true);
+          const balanceResponse = await fetchWalletBalance();
+          setRefreshingBalance(false);
 
-          localStorage.removeItem('pendingPaymentRef');
+          if (balanceResponse && previousBalanceRef.current !== null && balanceResponse.balance > previousBalanceRef.current) {
+            toast({
+              title: 'Funding Successful',
+              description: `Your wallet has been funded with ₦${(balanceResponse.balance - previousBalanceRef.current).toFixed(2)}`,
+              status: 'success',
+              duration: 5000,
+              isClosable: true,
+            });
+            setPaymentModalOpen(false);
+            setPaymentDetails(null);
+            localStorage.removeItem('pendingPaymentRef');
+          } else {
+            toast({
+              title: 'Payment Verification Error',
+              description: 'Unable to verify payment. Please try again later or contact support.',
+              status: 'error',
+              duration: 5000,
+              isClosable: true,
+            });
+            setPaymentModalOpen(false);
+            setPaymentDetails(null);
+            localStorage.removeItem('pendingPaymentRef');
+          }
         }
       }
     }, 10000);
@@ -336,206 +400,272 @@ const Profile = () => {
     setCheckStatusInterval(checkInterval);
   };
 
-  // Fetch wallet balance
   const fetchWalletBalance = async () => {
     try {
       const response = await axios.get(`${BASE_URL}/api/wallet/balance`, {
         headers: { 'auth-token': localStorage.getItem('auth-token') },
       });
-      setWalletBalance(response.data);
+      const newBalance = response.data.balance;
+  
+      // Update state with the full response
+      setWalletBalance((prev) => ({
+        ...prev,
+        ...response.data,
+        balance: newBalance,
+      }));
+  
+      // Notify if balance increased
+      if (previousBalanceRef.current !== null && newBalance > previousBalanceRef.current) {
+        const fundedAmount = newBalance - previousBalanceRef.current;
+        toast({
+          title: 'Wallet Funded',
+          description: `Your wallet has been credited with ₦${fundedAmount.toFixed(2)}`,
+          status: 'success',
+          duration: 5000,
+          isClosable: true,
+        });
+      } else if (previousBalanceRef.current === null) {
+        // Initial balance fetch
+        toast({
+          title: 'Wallet Balance Loaded',
+          description: `Your current balance is ₦${newBalance.toFixed(2)}`,
+          status: 'info',
+          duration: 5000,
+          isClosable: true,
+        });
+      }
+  
+      previousBalanceRef.current = newBalance;
+      console.log('Wallet balance updated:', response.data);
+      return response.data;
     } catch (error) {
-      console.error('Error fetching wallet balance:', error);
+      console.error('Error fetching wallet balance:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
       toast({
         title: 'Error',
-        description: 'Failed to refresh wallet balance',
+        description: 'Unable to fetch wallet balance. Please try again.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      return null;
+    }
+  };
+
+  const fetchUserDetails = async () => {
+    if (fetchAttempts >= maxFetchAttempts || !isMountedRef.current) {
+      setLoading(false);
+      toast({
+        title: 'Error',
+        description: 'Unable to fetch user details after multiple attempts. Please try again later.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('auth-token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const response = await axios.get(`${BASE_URL}/api/users/user-details`, {
+        headers: { 'auth-token': token },
+      });
+      setUserDetails(response.data);
+      setEditedUserDetails({
+        firstName: response.data.firstName || '',
+        lastName: response.data.lastName || '',
+        dateOfBirth: response.data.dateOfBirth ? new Date(response.data.dateOfBirth).toISOString().split('T')[0] : '',
+        bank: response.data.bank || '',
+        accountNumber: response.data.accountNumber || '',
+      });
+      setPhoneNumber(response.data.phoneNumber || '');
+      setLoading(false);
+      setFetchAttempts(0); // Reset attempts on success
+    } catch (error) {
+      console.error('Error fetching user details:', error);
+      if ((error.response?.status === 404 || error.response?.status === 401) && isMountedRef.current) {
+        setFetchAttempts(prev => prev + 1);
+        setTimeout(() => fetchUserDetails(), 2000); // Retry after 2 seconds
+      } else {
+        setLoading(false);
+        toast({
+          title: 'Error',
+          description: 'Unable to fetch user details. Please try again.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+      }
+    }
+  };
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    const token = localStorage.getItem('auth-token');
+    if (token) {
+      fetchUserDetails();
+      fetchWalletBalance();
+
+      const pendingRef = localStorage.getItem('pendingPaymentRef');
+      if (pendingRef) {
+        setPaymentModalOpen(true);
+        pollPaymentStatus(pendingRef);
+      }
+    } else {
+      setLoading(false);
+      toast({
+        title: 'Authentication Error',
+        description: 'Please log in to view your profile.',
         status: 'error',
         duration: 5000,
         isClosable: true,
       });
     }
-  };
-
-  // Consolidated useEffect for initialization and polling
-  useEffect(() => {
-    const token = localStorage.getItem("auth-token");
-    if (!token) {
-      toast({
-        title: "Authentication Error",
-        description: "Please log in to view your profile",
-        status: "error",
-        duration: 5000,
-        isClosable: true,
-      });
-      return;
-    }
-    axios.defaults.headers.common["auth-token"] = token;
-
-    const fetchUserDetails = axios.get(`${BASE_URL}/api/users/user-details`);
-    const fetchWalletBalanceInitial = axios.get(`${BASE_URL}/api/wallet/balance`);
-
-    Promise.all([fetchUserDetails, fetchWalletBalanceInitial])
-      .then(([userResponse, walletResponse]) => {
-        setUserDetails(userResponse.data);
-        setEditedUserDetails({
-          firstName: userResponse.data.firstName,
-          lastName: userResponse.data.lastName,
-          dateOfBirth: userResponse.data.dateOfBirth,
-          bank: userResponse.data.bank,
-          accountNumber: userResponse.data.accountNumber,
-        });
-        setWalletBalance(walletResponse.data);
-
-        const pendingRef = localStorage.getItem("pendingPaymentRef");
-        if (pendingRef && !checkStatusInterval) {
-          pollPaymentStatus(pendingRef);
-        }
-      })
-      .catch((error) => {
-        console.error("Error fetching data:", error);
-        toast({
-          title: "Error fetching data",
-          description: "We couldn't load your profile or wallet information",
-          status: "error",
-          duration: 5000,
-          isClosable: true,
-        });
-      })
-      .finally(() => {
-        setLoading(false);
-      });
 
     return () => {
+      isMountedRef.current = false;
       if (checkStatusInterval) {
-        clearInterval(checkStatusInterval);
+        clearInterval(checkInterval);
       }
     };
   }, []);
 
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const reference = urlParams.get('reference');
-    if (reference && !checkStatusInterval) {
-      localStorage.setItem('pendingPaymentRef', reference);
-      pollPaymentStatus(reference);
-      window.history.replaceState({}, document.title, window.location.pathname);
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setSelectedImageFile(file);
+      setPreview(URL.createObjectURL(file));
     }
-  }, [checkStatusInterval]);
-
-  useEffect(() => {
-    if (selectedImageFile) {
-      const filePreview = URL.createObjectURL(selectedImageFile);
-      setPreview(filePreview);
-    } else {
-      setPreview(null);
-    }
-  }, [selectedImageFile]);
-
-  const handleUpdateDetails = () => {
-    setSaving(true);
-    axios
-      .put(
-        `${BASE_URL}/api/users/update-user-details`,
-        { ...editedUserDetails },
-        {
-          headers: {
-            "auth-token": localStorage.getItem("auth-token"),
-          },
-        }
-      )
-      .then((response) => {
-        setUserDetails(response.data);
-        setEditMode(false);
-        toast({
-          title: "Profile updated",
-          description: "Your profile has been updated successfully",
-          status: "success",
-          duration: 3000,
-          isClosable: true,
-        });
-      })
-      .catch((error) => {
-        console.error("Error updating user details:", error);
-        toast({
-          title: "Update failed",
-          description: "We couldn't update your profile",
-          status: "error",
-          duration: 5000,
-          isClosable: true,
-        });
-      })
-      .finally(() => {
-        setSaving(false);
-      });
   };
 
-  const handleImageUpload = () => {
-    setUploading(true);
-    const formData = new FormData();
-    formData.append("image", selectedImageFile);
-
-    axios
-      .post(`${BASE_URL}/api/users/setAvatar`, formData, {
-        headers: {
-          "auth-token": localStorage.getItem("auth-token"),
-          "Content-Type": "multipart/form-data",
-        },
-      })
-      .then((response) => {
-        setUserDetails(response.data.user);
-        setSelectedImageFile(null);
-        toast({
-          title: "Avatar updated",
-          description: "Your profile picture has been updated",
-          status: "success",
-          duration: 3000,
-          isClosable: true,
-        });
-      })
-      .catch((error) => {
-        console.error("Error updating avatar:", error);
-        toast({
-          title: "Upload failed",
-          description: "We couldn't upload your profile picture",
-          status: "error",
-          duration: 5000,
-          isClosable: true,
-        });
-      })
-      .finally(() => {
-        setUploading(false);
-      });
-  };
-
-  const cancelEdit = () => {
-    setEditMode(false);
-    setEditedUserDetails({
-      firstName: userDetails.firstName,
-      lastName: userDetails.lastName,
-      dateOfBirth: userDetails.dateOfBirth,
-      bank: userDetails.bank,
-      accountNumber: userDetails.accountNumber,
-    });
-  };
-
-  // Updated initiateFunding function
-  const initiateFunding = async () => {
-    if (fundingAmount <= 0) {
+  const handleUpload = async () => {
+    if (!selectedImageFile) {
       toast({
-        title: "Invalid Amount",
-        description: "Please enter a valid amount to fund",
-        status: "error",
-        duration: 5000,
+        title: 'No Image Selected',
+        description: 'Please select an image to upload.',
+        status: 'warning',
+        duration: 3000,
         isClosable: true,
       });
       return;
     }
 
-    if (!phoneNumber && !userDetails?.phoneNumber) {
+    setUploading(true);
+    const formData = new FormData();
+    formData.append('image', selectedImageFile);
+
+    try {
+      const response = await axios.post(`${BASE_URL}/api/users/setAvatar`, formData, {
+        headers: {
+          'auth-token': localStorage.getItem('auth-token'),
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      setUserDetails(response.data.user);
+      setPreview(null);
+      setSelectedImageFile(null);
       toast({
-        title: "Phone Number Required",
-        description: "Please enter a valid phone number to continue",
-        status: "error",
-        duration: 5000,
+        title: 'Avatar Updated',
+        description: 'Your profile picture has been updated successfully.',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      toast({
+        title: 'Upload Failed',
+        description: 'Failed to upload avatar. Please try again.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleEditToggle = () => {
+    setEditMode(!editMode);
+    if (!editMode) {
+      setEditedUserDetails({
+        firstName: userDetails?.firstName || '',
+        lastName: userDetails?.lastName || '',
+        dateOfBirth: userDetails?.dateOfBirth ? new Date(userDetails.dateOfBirth).toISOString().split('T')[0] : '',
+        bank: userDetails?.bank || '',
+        accountNumber: userDetails?.accountNumber || '',
+      });
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setEditedUserDetails({ ...editedUserDetails, [name]: value });
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const response = await axios.put(
+        `${BASE_URL}/api/users/update-user-details`,
+        {
+          ...editedUserDetails,
+          dateOfBirth: editedUserDetails.dateOfBirth ? new Date(editedUserDetails.dateOfBirth) : undefined,
+        },
+        {
+          headers: { 'auth-token': localStorage.getItem('auth-token') },
+        }
+      );
+
+      setUserDetails(response.data.user);
+      setEditMode(false);
+      toast({
+        title: 'Profile Updated',
+        description: 'Your profile details have been updated successfully.',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast({
+        title: 'Update Failed',
+        description: 'Failed to update profile. Please try again.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleFundWallet = async () => {
+    if (fundingAmount <= 0) {
+      toast({
+        title: 'Invalid Amount',
+        description: 'Please enter a valid amount to fund your wallet.',
+        status: 'warning',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    if (!phoneNumber || !/^\d{10,11}$/.test(phoneNumber)) {
+      toast({
+        title: 'Invalid Phone Number',
+        description: 'Please provide a valid phone number (10-11 digits).',
+        status: 'warning',
+        duration: 3000,
         isClosable: true,
       });
       return;
@@ -547,607 +677,383 @@ const Profile = () => {
         `${BASE_URL}/api/wallet/fund`,
         {
           amount: fundingAmount,
-          email: userDetails.email,
-          phoneNumber: phoneNumber || userDetails.phoneNumber,
+          email: userDetails?.email,
+          phoneNumber,
         },
         {
-          headers: {
-            "auth-token": localStorage.getItem("auth-token"),
-          },
-          timeout: 15000,
+          headers: { 'auth-token': localStorage.getItem('auth-token') },
         }
       );
 
       if (response.data.success) {
-        const { virtualAccount, reference } = response.data.data;
-        
-        // Store payment details for the modal
         setPaymentDetails({
-          virtualAccount,
-          reference,
-          amount: fundingAmount
+          virtualAccount: response.data.data.virtualAccount,
+          reference: response.data.data.reference,
+          amount: fundingAmount,
         });
-        
-        // Store reference in localStorage for tracking
-        localStorage.setItem("pendingPaymentRef", reference);
-        
-        // Close the funding modal and open payment info modal
-        onClose();
         setPaymentModalOpen(true);
-        
-        // Start polling in the background
-        pollPaymentStatus(reference);
+        localStorage.setItem('pendingPaymentRef', response.data.data.reference);
+        pollPaymentStatus(response.data.data.reference);
       } else {
-        throw new Error(response.data.message || "Failed to initiate funding");
+        throw new Error(response.data.message || 'Failed to initiate funding');
       }
     } catch (error) {
-      console.error("Funding error:", {
-        message: error.message,
-        status: error.response?.status,
-        data: error.response?.data,
-      });
-      const errorMessage =
-        error.response?.data?.error ||
-        error.response?.data?.message ||
-        error.message ||
-        "An unexpected error occurred during funding";
+      console.error('Error initiating wallet funding:', error);
+      let errorMessage = error.response?.data?.message || 'Unable to initiate wallet funding. Please try again.';
+      if (error.response?.data?.message.includes('timeout')) {
+        errorMessage = 'The payment provider is currently unavailable. Please try again later or contact support.';
+      } else if (error.response?.data?.message.includes('server error')) {
+        errorMessage = 'The payment provider encountered an internal error. Please try again later or contact support at support@yourapp.com.';
+      }
       toast({
-        title: "Funding Error",
+        title: 'Funding Error',
         description: errorMessage,
-        status: "error",
+        status: 'error',
         duration: 5000,
         isClosable: true,
       });
     } finally {
       setIsFunding(false);
-      setFundingAmount(0);
-      setPhoneNumber('');
     }
   };
 
-  // Function to manually check payment status
-  const checkPaymentStatus = () => {
+  const handleRefreshBalance = async () => {
+    setRefreshingBalance(true);
+    await fetchWalletBalance();
+    setRefreshingBalance(false);
+  };
+
+  const handleCheckPaymentStatus = () => {
     if (paymentDetails?.reference) {
+      pollPaymentStatus(paymentDetails.reference);
+    } else {
       toast({
-        title: "Checking Payment Status",
-        description: "Please wait while we verify your payment...",
-        status: "info",
+        title: 'No Payment Reference',
+        description: 'No active payment to verify. Please initiate a new funding request.',
+        status: 'warning',
         duration: 3000,
         isClosable: true,
       });
-      pollPaymentStatus(paymentDetails.reference);
     }
   };
 
-  if (loading || refreshingBalance) {
+  if (loading) {
     return (
-      <Flex minH="100vh" align="center" justify="center" direction="column">
-        <Box position="relative" w="100px" h="100px">
-          <motion.div
-            style={{
-              position: 'absolute',
-              width: '100%',
-              height: '100%',
-              borderRadius: '50%',
-              border: `4px solid ${colorMode === 'dark' ? '#3182CE' : '#63B3ED'}`,
-              borderTopColor: 'transparent',
-              borderBottomColor: 'transparent',
-            }}
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-          />
-          <Box position="absolute" top="35%" left="35%">
-            <Spinner size="lg" color={highlightColor} />
-          </Box>
-        </Box>
-        <Text mt={6} fontSize="xl" fontWeight="semibold" color={highlightColor}>
-          {loading ? 'Loading your profile...' : 'Refreshing wallet balance...'}
-        </Text>
+      <Flex minH="100vh" align="center" justify="center" bg={backgroundBlue}>
+        <Spinner size="xl" color={highlightColor} />
       </Flex>
     );
   }
 
   return (
-    <Box pt={7} minH="100vh">
-      <Container maxW="4xl" px={4}>
-        <Flex justify="space-between" align="center" mb={8}>
-          <Heading
-            as="h1"
-            fontSize={{ base: "2xl", md: "3xl", lg: "4xl" }}
-            fontWeight="bold"
-            bgGradient={`linear(to-r, ${gradientStart}, ${gradientEnd})`}
-            bgClip="text"
-          >
-            My Profile
-          </Heading>
-
-          <Button
-            onClick={() => setEditMode(!editMode)}
-            variant="ghost"
-            colorScheme={editMode ? "red" : "blue"}
-            leftIcon={editMode ? <FaTimes /> : <FaEdit />}
-            size="md"
-            fontWeight="medium"
-            _hover={{
-              bg: editMode ? "red.100" : "blue.100",
-              color: editMode ? "red.600" : "blue.600",
-            }}
-          >
-            {editMode ? "Cancel" : "Edit Profile"}
-          </Button>
-        </Flex>
-
-        {userDetails && (
+    <Box
+      minH="100vh"
+      bgGradient={`linear(to-br, ${backgroundBlue}, ${backgroundPurple})`}
+      py={8}
+    >
+      <Container maxW="container.lg">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
           <Box
             bg={cardBg}
-            rounded="xl"
-            shadow="lg"
-            p={{ base: 4, md: 6 }}
+            borderRadius="xl"
+            p={{ base: 4, md: 8 }}
+            boxShadow={`0 8px 32px ${blueShadow}`}
             borderWidth="1px"
             borderColor={borderColor}
-            overflow="hidden"
-            position="relative"
           >
-            <Box
-              position="absolute"
-              top="-50px"
-              right="-50px"
-              w="200px"
-              h="200px"
-              borderRadius="full"
-              bg={backgroundBlue}
-              opacity="0.4"
-              zIndex="0"
-            />
-            <Box
-              position="absolute"
-              bottom="-30px"
-              left="-30px"
-              w="150px"
-              h="150px"
-              borderRadius="full"
-              bg={backgroundPurple}
-              opacity="0.3"
-              zIndex="0"
-            />
+            <Heading size="lg" mb={6} color={textColor} textAlign="center">
+              Your Profile
+            </Heading>
 
             <Grid
-              templateColumns={{ base: "1fr", md: "auto 1fr" }}
-              gap={{ base: 8, md: 10 }}
-              position="relative"
-              zIndex="1"
+              templateColumns={{ base: "1fr", md: "1fr 2fr" }}
+              gap={6}
+              alignItems="start"
             >
-              <Flex direction="column" align="center">
-                <Box position="relative" className="group">
-                  <Box
-                    position="relative"
-                    w="150px"
-                    h="150px"
-                    rounded="full"
-                    overflow="hidden"
-                    borderWidth="4px"
-                    borderColor={avatarBorderColor}
-                    boxShadow={`0 0 15px ${blueShadow}`}
-                  >
-                    <img
-                      src={preview || `${BASE_URL}/${userDetails.avatarImage}`}
-                      alt="Profile"
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                      }}
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = UserProfile;
-                      }}
-                    />
-
-                    <Box
-                      position="absolute"
-                      top="0"
-                      left="0"
-                      w="100%"
-                      h="100%"
-                      bg="blackAlpha.400"
-                      opacity="0"
-                      _groupHover={{ opacity: 1 }}
-                      transition="all 0.3s"
-                      rounded="full"
-                    />
-                  </Box>
-
-                  <label htmlFor="avatar-upload">
-                    <Box
-                      position="absolute"
-                      bottom="5px"
-                      right="5px"
-                      bg={highlightColor}
-                      p="10px"
-                      rounded="full"
-                      cursor="pointer"
-                      transform="scale(1)"
-                      _hover={{ transform: "scale(1.1)" }}
-                      transition="all 0.3s"
-                      boxShadow="md"
-                    >
-                      <Icon as={FaUpload} color="white" boxSize="18px" />
-                    </Box>
-                  </label>
-
-                  <input
-                    id="avatar-upload"
+              {/* Avatar Section */}
+              <Box textAlign="center">
+                <Avatar
+                  size="2xl"
+                  src={preview || (userDetails?.avatarImage ? `${BASE_URL}/${userDetails.avatarImage}` : UserProfile)}
+                  borderWidth="3px"
+                  borderColor={avatarBorderColor}
+                  mb={4}
+                  boxShadow={`0 4px 12px ${blueShadow}`}
+                />
+                <FormControl mb={4}>
+                  <Input
                     type="file"
                     accept="image/*"
-                    onChange={(e) => setSelectedImageFile(e.target.files[0])}
-                    hidden
+                    onChange={handleImageChange}
+                    display="none"
+                    id="avatar-upload"
                   />
-                </Box>
-
-                {selectedImageFile && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    style={{ width: '100%' }}
+                  <Button
+                    as="label"
+                    htmlFor="avatar-upload"
+                    colorScheme="blue"
+                    leftIcon={<FaUpload />}
+                    isLoading={uploading}
+                    variant="outline"
+                    bg={fieldBg}
+                    _hover={{ bg: inputHoverBg }}
+                    w="full"
                   >
-                    <Button
-                      mt={4}
-                      onClick={handleImageUpload}
-                      isLoading={uploading}
-                      loadingText="Uploading..."
-                      leftIcon={<FaUpload />}
-                      colorScheme="blue"
-                      bgGradient={`linear(to-r, ${gradientStart}, ${gradientEnd})`}
-                      _hover={{
-                        bgGradient: hoverGradient,
-                      }}
-                      size="md"
-                      width="full"
-                    >
-                      Upload Avatar
-                    </Button>
-                  </motion.div>
+                    Choose Image
+                  </Button>
+                </FormControl>
+                {preview && (
+                  <Button
+                    colorScheme="blue"
+                    onClick={handleUpload}
+                    isLoading={uploading}
+                    leftIcon={<FaSave />}
+                    w="full"
+                    bgGradient={`linear(to-r, ${gradientStart}, ${gradientEnd})`}
+                    _hover={{ bgGradient: hoverGradient }}
+                  >
+                    Upload Image
+                  </Button>
                 )}
+              </Box>
 
-                <Box mt={6} textAlign="center">
-                  <Text fontSize="2xl" fontWeight="bold" color={textColor}>
-                    {userDetails.firstName} {userDetails.lastName}
+              {/* Profile Details Section */}
+              <Box>
+                <Flex justify="space-between" align="center" mb={4}>
+                  <Text fontSize="xl" fontWeight="bold" color={textColor}>
+                    Personal Information
                   </Text>
-                  <Text color={labelColor}>{userDetails.email}</Text>
+                  <Button
+                    leftIcon={editMode ? <FaTimes /> : <FaEdit />}
+                    onClick={handleEditToggle}
+                    colorScheme="blue"
+                    variant="ghost"
+                    size="sm"
+                  >
+                    {editMode ? "Cancel" : "Edit"}
+                  </Button>
+                </Flex>
 
-                  <Badge mt={3} colorScheme="blue" fontSize="sm" px={2} py={1} borderRadius="md">
-                    Active User
-                  </Badge>
-
-                  <Box mt={4}>
-                    <Text fontSize="lg" fontWeight="semibold" color={textColor}>
-                      Wallet Balance
-                    </Text>
-                    <Text fontSize="2xl" fontWeight="bold" color={highlightColor}>
-                      {refreshingBalance ? (
-                        <Spinner size="sm" color={highlightColor} />
-                      ) : walletBalance ? (
-                        `${walletBalance.balance} ${walletBalance.currency}`
-                      ) : (
-                        "Loading..."
-                      )}
-                    </Text>
-                    <Flex mt={3} gap={2}>
-                      <Button
-                        onClick={onOpen}
-                        leftIcon={<FaWallet />}
-                        colorScheme="blue"
-                        bgGradient={`linear(to-r, ${gradientStart}, ${gradientEnd})`}
-                        _hover={{
-                          bgGradient: hoverGradient,
-                        }}
-                        size="md"
-                      >
-                        Fund Wallet
-                      </Button>
-                      <Button
-                        onClick={async () => {
-                          setRefreshingBalance(true);
-                          await fetchWalletBalance();
-                          setRefreshingBalance(false);
-                        }}
-                        leftIcon={<FaSync />}
-                        colorScheme="gray"
-                        variant="outline"
-                        size="md"
-                        isLoading={refreshingBalance}
-                      >
-                        Refresh Balance
-                      </Button>
-                    </Flex>
-                  </Box>
-                </Box>
-              </Flex>
-
-              <Box flex="1">
-                <Grid templateColumns={{ base: "1fr", md: "1fr 1fr" }} gap={6} mb={6}>
+                <Grid templateColumns={{ base: "1fr", sm: "1fr 1fr" }} gap={4}>
                   <FormControl>
-                    <Flex align="center" mb={1}>
-                      <Icon as={FaUser} color={labelColor} mr={2} />
-                      <FormLabel color={labelColor} fontSize="sm" fontWeight="medium" mb={0}>
+                    <FormLabel color={labelColor}>
+                      <Flex align="center">
+                        <Icon as={FaUser} mr={2} />
                         First Name
-                      </FormLabel>
-                    </Flex>
-
+                      </Flex>
+                    </FormLabel>
                     {editMode ? (
                       <Input
+                        name="firstName"
                         value={editedUserDetails.firstName}
-                        onChange={(e) => setEditedUserDetails({ ...editedUserDetails, firstName: e.target.value })}
+                        onChange={handleInputChange}
                         bg={inputBg}
-                        borderColor={borderColor}
                         _hover={{ bg: inputHoverBg }}
-                        _focus={{ borderColor: highlightColor, boxShadow: `0 0 0 1px ${highlightColor}` }}
+                        color={textColor}
                       />
                     ) : (
-                      <Box
-                        p={3}
-                        bg={fieldBg}
-                        borderWidth="1px"
-                        borderColor={borderColor}
-                        borderRadius="md"
-                        fontWeight="medium"
-                        fontSize="md"
-                        color={textColor}
-                      >
-                        {userDetails.firstName}
-                      </Box>
+                      <Text color={textColor}>{userDetails?.firstName || "Not Provided"}</Text>
                     )}
                   </FormControl>
 
                   <FormControl>
-                    <Flex align="center" mb={1}>
-                      <Icon as={FaUser} color={labelColor} mr={2} />
-                      <FormLabel color={labelColor} fontSize="sm" fontWeight="medium" mb={0}>
+                    <FormLabel color={labelColor}>
+                      <Flex align="center">
+                        <Icon as={FaUser} mr={2} />
                         Last Name
-                      </FormLabel>
-                    </Flex>
-
+                      </Flex>
+                    </FormLabel>
                     {editMode ? (
                       <Input
+                        name="lastName"
                         value={editedUserDetails.lastName}
-                        onChange={(e) => setEditedUserDetails({ ...editedUserDetails, lastName: e.target.value })}
+                        onChange={handleInputChange}
                         bg={inputBg}
-                        borderColor={borderColor}
                         _hover={{ bg: inputHoverBg }}
-                        _focus={{ borderColor: highlightColor, boxShadow: `0 0 0 1px ${highlightColor}` }}
+                        color={textColor}
                       />
                     ) : (
-                      <Box
-                        p={3}
-                        bg={fieldBg}
-                        borderWidth="1px"
-                        borderColor={borderColor}
-                        borderRadius="md"
-                        fontWeight="medium"
-                        fontSize="md"
+                      <Text color={textColor}>{userDetails?.lastName || "Not Provided"}</Text>
+                    )}
+                  </FormControl>
+
+                  <FormControl>
+                    <FormLabel color={labelColor}>
+                      <Flex align="center">
+                        <Icon as={FaCalendarAlt} mr={2} />
+                        Date of Birth
+                      </Flex>
+                    </FormLabel>
+                    {editMode ? (
+                      <Input
+                        type="date"
+                        name="dateOfBirth"
+                        value={editedUserDetails.dateOfBirth}
+                        onChange={handleInputChange}
+                        bg={inputBg}
+                        _hover={{ bg: inputHoverBg }}
                         color={textColor}
-                      >
-                        {userDetails.lastName}
-                      </Box>
+                      />
+                    ) : (
+                      <Text color={textColor}>{formatDate(userDetails?.dateOfBirth)}</Text>
+                    )}
+                  </FormControl>
+
+                  <FormControl>
+                    <FormLabel color={labelColor}>
+                      <Flex align="center">
+                        <Icon as={FaUniversity} mr={2} />
+                        Bank Name
+                      </Flex>
+                    </FormLabel>
+                    {editMode ? (
+                      <Input
+                        name="bank"
+                        value={editedUserDetails.bank}
+                        onChange={handleInputChange}
+                        bg={inputBg}
+                        _hover={{ bg: inputHoverBg }}
+                        color={textColor}
+                      />
+                    ) : (
+                      <Text color={textColor}>{userDetails?.bank || "Not Provided"}</Text>
+                    )}
+                  </FormControl>
+
+                  <FormControl>
+                    <FormLabel color={labelColor}>
+                      <Flex align="center">
+                        <Icon as={FaCreditCard} mr={2} />
+                        Account Number
+                      </Flex>
+                    </FormLabel>
+                    {editMode ? (
+                      <Input
+                        name="accountNumber"
+                        value={editedUserDetails.accountNumber}
+                        onChange={handleInputChange}
+                        bg={inputBg}
+                        _hover={{ bg: inputHoverBg }}
+                        color={textColor}
+                      />
+                    ) : (
+                      <Text color={textColor}>{userDetails?.accountNumber || "Not Provided"}</Text>
                     )}
                   </FormControl>
                 </Grid>
 
-                <FormControl mb={6}>
-                  <Flex align="center" mb={1}>
-                    <Icon as={FaCalendarAlt} color={labelColor} mr={2} />
-                    <FormLabel color={labelColor} fontSize="sm" fontWeight="medium" mb={0}>
-                      Date of Birth
-                    </FormLabel>
-                  </Flex>
-
-                  {editMode ? (
-                    <Input
-                      type="date"
-                      value={editedUserDetails.dateOfBirth}
-                      onChange={(e) => setEditedUserDetails({ ...editedUserDetails, dateOfBirth: e.target.value })}
-                      bg={inputBg}
-                      borderColor={borderColor}
-                      _hover={{ bg: inputHoverBg }}
-                      _focus={{ borderColor: highlightColor, boxShadow: `0 0 0 1px ${highlightColor}` }}
-                    />
-                  ) : (
-                    <Box
-                      p={3}
-                      bg={fieldBg}
-                      borderWidth="1px"
-                      borderColor={borderColor}
-                      borderRadius="md"
-                      fontWeight="medium"
-                      fontSize="md"
-                      color={textColor}
-                    >
-                      {formatDate(userDetails.dateOfBirth)}
-                    </Box>
-                  )}
-                </FormControl>
-
-                <FormControl mb={6}>
-                  <Flex align="center" mb={1}>
-                    <Icon as={FaUniversity} color={labelColor} mr={2} />
-                    <FormLabel color={labelColor} fontSize="sm" fontWeight="medium" mb={0}>
-                      Bank
-                    </FormLabel>
-                  </Flex>
-
-                  {editMode ? (
-                    <Input
-                      value={editedUserDetails.bank}
-                      onChange={(e) => setEditedUserDetails({ ...editedUserDetails, bank: e.target.value })}
-                      bg={inputBg}
-                      borderColor={borderColor}
-                      _hover={{ bg: inputHoverBg }}
-                      _focus={{ borderColor: highlightColor, boxShadow: `0 0 0 1px ${highlightColor}` }}
-                    />
-                  ) : (
-                    <Box
-                      p={3}
-                      bg={fieldBg}
-                      borderWidth="1px"
-                      borderColor={borderColor}
-                      borderRadius="md"
-                      fontWeight="medium"
-                      fontSize="md"
-                      color={textColor}
-                    >
-                      {userDetails.bank || "Not Provided"}
-                    </Box>
-                  )}
-                </FormControl>
-
-                <FormControl mb={6}>
-                  <Flex align="center" mb={1}>
-                    <Icon as={FaCreditCard} color={labelColor} mr={2} />
-                    <FormLabel color={labelColor} fontSize="sm" fontWeight="medium" mb={0}>
-                      Account Number
-                    </FormLabel>
-                  </Flex>
-
-                  {editMode ? (
-                    <Input
-                      value={editedUserDetails.accountNumber}
-                      onChange={(e) => setEditedUserDetails({ ...editedUserDetails, accountNumber: e.target.value })}
-                      bg={inputBg}
-                      borderColor={borderColor}
-                      _hover={{ bg: inputHoverBg }}
-                      _focus={{ borderColor: highlightColor, boxShadow: `0 0 0 1px ${highlightColor}` }}
-                    />
-                  ) : (
-                    <Box
-                      p={3}
-                      bg={fieldBg}
-                      borderWidth="1px"
-                      borderColor={borderColor}
-                      borderRadius="md"
-                      fontWeight="medium"
-                      fontSize="md"
-                      color={textColor}
-                    >
-                      {userDetails.accountNumber || "Not Provided"}
-                    </Box>
-                  )}
-                </FormControl>
-
                 {editMode && (
-                  <Flex justify="flex-end" mt={8}>
+                  <Flex mt={6} justify="space-between">
                     <Button
-                      onClick={cancelEdit}
-                      mr={4}
-                      bg={cancelBtnBg}
-                      color={textColor}
-                      _hover={{ bg: cancelBtnHoverBg }}
-                      size="md"
-                    >
-                      Cancel
-                    </Button>
-
-                    <Button
-                      onClick={handleUpdateDetails}
+                      onClick={handleSave}
                       isLoading={saving}
-                      loadingText="Saving..."
-                      leftIcon={<FaSave />}
                       colorScheme="blue"
+                      leftIcon={<FaSave />}
                       bgGradient={`linear(to-r, ${gradientStart}, ${gradientEnd})`}
-                      _hover={{
-                        bgGradient: hoverGradient,
-                      }}
-                      size="md"
+                      _hover={{ bgGradient: hoverGradient }}
                     >
                       Save Changes
+                    </Button>
+                    <Button
+                      onClick={handleEditToggle}
+                      bg={cancelBtnBg}
+                      _hover={{ bg: cancelBtnHoverBg }}
+                      leftIcon={<FaTimes />}
+                    >
+                      Cancel
                     </Button>
                   </Flex>
                 )}
               </Box>
             </Grid>
-          </Box>
-        )}
 
-        <Modal isOpen={isOpen} onClose={onClose} isCentered>
-          <ModalOverlay />
-          <ModalContent bg={cardBg} borderColor={borderColor}>
-            <ModalHeader>
-              <Text color={textColor} fontWeight="bold">
-                Fund Your Wallet
-              </Text>
-            </ModalHeader>
-            <ModalCloseButton />
-            <ModalBody>
-              <FormControl mb={4}>
-                <FormLabel color={labelColor}>Amount (NGN)</FormLabel>
-                <NumberInput
-                  min={100}
-                  value={fundingAmount}
-                  onChange={(valueString) => setFundingAmount(parseFloat(valueString))}
-                  precision={2}
-                >
-                  <NumberInputField
-                    bg={inputBg}
-                    borderColor={borderColor}
-                    _hover={{ bg: inputHoverBg }}
-                    _focus={{ borderColor: highlightColor, boxShadow: `0 0 0 1px ${highlightColor}` }}
-                  />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
-              </FormControl>
-
-              <FormControl>
-                <FormLabel color={labelColor}>Phone Number</FormLabel>
-                <Input
-                  type="tel"
-                  placeholder="Enter your phone number"
-                  value={phoneNumber || userDetails?.phoneNumber || ''}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  bg={inputBg}
-                  borderColor={borderColor}
-                  _hover={{ bg: inputHoverBg }}
-                  _focus={{ borderColor: highlightColor, boxShadow: `0 0 0 1px ${highlightColor}` }}
-                />
-                <Text fontSize="xs" color={subtleTextColor} mt={1}>
-                  Required for payment processing
+            {/* Wallet Section */}
+            <Box mt={8} p={6} bg={fieldBg} borderRadius="lg" borderWidth="1px" borderColor={borderColor}>
+              <Flex justify="space-between" align="center" mb={4}>
+                <Text fontSize="xl" fontWeight="bold" color={textColor}>
+                  Wallet
                 </Text>
-              </FormControl>
-            </ModalBody>
-            <ModalFooter>
-              <Button
-                variant="ghost"
-                onClick={onClose}
-                mr={3}
-                color={textColor}
-                _hover={{ bg: cancelBtnHoverBg }}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={initiateFunding}
-                isLoading={isFunding}
-                loadingText="Processing..."
-                colorScheme="blue"
-                bgGradient={`linear(to-r, ${gradientStart}, ${gradientEnd})`}
-                _hover={{
-                  bgGradient: hoverGradient,
-                }}
-              >
-                Proceed to Payment
-              </Button>
-            </ModalFooter>
-          </ModalContent>
-        </Modal>
+                <Button
+                  onClick={handleRefreshBalance}
+                  isLoading={refreshingBalance}
+                  leftIcon={<FaSync />}
+                  colorScheme="blue"
+                  variant="ghost"
+                  size="sm"
+                >
+                  Refresh
+                </Button>
+              </Flex>
+              <Text fontSize="2xl" color={highlightColor} fontWeight="bold">
+                ₦{walletBalance?.balance?.toFixed(2) || '0.00'} {walletBalance?.currency || 'NGN'}
+              </Text>
+              <Text fontSize="sm" color={subtleTextColor} mt={1}>
+                Total Deposits: ₦{walletBalance?.totalDeposits?.toFixed(2) || '0.00'}
+              </Text>
 
-        <PaymentInfoModal
-          isOpen={paymentModalOpen}
-          onClose={() => setPaymentModalOpen(false)}
-          paymentDetails={paymentDetails}
-          onStatusCheck={checkPaymentStatus}
-        />
+              <Box mt={6}>
+                <FormControl>
+                  <FormLabel color={labelColor}>Fund Wallet (NGN)</FormLabel>
+                  <NumberInput
+                    min={0}
+                    value={fundingAmount}
+                    onChange={(valueString) => setFundingAmount(parseFloat(valueString) || 0)}
+                    precision={2}
+                  >
+                    <NumberInputField bg={inputBg} _hover={{ bg: inputHoverBg }} color={textColor} />
+                    <NumberInputStepper>
+                      <NumberIncrementStepper />
+                      <NumberDecrementStepper />
+                    </NumberInputStepper>
+                  </NumberInput>
+                </FormControl>
+                <FormControl mt={4}>
+                  <FormLabel color={labelColor}>Phone Number</FormLabel>
+                  <Input
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    placeholder="Enter phone number"
+                    bg={inputBg}
+                    _hover={{ bg: inputHoverBg }}
+                    color={textColor}
+                  />
+                </FormControl>
+                <Button
+                  mt={4}
+                  onClick={handleFundWallet}
+                  isLoading={isFunding}
+                  colorScheme="blue"
+                  leftIcon={<FaWallet />}
+                  bgGradient={`linear(to-r, ${gradientStart}, ${gradientEnd})`}
+                  _hover={{ bgGradient: hoverGradient }}
+                  w="full"
+                >
+                  Fund Wallet
+                </Button>
+              </Box>
+            </Box>
+          </Box>
+        </motion.div>
       </Container>
+
+      <PaymentInfoModal
+        isOpen={paymentModalOpen}
+        onClose={() => {
+          setPaymentModalOpen(false);
+          if (checkStatusInterval) {
+            clearInterval(checkStatusInterval);
+            setCheckStatusInterval(null);
+          }
+          localStorage.removeItem('pendingPaymentRef');
+        }}
+        paymentDetails={paymentDetails}
+        onStatusCheck={handleCheckPaymentStatus}
+        userName={`${userDetails?.firstName || ''} ${userDetails?.lastName || ''}`.trim() || userDetails?.email.split('@')[0]}
+      />
     </Box>
   );
 };

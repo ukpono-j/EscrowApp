@@ -1,18 +1,29 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Sidebar from "../dashboard/Sidebar";
 import MyTransaction from "../dashboard/MyTransaction";
 import Profile from "../dashboard/Profile";
 import BottomNav from "../dashboard/BottomNav";
 import MiniNav from "./MiniNav";
 import NotificationComponent from "./NotificationComponent";
-import NotificationVerification from "./NotificationVerification";
 
 const Notification = () => {
   const [showToggleContainer, setShowToggleContainer] = useState(true);
   const [showProfile, setShowProfile] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
-  
+    useEffect(() => {
+      const checkScreenSize = () => {
+        const isMobileView = window.innerWidth < 768;
+        setIsMobile(isMobileView);
+        if (isMobileView) setIsSidebarCollapsed(true);
+      };
+      checkScreenSize();
+      window.addEventListener('resize', checkScreenSize);
+      return () => window.removeEventListener('resize', checkScreenSize);
+    }, []);
+
+
   const handleShowProfile = () => {
     setShowToggleContainer(false);
     setShowProfile(true);
@@ -23,11 +34,9 @@ const Notification = () => {
     setShowProfile(false);
   };
 
-  // Function to handle sidebar collapse state changes
   const handleSidebarCollapseChange = (isCollapsed) => {
     setIsSidebarCollapsed(isCollapsed);
   };
-
 
   return (
     <div>
@@ -38,10 +47,7 @@ const Notification = () => {
           onCollapseChange={handleSidebarCollapseChange}
         />
         <div
-          className={`fixed top-0 right-0 overflow-y-auto h-screen transition-all duration-300 ${isSidebarCollapsed
-            ? "w-[calc(100%-80px)]"
-            : "w-[calc(100%-280px)]"
-            } md:block hidden`}
+         className={`transition-all duration-300 flex-1 ${!isMobile ? (isSidebarCollapsed ? "ml-[80px]" : "ml-[280px]") : "ml-0"}`}
         >
           <div
             className={

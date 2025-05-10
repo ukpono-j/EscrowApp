@@ -27,7 +27,6 @@ import { MdClose } from "react-icons/md";
 import defaultProfileImage from '../../assets/profile_icon.png';
 import nigeriaBanks, { getBankNameFromCode } from "../../data/banksList";
 
-
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 
 const TransactionCreation = () => {
@@ -39,8 +38,8 @@ const TransactionCreation = () => {
   const bgTertiary = useColorModeValue("#EDF2F7", "#2D3748");
   const textColor = useColorModeValue("gray.800", "white");
   const borderColor = useColorModeValue("#957432", "#957432");
-  const accentColor = "#957432"; // Keep gold accent color for both modes
-  const accentHoverColor = "#A88D50"; // Lighter gold for hover states
+  const accentColor = "#957432";
+  const accentHoverColor = "#A88D50";
   const shadowColor = useColorModeValue("rgba(0, 0, 0, 0.1)", "rgba(0, 0, 0, 0.3)");
   const inputBg = useColorModeValue("white", "#0F1624");
   const cardBorder = useColorModeValue("1px solid #E2E8F0", "none");
@@ -64,222 +63,60 @@ const TransactionCreation = () => {
   const [uniqueBanks, setUniqueBanks] = useState([]);
   const [errors, setErrors] = useState([]);
   const [formValid, setFormValid] = useState(false);
-
-  // Calculate the transaction fee and total amount
-  const transactionFee = paymentAmount ? (paymentAmount * 0.008).toFixed(2) : "0.00";
-  const totalAmount = paymentAmount ? (parseFloat(paymentAmount) + parseFloat(transactionFee)).toFixed(2) : "0.00";
   const [courierName, setCourierName] = useState("");
   const [trackingNumber, setTrackingNumber] = useState("");
   const [courierDetails, setCourierDetails] = useState("");
 
-  useEffect(() => {
-    // Only run this comparison once when both arrays are populated
-    if (banks.length > 0 && nigeriaBanks.length > 0) {
-      // Check if we've already done this comparison using a ref or localStorage flag
-      const comparisonDone = localStorage.getItem('bankComparisonDone');
-      if (comparisonDone === 'true') {
-        return; // Skip if we've already done this
-      }
-
-      console.log("=== BANK CODE COMPARISON ===");
-
-      // Create a map of bank names to codes from your fallback data
-      const fallbackBankMap = {};
-      nigeriaBanks.forEach(bank => {
-        fallbackBankMap[bank.name.toLowerCase()] = bank.code;
-      });
-
-      // Check for discrepancies
-      banks.forEach(apiBank => {
-        const nameToCheck = apiBank.name.toLowerCase();
-        // Find closest match in fallback data
-        const closestMatch = Object.keys(fallbackBankMap).find(name =>
-          name.includes(nameToCheck) || nameToCheck.includes(name)
-        );
-
-        if (closestMatch && fallbackBankMap[closestMatch] !== apiBank.code) {
-          console.log(`Discrepancy found: "${apiBank.name}" - API code: ${apiBank.code}, Fallback code: ${fallbackBankMap[closestMatch]}`);
-        }
-      });
-
-      // Mark this comparison as done
-      localStorage.setItem('bankComparisonDone', 'true');
-    }
-  }, [banks, nigeriaBanks]);
-
-  // debugging useEffect to help troubleshoot
-  useEffect(() => {
-    // Only log when selectedBankCode actually changes and is not empty
-    if (selectedBankCode) {
-      // Optional: Add a localStorage check to see if we've already logged this bank code
-      const loggedBankCodes = localStorage.getItem('loggedBankCodes') || '';
-      if (!loggedBankCodes.includes(selectedBankCode)) {
-        console.log("Bank selection:", {
-          code: selectedBankCode,
-          name: paymentBank,
-          lookupResult: getBankNameFromCode(selectedBankCode)
-        });
-
-        // Optional: Store this code as logged (limit to prevent localStorage bloat)
-        const updatedLoggedCodes = loggedBankCodes.length > 100
-          ? selectedBankCode
-          : `${loggedBankCodes},${selectedBankCode}`;
-        localStorage.setItem('loggedBankCodes', updatedLoggedCodes);
-      }
-    }
-  }, [selectedBankCode]);
-
+  const transactionFee = paymentAmount ? (paymentAmount * 0.008).toFixed(2) : "0.00";
+  const totalAmount = paymentAmount ? (parseFloat(paymentAmount) + parseFloat(transactionFee)).toFixed(2) : "0.00";
 
   // User details fetching
   const userDetailsAlreadyFetched = useRef(false);
-
   useEffect(() => {
-    if (userDetailsAlreadyFetched.current) {
-      return;
-    }
-
+    if (userDetailsAlreadyFetched.current) return;
     const fetchUserDetails = async () => {
       const token = localStorage.getItem("auth-token");
-      if (token) {
-        axios.defaults.headers.common["auth-token"] = token;
-      }
-
+      if (token) axios.defaults.headers.common["auth-token"] = token;
       try {
-        const response = await axios.get(`${BASE_URL}/api/users/user-details`, {
-          headers: {
-            "auth-token": token,
-          },
-        });
+        const response = await axios.get(`${BASE_URL}/api/users/user-details`);
         setUserDetails(response.data);
       } catch (error) {
         console.error("Error fetching user details:", error);
       }
       userDetailsAlreadyFetched.current = true;
     };
-
     fetchUserDetails();
-  }, []); // No dependencies - will only run once on component mount
+  }, []);
 
-
-  // Unique banks filtering
-  useEffect(() => {
-    // Only process if banks array has changed and contains items
-    if (banks.length > 0 && uniqueBanks.length === 0) {
-      // Filter to get only unique bank codes
-      const bankMap = new Map();
-      banks.forEach(bank => {
-        if (!bankMap.has(bank.code)) {
-          bankMap.set(bank.code, bank);
-        }
-      });
-      setUniqueBanks(Array.from(bankMap.values()));
-    }
-  }, [banks]);
-
-  // useEffect(() => {
-  //   const fetchBanks = async () => {
-  //     try {
-  //       const token = localStorage.getItem("auth-token");
-  //       setErrors([]);
-
-  //       console.log("Attempting to fetch banks from:", `${BASE_URL}/api/transactions/banks`);
-
-  //       const response = await axios.get(`${BASE_URL}/api/transactions/banks`, {
-  //         headers: {
-  //           "auth-token": token,
-  //         },
-  //         timeout: 10000
-  //       });
-
-  //       if (response.data && response.data.data && Array.isArray(response.data.data)) {
-  //         console.log("Banks fetched successfully:", response.data.data.length);
-  //         if (response.data.data.length > 0) {
-  //           const apiBanks = response.data.data;
-  //           setBanks(apiBanks);
-  //           localStorage.setItem('apiBanks', JSON.stringify(apiBanks)); // Add this line here
-  //         } else {
-  //           // Use fallback if API returned empty array
-  //           console.log("API returned empty array, using fallback banks");
-  //           setBanks(nigeriaBanks);
-  //         }
-  //       } else {
-  //         console.error("Invalid banks data format:", response.data);
-  //         setBanks(nigeriaBanks);
-  //         toast({
-  //           title: "Using default bank list",
-  //           description: "Could not load live bank data",
-  //           status: "warning",
-  //           duration: 3000,
-  //           isClosable: true,
-  //         });
-  //       }
-  //     } catch (error) {
-  //       console.error("Error fetching banks:", error);
-  //       setBanks(nigeriaBanks);
-  //       toast({
-  //         title: "Using default bank list",
-  //         description: "Network error occurred",
-  //         status: "warning",
-  //         duration: 3000,
-  //         isClosable: true,
-  //       });
-  //     }
-  //   };
-
-  //   fetchBanks();
-  // }, [toast]);
-
-
-  // Check if all required fields are filled
-
-
-  // For the banks fetching useEffect
+  // Banks fetching
   const banksAlreadyFetched = useRef(false);
-
   useEffect(() => {
-    // If we've already fetched banks in this component lifecycle, don't fetch again
-    if (banksAlreadyFetched.current) {
-      return;
-    }
-
-    // Try to get banks from localStorage first
+    if (banksAlreadyFetched.current) return;
     const cachedBanks = localStorage.getItem('apiBanks');
     if (cachedBanks) {
       try {
         const parsedBanks = JSON.parse(cachedBanks);
         if (Array.isArray(parsedBanks) && parsedBanks.length > 0) {
-          console.log("Using cached banks from localStorage:", parsedBanks.length);
           setBanks(parsedBanks);
-          banksAlreadyFetched.current = true; // Mark as fetched
-          return; // Skip API call if we have valid cached data
+          banksAlreadyFetched.current = true;
+          return;
         }
       } catch (e) {
         console.error("Error parsing cached banks:", e);
       }
     }
-
-    // Fetch from API if no cached data is available
     const fetchBanks = async () => {
       try {
         const token = localStorage.getItem("auth-token");
         setErrors([]);
-
         const response = await axios.get(`${BASE_URL}/api/transactions/banks`, {
-          headers: {
-            "auth-token": token,
-          },
+          headers: { "auth-token": token },
           timeout: 10000
         });
-
         if (response.data && response.data.data && Array.isArray(response.data.data)) {
-          if (response.data.data.length > 0) {
-            const apiBanks = response.data.data;
-            setBanks(apiBanks);
-            localStorage.setItem('apiBanks', JSON.stringify(apiBanks));
-          } else {
-            setBanks(nigeriaBanks);
-            localStorage.setItem('apiBanks', JSON.stringify(nigeriaBanks));
-          }
+          const apiBanks = response.data.data.length > 0 ? response.data.data : nigeriaBanks;
+          setBanks(apiBanks);
+          localStorage.setItem('apiBanks', JSON.stringify(apiBanks));
         } else {
           setBanks(nigeriaBanks);
           localStorage.setItem('apiBanks', JSON.stringify(nigeriaBanks));
@@ -291,8 +128,7 @@ const TransactionCreation = () => {
             isClosable: true,
           });
         }
-
-        banksAlreadyFetched.current = true; // Mark as fetched regardless of source
+        banksAlreadyFetched.current = true;
       } catch (error) {
         console.error("Error fetching banks:", error);
         setBanks(nigeriaBanks);
@@ -304,82 +140,45 @@ const TransactionCreation = () => {
           duration: 3000,
           isClosable: true,
         });
-        banksAlreadyFetched.current = true; // Mark as fetched even if error
+        banksAlreadyFetched.current = true;
       }
     };
-
     fetchBanks();
-  }, []); // Empty dependency array
+  }, [toast]);
 
+  // Unique banks filtering
+  useEffect(() => {
+    if (banks.length > 0 && uniqueBanks.length === 0) {
+      const bankMap = new Map();
+      banks.forEach(bank => {
+        if (!bankMap.has(bank.code)) bankMap.set(bank.code, bank);
+      });
+      setUniqueBanks(Array.from(bankMap.values()));
+    }
+  }, [banks]);
 
-
+  // Form validation
   useEffect(() => {
     if (selectedUserType === "buyer") {
-      // For buyers, only courier name is required
       setFormValid(courierName.trim() !== "");
     } else {
-      // For sellers, payment details are required
-      if (
+      setFormValid(
         paymentName.trim() !== "" &&
         email.trim() !== "" &&
         paymentAmount.trim() !== "" &&
         selectedBankCode.trim() !== "" &&
         paymentAccountNumber.trim() !== ""
-      ) {
-        setFormValid(true);
-      } else {
-        setFormValid(false);
-      }
+      );
     }
   }, [paymentName, email, paymentAmount, selectedBankCode, paymentAccountNumber, selectedUserType, courierName]);
-
-  // useEffect(() => {
-  //   // If banks array is empty after 3 seconds, it might be failing in production
-  //   const fallbackTimer = setTimeout(() => {
-  //     if (banks.length === 0) {
-  //       console.log("Using fallback banks mechanism");
-  //       // Use a cached/hardcoded list of major Nigerian banks as fallback
-  //       const fallbackBanks = [
-  //         { name: "Access Bank", code: "044" },
-  //         { name: "First Bank of Nigeria", code: "011" },
-  //         { name: "Guaranty Trust Bank", code: "058" },
-  //         { name: "United Bank for Africa", code: "033" },
-  //         { name: "Zenith Bank", code: "057" },
-  //         { name: "Fidelity Bank", code: "070" },
-  //         { name: "Ecobank Nigeria", code: "050" },
-  //         { name: "Union Bank of Nigeria", code: "032" },
-  //         { name: "Stanbic IBTC Bank", code: "221" },
-  //         { name: "Sterling Bank", code: "232" },
-  //         { name: "Wema Bank", code: "035" },
-  //         { name: "First City Monument Bank", code: "214" },
-  //         { name: "Polaris Bank", code: "076" }
-  //       ];
-  //       setBanks(fallbackBanks);
-  //     }
-  //   }, 3000);
-
-  //   return () => clearTimeout(fallbackTimer);
-  // }, [banks]);
-
-  // Add this function to verify account numbers
 
   const handleBankSelection = (e) => {
     const code = e.target.value;
     setSelectedBankCode(code);
-
-    // Get the selected bank from the uniqueBanks array instead of using the helper function
-    // This ensures we're getting the exact bank object that was selected in the dropdown
     const selectedBank = uniqueBanks.find(bank => bank.code === code);
-    if (selectedBank) {
-      setPaymentBank(selectedBank.name);
-    } else {
-      // Fallback to the helper function if not found in uniqueBanks
-      setPaymentBank(getBankNameFromCode(code));
-    }
+    setPaymentBank(selectedBank ? selectedBank.name : getBankNameFromCode(code));
   };
 
-
-  // Enhanced bank account verification with better error handling
   const verifyBankAccount = async () => {
     if (!selectedBankCode || !paymentAccountNumber) {
       toast({
@@ -391,7 +190,6 @@ const TransactionCreation = () => {
       });
       return;
     }
-
     if (paymentAccountNumber.length !== 10) {
       toast({
         title: "Invalid Account Number",
@@ -402,20 +200,9 @@ const TransactionCreation = () => {
       });
       return;
     }
-
     try {
       const token = localStorage.getItem("auth-token");
       const bankName = getBankNameFromCode(selectedBankCode);
-
-      // Debug info
-      console.log("Verifying account with details:", {
-        bankCode: selectedBankCode,
-        bankName: bankName,
-        accountNumber: paymentAccountNumber
-      });
-
-
-      // Show verification in progress
       toast({
         title: "Verifying account...",
         description: `${bankName} - ${paymentAccountNumber}`,
@@ -423,7 +210,6 @@ const TransactionCreation = () => {
         duration: 2000,
         isClosable: true,
       });
-
       const response = await axios.post(
         `${BASE_URL}/api/transactions/bank/verify`,
         {
@@ -432,15 +218,11 @@ const TransactionCreation = () => {
           bank_name: paymentBank
         },
         {
-          headers: {
-            "auth-token": token,
-          },
+          headers: { "auth-token": token },
           timeout: 10000
         }
       );
-
       if (response.data.status) {
-        // Success - account verified
         const accountName = response.data.data.account_name;
         toast({
           title: "Account verified!",
@@ -449,13 +231,8 @@ const TransactionCreation = () => {
           duration: 3000,
           isClosable: true,
         });
-
-        // Optionally update the payment name field with the verified account name
-        if (!paymentName.trim()) {
-          setPaymentName(accountName);
-        }
+        if (!paymentName.trim()) setPaymentName(accountName);
       } else {
-        // API returned success: false
         toast({
           title: "Verification failed",
           description: response.data.message || "Could not verify account details",
@@ -466,24 +243,14 @@ const TransactionCreation = () => {
       }
     } catch (error) {
       console.error("Error verifying account:", error);
-
-      // Provide more specific error messaging based on error type
       let errorMessage = "Network error or invalid account details";
-
       if (error.response) {
-        // Server responded with error status
-        if (error.response.status === 422) {
-          errorMessage = "Invalid account details";
-        } else if (error.response.status === 403 || error.response.status === 401) {
-          errorMessage = "Authorization error. Please re-login";
-        } else if (error.response?.data?.message) {
-          errorMessage = error.response.data.message;
-        }
+        if (error.response.status === 422) errorMessage = "Invalid account details";
+        else if (error.response.status === 403 || error.response.status === 401) errorMessage = "Authorization error. Please re-login";
+        else if (error.response?.data?.message) errorMessage = error.response.data.message;
       } else if (error.request) {
-        // Request made but no response received
         errorMessage = "No response from server. Check your internet connection";
       }
-
       toast({
         title: "Verification failed",
         description: errorMessage,
@@ -496,8 +263,6 @@ const TransactionCreation = () => {
 
   const acceptTransactionFunction = (e) => {
     e.preventDefault();
-
-    // Additional form validation
     if (!formValid) {
       toast({
         title: "Please fill all required fields",
@@ -507,13 +272,11 @@ const TransactionCreation = () => {
       });
       return;
     }
-
     setAcceptTransactionModel(true);
   };
 
   const createNewTransaction = (e) => {
     e.preventDefault();
-
     if (!formValid) {
       toast({
         title: "Please fill all required fields",
@@ -523,7 +286,6 @@ const TransactionCreation = () => {
       });
       return;
     }
-
     const requestData = {
       paymentName,
       email,
@@ -537,18 +299,10 @@ const TransactionCreation = () => {
       paymentBankCode: selectedBankCode,
       paymentAccountNumber,
     };
-
     const token = localStorage.getItem("auth-token");
-    if (token) {
-      axios.defaults.headers.common["auth-token"] = token;
-    }
-
+    if (token) axios.defaults.headers.common["auth-token"] = token;
     axios
-      .post(`${BASE_URL}/api/transactions/create-transaction`, requestData, {
-        headers: {
-          "auth-token": token,
-        },
-      })
+      .post(`${BASE_URL}/api/transactions/create-transaction`, requestData)
       .then((response) => {
         const transactionId = response.data.transactionId;
         toast({
@@ -560,12 +314,13 @@ const TransactionCreation = () => {
         navigate("/transactions/tab");
       })
       .catch((error) => {
-        console.error(error);
+        console.error("Transaction creation error:", error);
         if (error.response && error.response.data && error.response.data.errors) {
           setErrors(error.response.data.errors);
         } else {
           toast({
             title: "Error occurred during transaction",
+            description: error.response?.data?.error || error.message,
             status: "error",
             duration: 3000,
             isClosable: true,
@@ -574,25 +329,16 @@ const TransactionCreation = () => {
       });
   };
 
-  // Function to handle radio button click
   const handleRadioClick = (userType) => {
     setSelectedUserType(userType);
     setNextButtonActive(true);
   };
 
-  // Function to handle radio button click for courier service (yes/no)
-  const handleCourierOptionClick = (option) => {
-    setWillUseCourier(option === "yes");
-    setNextButtonActive(true);
-  };
-
-  // Function to handle "Next" button click
   const handleNextClick = () => {
-    if (step === 1 && selectedUserType === "buyer") {
-      setStep(2); // Go to courier step for buyers too
+    if (step === 1 && selectedUserType) {
+      setStep(2);
       setNextButtonActive(false);
     } else if (step === 2 && selectedUserType === "buyer") {
-      // If user is a buyer and finished courier step, create transaction
       acceptTransactionForBuyer();
     } else if (selectedUserType && step < 3) {
       setStep(step + 1);
@@ -601,54 +347,29 @@ const TransactionCreation = () => {
   };
 
   const acceptTransactionForBuyer = () => {
-    const requestData = {
-      paymentName: userDetails.fullName || "",
-      email: userDetails.email || "",
-      selectedUserType: "buyer",
-      courierName,
-      trackingNumber,
-      courierDetails,
-      // No payment details for buyer
-    };
-
-    const token = localStorage.getItem("auth-token");
-
-    // Show transaction confirmation modal
     setAcceptTransactionModel(true);
   };
 
-  // Create a new function to handle the final buyer submission
   const createNewTransactionForBuyer = (e) => {
     if (e) e.preventDefault();
-
-    // For buyers, we need to provide some default/placeholder values for required fields
-    // to satisfy backend validation
     const requestData = {
-      paymentName: userDetails.fullName || "Buyer", // Use user's name or "Buyer" as fallback
+      paymentName: userDetails.fullName || "Buyer",
       email: userDetails.email || "",
-      paymentAmount: "0", // Placeholder value
-      paymentDescription: courierDetails || "Transaction created by buyer", // Use courier details or default
+      paymentAmount: "0",
+      paymentDescription: courierDetails || "Transaction created by buyer",
       selectedUserType: "buyer",
       courierName,
       trackingNumber,
       courierDetails,
-      paymentBank: "Pending", // Placeholder
-      paymentBankCode: "000", // Placeholder
-      paymentAccountNumber: "0000000000", // Placeholder (10 digits)
-      isBuyerOnly: true, // Add a flag to indicate this is a buyer-only transaction
+      paymentBank: "Pending",
+      paymentBankCode: "000",
+      paymentAccountNumber: "0000000000",
+      isBuyerOnly: true,
     };
-
     const token = localStorage.getItem("auth-token");
-    if (token) {
-      axios.defaults.headers.common["auth-token"] = token;
-    }
-
+    if (token) axios.defaults.headers.common["auth-token"] = token;
     axios
-      .post(`${BASE_URL}/api/transactions/create-transaction`, requestData, {
-        headers: {
-          "auth-token": token,
-        },
-      })
+      .post(`${BASE_URL}/api/transactions/create-transaction`, requestData)
       .then((response) => {
         const transactionId = response.data.transactionId;
         toast({
@@ -663,7 +384,6 @@ const TransactionCreation = () => {
       .catch((error) => {
         console.error("Transaction creation error:", error);
         if (error.response && error.response.data && error.response.data.errors) {
-          // Display specific validation errors
           const errorMessages = error.response.data.errors.map(err => err.msg).join(", ");
           toast({
             title: "Validation error",
@@ -676,7 +396,7 @@ const TransactionCreation = () => {
         } else {
           toast({
             title: "Error occurred during transaction",
-            description: error.message || "Unknown error",
+            description: error.response?.data?.error || error.message,
             status: "error",
             duration: 3000,
             isClosable: true,
@@ -685,9 +405,6 @@ const TransactionCreation = () => {
       });
   };
 
-
-
-  // Function to handle "Previous" button click
   const handlePreviousClick = () => {
     if (step > 1) {
       setStep(step - 1);
@@ -695,7 +412,6 @@ const TransactionCreation = () => {
     }
   };
 
-  // Array of titles for each step
   const stepTitles = [
     "I'm a",
     "Will you be using post/courier for this transaction?",
@@ -722,8 +438,6 @@ const TransactionCreation = () => {
         >
           Create Transaction
         </Text>
-
-        {/* Progress bar */}
         <Box w="full" maxW="500px" position="relative" mb={10}>
           <Progress
             value={(step / 3) * 100}
@@ -731,11 +445,7 @@ const TransactionCreation = () => {
             colorScheme="yellow"
             bg={bgTertiary}
             borderRadius="full"
-            sx={{
-              '& > div': {
-                background: accentColor,
-              }
-            }}
+            sx={{ '& > div': { background: accentColor } }}
           />
           <HStack justify="space-between" w="full" position="absolute" top="-16px">
             {[1, 2, 3].map((number) => (
@@ -758,7 +468,6 @@ const TransactionCreation = () => {
             ))}
           </HStack>
         </Box>
-
         <Heading
           as="h2"
           fontSize={{ base: "xl", md: "2xl" }}
@@ -769,8 +478,6 @@ const TransactionCreation = () => {
         >
           {stepTitles[step - 1]}
         </Heading>
-
-        {/* Step 1: User Type */}
         {step === 1 && (
           <HStack spacing={6} flexWrap={{ base: "wrap", md: "nowrap" }} justify="center">
             <Box
@@ -813,7 +520,6 @@ const TransactionCreation = () => {
                 <Text fontSize="lg" fontWeight="bold" color={textColor}>Buyer</Text>
               </VStack>
             </Box>
-
             <Box
               as="label"
               htmlFor="seller"
@@ -856,8 +562,6 @@ const TransactionCreation = () => {
             </Box>
           </HStack>
         )}
-
-        {/* Step 2: Courier Option */}
         {step === 2 && (
           <Box
             bg={bgSecondary}
@@ -888,7 +592,6 @@ const TransactionCreation = () => {
                   required
                 />
               </FormControl>
-
               <FormControl>
                 <FormLabel fontWeight="bold" color={textColor}>Tracking Number (Optional)</FormLabel>
                 <Input
@@ -904,7 +607,6 @@ const TransactionCreation = () => {
                   _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
                 />
               </FormControl>
-
               <FormControl>
                 <FormLabel fontWeight="bold" color={textColor}>Additional Courier Details (Optional)</FormLabel>
                 <Textarea
@@ -923,8 +625,6 @@ const TransactionCreation = () => {
             </VStack>
           </Box>
         )}
-
-        {/* Step 3: Payment Details */}
         {step === 3 && (
           <Box
             bg={bgSecondary}
@@ -953,7 +653,6 @@ const TransactionCreation = () => {
                     required
                   />
                 </FormControl>
-
                 <FormControl isRequired>
                   <FormLabel fontWeight="bold" color={textColor}>Email Address</FormLabel>
                   <Input
@@ -970,7 +669,6 @@ const TransactionCreation = () => {
                     required
                   />
                 </FormControl>
-
                 <FormControl isRequired>
                   <FormLabel fontWeight="bold" color={textColor}>Payment Amount</FormLabel>
                   <Input
@@ -988,7 +686,6 @@ const TransactionCreation = () => {
                     min="1"
                   />
                 </FormControl>
-
                 <FormControl isRequired>
                   <FormLabel fontWeight="bold" color={textColor}>Bank Name</FormLabel>
                   <Select
@@ -1010,7 +707,6 @@ const TransactionCreation = () => {
                     ))}
                   </Select>
                 </FormControl>
-
                 <FormControl isRequired>
                   <FormLabel fontWeight="bold" color={textColor}>Account Number</FormLabel>
                   <Input
@@ -1036,7 +732,6 @@ const TransactionCreation = () => {
                     maxLength={10}
                   />
                 </FormControl>
-
                 <FormControl isRequired>
                   <FormLabel fontWeight="bold" color={textColor}>Payment Description</FormLabel>
                   <Textarea
@@ -1053,8 +748,6 @@ const TransactionCreation = () => {
                     h="100px"
                   />
                 </FormControl>
-
-                {/* Transaction Summary */}
                 <Box
                   w="full"
                   bg={useColorModeValue("gray.50", "#0F1624")}
@@ -1078,7 +771,6 @@ const TransactionCreation = () => {
                     <Text color={accentColor}>{totalAmount} NGN</Text>
                   </Flex>
                 </Box>
-
                 <Button
                   type="submit"
                   size="lg"
@@ -1097,8 +789,6 @@ const TransactionCreation = () => {
             </form>
           </Box>
         )}
-
-        {/* Navigation Buttons */}
         <HStack spacing={4} mt={8}>
           {step > 1 && (
             <Button
@@ -1114,7 +804,6 @@ const TransactionCreation = () => {
               Previous
             </Button>
           )}
-
           {step < 3 && (
             <Button
               onClick={handleNextClick}
@@ -1133,8 +822,6 @@ const TransactionCreation = () => {
           )}
         </HStack>
       </VStack>
-
-      {/* Confirmation Modal */}
       {acceptTransactionModel && (
         <Box
           position="fixed"
@@ -1172,37 +859,27 @@ const TransactionCreation = () => {
                 </Button>
               </Flex>
             </Box>
-
-            {/* Inside the confirmation modal body */}
             <Box p={5}>
               <Flex align="center" mb={4}>
                 <Avatar
-                  src={
-                    userDetails.avatarImage
-                      ? `${BASE_URL}/${userDetails.avatarImage}`
-                      : defaultProfileImage
-                  }
+                  src={userDetails.avatarImage ? `${BASE_URL}/${userDetails.avatarImage}` : defaultProfileImage}
                   size="md"
                   bg={accentColor}
                   boxShadow={`0px 2px 8px ${shadowColor}`}
                 />
                 <Box ml={3}>
                   <Text fontWeight="bold" color={textColor}>
-                    {selectedUserType === "buyer"
-                      ? userDetails.fullName || "Buyer Transaction"
-                      : paymentName || "Transaction"}
+                    {selectedUserType === "buyer" ? userDetails.fullName || "Buyer Transaction" : paymentName || "Transaction"}
                   </Text>
                   {selectedUserType === "seller" && (
                     <Text fontSize="sm" color={accentColor}>{totalAmount} NGN</Text>
                   )}
                 </Box>
               </Flex>
-
               <Text fontSize="sm" mb={4} color={textColor}>
                 You are about to {selectedUserType === "buyer" ? "create" : "accept"} the escrow transaction.
                 Make sure you understand the terms before proceeding.
               </Text>
-
               <Box
                 bg={useColorModeValue("gray.50", "#0F1624")}
                 p={4}
@@ -1211,50 +888,39 @@ const TransactionCreation = () => {
                 border={cardBorder}
               >
                 <Heading size="xs" mb={3} color={textColor}>Terms</Heading>
-
-                {/* Show courier details for both buyer and seller */}
                 <Flex justify="space-between" mb={2}>
                   <Text color={textColor}>Courier Service</Text>
                   <Text color={textColor}>{courierName || "Not specified"}</Text>
                 </Flex>
-
                 {trackingNumber && (
                   <Flex justify="space-between" mb={2}>
                     <Text color={textColor}>Tracking Number</Text>
                     <Text color={textColor}>{trackingNumber}</Text>
                   </Flex>
                 )}
-
-                {/* Only show payment details for seller */}
                 {selectedUserType === "seller" && (
                   <>
                     <Flex justify="space-between" mb={2}>
                       <Text color={textColor}>Payment Method</Text>
                       <Text color={textColor}>Wire Transfer</Text>
                     </Flex>
-
                     <Flex justify="space-between" mb={2}>
                       <Text color={textColor}>Transaction Amount</Text>
                       <Text color={textColor}>{paymentAmount} NGN</Text>
                     </Flex>
-
                     <Flex justify="space-between" mb={2}>
                       <Text color={textColor}>Transaction Fee</Text>
                       <Text color={textColor}>0.8%</Text>
                     </Flex>
-
                     <Flex justify="space-between" mb={2}>
                       <Text color={textColor}>Bank</Text>
                       <Text color={textColor}>{paymentBank || "Not specified"}</Text>
                     </Flex>
-
                     <Flex justify="space-between" mb={2}>
                       <Text color={textColor}>Account Number</Text>
                       <Text color={textColor}>{paymentAccountNumber}</Text>
                     </Flex>
-
                     <Divider my={2} borderColor={useColorModeValue("gray.300", "gray.600")} />
-
                     <Flex justify="space-between" fontWeight="bold">
                       <Text color={textColor}>Total Amount</Text>
                       <Text color={accentColor}>{totalAmount} NGN</Text>
@@ -1262,7 +928,6 @@ const TransactionCreation = () => {
                   </>
                 )}
               </Box>
-
               <Button
                 size="lg"
                 w="full"

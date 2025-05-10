@@ -1,5 +1,3 @@
-// src/data/banksList.js
-
 /**
  * This file contains Nigerian banks supported by Paystack
  * Includes commercial banks, microfinance banks, and payment service providers
@@ -42,9 +40,8 @@ export const nigeriaBanks = [
   { name: "ALAT by Wema", code: "035A" },
   { name: "Eyowo", code: "50126" },
   { name: "Kuda Bank", code: "90267" },
-  { name: "OPay Digital Services", code: "100004" },
+  { name: "OPay", code: "100004" },
   { name: "PalmPay", code: "999" },
-  { name: "Paycom (OPay)", code: "100004" },
   { name: "Rubies Microfinance Bank", code: "125" },
   { name: "VFD Microfinance Bank", code: "566" },
   { name: "Moniepoint Microfinance Bank", code: "50515" },
@@ -82,14 +79,13 @@ export const nigeriaBanks = [
   { name: "Quick Funds MFB", code: "51293" },
   { name: "Rephidim Microfinance Bank", code: "50994" },
   { name: "SafeTrust", code: "403" },
-  { name: "Solid Allianze MFB", code: "50439" },
   { name: "TCF Microfinance Bank", code: "51211" },
   { name: "TeasyMobile", code: "100010" },
   { name: "Trident Microfinance Bank", code: "50864" },
   { name: "Trustbond Mortgage Bank", code: "523" },
   { name: "Unical Microfinance Bank", code: "50871" },
   { name: "Zinternet Nigera Limited", code: "100025" },
-  { name: "Chams Mobile", code: "303" },
+  { name: "ChamsMobile", code: "303" },
   { name: "Hedonmark", code: "121" },
   { name: "eTranzact", code: "306" },
   { name: "Stanbic Mobile", code: "304" },
@@ -100,10 +96,7 @@ export const nigeriaBanks = [
   { name: "Mkobo Microfinance Bank", code: "50726" },
   { name: "Rand Merchant Bank", code: "502" },
   { name: "Coronation Merchant Bank", code: "559" },
-  { name: "FFS Microfinance Bank", code: "51314" },
-  { name: "ChamsMobile", code: "303" },
-  { name: "Mutual Trust Microfinance Bank", code: "107" },
-  { name: "Parralex Microfinance bank", code: "526" },
+  { name: "FFS Microfinance Bank", code: "51315" },
   { name: "Seed Capital Microfinance Bank", code: "609" },
   { name: "Empire Trust Microfinance Bank", code: "50755" },
   { name: "Stanford Microfinance Bank", code: "50992" },

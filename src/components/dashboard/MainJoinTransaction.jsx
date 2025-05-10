@@ -52,6 +52,29 @@ const MainJoinTransaction = () => {
     }
   }, [responseMessage]);
 
+  useEffect(() => {
+    const checkWallet = async () => {
+      try {
+        const token = localStorage.getItem("auth-token");
+        const response = await axios.get(`${BASE_URL}/api/users/user-details`, {
+          headers: { "auth-token": token },
+        });
+        if (!response.data.walletId) {
+          toast({
+            title: "Wallet not found",
+            description: "Please contact support to set up your wallet.",
+            status: "error",
+            duration: 5000,
+            isClosable: true,
+          });
+        }
+      } catch (error) {
+        console.error("Error checking wallet:", error);
+      }
+    };
+    checkWallet();
+  }, [toast]);
+
   const handleConfirm = async (e) => {
     e.preventDefault();
     try {

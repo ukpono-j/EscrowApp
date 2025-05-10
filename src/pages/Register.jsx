@@ -194,12 +194,15 @@ const Register = () => {
 
       toast({
         title: "Account Created Successfully",
-        description: "We've created your account for you.",
+        description: "We've created your account and wallet for you.",
         status: "success",
         duration: 5000,
         isClosable: true,
         position: "top"
       });
+
+      // Store token
+      localStorage.setItem('auth-token', response.data.token);
 
       // Show success animation before redirecting
       setTimeout(() => {
@@ -222,9 +225,10 @@ const Register = () => {
           errorMessage = 'Server error. Please try again later.';
         }
       }
+
       toast({
         title: "Registration Failed",
-        description: err.response?.data?.message || "Unable to create account",
+        description: errorMessage,
         status: "error",
         duration: 5000,
         isClosable: true,
@@ -318,24 +322,6 @@ const Register = () => {
           }}
         />
       </Box>
-
-      {/* Top Navigation Bar with Logo */}
-      {/* <MotionBox
-        initial={{ y: -30, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.7, ease: "easeOut" }}
-        position="absolute"
-        top={{ base: "20px", md: "40px" }}
-        left={{ base: "30px", md: "60px" }}
-        transform={{ base: "translateX(-50%)", md: "translateX(0)" }}
-        zIndex="5"
-      >
-        <Link to="/">
-          <Box className="logo-container">
-            <img src={Logo} alt="Logo" className="register-logo" width="180px" />
-          </Box>
-        </Link>
-      </MotionBox> */}
 
       {/* Main Content Container */}
       <MotionContainer
@@ -488,7 +474,6 @@ const Register = () => {
                             value={formData.firstName}
                             onChange={handleChange}
                             focusBorderColor={accentColor}
-                            // bg="gray.700"
                             color="white"
                             fontSize={{ base: "sm", md: "md" }}
                             borderRadius="md"
@@ -517,7 +502,6 @@ const Register = () => {
                             value={formData.lastName}
                             onChange={handleChange}
                             focusBorderColor={accentColor}
-                            // bg="gray.700"
                             color="white"
                             fontSize={{ base: "sm", md: "md" }}
                             borderRadius="md"
@@ -547,7 +531,6 @@ const Register = () => {
                           value={formData.email}
                           onChange={handleChange}
                           focusBorderColor={accentColor}
-                          // bg="gray.700"
                           color="white"
                           fontSize={{ base: "sm", md: "md" }}
                           borderRadius="md"
@@ -575,7 +558,6 @@ const Register = () => {
                           value={formData.dateOfBirth}
                           onChange={handleChange}
                           focusBorderColor={accentColor}
-                          // bg="gray.700"
                           color="white"
                           fontSize={{ base: "sm", md: "md" }}
                           borderRadius="md"
@@ -604,7 +586,6 @@ const Register = () => {
                           value={formData.password}
                           onChange={handleChange}
                           focusBorderColor={accentColor}
-                          // bg="gray.700"
                           color="white"
                           fontSize={{ base: "sm", md: "md" }}
                           borderRadius="md"
@@ -661,7 +642,6 @@ const Register = () => {
                           value={formData.confirmPassword}
                           onChange={handleChange}
                           focusBorderColor={accentColor}
-                          // bg="gray.700"
                           color="white"
                           fontSize={{ base: "sm", md: "md" }}
                           borderRadius="md"
@@ -708,7 +688,6 @@ const Register = () => {
                       borderRadius="lg"
                       fontSize={{ base: "md", md: "md" }}
                       rightIcon={<FiArrowRight />}
-                      // className="register-button"
                       transition="all 0.3s ease"
                     >
                       Create Account
