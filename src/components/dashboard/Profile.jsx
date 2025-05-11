@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
-import { FaEdit, FaUpload, FaSave, FaTimes, FaUser, FaCalendarAlt, FaUniversity, FaCreditCard, FaWallet, FaSync, FaCopy, FaCheck, FaExclamationTriangle } from "react-icons/fa";
+import { FaEdit, FaUpload, FaSave, FaTimes, FaUser, FaCalendarAlt, FaUniversity, FaCreditCard, FaWallet, FaSync, FaCopy, FaCheck, FaExclamationTriangle, FaMoneyBillWave } from "react-icons/fa";
 import { motion } from "framer-motion";
 import UserProfile from "../../assets/profile_icon.png";
 import {
@@ -35,6 +35,7 @@ import {
   NumberIncrementStepper,
   NumberDecrementStepper,
   Divider,
+  Select,
 } from "@chakra-ui/react";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3001";
@@ -167,10 +168,250 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
   );
 };
 
+// Withdrawal Modal Component
+const WithdrawalModal = ({ isOpen, onClose, walletBalance, onWithdraw }) => {
+  const toast = useToast();
+  const cardBg = useColorModeValue("white", "#0F1722");
+  const textColor = useColorModeValue("gray.800", "white");
+  const subtleTextColor = useColorModeValue("gray.600", "gray.300");
+  const labelColor = useColorModeValue("blue.600", "blue.300");
+  const borderColor = useColorModeValue("gray.200", "gray.700");
+  const gradientStart = useColorModeValue("blue.400", "blue.500");
+  const gradientEnd = useColorModeValue("purple.500", "purple.600");
+  const hoverGradient = `linear(to-r, ${useColorModeValue('blue.500', 'blue.600')}, ${useColorModeValue('purple.600', 'purple.700')})`;
+  const inputBg = useColorModeValue("gray.50", "#1A2331");
+  const inputHoverBg = useColorModeValue("gray.100", "#232D3F");
+
+  const [withdrawalAmount, setWithdrawalAmount] = useState(0);
+  const [selectedBank, setSelectedBank] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [accountName, setAccountName] = useState("");
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
+
+  // List of common Nigerian banks (you can expand this list)
+  const banks = [
+    { name: "Opay", code: "OPAY" },
+    { name: "GTBank", code: "058" },
+    { name: "First Bank", code: "011" },
+    { name: "Zenith Bank", code: "057" },
+    { name: "Access Bank", code: "044" },
+    { name: "UBA", code: "033" },
+    { name: "Kuda", code: "KUDA" },
+  ];
+
+  const handleVerifyAccount = async () => {
+    if (!selectedBank || !accountNumber || accountNumber.length !== 10) {
+      toast({
+        title: "Invalid Input",
+        description: "Please select a bank and enter a valid 10-digit account number.",
+        status: "warning",
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    setIsVerifying(true);
+    try {
+      const response = await axios.post(
+        `${BASE_URL}/api/wallet/verify-account`,
+        { bankCode: selectedBank, accountNumber },
+        { headers: { 'auth-token': localStorage.getItem('auth-token') } }
+      );
+
+      if (response.data.success) {
+        setAccountName(response.data.accountName);
+        toast({
+          title: "Account Verified",
+          description: `Account belongs to ${response.data.accountName}`,
+          status: "success",
+          duration: 3000,
+          isClosable: true,
+        });
+      } else {
+        throw new Error(response.data.message || "Account verification failed");
+      }
+    } catch (error) {
+      console.error("Account verification error:", error);
+      setAccountName("");
+      toast({
+        title: "Verification Failed",
+        description: error.response?.data?.message || "Unable to verify account. Please check the details and try again.",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handleSubmitWithdrawal = async () => {
+    if (!selectedBank || !accountNumber || !accountName || withdrawalAmount <= 0) {
+      toast({
+        title: "Invalid Input",
+        description: "Please verify the account and enter a valid withdrawal amount.",
+        status: "warning",
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    if (withdrawalAmount > walletBalance?.balance) {
+      toast({
+        title: "Insufficient Balance",
+        description: "Withdrawal amount exceeds your wallet balance.",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    setIsWithdrawing(true);
+    try {
+      await onWithdraw({ amount: withdrawalAmount, bankCode: selectedBank, accountNumber, accountName });
+      toast({
+        title: "Withdrawal Initiated",
+        description: "Your withdrawal request has been submitted successfully.",
+        status: "success",
+        duration: 5000,
+        isClosable: true,
+      });
+      onClose();
+      // Reset form
+      setWithdrawalAmount(0);
+      setSelectedBank("");
+      setAccountNumber("");
+      setAccountName("");
+    } catch (error) {
+      console.error("Withdrawal error:", error);
+      toast({
+        title: "Withdrawal Failed",
+        description: error.message || "Unable to process withdrawal. Please try again.",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setIsWithdrawing(false);
+    }
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} isCentered size="md">
+      <ModalOverlay />
+      <ModalContent bg={cardBg} borderColor={borderColor}>
+        <ModalHeader>
+          <Flex align="center">
+            <Icon as={FaMoneyBillWave} color={gradientStart} mr={2} />
+            <Text color={textColor} fontWeight="bold">
+              Withdraw Funds
+            </Text>
+          </Flex>
+        </ModalHeader>
+        <ModalCloseButton />
+        <ModalBody>
+          <FormControl mb={4}>
+            <FormLabel color={labelColor}>Select Bank</FormLabel>
+            <Select
+              placeholder="Choose your bank"
+              value={selectedBank}
+              onChange={(e) => {
+                setSelectedBank(e.target.value);
+                setAccountName("");
+              }}
+              bg={inputBg}
+              _hover={{ bg: inputHoverBg }}
+              color={textColor}
+            >
+              {banks.map((bank) => (
+                <option key={bank.code} value={bank.code}>
+                  {bank.name}
+                </option>
+              ))}
+            </Select>
+          </FormControl>
+
+          <FormControl mb={4}>
+            <FormLabel color={labelColor}>Account Number</FormLabel>
+            <Flex>
+              <Input
+                value={accountNumber}
+                onChange={(e) => {
+                  setAccountNumber(e.target.value);
+                  setAccountName("");
+                }}
+                placeholder="Enter 10-digit account number"
+                maxLength={10}
+                bg={inputBg}
+                _hover={{ bg: inputHoverBg }}
+                color={textColor}
+                mr={2}
+              />
+              <Button
+                onClick={handleVerifyAccount}
+                isLoading={isVerifying}
+                colorScheme="blue"
+                variant="outline"
+              >
+                Verify
+              </Button>
+            </Flex>
+          </FormControl>
+
+          {accountName && (
+            <Box mb={4} p={3} borderRadius="md" bg="green.50" borderLeftWidth="4px" borderLeftColor="green.400">
+              <Text fontSize="sm" color="green.700">
+                Account Name: {accountName}
+              </Text>
+            </Box>
+          )}
+
+          <FormControl mb={4}>
+            <FormLabel color={labelColor}>Withdrawal Amount (NGN)</FormLabel>
+            <NumberInput
+              min={0}
+              max={walletBalance?.balance || 0}
+              value={withdrawalAmount}
+              onChange={(valueString) => setWithdrawalAmount(parseFloat(valueString) || 0)}
+              precision={2}
+            >
+              <NumberInputField bg={inputBg} _hover={{ bg: inputHoverBg }} color={textColor} />
+              <NumberInputStepper>
+                <NumberIncrementStepper />
+                <NumberDecrementStepper />
+              </NumberInputStepper>
+            </NumberInput>
+            <Text fontSize="sm" color={subtleTextColor} mt={1}>
+              Available Balance: ₦{walletBalance?.balance?.toFixed(2) || "0.00"}
+            </Text>
+          </FormControl>
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            onClick={handleSubmitWithdrawal}
+            isLoading={isWithdrawing}
+            colorScheme="blue"
+            bgGradient={`linear(to-r, ${gradientStart}, ${gradientEnd})`}
+            _hover={{ bgGradient: hoverGradient }}
+            w="100%"
+          >
+            Submit Withdrawal
+          </Button>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
+  );
+};
+
 const Profile = () => {
   const { colorMode } = useColorMode();
   const toast = useToast();
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const { isOpen: isPaymentModalOpen, onOpen: onPaymentModalOpen, onClose: onPaymentModalClose } = useDisclosure();
+  const { isOpen: isWithdrawalModalOpen, onOpen: onWithdrawalModalOpen, onClose: onWithdrawalModalClose } = useDisclosure();
 
   const cardBg = useColorModeValue("white", "#0F1722");
   const textColor = useColorModeValue("gray.800", "white");
@@ -239,7 +480,6 @@ const Profile = () => {
       return;
     }
 
-    // Check if already polling
     if (checkStatusInterval) {
       console.log('Clearing existing polling interval for reference:', reference);
       clearInterval(checkStatusInterval);
@@ -406,15 +646,13 @@ const Profile = () => {
         headers: { 'auth-token': localStorage.getItem('auth-token') },
       });
       const newBalance = response.data.balance;
-  
-      // Update state with the full response
+
       setWalletBalance((prev) => ({
         ...prev,
         ...response.data,
         balance: newBalance,
       }));
-  
-      // Notify if balance increased
+
       if (previousBalanceRef.current !== null && newBalance > previousBalanceRef.current) {
         const fundedAmount = newBalance - previousBalanceRef.current;
         toast({
@@ -425,7 +663,6 @@ const Profile = () => {
           isClosable: true,
         });
       } else if (previousBalanceRef.current === null) {
-        // Initial balance fetch
         toast({
           title: 'Wallet Balance Loaded',
           description: `Your current balance is ₦${newBalance.toFixed(2)}`,
@@ -434,7 +671,7 @@ const Profile = () => {
           isClosable: true,
         });
       }
-  
+
       previousBalanceRef.current = newBalance;
       console.log('Wallet balance updated:', response.data);
       return response.data;
@@ -487,12 +724,12 @@ const Profile = () => {
       });
       setPhoneNumber(response.data.phoneNumber || '');
       setLoading(false);
-      setFetchAttempts(0); // Reset attempts on success
+      setFetchAttempts(0);
     } catch (error) {
       console.error('Error fetching user details:', error);
       if ((error.response?.status === 404 || error.response?.status === 401) && isMountedRef.current) {
         setFetchAttempts(prev => prev + 1);
-        setTimeout(() => fetchUserDetails(), 2000); // Retry after 2 seconds
+        setTimeout(() => fetchUserDetails(), 2000);
       } else {
         setLoading(false);
         toast({
@@ -503,6 +740,25 @@ const Profile = () => {
           isClosable: true,
         });
       }
+    }
+  };
+
+  const handleWithdraw = async ({ amount, bankCode, accountNumber, accountName }) => {
+    try {
+      const response = await axios.post(
+        `${BASE_URL}/api/wallet/withdraw`,
+        { amount, bankCode, accountNumber, accountName },
+        { headers: { 'auth-token': localStorage.getItem('auth-token') } }
+      );
+
+      if (response.data.success) {
+        await fetchWalletBalance();
+      } else {
+        throw new Error(response.data.message || "Withdrawal failed");
+      }
+    } catch (error) {
+      console.error("Error initiating withdrawal:", error);
+      throw new Error(error.response?.data?.message || "Unable to process withdrawal. Please try again.");
     }
   };
 
@@ -532,7 +788,7 @@ const Profile = () => {
     return () => {
       isMountedRef.current = false;
       if (checkStatusInterval) {
-        clearInterval(checkInterval);
+        clearInterval(checkStatusInterval);
       }
     };
   }, []);
@@ -995,46 +1251,61 @@ const Profile = () => {
                 Total Deposits: ₦{walletBalance?.totalDeposits?.toFixed(2) || '0.00'}
               </Text>
 
-              <Box mt={6}>
-                <FormControl>
-                  <FormLabel color={labelColor}>Fund Wallet (NGN)</FormLabel>
-                  <NumberInput
-                    min={0}
-                    value={fundingAmount}
-                    onChange={(valueString) => setFundingAmount(parseFloat(valueString) || 0)}
-                    precision={2}
+              <Flex mt={6} direction={{ base: "column", sm: "row" }} gap={4}>
+                <Box flex="1">
+                  <FormControl>
+                    <FormLabel color={labelColor}>Fund Wallet (NGN)</FormLabel>
+                    <NumberInput
+                      min={0}
+                      value={fundingAmount}
+                      onChange={(valueString) => setFundingAmount(parseFloat(valueString) || 0)}
+                      precision={2}
+                    >
+                      <NumberInputField bg={inputBg} _hover={{ bg: inputHoverBg }} color={textColor} />
+                      <NumberInputStepper>
+                        <NumberIncrementStepper />
+                        <NumberDecrementStepper />
+                      </NumberInputStepper>
+                    </NumberInput>
+                  </FormControl>
+                  <FormControl mt={4}>
+                    <FormLabel color={labelColor}>Phone Number</FormLabel>
+                    <Input
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      placeholder="Enter phone number"
+                      bg={inputBg}
+                      _hover={{ bg: inputHoverBg }}
+                      color={textColor}
+                    />
+                  </FormControl>
+                  <Button
+                    mt={4}
+                    onClick={handleFundWallet}
+                    isLoading={isFunding}
+                    colorScheme="blue"
+                    leftIcon={<FaWallet />}
+                    bgGradient={`linear(to-r, ${gradientStart}, ${gradientEnd})`}
+                    _hover={{ bgGradient: hoverGradient }}
+                    w="full"
                   >
-                    <NumberInputField bg={inputBg} _hover={{ bg: inputHoverBg }} color={textColor} />
-                    <NumberInputStepper>
-                      <NumberIncrementStepper />
-                      <NumberDecrementStepper />
-                    </NumberInputStepper>
-                  </NumberInput>
-                </FormControl>
-                <FormControl mt={4}>
-                  <FormLabel color={labelColor}>Phone Number</FormLabel>
-                  <Input
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    placeholder="Enter phone number"
-                    bg={inputBg}
-                    _hover={{ bg: inputHoverBg }}
-                    color={textColor}
-                  />
-                </FormControl>
-                <Button
-                  mt={4}
-                  onClick={handleFundWallet}
-                  isLoading={isFunding}
-                  colorScheme="blue"
-                  leftIcon={<FaWallet />}
-                  bgGradient={`linear(to-r, ${gradientStart}, ${gradientEnd})`}
-                  _hover={{ bgGradient: hoverGradient }}
-                  w="full"
-                >
-                  Fund Wallet
-                </Button>
-              </Box>
+                    Fund Wallet
+                  </Button>
+                </Box>
+                <Box flex="1">
+                  <Button
+                    mt={{ base: 4, sm: 10 }}
+                    onClick={onWithdrawalModalOpen}
+                    colorScheme="blue"
+                    leftIcon={<FaMoneyBillWave />}
+                    bgGradient={`linear(to-r, ${gradientStart}, ${gradientEnd})`}
+                    _hover={{ bgGradient: hoverGradient }}
+                    w="full"
+                  >
+                    Withdraw Funds
+                  </Button>
+                </Box>
+              </Flex>
             </Box>
           </Box>
         </motion.div>
@@ -1053,6 +1324,13 @@ const Profile = () => {
         paymentDetails={paymentDetails}
         onStatusCheck={handleCheckPaymentStatus}
         userName={`${userDetails?.firstName || ''} ${userDetails?.lastName || ''}`.trim() || userDetails?.email.split('@')[0]}
+      />
+
+      <WithdrawalModal
+        isOpen={isWithdrawalModalOpen}
+        onClose={onWithdrawalModalClose}
+        walletBalance={walletBalance}
+        onWithdraw={handleWithdraw}
       />
     </Box>
   );
