@@ -4,14 +4,13 @@ import axios from "axios";
 import {
   useToast, Box, Text, Input, Button, FormControl, FormLabel,
   VStack, HStack, Flex, Container, Heading, InputGroup, InputRightElement,
-  ScaleFade, useColorModeValue, FormErrorMessage, InputLeftElement
+  ScaleFade, FormErrorMessage, InputLeftElement
 } from "@chakra-ui/react";
 import { motion } from "framer-motion";
 import {
   FiEye, FiEyeOff, FiArrowRight, FiMail, FiLock, FiUser,
   FiCalendar, FiCheckCircle, FiShield
 } from "react-icons/fi";
-import Logo from "../assets/logo1.png";
 import "./Register.css";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
@@ -141,10 +140,18 @@ const Register = () => {
       newErrors.dateOfBirth = "Date of birth is required";
     } else {
       const dob = new Date(formData.dateOfBirth);
-      const today = new Date();
-      const age = today.getFullYear() - dob.getFullYear();
-      if (age < 18) {
-        newErrors.dateOfBirth = "You must be at least 18 years old";
+      if (isNaN(dob.getTime())) {
+        newErrors.dateOfBirth = "Invalid date of birth";
+      } else {
+        const today = new Date();
+        let age = today.getFullYear() - dob.getFullYear();
+        const monthDiff = today.getMonth() - dob.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+          age = age - 1;
+        }
+        if (age < 18) {
+          newErrors.dateOfBirth = "You must be at least 18 years old";
+        }
       }
     }
 
@@ -153,6 +160,8 @@ const Register = () => {
       newErrors.password = "Password is required";
     } else if (formData.password.length < 8) {
       newErrors.password = "Password must be at least 8 characters";
+    } else if (!/[A-Z]/.test(formData.password) || !/[0-9]/.test(formData.password) || !/[^A-Za-z0-9]/.test(formData.password)) {
+      newErrors.password = "Password must include uppercase, number, and special character";
     }
 
     // Validate confirm password
@@ -174,7 +183,7 @@ const Register = () => {
         title: "Form Error",
         description: "Please fix the errors in the form",
         status: "error",
-        duration: 3000,
+        duration: 5000,
         isClosable: true,
         position: "top"
       });
@@ -194,7 +203,7 @@ const Register = () => {
 
       toast({
         title: "Account Created Successfully",
-        description: "We've created your account and wallet for you.",
+        description: "Your account and wallet have been created. Redirecting to your dashboard...",
         status: "success",
         duration: 5000,
         isClosable: true,
@@ -204,26 +213,48 @@ const Register = () => {
       // Store token
       localStorage.setItem('auth-token', response.data.token);
 
-      // Show success animation before redirecting
+      // Redirect to dashboard
       setTimeout(() => {
-        navigate("/login");
+        navigate("/dashboard"); // Adjust to your dashboard route
       }, 1500);
     } catch (error) {
       console.error('Registration error:', error.response?.data || error);
-      let errorMessage = 'An error occurred during registration. Please try again.';
+      let errorMessage = 'Unable to register. Please try again.';
 
-      if (error.response) {
-        if (error.response.status === 400) {
-          if (error.response.data.error.includes('Email already in use')) {
-            errorMessage = 'This email is already registered. Please use a different email.';
-          } else if (error.response.data.error.includes('Duplicate key error')) {
-            errorMessage = `Registration failed: ${error.response.data.details ? JSON.stringify(error.response.data.details) : 'Duplicate data exists.'}`;
-          } else {
-            errorMessage = error.response.data.error || errorMessage;
-          }
-        } else if (error.response.status === 500) {
-          errorMessage = 'Server error. Please try again later.';
+      if (error.response?.data?.error) {
+        switch (error.response.data.error) {
+          case 'All fields are required':
+            errorMessage = 'Please fill in all required fields.';
+            break;
+          case 'Invalid email format':
+            errorMessage = 'Please enter a valid email address.';
+            break;
+          case 'Invalid date of birth':
+            errorMessage = 'Please enter a valid date of birth.';
+            break;
+          case 'You must be at least 18 years old':
+            errorMessage = 'You must be at least 18 years old to register.';
+            break;
+          case 'Email already in use':
+            errorMessage = 'This email is already registered. Please use a different email or log in.';
+            break;
+          case 'Wallet already exists for this user':
+            errorMessage = 'An account with this email already has a wallet. Please contact support.';
+            break;
+          case 'Database error: Duplicate transaction reference':
+            errorMessage = 'A server error occurred with transaction references. Please try again or contact support.';
+            break;
+          case 'Database error: Duplicate key':
+            errorMessage = `Registration failed due to duplicate data: ${JSON.stringify(error.response.data.details)}. Please contact support.`;
+            break;
+          default:
+            errorMessage = error.response.data.error;
+          case 'Password must be at least 8 characters and include uppercase, number, and special character':
+            errorMessage = 'Password must be at least 8 characters and include an uppercase letter, number, and special character.';
+            break;
         }
+      } else if (error.response?.status === 500) {
+        errorMessage = 'Server error. Please try again later.';
       }
 
       toast({
