@@ -911,3 +911,108 @@ export default DisplayTransaction;
                                 )}
                               </div>
                             </details>
+
+
+
+
+
+ const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    if (!email || !password) {
+      toast({
+        title: "Missing fields",
+        description: "Please fill in all required fields",
+        status: "warning",
+        duration: 3000,
+        isClosable: true,
+        position: "top",
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const response = await axios.post(`${BASE_URL}/api/auth/login`, {
+        email,
+        password,
+      });
+      const { success, message, token, user } = response.data;
+
+      if (success && message === "Login successful") {
+        // Store the token in localStorage
+        localStorage.setItem("auth-token", token);
+
+        // Set the authentication token in Axios headers
+        axios.defaults.headers.common["auth-token"] = token;
+
+        toast({
+          title: "Login Successful",
+          description: "Welcome back!",
+          status: "success",
+          duration: 5000,
+          isClosable: true,
+          position: "top",
+        });
+
+        // Redirect with animation delay
+        setTimeout(() => {
+          navigate("/dashboard");
+        }, 500);
+      } else {
+        throw new Error("Unexpected response from server");
+      }
+    } catch (error) {
+      console.error('Login error:', error.response?.data || error);
+      let errorMessage = "An unexpected error occurred. Please try again.";
+      let errorTitle = "Login Failed";
+
+      if (error.response) {
+        if (error.response.status === 400) {
+          errorTitle = "Invalid Input";
+          errorMessage = "Please provide both email and password.";
+        } else if (error.response.status === 404) {
+          errorTitle = "User Not Found";
+          errorMessage = "No account exists with this email. Would you like to register?";
+          setTimeout(() => {
+            navigate("/register", { state: { email } });
+          }, 3000);
+        } else if (error.response.status === 401) {
+          errorTitle = "Invalid Credentials";
+          errorMessage = "Incorrect email or password. Try resetting your password if you forgot it.";
+        } else if (error.response.status === 500) {
+          errorTitle = "Server Error";
+          errorMessage = "Something went wrong on the server. Please try again later.";
+        } else {
+          errorMessage = error.response.data?.error || errorMessage;
+        }
+      } else if (error.request) {
+        errorTitle = "Connection Error";
+        errorMessage = "Unable to connect to the server. Please check your internet connection.";
+      }
+
+      toast({
+        title: errorTitle,
+        description: (
+          <>
+            {errorMessage}
+            {error.response?.status === 401 && (
+              <>
+                {" "}
+                <Link to="/forgot-password" style={{ color: accentColor, textDecoration: "underline" }}>
+                  Reset Password
+                </Link>
+              </>
+            )}
+          </>
+        ),
+        status: "error",
+        duration: 7000,
+        isClosable: true,
+        position: "top",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
