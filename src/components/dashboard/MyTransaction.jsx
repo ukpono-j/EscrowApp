@@ -4,7 +4,6 @@ import { motion } from "framer-motion";
 import { FaShieldAlt, FaHandshake, FaLock, FaUserCheck } from "react-icons/fa";
 import { MdAddCircle, MdSecurity } from "react-icons/md";
 import { Box, Text, Flex, Avatar } from "@chakra-ui/react";
-// import CreateImg from "../../assets/secure_transaction2.jpg";
 import CreateImg from "../../assets/create_transaction2.jpg";
 import JoinImg from "../../assets/create_transaction1.jpg";
 
@@ -18,11 +17,9 @@ const MyTransaction = ({ sidebarCollapsed = true }) => {
       setWindowWidth(window.innerWidth);
     };
 
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
-
-
 
   const imageURL = {
     create: CreateImg,
@@ -33,18 +30,18 @@ const MyTransaction = ({ sidebarCollapsed = true }) => {
     {
       icon: <FaShieldAlt />,
       title: "100% Secure",
-      description: "Bank-level encryption protects your funds and data."
+      description: "Bank-level encryption protects your funds and data.",
     },
     {
       icon: <FaHandshake />,
       title: "Insurance - Money back guarantee",
-      description: "Sylo insures against fraud or disputes, ensuring peace of mind."
+      description: "Sylo insures against fraud or disputes, ensuring peace of mind.",
     },
     {
       icon: <FaLock />,
       title: "Absolute Fairplay",
-      description: "Funds stay locked until all terms are met, protecting both parties."
-    }
+      description: "Funds stay locked until all terms are met, protecting both parties.",
+    },
   ];
 
   // Calculate dynamic margin based on sidebar state
@@ -58,8 +55,23 @@ const MyTransaction = ({ sidebarCollapsed = true }) => {
     }
   };
 
+  // Animation variants for the header section
+  const headerVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { 
+      opacity: 1, 
+      y: 0, 
+      transition: { 
+        duration: 0.6, 
+        ease: "easeOut" 
+      }
+    },
+  };
+
   return (
-    <div className={`min-h-screen pt-28 general_Structure relative overflow-hidden transition-all duration-300 ${getMarginClass()}`}>
+    <div
+      className={`min-h-screen pt-28 general_Structure relative overflow-hidden transition-all duration-300 ${getMarginClass()}`}
+    >
       {/* Decorative background elements */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
         <div className="absolute top-1/3 -left-20 w-64 h-64 bg-gradient-to-br from-yellow-400/10 to-yellow-600/5 rounded-full blur-3xl" />
@@ -67,14 +79,30 @@ const MyTransaction = ({ sidebarCollapsed = true }) => {
       </div>
 
       <div className="relative z-10 w-full">
-        {/* Header */}
-        <Text className="text-5xl sm:text-3xl font-bold leading-tight sm:text-left mb-3">
-        Secure Escrow Against Scams
-        </Text>
-        <Text className=" text-left mb-12 md:text-lg">
-          Make risk-free, scam-free transactions with Sylo.
-          The Only middleman you need.
-        </Text>
+        {/* Header with Background and Animation */}
+        <motion.div
+          className="relative py-8 px-6 rounded-2xl mb-8 overflow-hidden"
+          style={{
+            background: "linear-gradient(135deg, rgba(183, 137, 57, 0.1) 0%, rgba(138, 109, 47, 0.1) 100%)",
+            border: "1px solid rgba(183, 137, 57, 0.2)",
+            backdropFilter: "blur(8px)",
+          }}
+          initial="hidden"
+          animate="visible"
+          variants={headerVariants}
+        >
+          {/* Subtle decorative element */}
+          <div className="absolute top-0 left-0 w-24 h-24 bg-gradient-to-br from-yellow-400/20 to-amber-600/10 rounded-br-full opacity-50" />
+          
+          <div className="relative z-10">
+            <Text className="text-5xl sm:text-3xl font-bold leading-tight sm:text-left mb-3">
+              Secure Escrow Against Scams
+            </Text>
+            <Text className="text-left mb-12 md:text-lg">
+              Make risk-free, scam-free transactions with Sylo. The Only middleman you need.
+            </Text>
+          </div>
+        </motion.div>
 
         {/* Tabs */}
         <div className="flex gap-6 border-b border-[#1A202C] mb-8">
@@ -84,13 +112,17 @@ const MyTransaction = ({ sidebarCollapsed = true }) => {
               onClick={() => setActiveTab(tab)}
               className="group relative outline-none text-sm sm:text-base font-medium pb-3 px-2 transition-all"
             >
-              <Text className={`relative font-bold z-10 ${activeTab === tab ? "" : ""}`}>
+              <Text
+                className={`relative font-bold z-10 ${activeTab === tab ? "" : ""}`}
+              >
                 {tab === "create" ? "Create Transaction" : "Join Transaction"}
               </Text>
 
               {/* Simple underline for active tab */}
               <div
-                className={`absolute bottom-0 left-0 h-1 bg-[#987733] rounded-t-md transition-all duration-300 ${activeTab === tab ? 'w-full' : 'w-0'}`}
+                className={`absolute bottom-0 left-0 h-1 bg-[#987733] rounded-t-md transition-all duration-300 ${
+                  activeTab === tab ? "w-full" : "w-0"
+                }`}
               />
             </button>
           ))}
@@ -103,15 +135,14 @@ const MyTransaction = ({ sidebarCollapsed = true }) => {
             {activeTab === "create" ? (
               <>
                 <Text className="text-xl sm:text-xl font-bold mb-4">
-                Pay and receive money with confidence. 
-
+                  Pay and receive money with confidence.
                 </Text>
                 <Text className="mb-3 font-bold leading-relaxed">
                   How Does Sylo Secure Your Deals?
                 </Text>
                 <Text className="mb-8 text-sm leading-relaxed">
-                Sylo locks funds until both parties meet agreed terms, ensuring scam-free transactions.
-                You get EXACTLY what you agreed for.
+                  Sylo locks funds until both parties meet agreed terms, ensuring scam-free transactions.
+                  You get EXACTLY what you agreed for.
                 </Text>
                 <div>
                   <div className="mb-5">
