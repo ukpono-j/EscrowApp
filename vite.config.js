@@ -1,22 +1,21 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-// import path from "path";
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 
-
-// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
   resolve: {
     extensions: ['.js', '.jsx'],
   },
-  // base: '/escrow-app/',
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
+  },
   build: {
-    // outDir: 'build', // Specifies the output directory for the build artifacts
     chunkSizeWarningLimit: 1000,
   },
-  // resolve: {
-  //   alias: {
-  //     "@server": path.resolve(__dirname, "../server"),
-  //   },
-  // },
-})
+});

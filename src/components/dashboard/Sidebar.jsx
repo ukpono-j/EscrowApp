@@ -9,9 +9,8 @@ const BASE_URL = import.meta.env.VITE_BASE_URL;
 import { BsChevronDown, BsChevronRight } from "react-icons/bs";
 import Logo from "../../assets/logo1.png";
 import ThemeToggle from "../../ThemeToggle";
-import { Box, Text, Flex, ScaleFade, useColorModeValue, Avatar } from "@chakra-ui/react";
-import "./Sidebar.css"
-
+import { Box, Text, Flex, ScaleFade, useColorModeValue, Avatar, Image } from "@chakra-ui/react";
+import "./Sidebar.css";
 
 const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => {
   const location = useLocation();
@@ -44,10 +43,10 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
     checkScreenSize();
 
     // Add event listener for resize
-    window.addEventListener('resize', checkScreenSize);
+    window.addEventListener("resize", checkScreenSize);
 
     // Cleanup
-    return () => window.removeEventListener('resize', checkScreenSize);
+    return () => window.removeEventListener("resize", checkScreenSize);
   }, []);
 
   useEffect(() => {
@@ -143,7 +142,11 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
   const Tooltip = ({ children, label }) => (
     <div className="group relative">
       {children}
-      <div className={`absolute left-full ml-2 px-2 py-1 bg-gray-800 text-xs rounded-md whitespace-nowrap opacity-0 invisible transition-all duration-300 z-50 ${isCollapsed ? "group-hover:opacity-100 group-hover:visible" : ""}`}>
+      <div
+        className={`absolute left-full ml-2 px-2 py-1 bg-gray-800 text-xs rounded-md whitespace-nowrap opacity-0 invisible transition-all duration-300 z-50 ${
+          isCollapsed ? "group-hover:opacity-100 group-hover:visible" : ""
+        }`}
+      >
         {label}
       </div>
     </div>
@@ -169,24 +172,29 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
   return (
     <>
       {/* Mobile Toggle Button (always visible on mobile) */}
-      {/* {isMobile && <MobileToggle />} */}
-
-      {/* Overlay for mobile when sidebar is expanded */}
       {isMobile && !isSidebarVisible && <MobileToggle />}
 
       <Box
-        className={`fixed left-0 top-0 h-screen bg-gradient-to-br flex flex-col shadow-xl transition-all duration-300 z-40
-          ${isMobile
-            ? isSidebarVisible ? "translate-x-0" : "-translate-x-full"
-            : isCollapsed ? "w-[80px]" : "w-[280px]"
-          }`}
+        className={`fixed left-0 top-0 h-screen bg-gradient-to-br flex flex-col shadow-xl transition-all duration-300 z-40 ${
+          isMobile
+            ? isSidebarVisible
+              ? "translate-x-0"
+              : "-translate-x-full"
+            : isCollapsed
+            ? "w-[80px]"
+            : "w-[280px]"
+        }`}
         // Add a solid background color that adapts to theme mode
         bg={useColorModeValue("white", "#0F172A")}
         // Remove the gradient background and replace with solid color
         style={{
           backdropFilter: "none", // Ensure no blur effect
           background: useColorModeValue("white", "#0F172A"), // Solid background based on theme
-          width: isMobile ? "280px" : (isCollapsed ? "80px" : "280px")
+          width: isMobile
+            ? "280px"
+            : isCollapsed
+            ? "80px"
+            : "280px",
         }}
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
@@ -205,10 +213,15 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
                   transition={{ duration: 0.3 }}
                 >
                   <Link to="/dashboard" className="block">
-                    <img
+                    <Image
                       src={Logo}
                       alt="Sylo"
-                      className="h-8 w-auto transition-all duration-300 hover:opacity-80"
+                      h={["32px", "40px"]} // Responsive height for mobile and larger screens
+                      maxH="40px" // Maximum height to prevent stretching
+                      maxW="auto" // Maintain aspect ratio
+                      objectFit="contain" // Ensure the image maintains its aspect ratio
+                      transition="all 0.3s ease"
+                      _hover={{ opacity: 0.8 }}
                     />
                   </Link>
                 </motion.div>
@@ -217,7 +230,9 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
               {/* Toggle button - show for desktop (collapsed/expanded) or mobile (close only) */}
               <button
                 onClick={toggleSidebar}
-                className={`flex items-center justify-center w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 transition-colors duration-200 ${isCollapsed && !isMobile ? "mx-auto" : ""}`}
+                className={`flex items-center justify-center w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 transition-colors duration-200 ${
+                  isCollapsed && !isMobile ? "mx-auto" : ""
+                }`}
               >
                 {isMobile ? (
                   <MdClose className="text-[#9C7933]" />

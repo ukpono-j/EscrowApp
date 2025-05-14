@@ -19,6 +19,12 @@ import {
   Alert,
   AlertIcon,
   AlertTitle,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from "@chakra-ui/react";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
@@ -28,6 +34,11 @@ const MainJoinTransaction = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [responseMessage, setResponseMessage] = useState("");
   const [messageType, setMessageType] = useState("");
+  const [transactionDetails, setTransactionDetails] = useState(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editDetails, setEditDetails] = useState({ description: "", price: "" });
+  const [editErrors, setEditErrors] = useState({});
   const navigate = useNavigate();
   const toast = useToast();
   const { colorMode } = useColorMode();
@@ -75,7 +86,7 @@ const MainJoinTransaction = () => {
     checkWallet();
   }, [toast]);
 
-  const handleConfirm = async (e) => {
+  const fetchTransactionDetails = async (e) => {
     e.preventDefault();
     try {
       setIsLoading(true);
@@ -88,28 +99,115 @@ const MainJoinTransaction = () => {
         return;
       }
 
+      const response = await axios.get(`${BASE_URL}/api/transactions/${transactionId}`, {
+        headers: { "auth-token": token },
+      });
+
+      setTransactionDetails(response.data);
+      setShowPreviewModal(true);
+    } catch (error) {
+      console.error("Error fetching transaction details:", error);
+      if (error.response) {
+        setResponseMessage(error.response.data.message || "Error fetching transaction details");
+      } else {
+        setResponseMessage("Network error. Please try again.");
+      }
+      setMessageType("error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAccept = async () => {
+    try {
+      setIsLoading(true);
+      const token = localStorage.getItem("auth-token");
       const response = await axios.post(
         `${BASE_URL}/api/transactions/join-transaction`,
         { transactionId },
-        {
-          headers: {
-            "auth-token": token,
-          },
-        }
+        { headers: { "auth-token": token } }
       );
 
-      // Handle successful response
       setResponseMessage(`Successfully joined as ${response.data.role}. Redirecting...`);
       setMessageType("success");
+      setShowPreviewModal(false);
 
-      // Redirect after a short delay to show the success message
       setTimeout(() => {
         navigate("/transactions/tab");
       }, 2000);
     } catch (error) {
       console.error("Error joining transaction:", error);
       if (error.response) {
-        setResponseMessage(error.response.data.error || "Error joining transaction");
+        setResponseMessage(error.response.data.message || "Error joining transaction");
+      } else {
+        setResponseMessage("Network error. Please try again.");
+      }
+      setMessageType("error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAcceptAndChange = async () => {
+    const newErrors = {};
+    if (!editDetails.description) newErrors.description = "Description is required";
+    if (!editDetails.price || editDetails.price <= 0) newErrors.price = "Price must be a positive number";
+    if (Object.keys(newErrors).length) {
+      setEditErrors(newErrors);
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const token = localStorage.getItem("auth-token");
+      const response = await axios.post(
+        `${BASE_URL}/api/transactions/accept-and-update`,
+        {
+          transactionId,
+          description: editDetails.description,
+          price: editDetails.price,
+        },
+        { headers: { "auth-token": token } }
+      );
+
+      setResponseMessage(`Successfully joined as ${response.data.role}. Redirecting...`);
+      setMessageType("success");
+      setShowPreviewModal(false);
+      setShowEditModal(false);
+
+      setTimeout(() => {
+        navigate("/transactions/tab");
+      }, 2000);
+    } catch (error) {
+      console.error("Error accepting and updating transaction:", error);
+      if (error.response) {
+        setResponseMessage(error.response.data.message || "Error updating transaction");
+      } else {
+        setResponseMessage("Network error. Please try again.");
+      }
+      setMessageType("error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleReject = async () => {
+    try {
+      setIsLoading(true);
+      const token = localStorage.getItem("auth-token");
+      await axios.post(
+        `${BASE_URL}/api/transactions/reject-transaction`,
+        { transactionId },
+        { headers: { "auth-token": token } }
+      );
+
+      setResponseMessage("Transaction rejected.");
+      setMessageType("info");
+      setShowPreviewModal(false);
+    } catch (error) {
+      console.error("Error rejecting transaction:", error);
+      if (error.response) {
+        setResponseMessage(error.response.data.message || "Error rejecting transaction");
       } else {
         setResponseMessage("Network error. Please try again.");
       }
@@ -125,7 +223,6 @@ const MainJoinTransaction = () => {
       width="100%" 
       align="center" 
       justify="center"
-      // bg={useColorModeValue("gray.50", "gray.900")}
       p={4}
     >
       <Box
@@ -155,7 +252,7 @@ const MainJoinTransaction = () => {
               Please enter the Transaction ID you received from the person you are transacting with.
             </Text>
             
-            <form onSubmit={handleConfirm}>
+            <form onSubmit={fetchTransactionDetails}>
               <Stack spacing={6}>
                 <FormControl isRequired>
                   <FormLabel htmlFor="transactionId" fontSize="sm" color={textColor}>
@@ -209,6 +306,132 @@ const MainJoinTransaction = () => {
           </Stack>
         </Box>
       </Box>
+
+      {/* Preview Modal */}
+      <Modal isOpen={showPreviewModal} onClose={() => setShowPreviewModal(false)} isCentered size="md">
+        <ModalOverlay />
+        <ModalContent bg={boxBg} color={textColor}>
+          <ModalHeader>
+            <Text fontSize="lg" fontWeight="bold" color={headingColor}>Transaction Preview</Text>
+          </ModalHeader>
+          <ModalBody>
+            {transactionDetails && (
+              <VStack spacing={4} align="start">
+                <Box>
+                  <Text fontSize="sm" fontWeight="bold">Creator:</Text>
+                  <Text>{`${transactionDetails.userId.firstName} ${transactionDetails.userId.lastName || ""}`}</Text>
+                </Box>
+                <Box>
+                  <Text fontSize="sm" fontWeight="bold">Description:</Text>
+                  <Text>{transactionDetails.productDetails.description || "N/A"}</Text>
+                </Box>
+                <Box>
+                  <Text fontSize="sm" fontWeight="bold">Price:</Text>
+                  <Text>₦{parseFloat(transactionDetails.paymentAmount).toFixed(2)}</Text>
+                </Box>
+              </VStack>
+            )}
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              onClick={handleAccept}
+              isLoading={isLoading}
+              bg="green.500"
+              color="white"
+              _hover={{ bg: "green.600" }}
+              mr={3}
+            >
+              Accept
+            </Button>
+            <Button
+              onClick={() => {
+                setEditDetails({
+                  description: transactionDetails?.productDetails.description || "",
+                  price: transactionDetails?.paymentAmount || "",
+                });
+                setShowEditModal(true);
+              }}
+              isLoading={isLoading}
+              bg="blue.500"
+              color="white"
+              _hover={{ bg: "blue.600" }}
+              mr={3}
+            >
+              Accept and Change Details
+            </Button>
+            <Button
+              onClick={handleReject}
+              isLoading={isLoading}
+              bg="red.500"
+              color="white"
+              _hover={{ bg: "red.600" }}
+            >
+              Reject
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Edit Details Modal */}
+      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} isCentered size="md">
+        <ModalOverlay />
+        <ModalContent bg={boxBg} color={textColor}>
+          <ModalHeader>
+            <Text fontSize="lg" fontWeight="bold" color={headingColor}>Edit Transaction Details</Text>
+          </ModalHeader>
+          <ModalBody>
+            <VStack spacing={4}>
+              <FormControl isRequired isInvalid={editErrors.description}>
+                <FormLabel fontSize="sm">Description</FormLabel>
+                <Input
+                  value={editDetails.description}
+                  onChange={(e) => setEditDetails({ ...editDetails, description: e.target.value })}
+                  placeholder="Enter new description"
+                  bg={inputBg}
+                  borderColor={useColorModeValue("gray.300", "gray.600")}
+                  _hover={{ borderColor: borderColor }}
+                  _focus={{ borderColor: borderColor, boxShadow: `0 0 0 1px ${borderColor}` }}
+                />
+                {editErrors.description && <Text color="red.500" fontSize="xs">{editErrors.description}</Text>}
+              </FormControl>
+              <FormControl isRequired isInvalid={editErrors.price}>
+                <FormLabel fontSize="sm">Price</FormLabel>
+                <Input
+                  type="number"
+                  value={editDetails.price}
+                  onChange={(e) => setEditDetails({ ...editDetails, price: e.target.value })}
+                  placeholder="Enter new price"
+                  bg={inputBg}
+                  borderColor={useColorModeValue("gray.300", "gray.600")}
+                  _hover={{ borderColor: borderColor }}
+                  _focus={{ borderColor: borderColor, boxShadow: `0 0 0 1px ${borderColor}` }}
+                />
+                {editErrors.price && <Text color="red.500" fontSize="xs">{editErrors.price}</Text>}
+              </FormControl>
+            </VStack>
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              onClick={() => setShowEditModal(false)}
+              bg="gray.500"
+              color="white"
+              _hover={{ bg: "gray.600" }}
+              mr={3}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAcceptAndChange}
+              isLoading={isLoading}
+              bg="blue.500"
+              color="white"
+              _hover={{ bg: "blue.600" }}
+            >
+              Save and Join
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </Flex>
   );
 };

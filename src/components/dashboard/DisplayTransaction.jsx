@@ -1,1594 +1,996 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
+import { motion } from "framer-motion";
+import { io } from "socket.io-client";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
+import { format } from "date-fns";
+import {
+  Box, Flex, Text, Button, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter,
+  useToast, VStack, Input, Select, IconButton, Image, Spinner
+} from "@chakra-ui/react";
+import { FiSearch, FiEdit } from "react-icons/fi";
+import { BsChatFill } from "react-icons/bs";
+import { MdClose, MdContentCopy } from "react-icons/md";
 import Sidebar from "./Sidebar";
 import BottomNav from "./BottomNav";
-import { FiSearch } from "react-icons/fi";
-import axios from "axios";
-const BASE_URL = import.meta.env.VITE_BASE_URL;
-import { io } from 'socket.io-client';
-import { Flex, useToast, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Text } from "@chakra-ui/react";
 import MiniNav from "./MiniNav";
-import { useNavigate } from "react-router-dom";
-import { BsChatFill } from "react-icons/bs";
-import { MdClose } from "react-icons/md";
-import { FiLoader } from "react-icons/fi";
-import { Box } from "@chakra-ui/react";
-import { MdContentCopy } from "react-icons/md";
-import { format } from "date-fns";
-import { FiEdit } from "react-icons/fi";
-import { Select } from "@chakra-ui/react";
 import { nigeriaBanks } from "../../data/banksList";
 
-const TransactionLoader = () => {
+const BASE_URL = import.meta.env.VITE_BASE_URL;
+const MotionBox = motion(Box);
+
+// Custom debounce function
+const debounce = (func, wait) => {
+  let timeout;
+  return (...args) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  };
+};
+
+const TransactionLoader = () => (
+  <Flex flexDir="column" align="center" justify="center" h={{ base: "50vh", md: "60vh" }}>
+    <Spinner color="#318AE6" size="xl" mb={4} />
+    <Text color="#E4E4E4" fontSize={{ base: "md", md: "lg" }} fontWeight="medium">
+      Loading transactions...
+    </Text>
+  </Flex>
+);
+
+const TransactionCard = ({
+  transaction, currentUser, isConfirming, handleChat, handleWaybill, handleConfirm,
+  handleFund, handleEditPayment, cancelTransaction, copyToClipboard, toggleDescription, expandedDescriptions
+}) => {
+  const isCreator = currentUser?._id && transaction?.userId?._id === currentUser._id;
+  const isParticipant = transaction?.participants?.some(p => p._id === currentUser?._id || p === currentUser?._id) || false;
+  const isBuyer = (isCreator && transaction?.selectedUserType === "buyer") || (isParticipant && transaction?.selectedUserType !== "buyer");
+  const description = transaction?.productDetails?.description || "No description provided";
+  const isExpanded = expandedDescriptions[transaction._id];
+  const maxLength = 100;
+  const truncatedDescription = description.length > maxLength && !isExpanded
+    ? `${description.substring(0, maxLength)}...`
+    : description;
+
   return (
-    <div className="flex flex-col items-center justify-center h-[60vh]">
-      <div className="animate-spin text-[#318AE6] text-4xl mb-4">
-        <FiLoader />
-      </div>
-      <p className="text-[#E4E4E4] text-lg font-medium">Loading your transactions...</p>
-    </div>
+    <MotionBox
+      bg="#111518"
+      rounded="lg"
+      border="1px"
+      borderColor="gray.800"
+      p={{ base: 3, sm: 4 }}
+      maxW="100%"
+      overflow="hidden"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      whileHover={{ scale: 1.02, borderColor: "#318AE6" }}
+    >
+      <Flex justify="space-between" align="center" mb={{ base: 2, sm: 3 }}>
+        <Box>
+          {transaction?.participants?.length > 0 ? (
+            <Text fontSize={{ base: "md", sm: "lg" }} fontWeight="bold" color="white" isTruncated maxW="200px">
+              {transaction.participants[0].firstName ? `${transaction.participants[0].firstName} ${transaction.participants[0].lastName || ""}` : "Participant joined"}
+            </Text>
+          ) : (
+            <Text fontSize={{ base: "sm", sm: "md" }} color="gray.400">No participant yet</Text>
+          )}
+        </Box>
+        <Flex gap={2}>
+          <IconButton aria-label="Edit payment details" icon={<FiEdit />} size="sm" bg="#1d2225" color="white" _hover={{ bg: "#967532" }} onClick={() => handleEditPayment(transaction)} />
+          <IconButton aria-label="Open chat" icon={<BsChatFill />} size="sm" bg="#1d2225" color="white" _hover={{ bg: "#318AE6" }} onClick={() => handleChat(transaction._id)} />
+        </Flex>
+      </Flex>
+      <Box bg="#1d2225" rounded="md" p={{ base: 2, sm: 3 }} mb={2}>
+        <Text fontSize="xs" color="gray.400" mb={1}>Description</Text>
+        <VStack align="start" spacing={1}>
+          <Text fontSize="sm" color="gray.200">{truncatedDescription}</Text>
+          {description.length > maxLength && (
+            <Button variant="link" size="xs" color="#318AE6" onClick={() => toggleDescription(transaction._id)}>
+              {isExpanded ? "Show less" : "Read more"}
+            </Button>
+          )}
+        </VStack>
+      </Box>
+      <Flex bg="#1d2225" rounded="md" p={{ base: 2, sm: 3 }} mb={2} justify="space-between" align="center">
+        <Box maxW="70%">
+          <Text fontSize="xs" color="gray.400" mb={1}>Transaction ID</Text>
+          <Text fontSize="sm" color="white" isTruncated>{transaction._id}</Text>
+        </Box>
+        <IconButton aria-label="Copy transaction ID" icon={<MdContentCopy />} size="sm" color="gray.400" _hover={{ color: "#318AE6" }} onClick={() => copyToClipboard(transaction._id)} />
+      </Flex>
+      <Box
+        display="grid"
+        gridTemplateColumns={{ base: "1fr", sm: "1fr 1fr" }}
+        gap={2}
+        mb={3}
+        overflow="hidden"
+      >
+        {[
+          { label: "Email", value: transaction.email || "N/A" },
+          { label: "Amount", value: transaction.paymentAmount ? `₦${parseFloat(transaction.paymentAmount).toFixed(2)}` : "N/A", color: "#318AE6" },
+          { label: "User Type", value: isBuyer ? "Buyer" : "Seller" },
+          {
+            label: "Status",
+            value: (
+              <Text
+                fontSize="xs"
+                bg={transaction.status === "completed" ? "green.900" : transaction.status === "cancelled" ? "red.900" : "yellow.900"}
+                color={transaction.status === "completed" ? "green.300" : transaction.status === "cancelled" ? "red.300" : "yellow.300"}
+                px={2} py={1} rounded="full" textAlign="center"
+              >
+                {transaction.status || "Unknown"}
+              </Text>
+            )
+          },
+          { label: "Bank", value: transaction.paymentBank || "N/A" },
+          { label: "Account Number", value: transaction.paymentAccountNumber || "N/A" },
+          {
+            label: "Waybill Status",
+            value: (
+              <Text
+                fontSize="xs"
+                bg={transaction.proofOfWaybill === "confirmed" ? "green.900" : "yellow.900"}
+                color={transaction.proofOfWaybill === "confirmed" ? "green.300" : "yellow.300"}
+                px={2} py={1} rounded="full" textAlign="center"
+              >
+                {transaction.proofOfWaybill || "Not submitted"}
+              </Text>
+            )
+          },
+          { label: "Created", value: transaction.createdAt ? format(new Date(transaction.createdAt), "MMM dd, yyyy") : "N/A" },
+          {
+            label: "Escrow Status",
+            value: (
+              <Text
+                fontSize="xs"
+                bg={transaction.locked ? "yellow.900" : transaction.status === "completed" ? "green.900" : "gray.900"}
+                color={transaction.locked ? "yellow.300" : transaction.status === "completed" ? "green.300" : "gray.300"}
+                px={2} py={1} rounded="full" textAlign="center"
+              >
+                {transaction.locked ? `Locked: ₦${parseFloat(transaction.lockedAmount || 0).toFixed(2)}` : transaction.status === "completed" ? "Released" : "Not Locked"}
+              </Text>
+            )
+          }
+        ].map(({ label, value, color }, idx) => (
+          <Box
+            key={idx}
+            bg="#1d2225"
+            rounded="md"
+            p={2}
+            overflow="hidden"
+          >
+            <Text fontSize="xs" color="gray.400" mb={1}>{label}</Text>
+            {typeof value === "string" ? (
+              <Text
+                fontSize="sm"
+                color={color || "white"}
+                isTruncated
+                whiteSpace="normal"
+                overflowWrap="break-word"
+              >
+                {value}
+              </Text>
+            ) : (
+              value
+            )}
+          </Box>
+        ))}
+      </Box>
+      <Flex flexWrap="wrap" gap={2} justify="space-between">
+        <Button onClick={() => cancelTransaction(transaction._id)} bg="red.700" color="white" _hover={{ bg: "red.600" }} size="sm" flex={1} minW="90px" isLoading={isConfirming[transaction._id]} aria-label="Cancel transaction">Cancel</Button>
+        <Button onClick={() => handleWaybill(transaction._id, isBuyer)} bg="#318AE6" color="white" _hover={{ bg: "#2279d8" }} size="sm" flex={1} minW="90px" aria-label={isBuyer ? "View waybill" : "Input waybill"}>{isBuyer ? "View Waybill" : "Input Waybill"}</Button>
+        {transaction.status === "pending" && (
+          <Button onClick={() => handleConfirm(transaction._id)} bg="green.700" color="white" _hover={{ bg: "green.600" }} size="sm" flex={1} minW="90px" isLoading={isConfirming[transaction._id]} aria-label="Complete transaction">Complete</Button>
+        )}
+        {isBuyer && !transaction.locked && transaction.status === "pending" && (
+          <Button
+            onClick={() => handleFund(transaction)}
+            bg="#967532"
+            color="white"
+            _hover={{ bg: "#7a5c28" }}
+            size="sm"
+            flexGrow={1}
+            flexBasis="calc(50% - 4px)"
+            minWidth="80px"
+            isLoading={isConfirming[transaction._id]}
+            aria-label="Fund with wallet"
+          >
+            Fund Wallet
+          </Button>
+        )}
+      </Flex>
+    </MotionBox>
   );
-}
+};
+
+const WaybillModal = ({ isOpen, onClose, transactionId, isBuyer, details, setDetails, errors, handleSubmit, downloadImage }) => (
+  <Modal isOpen={isOpen} onClose={onClose} isCentered size={{ base: "full", sm: "lg" }} scrollBehavior="inside">
+    <ModalOverlay />
+    <ModalContent bg="#1A1E21" color="white" p={{ base: 4, sm: 6 }} rounded="xl">
+      <ModalHeader>
+        <Text fontSize={{ base: "lg", sm: "xl" }} fontWeight="bold" textAlign="center">{isBuyer ? "Waybill Details" : "Seller Waybill Proof"}</Text>
+        {!isBuyer && <Text fontSize="sm" textAlign="center" color="gray.300">I, the seller, confirm that I have shipped the goods.</Text>}
+      </ModalHeader>
+      <ModalBody>
+        {isBuyer ? (
+          <VStack spacing={4} align="start" color="gray.300">
+            {[
+              { label: "Item", value: details.item || "N/A" },
+              { label: "Price", value: details.price || "N/A" },
+              { label: "Shipping Address", value: details.shippingAddress || "N/A" },
+              { label: "Tracking Number", value: details.trackingNumber || "N/A" },
+              { label: "Delivery Date", value: details.deliveryDate ? format(new Date(details.deliveryDate), "MMM dd, yyyy") : "N/A" }
+            ].map(({ label, value }, idx) => (
+              <Box key={idx}>
+                <Text fontSize="xs" mb={2}>{label}:</Text>
+                <Text fontSize="sm">{value}</Text>
+              </Box>
+            ))}
+            <Box>
+              <Text fontSize="xs" mb={2}>Image:</Text>
+              {details.image ? (
+                <Box display="flex" flexDir="column" alignItems="center">
+                  <Image src={details.image} alt="Waybill Proof" maxW="full" h="auto" rounded="lg" />
+                  <Button mt={2} bg="#318AE6" color="white" _hover={{ bg: "#2279d8" }} size="sm" onClick={() => downloadImage(details.image)}>Download Image</Button>
+                </Box>
+              ) : (
+                <Text fontSize="sm">No image provided</Text>
+              )}
+            </Box>
+          </VStack>
+        ) : (
+          <form onSubmit={(e) => { e.preventDefault(); handleSubmit(transactionId); }}>
+            <VStack spacing={4}>
+              {[
+                { label: "Item", key: "item", type: "text" },
+                { label: "Price", key: "price", type: "number" },
+                { label: "Shipping Address", key: "shippingAddress", type: "text" },
+                { label: "Tracking Number", key: "trackingNumber", type: "text" },
+                { label: "Delivery Date", key: "deliveryDate", type: "date" }
+              ].map(({ label, key, type }) => (
+                <Box key={key} w="full">
+                  <Text fontSize="xs" color="gray.300" mb={2}>{label}:</Text>
+                  <Input
+                    type={type}
+                    value={details[key] || ""}
+                    onChange={(e) => setDetails({ ...details, [key]: e.target.value })}
+                    bg="#111518" borderColor="#318AE6" color="white" fontSize="sm"
+                  />
+                  {errors[key] && <Text color="red.500" fontSize="xs" mt={1}>{errors[key]}</Text>}
+                </Box>
+              ))}
+              <Box w="full">
+                <Text fontSize="xs" color="gray.300" mb={2}>Image:</Text>
+                <Box border="2px" borderStyle="dashed" borderColor="#318AE6" rounded="lg" p={4} textAlign="center">
+                  <Input
+                    type="file"
+                    id={`waybill-image-${transactionId}`}
+                    accept="image/*"
+                    onChange={(e) => setDetails({ ...details, image: e.target.files[0] })}
+                    display="none"
+                  />
+                  <label htmlFor={`waybill-image-${transactionId}`} className="cursor-pointer flex flex-col items-center">
+                    <Text fontSize="xl" color="#318AE6" mb={2}>📷</Text>
+                    <Text fontSize="xs" color="gray.300">Click to upload proof of shipment</Text>
+                  </label>
+                  {details.image && <Text fontSize="xs" color="gray.300" mt={2}>Selected: {details.image.name}</Text>}
+                </Box>
+                {errors.image && <Text color="red.500" fontSize="xs" mt={1}>{errors.image}</Text>}
+              </Box>
+            </VStack>
+          </form>
+        )}
+      </ModalBody>
+      <ModalFooter>
+        <Button bg="gray.600" color="white" _hover={{ bg: "gray.700" }} size="sm" onClick={onClose} mr={3}>Close</Button>
+        {!isBuyer && <Button type="submit" bg="#318AE6" color="white" _hover={{ bg: "#2279d8" }} size="sm" onClick={() => handleSubmit(transactionId)}>Submit</Button>}
+      </ModalFooter>
+    </ModalContent>
+  </Modal>
+);
+
+const PaymentDetailsModal = ({ isOpen, onClose, transaction, paymentDetails, setPaymentDetails, paymentErrors, handleSubmit }) => (
+  <Modal isOpen={isOpen} onClose={onClose} isCentered size={{ base: "full", sm: "md" }}>
+    <ModalOverlay />
+    <ModalContent bg="#1A1E21" color="white" p={{ base: 4, sm: 6 }} rounded="xl">
+      <Flex justify="space-between" align="center" mb={4}>
+        <Text fontSize="lg" fontWeight="bold">Edit Payment Details</Text>
+        <IconButton aria-label="Close modal" icon={<MdClose />} color="gray.400" _hover={{ color: "#318AE6" }} onClick={onClose} />
+      </Flex>
+      <form onSubmit={handleSubmit}>
+        <VStack spacing={4}>
+          <Box w="full">
+            <Text fontSize="xs" color="gray.300" mb={2}>Bank</Text>
+            <Select
+              value={paymentDetails.selectedBankCode || ""}
+              onChange={(e) => {
+                const bank = nigeriaBanks.find(b => b.code === e.target.value);
+                setPaymentDetails({ ...paymentDetails, selectedBankCode: e.target.value, paymentBank: bank?.name || "" });
+              }}
+              placeholder="Select a bank"
+              bg="#111518" borderColor="#318AE6" color="white" fontSize="sm"
+            >
+              {nigeriaBanks.map(bank => (
+                <option key={bank.code} value={bank.code} style={{ color: "black" }}>{bank.name}</option>
+              ))}
+            </Select>
+            {paymentErrors.selectedBankCode && <Text color="red.500" fontSize="xs" mt={1}>{paymentErrors.selectedBankCode}</Text>}
+          </Box>
+          <Box w="full">
+            <Text fontSize="xs" color="gray.300" mb={2}>Account Number</Text>
+            <Input
+              type="text"
+              value={paymentDetails.paymentAccountNumber || ""}
+              onChange={(e) => setPaymentDetails({ ...paymentDetails, paymentAccountNumber: e.target.value })}
+              bg="#111518" borderColor="#318AE6" color="white" fontSize="sm"
+            />
+            {paymentErrors.paymentAccountNumber && <Text color="red.500" fontSize="xs" mt={1}>{paymentErrors.paymentAccountNumber}</Text>}
+          </Box>
+          <Box w="full">
+            <Text fontSize="xs" color="gray.300" mb={2}>Amount</Text>
+            <Input
+              type="number"
+              value={paymentDetails.paymentAmount || ""}
+              onChange={(e) => setPaymentDetails({ ...paymentDetails, paymentAmount: e.target.value })}
+              bg="#111518" borderColor="#318AE6" color="white" fontSize="sm"
+              isDisabled={transaction?.locked}
+            />
+            {paymentErrors.paymentAmount && <Text color="red.500" fontSize="xs" mt={1}>{paymentErrors.paymentAmount}</Text>}
+          </Box>
+        </VStack>
+        <Flex justify="end" gap={3} mt={6}>
+          <Button bg="gray.600" color="white" _hover={{ bg: "gray.700" }} size="sm" onClick={onClose}>Cancel</Button>
+          <Button type="submit" bg="#318AE6" color="white" _hover={{ bg: "#2279d8" }} size="sm">Save</Button>
+        </Flex>
+      </form>
+    </ModalContent>
+  </Modal>
+);
 
 const DisplayTransaction = ({ userResponse }) => {
-  const [showToggleContainer, setShowToggleContainer] = useState(true);
-  const [showProfile, setShowProfile] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [transactions, setTransactions] = useState([]);
-  const toast = useToast();
-  const navigate = useNavigate();
-  const [showWaybillPopup, setShowWaybillPopup] = useState({});
-  const [buyershowWaybillPopup, setBuyerShowWaybillPopup] = useState({});
-  const [waybillDetails, setWaybillDetails] = useState({
-    item: "",
-    image: null,
-    price: "",
-    shippingAddress: "",
-    trackingNumber: "",
-    deliveryDate: "",
-  });
-  const [buyerWaybillDetails, setBuyerWaybillDetails] = useState({});
-  const [imageUrl, setImageUrl] = useState("");
-  const [modalVisible, setModalVisible] = useState(false);
-  const [selectedTransactionId, setSelectedTransactionId] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [transactions, setTransactions] = useState([]);
+  const [walletBalance, setWalletBalance] = useState(null);
+  const [walletTransactions, setWalletTransactions] = useState([]);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showToggleContainer, setShowToggleContainer] = useState(true);
+  const [showProfile, setShowProfile] = useState(false);
+  const [showWaybillPopup, setShowWaybillPopup] = useState({});
+  const [buyerShowWaybillPopup, setBuyerShowWaybillPopup] = useState({});
+  const [waybillDetails, setWaybillDetails] = useState({ item: "", image: null, price: "", shippingAddress: "", trackingNumber: "", deliveryDate: "" });
+  const [buyerWaybillDetails, setBuyerWaybillDetails] = useState({});
   const [errors, setErrors] = useState({});
   const [showPaymentDetailsModal, setShowPaymentDetailsModal] = useState(false);
   const [currentTransaction, setCurrentTransaction] = useState(null);
-  const [paymentDetails, setPaymentDetails] = useState({
-    paymentBank: '',
-    paymentAccountNumber: '',
-    selectedBankCode: '',
-    paymentAmount: ''
-  });
+  const [paymentDetails, setPaymentDetails] = useState({ paymentBank: "", paymentAccountNumber: "", selectedBankCode: "", paymentAmount: "" });
   const [paymentErrors, setPaymentErrors] = useState({});
-  const [walletBalance, setWalletBalance] = useState(null);
-  const [walletTransactions, setWalletTransactions] = useState([]);
   const [isConfirming, setIsConfirming] = useState({});
+  const [expandedDescriptions, setExpandedDescriptions] = useState({});
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedTransactionId, setSelectedTransactionId] = useState(null);
+  const toast = useToast();
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    const socket = io(BASE_URL, {
-      auth: {
-        token: localStorage.getItem('auth-token'),
-      },
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-    });
 
-    socket.on('connect', () => {
-      console.log('Connected to Socket.IO server');
-      if (currentUser?._id) {
-        socket.emit('join-room', currentUser._id);
-      }
-    });
-
-    socket.on('transactionCompleted', (data) => {
-      console.log('Transaction completed:', data);
-      toast({
-        title: 'Transaction Completed',
-        description: `Transaction ${data.transactionId} has been completed. Funds have been released.`,
-        status: 'success',
-        duration: 5000,
-        isClosable: true,
-      });
-      fetchTransactionData();
-      fetchWalletBalance();
-    });
-
-    socket.on('balanceUpdate', (data) => {
-      console.log('Balance update:', data);
-      setWalletBalance(data.balance);
-      toast({
-        title: 'Wallet Updated',
-        description: `Your wallet has been credited with ₦${data.transaction.amount.toFixed(2)}`,
-        status: 'success',
-        duration: 5000,
-        isClosable: true,
-      });
-    });
-
-    socket.on('transactionUpdated', (data) => {
-      console.log('Transaction updated:', data);
-      toast({
-        title: 'Transaction Update',
-        description: data.message,
-        status: 'info',
-        duration: 5000,
-        isClosable: true,
-      });
-      fetchTransactionData();
-    });
-
-    socket.on('reconnect', () => {
-      console.log('Socket.IO reconnected');
-      if (currentUser?._id) {
-        socket.emit('join-room', currentUser._id);
-      }
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  }, [currentUser?._id]);
-
-  useEffect(() => {
-    const fetchCurrentUser = async () => {
-      const token = localStorage.getItem("auth-token");
-      if (!token) {
-        setIsLoading(false);
-        return;
-      }
-      try {
-        const response = await axios.get(`${BASE_URL}/api/users/user-details`, {
-          headers: { "auth-token": token },
-        });
-        setCurrentUser(response.data);
-      } catch (error) {
-        console.error("Error fetching current user:", error);
-        toast({
-          title: "Error fetching user information",
-          status: "error",
-          duration: 3000,
-          isClosable: true,
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchCurrentUser();
-  }, [toast]);
-
-  useEffect(() => {
-    const checkPendingPayment = async () => {
-      const pendingTxId = localStorage.getItem("pendingPaymentTxId");
-      if (!pendingTxId) return;
-
-      const token = localStorage.getItem("auth-token");
-      if (!token) return;
-
-      try {
-        const statusRes = await axios.get(
-          `${BASE_URL}/api/transactions/check-funded?transactionId=${pendingTxId}`,
-          { headers: { "auth-token": token } }
-        );
-
-        if (statusRes.data.funded) {
-          localStorage.removeItem("pendingPaymentTxId");
-          toast({
-            title: "Payment Successful!",
-            description: "Your transaction has been funded successfully.",
-            status: "success",
-            duration: 5000,
-            isClosable: true,
-          });
-          fetchTransactionData();
-          fetchWalletBalance();
-        }
-      } catch (err) {
-        console.error("Error checking pending payment:", err);
-      }
-    };
-    checkPendingPayment();
-  }, []);
-
-  useEffect(() => {
-    setIsLoading(true);
-    const fetchTransactions = async () => {
-      const token = localStorage.getItem("auth-token");
-      try {
-        const response = await axios.get(`${BASE_URL}/api/transactions/get-transaction`, {
-          headers: { "auth-token": token },
-        });
-        setTransactions(response.data);
-      } catch (error) {
-        console.error("Error fetching transactions:", error);
-        toast({
-          title: "Error fetching transactions",
-          status: "error",
-          duration: 3000,
-          isClosable: true,
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchTransactions();
-  }, []);
-
-  useEffect(() => {
-    const interval = setInterval(fetchTransactionData, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
+  // Check if screen is mobile size
   useEffect(() => {
     const checkScreenSize = () => {
       const isMobileView = window.innerWidth < 768;
       setIsMobile(isMobileView);
-      if (isMobileView) setIsSidebarCollapsed(true);
+
+      // Auto-collapse sidebar on mobile by default
+      if (isMobileView) {
+        setIsSidebarCollapsed(true);
+      }
     };
+
+    // Initial check
     checkScreenSize();
+
+    // Add event listener for resize
     window.addEventListener('resize', checkScreenSize);
+
+    // Cleanup
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
 
-  const fetchWalletTransactions = async () => {
-    try {
-      const token = localStorage.getItem('auth-token');
-      const response = await axios.get(`${BASE_URL}/api/wallet/transactions`, {
-        headers: { 'auth-token': token },
-      });
-      setWalletTransactions(response.data.transactions);
-    } catch (error) {
-      console.error('Error fetching wallet transactions:', error);
-    }
-  };
-
-  useEffect(() => {
-    if (currentUser) {
-      fetchWalletTransactions();
-    }
-  }, [currentUser]);
-
-  const fetchWalletBalance = async () => {
-    try {
-      const token = localStorage.getItem('auth-token');
-      const response = await axios.get(`${BASE_URL}/api/wallet/balance`, {
-        headers: { 'auth-token': token },
-      });
-      setWalletBalance(response.data.balance);
-    } catch (error) {
-      console.error('Error fetching wallet balance:', error);
-    }
-  };
-
+  // Function to handle sidebar collapse state changes
   const handleSidebarCollapseChange = (isCollapsed) => {
     setIsSidebarCollapsed(isCollapsed);
   };
 
-  const fetchTransactionData = async () => {
-    try {
-      const token = localStorage.getItem("auth-token");
-      const res = await axios.get(`${BASE_URL}/api/transactions/get-transaction`, {
-        headers: { "auth-token": token }
-      });
-      setTransactions(res.data);
-    } catch (err) {
-      console.error("Fetch error:", err);
-    }
-  };
 
-  const handleShowProfile = () => {
-    setShowToggleContainer(false);
-    setShowProfile(true);
-  };
 
-  const handleMyTransaction = () => {
-    setShowToggleContainer(true);
-    setShowProfile(false);
-  };
-
-  const handleChatButton = async (transactionId) => {
+  const fetchData = useCallback(async (showLoader = false) => {
     const token = localStorage.getItem("auth-token");
+    if (!token) {
+      setIsInitialLoading(false);
+      setIsManualRefreshing(false);
+      toast({ title: "Authentication required", status: "error", duration: 3000, isClosable: true });
+      return;
+    }
     try {
-      const response = await axios.post(`${BASE_URL}/api/transactions/create-chatroom`,
-        { transactionId },
-        { headers: { "auth-token": token } });
-      navigate(`/chat/${response.data.chatroomId}`);
+      if (showLoader) {
+        setIsInitialLoading(true);
+        setIsManualRefreshing(true);
+      }
+      const [userRes, txRes, walletRes, walletTxRes] = await Promise.all([
+        axios.get(`${BASE_URL}/api/users/user-details`, { headers: { "auth-token": token } }),
+        axios.get(`${BASE_URL}/api/transactions/get-transaction`, { headers: { "auth-token": token } }),
+        axios.get(`${BASE_URL}/api/wallet/balance`, { headers: { "auth-token": token } }),
+        axios.get(`${BASE_URL}/api/wallet/transactions`, { headers: { "auth-token": token } })
+      ]);
+      setCurrentUser(userRes.data);
+      setTransactions(txRes.data || []);
+      setWalletBalance(walletRes.data?.balance ?? 0);
+      setWalletTransactions(walletTxRes.data?.transactions || []);
     } catch (error) {
-      console.error("Error creating chatroom:", error);
-      toast({
-        title: "Error creating chatroom",
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
+      toast({ title: "Error fetching data", description: error.message, status: "error", duration: 3000, isClosable: true });
+    } finally {
+      if (showLoader) {
+        setIsInitialLoading(false);
+        setIsManualRefreshing(false);
+      }
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    fetchData(true); // Initial load with loader
+    const interval = setInterval(() => fetchData(false), 30000); // Background updates without loader
+    return () => clearInterval(interval);
+  }, [fetchData]);
+
+
+  useEffect(() => {
+    const socket = io(BASE_URL, { auth: { token: localStorage.getItem("auth-token") }, reconnection: true, reconnectionAttempts: 5, reconnectionDelay: 1000 });
+    socket.on("connect", () => {
+      if (currentUser?._id) socket.emit("join-room", currentUser._id);
+    });
+    socket.on("transactionCompleted", (data) => {
+      toast({ title: "Transaction Completed", description: `Transaction ${data.transactionId} completed.`, status: "success", duration: 5000, isClosable: true });
+      fetchData(false);
+    });
+    socket.on("balanceUpdate", (data) => {
+      setWalletBalance(data.balance ?? 0);
+      toast({ title: "Wallet Updated", description: `Credited with ₦${(data.transaction?.amount ?? 0).toFixed(2)}`, status: "success", duration: 5000, isClosable: true });
+    });
+    socket.on("transactionUpdated", (data) => {
+      toast({ title: "Transaction Update", description: data.message, status: "info", duration: 5000, isClosable: true });
+      fetchData(false);
+    });
+    socket.on("reconnect", () => currentUser?._id && socket.emit("join-room", currentUser._id));
+    socket.on("connect_error", (error) => {
+      toast({ title: "Socket Connection Error", description: error.message, status: "error", duration: 3000, isClosable: true });
+    });
+    return () => socket.disconnect();
+  }, [currentUser?._id, toast, fetchData]);
+
+  const debouncedSearch = useCallback(debounce((value) => setSearchQuery(value), 300), []);
+
+  const filteredTransactions = useMemo(() => {
+    const query = searchQuery.toLowerCase();
+    return transactions.filter((t) => {
+      if (activeTab === "active" && t.status !== "pending") return false;
+      if (activeTab === "completed" && t.status !== "completed") return false;
+      if (activeTab === "cancelled" && t.status !== "cancelled") return false;
+
+      const participantName = t.participants?.length > 0
+        ? `${t.participants[0].firstName || ""} ${t.participants[0].lastName || ""}`.trim().toLowerCase()
+        : "";
+      const description = t.productDetails?.description?.toLowerCase() || "";
+
+      return (
+        participantName.includes(query) || description.includes(query)
+      );
+    });
+  }, [transactions, activeTab, searchQuery]);
+
+  const handleChat = async (transactionId) => {
+    try {
+      const res = await axios.post(`${BASE_URL}/api/transactions/create-chatroom`, { transactionId }, { headers: { "auth-token": localStorage.getItem("auth-token") } });
+      navigate(`/chat/${res.data.chatroomId}`);
+    } catch (error) {
+      toast({ title: "Error creating chatroom", description: error.message, status: "error", duration: 3000, isClosable: true });
     }
   };
 
-  const handleWaybillPopup = (transactionId) => {
-    setShowWaybillPopup({ ...showWaybillPopup, [transactionId]: true });
-  };
-
-  const ClosehandleWaybillPopup = (transactionId) => {
-    setShowWaybillPopup({ ...showWaybillPopup, [transactionId]: false });
-    setErrors({});
-    setWaybillDetails({
-      item: "",
-      image: null,
-      price: "",
-      shippingAddress: "",
-      trackingNumber: "",
-      deliveryDate: "",
-    });
-  };
-
-  const handleBuyerWaybillPopup = async (transactionId) => {
-    setBuyerShowWaybillPopup({ ...buyershowWaybillPopup, [transactionId]: true });
-    await fetchBuyerWaybillDetails(transactionId);
-  };
-
-  const ClosehandleBuyerWaybillPopup = (transactionId) => {
-    setBuyerShowWaybillPopup({ ...buyershowWaybillPopup, [transactionId]: false });
+  const handleWaybill = (transactionId, isBuyer) => {
+    if (isBuyer) {
+      setBuyerShowWaybillPopup(prev => ({ ...prev, [transactionId]: true }));
+      fetchBuyerWaybillDetails(transactionId);
+    } else {
+      setShowWaybillPopup(prev => ({ ...prev, [transactionId]: true }));
+    }
   };
 
   const fetchBuyerWaybillDetails = async (transactionId) => {
-    const token = localStorage.getItem("auth-token");
     try {
-      const response = await axios.get(`${BASE_URL}/api/transactions/${transactionId}`, {
-        headers: { "auth-token": token },
-      });
-      const { image, item, price, shippingAddress, trackingNumber, deliveryDate } = response.data.waybillDetails || {};
-      const imagePath = image ? `${BASE_URL}/${image}` : "";
-      setImageUrl(imagePath);
-      setBuyerWaybillDetails({
-        ...buyerWaybillDetails,
-        [transactionId]: { item, price, shippingAddress, trackingNumber, deliveryDate, image: imagePath },
-      });
+      const res = await axios.get(`${BASE_URL}/api/transactions/${transactionId}`, { headers: { "auth-token": localStorage.getItem("auth-token") } });
+      const { image, item, price, shippingAddress, trackingNumber, deliveryDate } = res.data.waybillDetails || {};
+      setBuyerWaybillDetails(prev => ({
+        ...prev,
+        [transactionId]: { item: item || "", price: price || "", shippingAddress: shippingAddress || "", trackingNumber: trackingNumber || "", deliveryDate: deliveryDate || "", image: image ? `${BASE_URL}/${image}` : "" }
+      }));
     } catch (error) {
-      console.error("Error fetching waybill details:", error);
-      toast({
-        title: "Error fetching waybill details",
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
+      toast({ title: "Error fetching waybill details", description: error.message, status: "error", duration: 3000, isClosable: true });
     }
   };
 
   const handleWaybillSubmit = async (transactionId) => {
     const newErrors = {};
-    if (!waybillDetails.item) newErrors.item = "Item name is required";
-    if (!waybillDetails.price) newErrors.price = "Price is required";
-    if (!waybillDetails.shippingAddress) newErrors.shippingAddress = "Shipping address is required";
-    if (!waybillDetails.trackingNumber) newErrors.trackingNumber = "Tracking number is required";
-    if (!waybillDetails.deliveryDate) newErrors.deliveryDate = "Delivery date is required";
-    if (!waybillDetails.image) newErrors.image = "Image proof is required";
-
-    if (Object.keys(newErrors).length > 0) {
+    ["item", "price", "shippingAddress", "trackingNumber", "deliveryDate", "image"].forEach(key => {
+      if (!waybillDetails[key]) newErrors[key] = `${key.charAt(0).toUpperCase() + key.slice(1)} is required`;
+    });
+    if (Object.keys(newErrors).length) {
       setErrors(newErrors);
       return;
     }
-
     setErrors({});
-
-    const token = localStorage.getItem("auth-token");
     const formData = new FormData();
     formData.append("transactionId", transactionId);
-    formData.append("item", waybillDetails.item);
-    formData.append("price", waybillDetails.price);
-    formData.append("shippingAddress", waybillDetails.shippingAddress);
-    formData.append("trackingNumber", waybillDetails.trackingNumber);
-    formData.append("deliveryDate", waybillDetails.deliveryDate);
-    if (waybillDetails.image) formData.append("image", waybillDetails.image);
-
+    Object.entries(waybillDetails).forEach(([key, value]) => value && formData.append(key, value));
     try {
-      const response = await axios.post(
-        `${BASE_URL}/api/transactions/submit-waybill`,
-        formData,
-        { headers: { "auth-token": token, "Content-Type": "multipart/form-data" } }
-      );
-      toast({
-        title: "Waybill details submitted successfully",
-        status: "success",
-        duration: 3000,
-        isClosable: true,
+      await axios.post(`${BASE_URL}/api/transactions/submit-waybill`, formData, {
+        headers: { "auth-token": localStorage.getItem("auth-token"), "Content-Type": "multipart/form-data" }
       });
-      setShowWaybillPopup({ ...showWaybillPopup, [transactionId]: false });
-      setWaybillDetails({
-        item: "",
-        image: null,
-        price: "",
-        shippingAddress: "",
-        trackingNumber: "",
-        deliveryDate: "",
-      });
-      fetchTransactionData();
+      toast({ title: "Waybill submitted", status: "success", duration: 3000, isClosable: true });
+      setShowWaybillPopup(prev => ({ ...prev, [transactionId]: false }));
+      setWaybillDetails({ item: "", image: null, price: "", shippingAddress: "", trackingNumber: "", deliveryDate: "" });
+      fetchData(false);
     } catch (error) {
-      console.error("Error submitting waybill details:", error);
-      toast({
-        title: "Error submitting waybill details",
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
+      toast({ title: "Error submitting waybill", description: error.message, status: "error", duration: 3000, isClosable: true });
     }
   };
 
   const downloadImage = (url) => {
-    if (!url) {
-      console.error("No image URL provided");
-      return;
-    }
-    const link = document.createElement('a');
+    if (!url) return;
+    const link = document.createElement("a");
     link.href = url;
-    link.download = url.split('/').pop();
+    link.download = url.split("/").pop() || "waybill-image";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
   const cancelTransaction = async (transactionId) => {
-    const token = localStorage.getItem('auth-token');
+    if (isConfirming[transactionId]) return;
+    setIsConfirming(prev => ({ ...prev, [transactionId]: true }));
     try {
-      const response = await axios.put(
-        `${BASE_URL}/api/transactions/cancel/${transactionId}`,
-        {},
-        {
-          headers: { 'auth-token': token },
-        }
-      );
-      toast({
-        title: 'Transaction Cancelled',
-        description: 'Transaction has been cancelled. Any locked funds have been refunded.',
-        status: 'success',
-        duration: 5000,
-        isClosable: true,
-      });
-      setTransactions(transactions.filter((t) => t._id !== transactionId));
-      await fetchWalletBalance();
+      await axios.put(`${BASE_URL}/api/transactions/cancel/${transactionId}`, {}, { headers: { "auth-token": localStorage.getItem("auth-token") } });
+      toast({ title: "Transaction Cancelled", description: "Funds refunded.", status: "success", duration: 5000, isClosable: true });
+      setTransactions(prev => prev.filter(t => t._id !== transactionId));
+      fetchData(false);
     } catch (error) {
-      console.error('Error cancelling transaction:', error);
-      toast({
-        title: 'Error',
-        description: error.response?.data?.message || 'Failed to cancel transaction.',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
+      toast({ title: "Error", description: error.response?.data?.message || "Failed to cancel.", status: "error", duration: 5000, isClosable: true });
+    } finally {
+      setIsConfirming(prev => ({ ...prev, [transactionId]: false }));
     }
   };
 
   const handleConfirm = async (transactionId) => {
     if (isConfirming[transactionId]) return;
-    setIsConfirming({ ...isConfirming, [transactionId]: true });
+    setIsConfirming(prev => ({ ...prev, [transactionId]: true }));
     try {
-      const token = localStorage.getItem('auth-token');
-      if (!token) {
-        toast({
-          title: 'User not authenticated',
-          status: 'error',
-          duration: 3000,
-          isClosable: true,
-        });
-        return;
-      }
-      const transaction = transactions.find((t) => t._id === transactionId);
-      if (!transaction) {
-        toast({
-          title: 'Transaction not found',
-          description: 'The selected transaction could not be found.',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
-        return;
-      }
-      if (!transaction.participants || transaction.participants.length === 0) {
-        toast({
-          title: 'No participant',
-          description: 'Please wait for someone to join.',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
-        return;
-      }
-      if (transaction.status !== 'pending') {
-        toast({
-          title: 'Invalid transaction status',
-          description: 'Only pending transactions can be confirmed.',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
-        return;
-      }
+      const transaction = transactions.find(t => t._id === transactionId);
+      if (!transaction) throw new Error("Transaction not found");
+      if (!transaction.participants?.length) throw new Error("No participant");
+      if (transaction.status !== "pending") throw new Error("Only pending transactions can be confirmed");
       setSelectedTransactionId(transactionId);
       setModalVisible(true);
     } catch (error) {
-      console.error('Error in handleConfirm:', error);
-      toast({
-        title: 'Error',
-        description: error.response?.data?.message || 'Could not process confirmation. Please try again.',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
+      toast({ title: "Error", description: error.message, status: "error", duration: 5000, isClosable: true });
     } finally {
-      setIsConfirming({ ...isConfirming, [transactionId]: false });
+      setIsConfirming(prev => ({ ...prev, [transactionId]: false }));
     }
   };
 
   const completeTransaction = async (transactionId) => {
     if (isConfirming[transactionId]) return;
-    setIsConfirming({ ...isConfirming, [transactionId]: true });
+    setIsConfirming(prev => ({ ...prev, [transactionId]: true }));
     try {
-      const token = localStorage.getItem('auth-token');
-      const response = await axios.post(
-        `${BASE_URL}/api/transactions/confirm`,
-        { transactionId },
-        { headers: { 'auth-token': token } }
-      );
-      const { buyerConfirmed, sellerConfirmed, status } = response.data.transaction;
-      if (status === 'completed') {
-        toast({
-          title: 'Transaction Completed',
-          description: 'Both parties have confirmed. Funds have been released to the seller.',
-          status: 'success',
-          duration: 5000,
-          isClosable: true,
-        });
-      } else if (buyerConfirmed || sellerConfirmed) {
-        toast({
-          title: 'Confirmation Recorded',
-          description: 'Waiting for the other party to confirm.',
-          status: 'info',
-          duration: 5000,
-          isClosable: true,
-        });
-      }
-      await fetchTransactionData();
-      await fetchWalletBalance();
-    } catch (error) {
-      console.error('Error in completeTransaction:', error);
-      const errorMessage = error.response?.data?.message || 'Could not complete transaction. Please try again.';
+      const res = await axios.post(`${BASE_URL}/api/transactions/confirm`, { transactionId }, { headers: { "auth-token": localStorage.getItem("auth-token") } });
+      const { status } = res.data.transaction || {};
       toast({
-        title: 'Error',
-        description: errorMessage,
-        status: 'error',
+        title: status === "completed" ? "Transaction Completed" : "Confirmation Recorded",
+        description: status === "completed" ? "Funds released to seller." : "Waiting for other party.",
+        status: status === "completed" ? "success" : "info",
         duration: 5000,
-        isClosable: true,
+        isClosable: true
       });
+      fetchData(false);
+    } catch (error) {
+      toast({ title: "Error", description: error.response?.data?.message || "Could not complete transaction.", status: "error", duration: 5000, isClosable: true });
     } finally {
-      setIsConfirming({ ...isConfirming, [transactionId]: false });
+      setIsConfirming(prev => ({ ...prev, [transactionId]: false }));
       setModalVisible(false);
       setSelectedTransactionId(null);
     }
   };
 
-  const handleFundWithWallet = async (transaction) => {
-    const token = localStorage.getItem("auth-token");
+  const handleFund = async (transaction) => {
+    if (transaction.locked || !transaction._id || (transaction.paymentAmount <= 0)) {
+      toast({ title: "Error", description: "Invalid transaction data.", status: "error", duration: 5000, isClosable: true });
+      return;
+    }
     try {
-      if (transaction.locked) {
-        toast({
-          title: "Error",
-          description: "Funds are already locked for this transaction.",
-          status: "error",
-          duration: 5000,
-          isClosable: true,
-        });
-        return;
-      }
-      if (!transaction._id || !transaction.paymentAmount) {
-        toast({
-          title: "Error",
-          description: "Transaction data is incomplete. Please refresh and try again.",
-          status: "error",
-          duration: 5000,
-          isClosable: true,
-        });
-        return;
-      }
-      if (transaction.paymentAmount <= 0) {
-        toast({
-          title: "Error",
-          description: "Payment amount must be greater than zero.",
-          status: "error",
-          duration: 5000,
-          isClosable: true,
-        });
-        return;
-      }
-      const response = await axios.post(
-        `${BASE_URL}/api/transactions/fund-transaction`,
-        {
-          transactionId: transaction._id,
-          amount: transaction.paymentAmount,
-        },
-        {
-          headers: {
-            "auth-token": token,
-          },
-        }
-      );
-      toast({
-        title: "Transaction funded successfully",
-        status: "success",
-        duration: 3000,
-        isClosable: true,
+      await axios.post(`${BASE_URL}/api/transactions/fund-transaction`, { transactionId: transaction._id, amount: transaction.paymentAmount }, {
+        headers: { "auth-token": localStorage.getItem("auth-token") }
       });
-      await fetchTransactionData();
-      await fetchWalletBalance();
+      toast({ title: "Transaction funded", status: "success", duration: 3000, isClosable: true });
+      fetchData(false);
     } catch (error) {
-      console.error("Error funding transaction with wallet:", error);
-      let errorMessage = error.response?.data?.message || "Could not fund the transaction. Please try again.";
-      if (error.response?.status === 400 && errorMessage.includes("Insufficient")) {
-        errorMessage = "Insufficient funds in your wallet. Please top up and try again.";
-      }
-      toast({
-        title: "Error funding transaction",
-        description: errorMessage,
-        status: "error",
-        duration: 5000,
-        isClosable: true,
-      });
+      toast({ title: "Error", description: error.response?.data?.message || "Could not fund transaction.", status: "error", duration: 5000, isClosable: true });
     }
   };
 
-  const handleEditPaymentDetails = (transaction) => {
+  const handleEditPayment = (transaction) => {
+    if (!transaction) return;
     setCurrentTransaction(transaction);
     setPaymentDetails({
-      paymentBank: transaction.paymentBank || '',
-      paymentAccountNumber: transaction.paymentAccountNumber || '',
-      selectedBankCode: transaction.paymentBankCode || '',
-      paymentAmount: transaction.paymentAmount || ''
+      paymentBank: transaction.paymentBank || "",
+      paymentAccountNumber: transaction.paymentAccountNumber || "",
+      selectedBankCode: transaction.paymentBankCode || "",
+      paymentAmount: transaction.paymentAmount || ""
     });
     setShowPaymentDetailsModal(true);
   };
 
-  const closePaymentDetailsModal = () => {
-    setShowPaymentDetailsModal(false);
-    setCurrentTransaction(null);
-    setPaymentDetails({
-      paymentBank: '',
-      paymentAccountNumber: '',
-      selectedBankCode: '',
-      paymentAmount: ''
-    });
-    setPaymentErrors({});
-  };
-
-  const validatePaymentDetails = () => {
-    const newErrors = {};
-    if (!paymentDetails.selectedBankCode) {
-      newErrors.selectedBankCode = "Please select a bank";
-    }
-    if (!paymentDetails.paymentAccountNumber || !/^\d{10}$/.test(paymentDetails.paymentAccountNumber)) {
-      newErrors.paymentAccountNumber = "Please enter a valid 10-digit account number";
-    }
-    if (!paymentDetails.paymentAmount || paymentDetails.paymentAmount <= 0) {
-      newErrors.paymentAmount = "Please enter a valid amount greater than 0";
-    }
-    return newErrors;
-  };
-
-  const submitPaymentDetails = async (e) => {
+  const handlePaymentSubmit = async (e) => {
     e.preventDefault();
-    if (!currentTransaction) return;
-
-    const newErrors = validatePaymentDetails();
-    if (Object.keys(newErrors).length > 0) {
+    const newErrors = {};
+    if (!paymentDetails.selectedBankCode) newErrors.selectedBankCode = "Select a bank";
+    if (!/^\d{10}$/.test(paymentDetails.paymentAccountNumber)) newErrors.paymentAccountNumber = "Invalid account number";
+    if (paymentDetails.paymentAmount <= 0) newErrors.paymentAmount = "Invalid amount";
+    if (Object.keys(newErrors).length) {
       setPaymentErrors(newErrors);
       return;
     }
-
-    setPaymentErrors({});
-
     try {
-      const token = localStorage.getItem("auth-token");
-      if (!token) {
-        toast({
-          title: "User not authenticated",
-          status: "error",
-          duration: 3000,
-          isClosable: true,
-        });
-        return;
-      }
-      const response = await axios.put(
-        `${BASE_URL}/api/transactions/update-payment-details/${currentTransaction._id}`,
-        {
-          paymentBank: paymentDetails.paymentBank,
-          paymentAccountNumber: paymentDetails.paymentAccountNumber,
-          selectedBankCode: paymentDetails.selectedBankCode,
-          paymentAmount: parseFloat(paymentDetails.paymentAmount)
-        },
-        { headers: { "auth-token": token } }
-      );
-      toast({
-        title: "Payment details updated",
-        status: "success",
-        duration: 3000,
-        isClosable: true,
+      await axios.put(`${BASE_URL}/api/transactions/update-payment-details/${currentTransaction._id}`, paymentDetails, {
+        headers: { "auth-token": localStorage.getItem("auth-token") }
       });
-      closePaymentDetailsModal();
-      await fetchTransactionData();
+      toast({ title: "Payment details updated", status: "success", duration: 3000, isClosable: true });
+      setShowPaymentDetailsModal(false);
+      setCurrentTransaction(null);
+      setPaymentDetails({ paymentBank: "", paymentAccountNumber: "", selectedBankCode: "", paymentAmount: "" });
+      fetchData(false);
     } catch (error) {
-      console.error("Error updating payment details:", error);
-      toast({
-        title: "Error",
-        description: error.response?.data?.message || "Could not update payment details",
-        status: "error",
-        duration: 5000,
-        isClosable: true,
-      });
+      toast({ title: "Error", description: error.response?.data?.message || "Could not update payment details.", status: "error", duration: 5000, isClosable: true });
     }
   };
 
-  const handleBankSelection = (e) => {
-    const bankCode = e.target.value;
-    const selectedBank = nigeriaBanks.find(bank => bank.code === bankCode);
-    setPaymentDetails({
-      ...paymentDetails,
-      selectedBankCode: bankCode,
-      paymentBank: selectedBank ? selectedBank.name : ''
-    });
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text).then(() => toast({ title: "Copied to clipboard", status: "success", duration: 2000, isClosable: true }));
   };
 
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text).then(() => {
-      toast({
-        title: "Copied to clipboard",
-        status: "success",
-        duration: 2000,
-        isClosable: true,
-      });
-    });
+  const toggleDescription = (transactionId) => {
+    setExpandedDescriptions(prev => ({ ...prev, [transactionId]: !prev[transactionId] }));
+  };
+  const handleShowProfile = () => {
+    setShowToggleContainer(false);
+    setShowProfile(true);
+  };
+  const handleMyTransaction = () => {
+    setShowToggleContainer(true);
+    setShowProfile(false);
   };
 
   return (
-    <Box className="flex min-h-screen">
+    <Flex minH="100vh" bg="" direction={{ base: "column", md: "row" }}>
       <Sidebar
         onShowProfile={handleShowProfile}
         onShowToggleComponent={handleMyTransaction}
         onCollapseChange={handleSidebarCollapseChange}
       />
       <div
-        className={`transition-all duration-300 flex-1 ${!isMobile ? (isSidebarCollapsed ? "ml-[80px]" : "ml-[280px]") : "ml-0"}`}
+        className={`transition-all pt-1 duration-300 flex-1 h-screen overflow-y-auto ${!isMobile ? (isSidebarCollapsed ? "ml-[80px]" : "ml-[280px]") : "ml-0"
+          } md:block block`}
       >
-        <div className={showToggleContainer ? "toggleContainer" : "hidden"}>
-          <div><MiniNav /></div>
-          <div className="px-2 sm:px-4 md:px-6 lg:px-8 pt-16 sm:pt-20 md:pt-24 pb-10 sm:pb-14 md:pb-20 w-full max-w-[1440px] mx-auto">
-            <div className="flex flex-col sm:flex-row justify-between items-center mb-4 sm:mb-6">
-              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white">My Transactions</h1>
-              {walletBalance !== null && (
-                <Text
-                  fontSize={{ base: "sm", sm: "md", md: "lg" }}
-                  fontWeight="medium"
-                  color="white"
-                  className="mt-2 sm:mt-0"
-                >
-                  Wallet Balance: ₦{walletBalance.toFixed(2)}
-                </Text>
-              )}
-            </div>
-            <div className="mb-4 sm:mb-6">
-              <div className="flex flex-col gap-3 sm:gap-4">
-                <div className="flex overflow-x-auto bg-[#111518] rounded-lg border border-gray-800">
-                  <button
-                    onClick={() => setActiveTab("all")}
-                    className={`flex-1 min-w-[80px] sm:min-w-[100px] px-2 sm:px-3 py-1 sm:py-2 rounded-md text-center transition-all text-xs sm:text-sm md:text-base ${
-                      activeTab === "all"
-                        ? "bg-[#967532] text-white font-medium"
-                        : "text-gray-400 hover:text-white"
-                    }`}
-                  >
-                    All{" "}
-                    <span className="ml-1 px-1 py-0.5 bg-[#1d2225] rounded-full text-[10px] sm:text-xs">
-                      {transactions.length}
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => setActiveTab("active")}
-                    className={`flex-1 min-w-[80px] sm:min-w-[100px] px-2 sm:px-3 py-1 sm:py-2 rounded-md text-center transition-all text-xs sm:text-sm md:text-base ${
-                      activeTab === "active"
-                        ? "bg-[#967532] text-white font-medium"
-                        : "text-gray-400 hover:text-white"
-                    }`}
-                  >
-                    Active{" "}
-                    <span className="ml-1 px-1 py-0.5 bg-[#1d2225] rounded-full text-[10px] sm:text-xs">
-                      {transactions.filter((t) => t.status === "pending").length}
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => setActiveTab("completed")}
-                    className={`flex-1 min-w-[80px] sm:min-w-[100px] px-2 sm:px-3 py-1 sm:py-2 rounded-md text-center transition-all text-xs sm:text-sm md:text-base ${
-                      activeTab === "completed"
-                        ? "bg-[#967532] text-white font-medium"
-                        : "text-gray-400 hover:text-white"
-                    }`}
-                  >
-                    Completed{" "}
-                    <span className="ml-1 px-1 py-0.5 bg-[#1d2225] rounded-full text-[10px] sm:text-xs">
-                      {transactions.filter((t) => t.status === "completed").length}
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => setActiveTab("cancelled")}
-                    className={`flex-1 min-w-[80px] sm:min-w-[100px] px-2 sm:px-3 py-1 sm:py-2 rounded-md text-center transition-all text-xs sm:text-sm md:text-base ${
-                      activeTab === "cancelled"
-                        ? "bg-[#967532] text-white font-medium"
-                        : "text-gray-400 hover:text-white"
-                    }`}
-                  >
-                    Cancelled{" "}
-                    <span className="ml-1 px-1 py-0.5 bg-[#1d2225] rounded-full text-[10px] sm:text-xs">
-                      {transactions.filter((t) => t.status === "cancelled").length}
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => setActiveTab("wallet")}
-                    className={`flex-1 min-w-[80px] sm:min-w-[100px] px-2 sm:px-3 py-1 sm:py-2 rounded-md text-center transition-all text-xs sm:text-sm md:text-base ${
-                      activeTab === "wallet"
-                        ? "bg-[#967532] text-white font-medium"
-                        : "text-gray-400 hover:text-white"
-                    }`}
-                  >
-                    Wallet History{" "}
-                    <span className="ml-1 px-1 py-0.5 bg-[#1d2225] rounded-full text-[10px] sm:text-xs">
-                      {walletTransactions.length}
-                    </span>
-                  </button>
-                </div>
-                <div className="relative w-full max-w-[200px] sm:max-w-[300px] md:max-w-md group">
-                  <div className="absolute inset-y-0 left-0 flex items-center pl-2 sm:pl-3 pointer-events-none text-[#967532] group-focus-within:text-[#318AE6] transition-colors">
-                    <FiSearch className="text-base sm:text-lg" />
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="Search transactions..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full py-1.5 sm:py-2.5 pl-8 sm:pl-10 pr-8 sm:pr-10 bg-[#111518] border border-[#967532] rounded-lg text-white focus:border-[#967532] focus:outline-none transition-all text-xs sm:text-sm md:text-base"
-                  />
-                  {searchQuery && (
-                    <button
-                      onClick={() => setSearchQuery("")}
-                      className="absolute inset-y-0 right-0 flex items-center pr-2 sm:pr-3 text-gray-400 hover:text-white transition-colors"
-                    >
-                      <MdClose className="text-base sm:text-lg" />
-                    </button>
-                  )}
-                  <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-[#318AE6] to-[#5B43D6] scale-x-0 group-focus-within:scale-x-100 transition-transform origin-left"></div>
-                </div>
-              </div>
-            </div>
-            <div className="w-full">
-              {isLoading ? (
-                <TransactionLoader />
-              ) : activeTab === "wallet" ? (
-                <Box
-                  mt={{ base: 4, sm: 6 }}
-                  p={{ base: 2, sm: 4 }}
-                  bg="#111518"
-                  borderRadius={{ base: "md", sm: "lg" }}
-                  borderWidth="1px"
-                  borderColor="gray.800"
-                  // maxH={{ base: "300px", sm: "400px" }}
-                  overflowY="auto"
-                  className="w-full"
-                >
-                  <Text
-                    fontSize={{ base: "md", sm: "lg", md: "xl" }}
-                    fontWeight="bold"
-                    color="white"
-                    mb={{ base: 2, sm: 4 }}
-                  >
-                    Wallet Transaction History
-                  </Text>
-                  {walletTransactions.length === 0 ? (
-                    <Text color="gray.400" fontSize={{ base: "sm", sm: "md" }}>
-                      No wallet transactions found.
-                    </Text>
-                  ) : (
-                    walletTransactions.map((tx, index) => (
-                      <Box
-                        key={`${tx.reference}-${tx.createdAt}-${index}`}
-                        mb={{ base: 2, sm: 4 }}
-                        p={{ base: 2, sm: 3 }}
-                        bg="#1d2225"
-                        borderRadius="md"
-                        className="w-full"
-                      >
-                        <Flex
-                          justify="space-between"
-                          flexWrap="wrap"
-                          gap={{ base: 1, sm: 2 }}
-                        >
-                          <Text
-                            color="white"
-                            fontSize={{ base: "xs", sm: "sm", md: "md" }}
-                          >
-                            Reference: {tx.reference}
-                          </Text>
-                          <Text
-                            color={tx.type === "deposit" ? "green.300" : "red.300"}
-                            fontSize={{ base: "xs", sm: "sm", md: "md" }}
-                          >
-                            {tx.type === "deposit" ? "+" : "-"} ₦{tx.amount.toFixed(2)}
-                          </Text>
-                        </Flex>
-                        <Text color="gray.400" fontSize={{ base: "xs", sm: "sm" }}>
-                          Purpose: {tx.metadata.purpose}
-                        </Text>
-                        <Text color="gray.400" fontSize={{ base: "xs", sm: "sm" }}>
-                          Date: {new Date(tx.createdAt).toLocaleString()}
-                        </Text>
-                      </Box>
-                    ))
-                  )}
-                </Box>
-              ) : transactions.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-[50vh] sm:h-[60vh]">
-                  <div className="text-3xl sm:text-4xl mb-2 sm:mb-4 text-gray-400">📭</div>
-                  <p className="text-[#E4E4E4] text-base sm:text-lg font-medium">
-                    No transactions created
-                  </p>
-                  <p className="text-gray-400 text-sm sm:text-base mt-1 sm:mt-2">
-                    Create a new transaction to get started
-                  </p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 md:gap-6">
-                  {transactions
-                    .filter((transaction) => {
-                      if (activeTab === "active" && transaction.status !== "pending")
-                        return false;
-                      if (activeTab === "completed" && transaction.status !== "completed")
-                        return false;
-                      if (activeTab === "cancelled" && transaction.status !== "cancelled")
-                        return false;
-                      return (
-                        transaction.paymentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        transaction._id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        transaction.email.toLowerCase().includes(searchQuery.toLowerCase())
-                      );
-                    })
-                    .map((transaction) => {
-                      const isCreator =
-                        currentUser?._id ===
-                        (transaction.userId._id?.toString() || transaction.userId?.toString());
-                      const isParticipant = transaction.participants?.some(
-                        (p) =>
-                          p._id?.toString() === currentUser?._id ||
-                          p.toString() === currentUser?._id
-                      );
-                      const isBuyer =
-                        (isCreator && transaction.selectedUserType === "buyer") ||
-                        (isParticipant && transaction.selectedUserType !== "buyer");
-                      return (
-                        <Box
-                          key={transaction._id}
-                          className="transaction-card text-[11px] sm:text-[13px] text-gray-400 px-2 sm:px-4 py-3 sm:py-5 bg-[#111518] rounded-lg sm:rounded-2xl border border-gray-800 transition-all hover:shadow-[#318AE630]"
-                        >
-                          <div className="flex items-center justify-between mb-2 sm:mb-3">
-                            <div className="flex flex-col">
-                              {transaction.participants && transaction.participants.length > 0 ? (
-                                <p className="font-bold text-sm sm:text-base md:text-lg text-white truncate">
-                                  {typeof transaction.participants[0] === "object" &&
-                                  transaction.participants[0].firstName
-                                    ? `${transaction.participants[0].firstName} ${
-                                        transaction.participants[0].lastName || ""
-                                      }`
-                                    : "Participant joined"}
-                                </p>
-                              ) : (
-                                <p className="text-xs sm:text-sm text-gray-400">
-                                  No participant yet
-                                </p>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-1 sm:gap-2">
-                              <button
-                                onClick={() => handleEditPaymentDetails(transaction)}
-                                className="text-base sm:text-lg md:text-xl bg-[#1d2225] p-1 sm:p-1.5 rounded-full hover:bg-[#967532] text-white transition-all"
-                                title="Edit Payment Details"
-                              >
-                                <FiEdit size={12} />
-                              </button>
-                              <button
-                                onClick={() => handleChatButton(transaction._id)}
-                                className="text-base sm:text-lg md:text-xl bg-[#1d2225] p-1 sm:p-1.5 rounded-full hover:bg-[#318AE6] transition-all"
-                              >
-                                <BsChatFill size={12} />
-                              </button>
-                            </div>
-                          </div>
-                          <div className="bg-[#1d2225] rounded-lg p-1 sm:p-2 mb-2 sm:mb-3 flex items-center justify-between">
-                            <div className="max-w-[70%] sm:max-w-[80%]">
-                              <div className="flex items-center">
-                                <p className="text-xs mb-1">
-                                  Copy the Transaction ID and send to the other party
-                                </p>
-                              </div>
-                              <p className="font-medium text-xs sm:text-sm truncate">
-                                {transaction._id}
-                              </p>
-                            </div>
-                            <button
-                              onClick={() => copyToClipboard(transaction._id)}
-                              className="text-gray-400 hover:text-[#318AE6] transition-all"
-                            >
-                              <MdContentCopy size={12} />
-                            </button>
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 sm:gap-2 mb-2 sm:mb-4">
-                            <div className="bg-[#1d2225] rounded-lg p-1 sm:p-2">
-                              <p className="text-gray-400 text-xs mb-1">Email</p>
-                              <p className="font-medium text-xs sm:text-sm truncate">
-                                {transaction.email}
-                              </p>
-                            </div>
-                            <div className="bg-[#1d2225] rounded-lg p-1 sm:p-2">
-                              <p className="text-gray-400 text-xs mb-1">Amount</p>
-                              <p className="font-medium text-xs sm:text-sm text-[#318AE6]">
-                                {transaction.paymentAmount}
-                              </p>
-                            </div>
-                            <div className="bg-[#1d2225] rounded-lg p-1 sm:p-2">
-                              <p className="text-gray-400 text-xs mb-1">User Type</p>
-                              <p className="font-medium text-xs sm:text-sm capitalize">
-                                {isBuyer ? "buyer" : "seller"}
-                              </p>
-                            </div>
-                            <div className="bg-[#1d2225] rounded-lg p-1 sm:p-2">
-                              <p className="text-gray-400 text-xs mb-1">Status</p>
-                              <div
-                                className={`inline-flex items-center px-1 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium ${
-                                  transaction.status === "completed"
-                                    ? "bg-green-900 text-green-300"
-                                    : transaction.status === "cancelled"
-                                    ? "bg-red-900 text-red-300"
-                                    : "bg-yellow-900 text-yellow-300"
-                                }`}
-                              >
-                                {transaction.status}
-                              </div>
-                            </div>
-                            <div className="bg-[#1d2225] rounded-lg p-1 sm:p-2">
-                              <p className="text-gray-400 text-xs mb-1">Bank</p>
-                              <p className="font-medium text-xs sm:text-sm truncate">
-                                {transaction.paymentBank}
-                              </p>
-                            </div>
-                            <div className="bg-[#1d2225] rounded-lg p-1 sm:p-2">
-                              <p className="text-gray-400 text-xs mb-1">Account Number</p>
-                              <p className="font-medium text-xs sm:text-sm">
-                                {transaction.paymentAccountNumber}
-                              </p>
-                            </div>
-                            <div className="bg-[#1d2225] rounded-lg p-1 sm:p-2">
-                              <p className="text-gray-400 text-xs mb-1">Waybill Status</p>
-                              <div
-                                className={`inline-flex items-center px-1 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium ${
-                                  transaction.proofOfWaybill === "confirmed"
-                                    ? "bg-green-900 text-green-300"
-                                    : "bg-yellow-900 text-yellow-300"
-                                }`}
-                              >
-                                {transaction.proofOfWaybill}
-                              </div>
-                            </div>
-                            <div className="bg-[#1d2225] rounded-lg p-1 sm:p-2">
-                              <p className="text-gray-400 text-xs mb-1">Created</p>
-                              <p className="font-medium text-xs sm:text-sm">
-                                {transaction.createdAt
-                                  ? format(new Date(transaction.createdAt), "MMM dd, yyyy")
-                                  : "N/A"}
-                              </p>
-                            </div>
-                            <div className="bg-[#1d2225] rounded-lg p-1 sm:p-2">
-                              <p className="text-gray-400 text-xs mb-1">Escrow Status</p>
-                              <div
-                                className={`inline-flex items-center px-1 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium ${
-                                  transaction.locked
-                                    ? "bg-yellow-900 text-yellow-300"
-                                    : transaction.status === "completed"
-                                    ? "bg-green-900 text-green-300"
-                                    : "bg-gray-900 text-gray-300"
-                                }`}
-                              >
-                                {transaction.locked
-                                  ? `Locked: ${transaction.lockedAmount}`
-                                  : transaction.status === "completed"
-                                  ? "Released"
-                                  : "Not Locked"}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="mt-2 sm:mt-3">
-                            <details className="bg-[#1d2225] rounded-lg p-1 sm:p-2">
-                              <summary className="font-medium cursor-pointer flex items-center justify-between text-xs sm:text-sm">
-                                <span>Description</span>
-                                <span className="text-xs text-gray-400">Click to expand</span>
-                              </summary>
-                              <p className="mt-1 sm:mt-2 text-gray-300 text-xs sm:text-sm whitespace-pre-wrap">
-                                {transaction.paymentDescription}
-                              </p>
-                            </details>
-                          </div>
-                          <div className="flex flex-wrap items-center justify-between gap-1 sm:gap-2 mt-2 sm:mt-4">
-                            <button
-                              className="px-2 sm:px-3 py-1 sm:py-2 rounded-lg font-bold transition-all hover:bg-red-600 bg-red-700 text-white flex-1 text-xs sm:text-sm"
-                              onClick={() => cancelTransaction(transaction._id)}
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              className="px-2 sm:px-3 py-1 sm:py-2 bg-[#318AE6] hover:bg-[#2279d8] transition-all rounded-lg font-bold text-white flex-1 text-xs sm:text-sm"
-                              onClick={() =>
-                                isBuyer
-                                  ? handleBuyerWaybillPopup(transaction._id)
-                                  : handleWaybillPopup(transaction._id)
-                              }
-                            >
-                              {isBuyer ? "View Waybill" : "Input Waybill"}
-                            </button>
-                            {transaction.status === "pending" && (
-                              <button
-                                className={`px-2 sm:px-3 py-1 sm:py-2 rounded-lg font-bold transition-all text-white flex-1 text-xs sm:text-sm ${
-                                  isConfirming[transaction._id]
-                                    ? "bg-gray-600 cursor-not-allowed flex items-center justify-center"
-                                    : "bg-green-700 hover:bg-green-600"
-                                }`}
-                                onClick={() => handleConfirm(transaction._id)}
-                                disabled={isConfirming[transaction._id]}
-                              >
-                                {isConfirming[transaction._id] ? (
-                                  <FiLoader className="animate-spin mr-1 sm:mr-2" />
-                                ) : null}
-                                Complete
-                              </button>
-                            )}
-                            {isBuyer && !transaction.locked && transaction.status === "pending" && (
-                              <button
-                                className="px-2 sm:px-3 py-1 sm:py-2 bg-[#967532] hover:bg-[#7a5c28] transition-all rounded-lg font-bold text-white flex-1 text-xs sm:text-sm"
-                                onClick={() => handleFundWithWallet(transaction)}
-                              >
-                                Fund with Wallet
-                              </button>
-                            )}
-                          </div>
-                          {showWaybillPopup[transaction._id] && (
-                            <div className="fixed z-50 inset-0 bg-[#111518] bg-opacity-95 px-2 sm:px-4 py-4 sm:py-6 overflow-y-auto">
-                              <div className="max-w-[90%] sm:max-w-lg mx-auto bg-[#1A1E21] p-4 sm:p-6 rounded-xl shadow-xl border border-gray-800">
-                                <div className="flex justify-end">
-                                  <button
-                                    onClick={() => ClosehandleWaybillPopup(transaction._id)}
-                                    className="text-xl sm:text-2xl hover:text-[#318AE6] transition-all"
-                                  >
-                                    <MdClose />
-                                  </button>
-                                </div>
-                                <form
-                                  className="mt-3 sm:mt-4"
-                                  onSubmit={(e) => {
-                                    e.preventDefault();
-                                    handleWaybillSubmit(transaction._id);
-                                  }}
-                                  encType="multipart/form-data"
-                                >
-                                  <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-center text-white">
-                                    Seller Waybill Proof
-                                  </h1>
-                                  <p className="text-sm sm:text-base text-center pt-2 sm:pt-3 text-gray-300">
-                                    I, the seller, confirm that I have shipped the goods.
-                                  </p>
-                                  <div className="mt-3 sm:mt-4 space-y-3 sm:space-y-4">
-                                    <div>
-                                      <h3 className="text-gray-300 text-xs sm:text-sm mb-1 sm:mb-2">
-                                        Item:
-                                      </h3>
-                                      <input
-                                        type="text"
-                                        className="text-white bg-[#111518] border border-[#318AE6] pl-3 sm:pl-4 outline-none w-full h-8 sm:h-10 rounded-lg text-xs sm:text-sm"
-                                        value={waybillDetails.item}
-                                        onChange={(e) =>
-                                          setWaybillDetails({
-                                            ...waybillDetails,
-                                            item: e.target.value,
-                                          })
-                                        }
-                                      />
-                                      {errors.item && (
-                                        <p className="text-red-500 text-xs mt-1">{errors.item}</p>
-                                      )}
-                                    </div>
-                                    <div>
-                                      <h3 className="text-gray-300 text-xs sm:text-sm mb-1 sm:mb-2">
-                                        Image:
-                                      </h3>
-                                      <div className="border-2 border-dashed border-[#318AE6] rounded-lg p-2 sm:p-4 text-center">
-                                        <input
-                                          type="file"
-                                          className="hidden"
-                                          id={`waybill-image-${transaction._id}`}
-                                          accept="image/*"
-                                          onChange={(e) =>
-                                            setWaybillDetails({
-                                              ...waybillDetails,
-                                              image: e.target.files[0],
-                                            })
-                                          }
-                                        />
-                                        <label
-                                          htmlFor={`waybill-image-${transaction._id}`}
-                                          className="cursor-pointer flex flex-col items-center"
-                                        >
-                                          <span className="text-xl sm:text-2xl mb-1 sm:mb-2 text-[#318AE6]">
-                                            📷
-                                          </span>
-                                          <span className="text-gray-300 text-xs sm:text-sm">
-                                            Click to upload proof of shipment
-                                          </span>
-                                        </label>
-                                        {waybillDetails.image && (
-                                          <p className="text-gray-300 text-xs mt-1 sm:mt-2">
-                                            Selected: {waybillDetails.image.name}
-                                          </p>
-                                        )}
-                                      </div>
-                                      {errors.image && (
-                                        <p className="text-red-500 text-xs mt-1">{errors.image}</p>
-                                      )}
-                                    </div>
-                                    <div>
-                                      <h3 className="text-gray-300 text-xs sm:text-sm mb-1 sm:mb-2">
-                                        Price of waybill:
-                                      </h3>
-                                      <input
-                                        type="number"
-                                        className="text-white bg-[#111518] border border-[#318AE6] pl-3 sm:pl-4 outline-none w-full h-8 sm:h-10 rounded-lg text-xs sm:text-sm"
-                                        value={waybillDetails.price}
-                                        onChange={(e) =>
-                                          setWaybillDetails({
-                                            ...waybillDetails,
-                                            price: e.target.value,
-                                          })
-                                        }
-                                      />
-                                      {errors.price && (
-                                        <p className="text-red-500 text-xs mt-1">{errors.price}</p>
-                                      )}
-                                    </div>
-                                    <div>
-                                      <h3 className="text-gray-300 text-xs sm:text-sm mb-1 sm:mb-2">
-                                        Shipping / Receiver’s Address:
-                                      </h3>
-                                      <input
-                                        type="text"
-                                        className="text-white bg-[#111518] border border-[#318AE6] pl-3 sm:pl-4 outline-none w-full h-8 sm:h-10 rounded-lg text-xs sm:text-sm"
-                                        value={waybillDetails.shippingAddress}
-                                        onChange={(e) =>
-                                          setWaybillDetails({
-                                            ...waybillDetails,
-                                            shippingAddress: e.target.value,
-                                          })
-                                        }
-                                      />
-                                      {errors.shippingAddress && (
-                                        <p className="text-red-500 text-xs mt-1">
-                                          {errors.shippingAddress}
-                                        </p>
-                                      )}
-                                    </div>
-                                    <div>
-                                      <h3 className="text-gray-300 text-xs sm:text-sm mb-1 sm:mb-2">
-                                        Tracking Number:
-                                      </h3>
-                                      <input
-                                        type="text"
-                                        className="text-white bg-[#111518] border border-[#318AE6] pl-3 sm:pl-4 outline-none w-full h-8 sm:h-10 rounded-lg text-xs sm:text-sm"
-                                        value={waybillDetails.trackingNumber}
-                                        onChange={(e) =>
-                                          setWaybillDetails({
-                                            ...waybillDetails,
-                                            trackingNumber: e.target.value,
-                                          })
-                                        }
-                                      />
-                                      {errors.trackingNumber && (
-                                        <p className="text-red-500 text-xs mt-1">
-                                          {errors.trackingNumber}
-                                        </p>
-                                      )}
-                                    </div>
-                                    <div>
-                                      <h3 className="text-gray-300 text-xs sm:text-sm mb-1 sm:mb-2">
-                                        Delivery Date:
-                                      </h3>
-                                      <input
-                                        type="date"
-                                        className="text-white bg-[#111518] border border-[#318AE6] pl-3 sm:pl-4 outline-none w-full h-8 sm:h-10 rounded-lg text-xs sm:text-sm"
-                                        value={waybillDetails.deliveryDate}
-                                        onChange={(e) =>
-                                          setWaybillDetails({
-                                            ...waybillDetails,
-                                            deliveryDate: e.target.value,
-                                          })
-                                        }
-                                      />
-                                      {errors.deliveryDate && (
-                                        <p className="text-red-500 text-xs mt-1">
-                                          {errors.deliveryDate}
-                                        </p>
-                                      )}
-                                    </div>
-                                  </div>
-                                  <div className="flex justify-end gap-2 mt-4 sm:mt-6">
-                                    <button
-                                      type="button"
-                                      onClick={() => ClosehandleWaybillPopup(transaction._id)}
-                                      className="px-3 sm:px-4 py-1 sm:py-2 bg-gray-600 hover:bg-gray-700 rounded-lg text-white text-xs sm:text-sm transition-all"
-                                    >
-                                      Cancel
-                                    </button>
-                                    <button
-                                      type="submit"
-                                      className="px-3 sm:px-4 py-1 sm:py-2 bg-[#318AE6] hover:bg-[#2279d8] rounded-lg text-white text-xs sm:text-sm transition-all"
-                                    >
-                                      Submit
-                                    </button>
-                                  </div>
-                                </form>
-                              </div>
-                            </div>
-                          )}
-                          {buyershowWaybillPopup[transaction._id] && (
-                            <div className="fixed z-50 inset-0 bg-[#111518] bg-opacity-95 px-2 sm:px-4 py-4 sm:py-6 overflow-y-auto">
-                              <div className="max-w-[90%] sm:max-w-lg mx-auto bg-[#1A1E21] p-4 sm:p-6 rounded-xl shadow-xl border border-gray-800">
-                                <div className="flex justify-end">
-                                  <button
-                                    onClick={() => ClosehandleBuyerWaybillPopup(transaction._id)}
-                                    className="text-xl sm:text-2xl hover:text-[#318AE6] transition-all"
-                                  >
-                                    <MdClose />
-                                  </button>
-                                </div>
-                                <div className="mt-3 sm:mt-4">
-                                  <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-center text-white">
-                                    Waybill Details
-                                  </h1>
-                                  <div className="mt-3 sm:mt-4 space-y-3 sm:space-y-4 text-gray-300">
-                                    <div>
-                                      <h3 className="text-xs sm:text-sm mb-1 sm:mb-2">Item:</h3>
-                                      <p className="text-xs sm:text-sm">
-                                        {buyerWaybillDetails[transaction._id]?.item || "N/A"}
-                                      </p>
-                                    </div>
-                                    <div>
-                                      <h3 className="text-xs sm:text-sm mb-1 sm:mb-2">Image:</h3>
-                                      {buyerWaybillDetails[transaction._id]?.image ? (
-                                        <div className="flex flex-col items-center">
-                                          <img
-                                            src={buyerWaybillDetails[transaction._id].image}
-                                            alt="Waybill Proof"
-                                            className="max-w-full h-auto rounded-lg"
-                                          />
-                                          <button
-                                            onClick={() =>
-                                              downloadImage(buyerWaybillDetails[transaction._id].image)
-                                            }
-                                            className="mt-2 px-3 sm:px-4 py-1 sm:py-2 bg-[#318AE6] hover:bg-[#2279d8] rounded-lg text-white text-xs sm:text-sm"
-                                          >
-                                            Download Image
-                                          </button>
-                                        </div>
-                                      ) : (
-                                        <p className="text-xs sm:text-sm">No image provided</p>
-                                      )}
-                                    </div>
-                                    <div>
-                                      <h3 className="text-xs sm:text-sm mb-1 sm:mb-2">Price:</h3>
-                                      <p className="text-xs sm:text-sm">
-                                        {buyerWaybillDetails[transaction._id]?.price || "N/A"}
-                                      </p>
-                                    </div>
-                                    <div>
-                                      <h3 className="text-xs sm:text-sm mb-1 sm:mb-2">
-                                        Shipping Address:
-                                      </h3>
-                                      <p className="text-xs sm:text-sm">
-                                        {buyerWaybillDetails[transaction._id]?.shippingAddress ||
-                                          "N/A"}
-                                      </p>
-                                    </div>
-                                    <div>
-                                      <h3 className="text-xs sm:text-sm mb-1 sm:mb-2">
-                                        Tracking Number:
-                                      </h3>
-                                      <p className="text-xs sm:text-sm">
-                                        {buyerWaybillDetails[transaction._id]?.trackingNumber ||
-                                          "N/A"}
-                                      </p>
-                                    </div>
-                                    <div>
-                                      <h3 className="text-xs sm:text-sm mb-1 sm:mb-2">
-                                        Delivery Date:
-                                      </h3>
-                                      <p className="text-xs sm:text-sm">
-                                        {buyerWaybillDetails[transaction._id]?.deliveryDate
-                                          ? format(
-                                              new Date(
-                                                buyerWaybillDetails[transaction._id].deliveryDate
-                                              ),
-                                              "MMM dd, yyyy"
-                                            )
-                                          : "N/A"}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  <div className="flex justify-end mt-4 sm:mt-6">
-                                    <button
-                                      onClick={() => ClosehandleBuyerWaybillPopup(transaction._id)}
-                                      className="px-3 sm:px-4 py-1 sm:py-2 bg-gray-600 hover:bg-gray-700 rounded-lg text-white text-xs sm:text-sm transition-all"
-                                    >
-                                      Close
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </Box>
-                      );
-                    })}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-        <div className={showProfile ? "profileContainer" : "hidden"}>
-          {/* Profile content would go here */}
-        </div>
-        <Modal isOpen={modalVisible} onClose={() => setModalVisible(false)}>
-          <ModalOverlay />
-          <ModalContent bg="#1A1E21" color="white">
-            <ModalHeader>Confirm Transaction</ModalHeader>
-            <ModalBody>
-              <Text>
-                Are you sure you want to confirm transaction {selectedTransactionId}? This
-                action cannot be undone.
-              </Text>
-            </ModalBody>
-            <ModalFooter>
-              <Button colorScheme="gray" mr={3} onClick={() => setModalVisible(false)}>
-                Cancel
-              </Button>
-              <Button
-                colorScheme="blue"
-                onClick={() => completeTransaction(selectedTransactionId)}
-                isLoading={isConfirming[selectedTransactionId]}
+        <Box
+          flex={1}
+          // ml={{ base: 0, md: isSidebarCollapsed ? "80px" : "280px" }}
+          // transition="margin-left 0.3s"
+          width={{ base: "100%", md: "auto" }}
+        >
+          {showToggleContainer && (
+            <Box width="100%">
+              <MiniNav />
+              <Box
+                px={{ base: 3, sm: 4, md: 6, lg: 8 }}
+                pt={{ base: "100px", sm: "100px", md: "100px", lg: "100px" }}
+                pb={{ base: 8, sm: 10, md: 12, lg: 16 }}
+                maxW="100%"
+                mx="auto"
+                overflow="hidden"
               >
-                Confirm
-              </Button>
-            </ModalFooter>
-          </ModalContent>
-        </Modal>
-        {showPaymentDetailsModal && (
-          <Modal isOpen={showPaymentDetailsModal} onClose={closePaymentDetailsModal}>
-            <div className="fixed inset-0 bg-[#111518] bg-opacity-95 flex items-center justify-center px-2 sm:px-4">
-              <div className="bg-[#1A1E21] p-4 sm:p-6 rounded-xl max-w-[90%] sm:max-w-lg w-full border border-gray-800">
-                <div className="flex justify-between items-center mb-3 sm:mb-4">
-                  <h2 className="text-lg sm:text-xl font-bold text-white">
-                    Edit Payment Details
-                  </h2>
-                  <button
-                    onClick={closePaymentDetailsModal}
-                    className="text-xl sm:text-2xl hover:text-[#318AE6] transition-all"
+                <Flex
+                  justify="space-between"
+                  align={{ base: "flex-start", sm: "center" }}
+                  mb={{ base: 4, sm: 5, md: 6 }}
+                  flexDir={{ base: "column", sm: "row" }}
+                  gap={{ base: 3, sm: 4 }}
+                  width="100%"
+                  flexWrap="wrap"
+                >
+                  <Text fontSize={{ base: "xl", sm: "2xl", md: "3xl" }} fontWeight="bold" color="white">My Transactions</Text>
+                  <Flex
+                    gap={3}
+                    align="center"
+                    width={{ base: "100%", sm: "auto" }}
+                    flexWrap={{ base: "wrap", sm: "nowrap" }}
                   >
-                    <MdClose />
-                  </button>
-                </div>
-                <form onSubmit={submitPaymentDetails}>
-                  <div className="space-y-3 sm:space-y-4">
-                    <div>
-                      <label className="text-gray-300 text-xs sm:text-sm mb-1 sm:mb-2 block">
-                        Bank
-                      </label>
-                      <Select
-                        value={paymentDetails.selectedBankCode}
-                        onChange={handleBankSelection}
-                        placeholder="Select a bank"
-                        bg="#111518"
-                        borderColor="#318AE6"
+                    {walletBalance !== null && (
+                      <Text
+                        fontSize={{ base: "sm", md: "md" }}
                         color="white"
-                        className="text-xs sm:text-sm"
+                        bg="gray.800"
+                        px={3}
+                        py={2}
+                        rounded="md"
+                        whiteSpace="nowrap"
+                        overflow="hidden"
+                        textOverflow="ellipsis"
+                        maxW={{ base: "full", sm: "auto", md: "auto" }}
                       >
-                        {nigeriaBanks.map((bank) => (
-                          <option key={bank.code} value={bank.code} className="text-black">
-                            {bank.name}
-                          </option>
-                        ))}
-                      </Select>
-                      {paymentErrors.selectedBankCode && (
-                        <p className="text-red-500 text-xs mt-1">
-                          {paymentErrors.selectedBankCode}
-                        </p>
-                      )}
-                    </div>
-                    <div>
-                      <label className="text-gray-300 text-xs sm:text-sm mb-1 sm:mb-2 block">
-                        Account Number
-                      </label>
-                      <input
-                        type="text"
-                        value={paymentDetails.paymentAccountNumber}
-                        onChange={(e) =>
-                          setPaymentDetails({
-                            ...paymentDetails,
-                            paymentAccountNumber: e.target.value,
-                          })
-                        }
-                        className="w-full bg-[#111518] border border-[#318AE6] rounded-lg p-1.5 sm:p-2 text-white text-xs sm:text-sm"
-                      />
-                      {paymentErrors.paymentAccountNumber && (
-                        <p className="text-red-500 text-xs mt-1">
-                          {paymentErrors.paymentAccountNumber}
-                        </p>
-                      )}
-                    </div>
-                    <div>
-                      <label className="text-gray-300 text-xs sm:text-sm mb-1 sm:mb-2 block">
-                        Amount
-                      </label>
-                      <input
-                        type="number"
-                        value={paymentDetails.paymentAmount}
-                        onChange={(e) =>
-                          setPaymentDetails({
-                            ...paymentDetails,
-                            paymentAmount: e.target.value,
-                          })
-                        }
-                        className="w-full bg-[#111518] border border-[#318AE6] rounded-lg p-1.5 sm:p-2 text-white text-xs sm:text-sm"
-                        disabled={currentTransaction?.locked}
-                      />
-                      {paymentErrors.paymentAmount && (
-                        <p className="text-red-500 text-xs mt-1">
-                          {paymentErrors.paymentAmount}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex justify-end gap-2 mt-4 sm:mt-6">
-                    <button
-                      type="button"
-                      onClick={closePaymentDetailsModal}
-                      className="px-3 sm:px-4 py-1 sm:py-2 bg-gray-600 hover:bg-gray-700 rounded-lg text-white text-xs sm:text-sm transition-all"
+                        Wallet Balance: ₦{walletBalance.toFixed(2)}
+                      </Text>
+                    )}
+                    <Button
+                      onClick={() => fetchData(true)}
+                      isLoading={isManualRefreshing}
+                      size={{ base: "xs", sm: "sm" }}
+                      bg="#318AE6"
+                      color="white"
+                      _hover={{ bg: "#2279d8" }}
+                      aria-label="Refresh transactions"
+                      width={{ base: "100%", sm: "auto" }}
                     >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-3 sm:px-4 py-1 sm:py-2 bg-[#318AE6] hover:bg-[#2279d8] rounded-lg text-white text-xs sm:text-sm transition-all"
-                    >
-                      Save
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
+                      Refresh
+                    </Button>
+                  </Flex>
+                </Flex>
+
+                <Flex
+                  flexDir={{ base: "column", md: "row" }}
+                  gap={4}
+                  mb={6}
+                  width="100%"
+                  flexWrap="wrap"
+                >
+                  <Flex
+                    overflowX="auto"
+                    bg="#111518"
+                    rounded="lg"
+                    border="1px"
+                    borderColor="gray.800"
+                    p={1}
+                    width={{ base: "100%" }}
+                    flexGrow={1}
+                    flexShrink={0}
+                    minW={{ base: "auto", md: "350px" }}
+                    maxW={{ base: "100%", md: "60%" }}
+                    css={{
+                      '&::-webkit-scrollbar': {
+                        height: '6px',
+                      },
+                      '&::-webkit-scrollbar-thumb': {
+                        backgroundColor: '#2D3748',
+                        borderRadius: '3px',
+                      }
+                    }}
+                  >
+                    {["all", "active", "completed", "cancelled", "wallet"].map(tab => (
+                      <Button
+                        key={tab}
+                        onClick={() => setActiveTab(tab)}
+                        flex={{ base: "0 0 auto", sm: 1 }}
+                        minW="80px"
+                        px={{ base: 2, md: 3 }}
+                        py={2}
+                        fontSize={{ base: "xs", sm: "sm" }}
+                        bg={activeTab === tab ? "#967532" : "transparent"}
+                        color={activeTab === tab ? "white" : "gray.400"}
+                        _hover={{ color: "white" }}
+                        whiteSpace="nowrap"
+                      >
+                        {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                        <Text as="span" ml={1} px={1} bg="#1d2225" rounded="full" fontSize="xs">
+                          {tab === "wallet" ? walletTransactions.length : tab === "all" ? transactions.length : transactions.filter(t => tab === "active" ? t.status === "pending" : t.status === tab).length}
+                        </Text>
+                      </Button>
+                    ))}
+                  </Flex>
+
+                  <Box
+                    pos="relative"
+                    w={{ base: "100%", md: "220px", lg: "250px" }}
+                    flexShrink={0}
+                  >
+                    <FiSearch style={{ position: "absolute", top: "50%", left: "12px", transform: "translateY(-50%)", color: "#967532" }} />
+                    <Input
+                      placeholder="Search..."
+                      value={searchQuery}
+                      onChange={(e) => debouncedSearch(e.target.value)}
+                      bg="#111518"
+                      borderColor="#967532"
+                      color="white"
+                      pl={10}
+                      fontSize={{ base: "xs", sm: "sm" }}
+                      aria-label="Search transactions"
+                      width="100%"
+                    />
+                    {searchQuery && (
+                      <IconButton
+                        aria-label="Clear search"
+                        icon={<MdClose />}
+                        pos="absolute"
+                        top="50%"
+                        right="8px"
+                        transform="translateY(-50%)"
+                        color="gray.400"
+                        _hover={{ color: "white" }}
+                        onClick={() => setSearchQuery("")}
+                        bg="transparent"
+                        size="sm"
+                      />
+                    )}
+                  </Box>
+                </Flex>
+
+                {(isInitialLoading || isManualRefreshing) ? (
+                  <TransactionLoader />
+                ) : activeTab === "wallet" ? (
+                  <Box
+                    mt={6}
+                    p={{ base: 3, sm: 4 }}
+                    bg="#111518"
+                    rounded="lg"
+                    border="1px"
+                    borderColor="gray.800"
+                    width="100%"
+                  >
+                    <Text fontSize={{ base: "lg", sm: "xl" }} fontWeight="bold" color="white" mb={4}>Wallet Transaction History</Text>
+                    {walletTransactions.length === 0 ? (
+                      <Text color="gray.400" fontSize="md">No wallet transactions found.</Text>
+                    ) : (
+                      walletTransactions.map((tx, idx) => (
+                        <Box
+                          key={`${tx.reference}-${tx.createdAt}-${idx}`}
+                          mb={4}
+                          p={{ base: 2, sm: 3 }}
+                          bg="#1d2225"
+                          rounded="md"
+                        >
+                          <Flex justify="space-between" flexWrap="wrap" gap={2}>
+                            <Text
+                              color="white"
+                              fontSize={{ base: "xs", sm: "sm" }}
+                              maxW={{ base: "60%", sm: "70%" }}
+                              isTruncated
+                            >
+                              {tx.reference}
+                            </Text>
+                            <Text
+                              color={tx.type === "deposit" ? "green.300" : "red.300"}
+                              fontSize={{ base: "xs", sm: "sm" }}
+                              fontWeight="medium"
+                            >
+                              {tx.type === "deposit" ? "+" : "-"} ₦{(tx.amount || 0).toFixed(2)}
+                            </Text>
+                          </Flex>
+                          <Text color="gray.400" fontSize="xs" mt={1}>Purpose: {tx.metadata?.purpose || "N/A"}</Text>
+                          <Text color="gray.400" fontSize="xs" mt={1}>Date: {tx.createdAt ? new Date(tx.createdAt).toLocaleString() : "N/A"}</Text>
+                        </Box>
+                      ))
+                    )}
+                  </Box>
+                ) : transactions.length === 0 ? (
+                  <Flex flexDir="column" align="center" justify="center" h={{ base: "30vh", sm: "40vh", md: "50vh" }}>
+                    <Text fontSize={{ base: "2xl", sm: "3xl" }} mb={4} color="gray.400">📭</Text>
+                    <Text color="#E4E4E4" fontSize={{ base: "md", sm: "lg" }} fontWeight="medium" textAlign="center">No transactions created</Text>
+                    <Text color="gray.400" fontSize={{ base: "sm", md: "md" }} mt={2} textAlign="center">Create a new transaction to get started</Text>
+                  </Flex>
+                ) : (
+                  <Box
+                    display="grid"
+                    gridTemplateColumns={{
+                      base: "1fr",
+                      sm: "repeat(auto-fill, minmax(220px, 1fr))",
+                      md: "repeat(auto-fill, minmax(240px, 1fr))",
+                      lg: "repeat(auto-fill, minmax(300px, 1fr))"
+                    }}
+                    gap={{ base: 4, sm: 5, md: 6 }}
+                  >
+                    {filteredTransactions.map((transaction, idx) => (
+                      <TransactionCard
+                        key={transaction._id}
+                        transaction={transaction}
+                        currentUser={currentUser}
+                        isConfirming={isConfirming}
+                        handleChat={handleChat}
+                        handleWaybill={handleWaybill}
+                        handleConfirm={handleConfirm}
+                        handleFund={handleFund}
+                        handleEditPayment={handleEditPayment}
+                        cancelTransaction={cancelTransaction}
+                        copyToClipboard={copyToClipboard}
+                        toggleDescription={toggleDescription}
+                        expandedDescriptions={expandedDescriptions}
+                        index={idx}
+                        isCompact={isSidebarCollapsed}
+                      />
+                    ))}
+                  </Box>
+                )}
+              </Box>
+            </Box>
+          )}
+
+          {showProfile && <Box width="100%">{/* Profile content */}</Box>}
+
+          <Modal isOpen={modalVisible} onClose={() => setModalVisible(false)} isCentered size={{ base: "xs", sm: "sm" }}>
+            <ModalOverlay />
+            <ModalContent bg="#1A1E21" color="white" mx={{ base: 3, sm: "auto" }}>
+              <ModalHeader fontSize={{ base: "md", sm: "lg" }}>Confirm Transaction</ModalHeader>
+              <ModalBody>
+                <Text fontSize={{ base: "sm", sm: "md" }}>Are you sure you want to confirm transaction {selectedTransactionId}?</Text>
+              </ModalBody>
+              <ModalFooter>
+                <Button colorScheme="gray" mr={3} onClick={() => setModalVisible(false)} size={{ base: "xs", sm: "sm" }}>Cancel</Button>
+                <Button colorScheme="blue" onClick={() => completeTransaction(selectedTransactionId)} isLoading={isConfirming[selectedTransactionId]} size={{ base: "xs", sm: "sm" }}>Confirm</Button>
+              </ModalFooter>
+            </ModalContent>
           </Modal>
-        )}
-        {isMobile && <BottomNav />}
+
+          {Object.keys(showWaybillPopup).map(id => showWaybillPopup[id] && (
+            <WaybillModal
+              key={`seller-${id}`}
+              isOpen={showWaybillPopup[id]}
+              onClose={() => setShowWaybillPopup(prev => ({ ...prev, [id]: false }))}
+              transactionId={id}
+              isBuyer={false}
+              details={waybillDetails}
+              setDetails={setWaybillDetails}
+              errors={errors}
+              handleSubmit={handleWaybillSubmit}
+              downloadImage={downloadImage}
+            />
+          ))}
+
+          {Object.keys(buyerShowWaybillPopup).map(id => buyerShowWaybillPopup[id] && (
+            <WaybillModal
+              key={`buyer-${id}`}
+              isOpen={buyerShowWaybillPopup[id]}
+              onClose={() => setBuyerShowWaybillPopup(prev => ({ ...prev, [id]: false }))}
+              transactionId={id}
+              isBuyer={true}
+              details={buyerWaybillDetails[id] || {}}
+              downloadImage={downloadImage}
+            />
+          ))}
+
+          {showPaymentDetailsModal && (
+            <PaymentDetailsModal
+              isOpen={showPaymentDetailsModal}
+              onClose={() => { setShowPaymentDetailsModal(false); setCurrentTransaction(null); setPaymentDetails({ paymentBank: "", paymentAccountNumber: "", selectedBankCode: "", paymentAmount: "" }); }}
+              transaction={currentTransaction}
+              paymentDetails={paymentDetails}
+              setPaymentDetails={setPaymentDetails}
+              paymentErrors={paymentErrors}
+              handleSubmit={handlePaymentSubmit}
+            />
+          )}
+
+          {isMobile && <BottomNav />}
+        </Box>
       </div>
-    </Box>
+
+    </Flex>
   );
 };
 

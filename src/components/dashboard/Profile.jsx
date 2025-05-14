@@ -1,8 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
-import { FaEdit, FaUpload, FaSave, FaTimes, FaUser, FaCalendarAlt, FaUniversity, FaCreditCard, FaWallet, FaSync, FaCopy, FaCheck, FaExclamationTriangle, FaMoneyBillWave } from "react-icons/fa";
+import { FaEdit, FaWallet, FaTimes, FaUser, FaCalendarAlt, FaUniversity, FaCreditCard, FaSync, FaMoneyBillWave, FaSave } from "react-icons/fa";
 import { motion } from "framer-motion";
-import UserProfile from "../../assets/profile_icon.png";
 import {
   Box,
   Text,
@@ -37,130 +36,65 @@ import {
   Divider,
   Select,
 } from "@chakra-ui/react";
+import multiavatar from "@multiavatar/multiavatar/esm"; // Use ESM import
 
-const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3001";
+const BASE_URL = (import.meta.env.VITE_BASE_URL || "http://localhost:3001").replace(/\/$/, "");
 
-// Payment Information Modal Component
+// PaymentInfoModal Component
 const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, userName }) => {
-  const [copiedItems, setCopiedItems] = useState({});
-  const toast = useToast();
-
-  const cardBg = useColorModeValue("white", "#0F1722");
   const textColor = useColorModeValue("gray.800", "white");
   const subtleTextColor = useColorModeValue("gray.600", "gray.300");
-  const labelColor = useColorModeValue("blue.600", "blue.300");
-  const borderColor = useColorModeValue("gray.200", "gray.700");
   const highlightColor = useColorModeValue("blue.500", "blue.400");
-  const gradientStart = useColorModeValue("blue.400", "blue.500");
-  const gradientEnd = useColorModeValue("purple.500", "purple.600");
-  const hoverGradient = `linear(to-r, ${useColorModeValue('blue.500', 'blue.600')}, ${useColorModeValue('purple.600', 'purple.700')})`;
-  const boxBgColor = useColorModeValue("blue.50", "gray.700");
-
-  if (!paymentDetails) return null;
-
-  const { virtualAccount, reference, amount } = paymentDetails;
-
-  const copyToClipboard = (text, itemKey) => {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopiedItems({ ...copiedItems, [itemKey]: true });
-      setTimeout(() => {
-        setCopiedItems({ ...copiedItems, [itemKey]: false });
-      }, 3000);
-
-      toast({
-        title: "Copied to clipboard",
-        status: "success",
-        duration: 2000,
-        isClosable: true,
-      });
-    });
-  };
-
-  const PaymentItem = ({ label, value, itemKey }) => (
-    <Box
-      mb={3}
-      p={3}
-      borderRadius="md"
-      bg={boxBgColor}
-      position="relative"
-    >
-      <Text fontSize="sm" fontWeight="medium" color={subtleTextColor} mb={1}>
-        {label}
-      </Text>
-      <Flex align="center" justify="space-between">
-        <Text fontSize="md" fontWeight="bold" color={textColor} mb={0}>
-          {value}
-        </Text>
-        <Button
-          size="sm"
-          colorScheme={copiedItems[itemKey] ? "green" : "blue"}
-          variant="ghost"
-          onClick={() => copyToClipboard(value, itemKey)}
-          leftIcon={copiedItems[itemKey] ? <FaCheck /> : <FaCopy />}
-        >
-          {copiedItems[itemKey] ? "Copied" : "Copy"}
-        </Button>
-      </Flex>
-    </Box>
-  );
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} isCentered size="sm">
+    <Modal isOpen={isOpen} onClose={onClose} isCentered>
       <ModalOverlay />
-      <ModalContent bg={cardBg} borderColor={borderColor}>
-        <ModalHeader>
-          <Flex align="center">
-            <Icon as={FaWallet} color={highlightColor} mr={2} />
-            <Text color={textColor} fontWeight="bold">
-              Fund Your Wallet
-            </Text>
-          </Flex>
-        </ModalHeader>
+      <ModalContent>
+        <ModalHeader color={textColor}>Fund Wallet</ModalHeader>
         <ModalCloseButton />
         <ModalBody>
-          <Box mb={4}>
-            <Flex justify="space-between" align="center" mb={2}>
-              <Text fontWeight="bold" color={textColor}>Amount to Transfer:</Text>
-              <Badge colorScheme="green" fontSize="md" px={2} py={1}>
-                ₦{amount}
-              </Badge>
-            </Flex>
-            <Text fontSize="sm" color={subtleTextColor} mb={4}>
-              Please transfer exactly this amount to the secure PaymentPoint intermediary account below. Use the provided reference to ensure your payment is credited to your wallet.
-            </Text>
-          </Box>
-
-          <PaymentItem label="Bank Name" value={virtualAccount.bankName} itemKey="bankName" />
-          <PaymentItem label="Account Number" value={virtualAccount.accountNumber} itemKey="accountNumber" />
-          <PaymentItem
-            label="Account Name"
-            value={`PaymentPoint Intermediary (for ${userName})`}
-            itemKey="accountName"
-          />
-          <PaymentItem label="Reference" value={reference} itemKey="reference" />
-
-          <Box mt={3} p={3} borderRadius="md" bg="orange.50" borderLeftWidth="4px" borderLeftColor="orange.400">
-            <Flex>
-              <Icon as={FaExclamationTriangle} color="orange.500" mt={1} mr={2} />
-              <Text fontSize="sm" color="orange.700">
-                Please don't close this window until after your transfer.
-                Your payment will be confirmed within 5-10 minutes.
+          {paymentDetails ? (
+            <>
+              <Text color={textColor} mb={2}>
+                Please make a transfer to the account below to fund your wallet:
               </Text>
-            </Flex>
-          </Box>
+              <Box p={4} bg="gray.50" borderRadius="md">
+                <Text fontWeight="bold" color={textColor}>
+                  Account Name: {paymentDetails.virtualAccount?.accountName || "N/A"}
+                </Text>
+                <Text color={textColor}>
+                  Account Number: {paymentDetails.virtualAccount?.accountNumber || "N/A"}
+                </Text>
+                <Text color={textColor}>
+                  Bank: {paymentDetails.virtualAccount?.bank || "N/A"}
+                </Text>
+                <Text color={textColor}>
+                  Amount: ₦{paymentDetails.amount?.toFixed(2) || "0.00"}
+                </Text>
+                <Text color={subtleTextColor} fontSize="sm" mt={2}>
+                  Reference: {paymentDetails.reference || "N/A"}
+                </Text>
+              </Box>
+              <Text color={subtleTextColor} mt={4} fontSize="sm">
+                After making the payment, click below to verify the transaction.
+              </Text>
+            </>
+          ) : (
+            <Text color={textColor}>No payment details available. Please initiate a new funding request.</Text>
+          )}
         </ModalBody>
-        <Divider my={2} />
         <ModalFooter>
           <Button
-            onClick={onStatusCheck}
             colorScheme="blue"
-            bgGradient={`linear(to-r, ${gradientStart}, ${gradientEnd})`}
-            _hover={{
-              bgGradient: hoverGradient,
-            }}
-            w="100%"
+            onClick={onStatusCheck}
+            mr={3}
+            bgGradient={`linear(to-r, blue.400, purple.500)`}
+            _hover={{ bgGradient: `linear(to-r, blue.500, purple.600)` }}
           >
             Check Payment Status
+          </Button>
+          <Button variant="ghost" onClick={onClose} color={highlightColor}>
+            Cancel
           </Button>
         </ModalFooter>
       </ModalContent>
@@ -168,43 +102,23 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
   );
 };
 
-// Withdrawal Modal Component
+// WithdrawalModal Component
 const WithdrawalModal = ({ isOpen, onClose, walletBalance, onWithdraw }) => {
+  const [amount, setAmount] = useState(0);
+  const [bankCode, setBankCode] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [accountName, setAccountName] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const toast = useToast();
-  const cardBg = useColorModeValue("white", "#0F1722");
   const textColor = useColorModeValue("gray.800", "white");
-  const subtleTextColor = useColorModeValue("gray.600", "gray.300");
-  const labelColor = useColorModeValue("blue.600", "blue.300");
-  const borderColor = useColorModeValue("gray.200", "gray.700");
-  const gradientStart = useColorModeValue("blue.400", "blue.500");
-  const gradientEnd = useColorModeValue("purple.500", "purple.600");
-  const hoverGradient = `linear(to-r, ${useColorModeValue('blue.500', 'blue.600')}, ${useColorModeValue('purple.600', 'purple.700')})`;
   const inputBg = useColorModeValue("gray.50", "#1A2331");
   const inputHoverBg = useColorModeValue("gray.100", "#232D3F");
 
-  const [withdrawalAmount, setWithdrawalAmount] = useState(0);
-  const [selectedBank, setSelectedBank] = useState("");
-  const [accountNumber, setAccountNumber] = useState("");
-  const [accountName, setAccountName] = useState("");
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [isWithdrawing, setIsWithdrawing] = useState(false);
-
-  // List of common Nigerian banks (you can expand this list)
-  const banks = [
-    { name: "Opay", code: "OPAY" },
-    { name: "GTBank", code: "058" },
-    { name: "First Bank", code: "011" },
-    { name: "Zenith Bank", code: "057" },
-    { name: "Access Bank", code: "044" },
-    { name: "UBA", code: "033" },
-    { name: "Kuda", code: "KUDA" },
-  ];
-
-  const handleVerifyAccount = async () => {
-    if (!selectedBank || !accountNumber || accountNumber.length !== 10) {
+  const handleSubmit = async () => {
+    if (!amount || amount <= 0 || amount > (walletBalance?.balance || 0)) {
       toast({
-        title: "Invalid Input",
-        description: "Please select a bank and enter a valid 10-digit account number.",
+        title: "Invalid Amount",
+        description: "Please enter a valid amount within your wallet balance.",
         status: "warning",
         duration: 3000,
         isClosable: true,
@@ -212,46 +126,10 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance, onWithdraw }) => {
       return;
     }
 
-    setIsVerifying(true);
-    try {
-      const response = await axios.post(
-        `${BASE_URL}/api/wallet/verify-account`,
-        { bankCode: selectedBank, accountNumber },
-        { headers: { 'auth-token': localStorage.getItem('auth-token') } }
-      );
-
-      if (response.data.success) {
-        setAccountName(response.data.accountName);
-        toast({
-          title: "Account Verified",
-          description: `Account belongs to ${response.data.accountName}`,
-          status: "success",
-          duration: 3000,
-          isClosable: true,
-        });
-      } else {
-        throw new Error(response.data.message || "Account verification failed");
-      }
-    } catch (error) {
-      console.error("Account verification error:", error);
-      setAccountName("");
+    if (!bankCode || !accountNumber || !accountName) {
       toast({
-        title: "Verification Failed",
-        description: error.response?.data?.message || "Unable to verify account. Please check the details and try again.",
-        status: "error",
-        duration: 5000,
-        isClosable: true,
-      });
-    } finally {
-      setIsVerifying(false);
-    }
-  };
-
-  const handleSubmitWithdrawal = async () => {
-    if (!selectedBank || !accountNumber || !accountName || withdrawalAmount <= 0) {
-      toast({
-        title: "Invalid Input",
-        description: "Please verify the account and enter a valid withdrawal amount.",
+        title: "Missing Details",
+        description: "Please fill in all withdrawal details.",
         status: "warning",
         duration: 3000,
         isClosable: true,
@@ -259,35 +137,18 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance, onWithdraw }) => {
       return;
     }
 
-    if (withdrawalAmount > walletBalance?.balance) {
-      toast({
-        title: "Insufficient Balance",
-        description: "Withdrawal amount exceeds your wallet balance.",
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
-      return;
-    }
-
-    setIsWithdrawing(true);
+    setIsSubmitting(true);
     try {
-      await onWithdraw({ amount: withdrawalAmount, bankCode: selectedBank, accountNumber, accountName });
+      await onWithdraw({ amount, bankCode, accountNumber, accountName });
       toast({
         title: "Withdrawal Initiated",
-        description: "Your withdrawal request has been submitted successfully.",
+        description: "Your withdrawal request has been processed.",
         status: "success",
         duration: 5000,
         isClosable: true,
       });
       onClose();
-      // Reset form
-      setWithdrawalAmount(0);
-      setSelectedBank("");
-      setAccountNumber("");
-      setAccountName("");
     } catch (error) {
-      console.error("Withdrawal error:", error);
       toast({
         title: "Withdrawal Failed",
         description: error.message || "Unable to process withdrawal. Please try again.",
@@ -296,87 +157,27 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance, onWithdraw }) => {
         isClosable: true,
       });
     } finally {
-      setIsWithdrawing(false);
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} isCentered size="md">
+    <Modal isOpen={isOpen} onClose={onClose} isCentered>
       <ModalOverlay />
-      <ModalContent bg={cardBg} borderColor={borderColor}>
-        <ModalHeader>
-          <Flex align="center">
-            <Icon as={FaMoneyBillWave} color={gradientStart} mr={2} />
-            <Text color={textColor} fontWeight="bold">
-              Withdraw Funds
-            </Text>
-          </Flex>
-        </ModalHeader>
+      <ModalContent>
+        <ModalHeader color={textColor}>Withdraw Funds</ModalHeader>
         <ModalCloseButton />
         <ModalBody>
+          <Text color={textColor} mb={4}>
+            Available Balance: ₦{walletBalance?.balance?.toFixed(2) || "0.00"}
+          </Text>
           <FormControl mb={4}>
-            <FormLabel color={labelColor}>Select Bank</FormLabel>
-            <Select
-              placeholder="Choose your bank"
-              value={selectedBank}
-              onChange={(e) => {
-                setSelectedBank(e.target.value);
-                setAccountName("");
-              }}
-              bg={inputBg}
-              _hover={{ bg: inputHoverBg }}
-              color={textColor}
-            >
-              {banks.map((bank) => (
-                <option key={bank.code} value={bank.code}>
-                  {bank.name}
-                </option>
-              ))}
-            </Select>
-          </FormControl>
-
-          <FormControl mb={4}>
-            <FormLabel color={labelColor}>Account Number</FormLabel>
-            <Flex>
-              <Input
-                value={accountNumber}
-                onChange={(e) => {
-                  setAccountNumber(e.target.value);
-                  setAccountName("");
-                }}
-                placeholder="Enter 10-digit account number"
-                maxLength={10}
-                bg={inputBg}
-                _hover={{ bg: inputHoverBg }}
-                color={textColor}
-                mr={2}
-              />
-              <Button
-                onClick={handleVerifyAccount}
-                isLoading={isVerifying}
-                colorScheme="blue"
-                variant="outline"
-              >
-                Verify
-              </Button>
-            </Flex>
-          </FormControl>
-
-          {accountName && (
-            <Box mb={4} p={3} borderRadius="md" bg="green.50" borderLeftWidth="4px" borderLeftColor="green.400">
-              <Text fontSize="sm" color="green.700">
-                Account Name: {accountName}
-              </Text>
-            </Box>
-          )}
-
-          <FormControl mb={4}>
-            <FormLabel color={labelColor}>Withdrawal Amount (NGN)</FormLabel>
+            <FormLabel color={textColor}>Amount (NGN)</FormLabel>
             <NumberInput
               min={0}
               max={walletBalance?.balance || 0}
-              value={withdrawalAmount}
-              onChange={(valueString) => setWithdrawalAmount(parseFloat(valueString) || 0)}
+              value={amount}
+              onChange={(valueString) => setAmount(parseFloat(valueString) || 0)}
               precision={2}
             >
               <NumberInputField bg={inputBg} _hover={{ bg: inputHoverBg }} color={textColor} />
@@ -385,21 +186,54 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance, onWithdraw }) => {
                 <NumberDecrementStepper />
               </NumberInputStepper>
             </NumberInput>
-            <Text fontSize="sm" color={subtleTextColor} mt={1}>
-              Available Balance: ₦{walletBalance?.balance?.toFixed(2) || "0.00"}
-            </Text>
+          </FormControl>
+          <FormControl mb={4}>
+            <FormLabel color={textColor}>Bank Code</FormLabel>
+            <Input
+              value={bankCode}
+              onChange={(e) => setBankCode(e.target.value)}
+              placeholder="Enter bank code"
+              bg={inputBg}
+              _hover={{ bg: inputHoverBg }}
+              color={textColor}
+            />
+          </FormControl>
+          <FormControl mb={4}>
+            <FormLabel color={textColor}>Account Number</FormLabel>
+            <Input
+              value={accountNumber}
+              onChange={(e) => setAccountNumber(e.target.value)}
+              placeholder="Enter account number"
+              bg={inputBg}
+              _hover={{ bg: inputHoverBg }}
+              color={textColor}
+            />
+          </FormControl>
+          <FormControl mb={4}>
+            <FormLabel color={textColor}>Account Name</FormLabel>
+            <Input
+              value={accountName}
+              onChange={(e) => setAccountName(e.target.value)}
+              placeholder="Enter account name"
+              bg={inputBg}
+              _hover={{ bg: inputHoverBg }}
+              color={textColor}
+            />
           </FormControl>
         </ModalBody>
         <ModalFooter>
           <Button
-            onClick={handleSubmitWithdrawal}
-            isLoading={isWithdrawing}
             colorScheme="blue"
-            bgGradient={`linear(to-r, ${gradientStart}, ${gradientEnd})`}
-            _hover={{ bgGradient: hoverGradient }}
-            w="100%"
+            onClick={handleSubmit}
+            isLoading={isSubmitting}
+            mr={3}
+            bgGradient={`linear(to-r, blue.400, purple.500)`}
+            _hover={{ bgGradient: `linear(to-r, blue.500, purple.600)` }}
           >
-            Submit Withdrawal
+            Withdraw
+          </Button>
+          <Button variant="ghost" onClick={onClose} color={textColor}>
+            Cancel
           </Button>
         </ModalFooter>
       </ModalContent>
@@ -432,7 +266,6 @@ const Profile = () => {
   const backgroundPurple = useColorModeValue("purple.50", "purple.900");
   const hoverGradient = `linear(to-r, ${useColorModeValue('blue.500', 'blue.600')}, ${useColorModeValue('purple.600', 'purple.700')})`;
 
-  const [selectedImageFile, setSelectedImageFile] = useState(null);
   const [userDetails, setUserDetails] = useState(null);
   const [editedUserDetails, setEditedUserDetails] = useState({
     firstName: "",
@@ -442,10 +275,8 @@ const Profile = () => {
     accountNumber: "",
   });
   const [walletBalance, setWalletBalance] = useState(null);
-  const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [fundingAmount, setFundingAmount] = useState(0);
   const [isFunding, setIsFunding] = useState(false);
@@ -614,9 +445,9 @@ const Profile = () => {
             toast({
               title: 'Funding Successful',
               description: `Your wallet has been funded with ₦${(balanceResponse.balance - previousBalanceRef.current).toFixed(2)}`,
-              status: 'success',
-              duration: 5000,
-              isClosable: true,
+            status: 'success',
+            duration: 5000,
+            isClosable: true,
             });
             setPaymentModalOpen(false);
             setPaymentDetails(null);
@@ -793,62 +624,6 @@ const Profile = () => {
     };
   }, []);
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setSelectedImageFile(file);
-      setPreview(URL.createObjectURL(file));
-    }
-  };
-
-  const handleUpload = async () => {
-    if (!selectedImageFile) {
-      toast({
-        title: 'No Image Selected',
-        description: 'Please select an image to upload.',
-        status: 'warning',
-        duration: 3000,
-        isClosable: true,
-      });
-      return;
-    }
-
-    setUploading(true);
-    const formData = new FormData();
-    formData.append('image', selectedImageFile);
-
-    try {
-      const response = await axios.post(`${BASE_URL}/api/users/setAvatar`, formData, {
-        headers: {
-          'auth-token': localStorage.getItem('auth-token'),
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-
-      setUserDetails(response.data.user);
-      setPreview(null);
-      setSelectedImageFile(null);
-      toast({
-        title: 'Avatar Updated',
-        description: 'Your profile picture has been updated successfully.',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
-    } catch (error) {
-      console.error('Error uploading avatar:', error);
-      toast({
-        title: 'Upload Failed',
-        description: 'Failed to upload avatar. Please try again.',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
-    } finally {
-      setUploading(false);
-    }
-  };
-
   const handleEditToggle = () => {
     setEditMode(!editMode);
     if (!editMode) {
@@ -993,6 +768,22 @@ const Profile = () => {
     }
   };
 
+  const getAvatarSvg = () => {
+    const avatarSeed = userDetails?.avatarSeed || userDetails?._id || "default-user";
+    try {
+      const svg = multiavatar(avatarSeed);
+      return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+    } catch (error) {
+      console.error("Error generating Multiavatar:", error);
+      return `data:image/svg+xml;utf8,${encodeURIComponent(
+        `<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="32" cy="32" r="30" fill="#B38939" />
+          <text x="50%" y="50%" font-size="20" fill="white" text-anchor="middle" dominant-baseline="middle">${avatarSeed.slice(0, 2)}</text>
+        </svg>`
+      )}`;
+    }
+  };
+
   if (loading) {
     return (
       <Flex minH="100vh" align="center" justify="center" bg={backgroundBlue}>
@@ -1030,54 +821,22 @@ const Profile = () => {
               gap={6}
               alignItems="start"
             >
-              {/* Avatar Section */}
               <Box textAlign="center">
                 <Avatar
                   size="2xl"
-                  src={preview || (userDetails?.avatarImage ? `${BASE_URL}/${userDetails.avatarImage}` : UserProfile)}
+                  src={getAvatarSvg()}
+                  name={`${userDetails?.firstName || ''} ${userDetails?.lastName || ''}`.trim() || userDetails?.email?.split('@')[0]}
                   borderWidth="3px"
                   borderColor={avatarBorderColor}
                   mb={4}
                   boxShadow={`0 4px 12px ${blueShadow}`}
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = getAvatarSvg();
+                  }}
                 />
-                <FormControl mb={4}>
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    display="none"
-                    id="avatar-upload"
-                  />
-                  <Button
-                    as="label"
-                    htmlFor="avatar-upload"
-                    colorScheme="blue"
-                    leftIcon={<FaUpload />}
-                    isLoading={uploading}
-                    variant="outline"
-                    bg={fieldBg}
-                    _hover={{ bg: inputHoverBg }}
-                    w="full"
-                  >
-                    Choose Image
-                  </Button>
-                </FormControl>
-                {preview && (
-                  <Button
-                    colorScheme="blue"
-                    onClick={handleUpload}
-                    isLoading={uploading}
-                    leftIcon={<FaSave />}
-                    w="full"
-                    bgGradient={`linear(to-r, ${gradientStart}, ${gradientEnd})`}
-                    _hover={{ bgGradient: hoverGradient }}
-                  >
-                    Upload Image
-                  </Button>
-                )}
               </Box>
 
-              {/* Profile Details Section */}
               <Box>
                 <Flex justify="space-between" align="center" mb={4}>
                   <Text fontSize="xl" fontWeight="bold" color={textColor}>
@@ -1227,7 +986,6 @@ const Profile = () => {
               </Box>
             </Grid>
 
-            {/* Wallet Section */}
             <Box mt={8} p={6} bg={fieldBg} borderRadius="lg" borderWidth="1px" borderColor={borderColor}>
               <Flex justify="space-between" align="center" mb={4}>
                 <Text fontSize="xl" fontWeight="bold" color={textColor}>
@@ -1323,7 +1081,7 @@ const Profile = () => {
         }}
         paymentDetails={paymentDetails}
         onStatusCheck={handleCheckPaymentStatus}
-        userName={`${userDetails?.firstName || ''} ${userDetails?.lastName || ''}`.trim() || userDetails?.email.split('@')[0]}
+        userName={`${userDetails?.firstName || ''} ${userDetails?.lastName || ''}`.trim() || userDetails?.email?.split('@')[0]}
       />
 
       <WithdrawalModal
