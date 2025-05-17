@@ -64,25 +64,39 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
 
   useEffect(() => {
     const token = localStorage.getItem("auth-token");
-    if (token) {
-      axios.defaults.headers.common["auth-token"] = token;
+    if (!token) {
+      console.warn("No auth token found, skipping user details fetch");
+      handleLogout();
+      return;
     }
+    axios.defaults.headers.common["auth-token"] = token;
 
     axios
-      .get(`${BASE_URL}/api/users/user-details`, {
-        headers: { "auth-token": token },
-      })
+      .get(`${BASE_URL}/api/users/user-details`)
       .then((response) => {
-        setUserName(response.data.firstName);
+        console.log("User details response:", response.data); // Debug log
+        const userData = response.data.user || {};
+        if (!userData.firstName) {
+          console.warn("No firstName in user details:", userData);
+          setUserName("User");
+        } else {
+          setUserName(userData.firstName);
+        }
       })
       .catch((error) => {
-        if (error.response && error.response.status === 401) {
+        console.error("Error fetching user details:", error.response || error);
+        toast({
+          title: "Error fetching user details",
+          description: error.response?.data?.error || "An error occurred",
+          status: "error",
+          duration: 3000,
+          isClosable: true,
+        });
+        if (error.response?.status === 401) {
           handleLogout();
-        } else {
-          console.error("Error fetching user details:", error);
         }
       });
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     if (onCollapseChange) {
@@ -129,6 +143,7 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
 
   const handleLogout = () => {
     localStorage.removeItem("auth-token");
+    delete axios.defaults.headers.common["auth-token"];
     toast({
       title: "Logout Successful!",
       status: "success",
@@ -165,7 +180,6 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
     </button>
   );
 
-  // Always render the MobileToggle on mobile, but conditionally render the sidebar
   return (
     <>
       {isMobile && <MobileToggle />}
