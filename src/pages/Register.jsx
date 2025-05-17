@@ -9,7 +9,7 @@ import {
 import { motion } from "framer-motion";
 import {
   FiEye, FiEyeOff, FiArrowRight, FiMail, FiLock, FiUser,
-  FiCalendar, FiCheckCircle, FiShield
+  FiCalendar, FiCheckCircle, FiShield, FiPhone
 } from "react-icons/fi";
 import "./Register.css";
 
@@ -26,7 +26,8 @@ const Register = () => {
     email: "",
     password: "",
     confirmPassword: "",
-    dateOfBirth: ""
+    dateOfBirth: "",
+    phoneNumber: ""
   });
 
   const [showPassword, setShowPassword] = useState(false);
@@ -155,6 +156,11 @@ const Register = () => {
       }
     }
 
+    // Validate phone number (optional)
+    if (formData.phoneNumber && !/^(0\d{10}|\+234\d{10})$/.test(formData.phoneNumber)) {
+      newErrors.phoneNumber = "Phone number must be 11 digits starting with 0 or +234";
+    }
+
     // Validate password
     if (!formData.password) {
       newErrors.password = "Password is required";
@@ -199,23 +205,32 @@ const Register = () => {
         password: formData.password,
         email: formData.email,
         dateOfBirth: formData.dateOfBirth,
+        phoneNumber: formData.phoneNumber
       });
+
+      const { token, wallet } = response.data;
+
+      // Store token
+      localStorage.setItem('auth-token', token);
+
+      // Prepare success message with virtual account details
+      let successMessage = "Your account and wallet have been created. Redirecting to your dashboard...";
+      if (wallet?.virtualAccountNumber && wallet?.bankName) {
+        successMessage += `\n\nFund your wallet using:\nAccount Number: ${wallet.virtualAccountNumber}\nBank: ${wallet.bankName}`;
+      }
 
       toast({
         title: "Account Created Successfully",
-        description: "Your account and wallet have been created. Redirecting to your dashboard...",
+        description: successMessage,
         status: "success",
-        duration: 5000,
+        duration: 7000,
         isClosable: true,
         position: "top"
       });
 
-      // Store token
-      localStorage.setItem('auth-token', response.data.token);
-
       // Redirect to dashboard
       setTimeout(() => {
-        navigate("/dashboard"); // Adjust to your dashboard route
+        navigate("/dashboard");
       }, 1500);
     } catch (error) {
       console.error('Registration error:', error.response?.data || error);
@@ -241,17 +256,20 @@ const Register = () => {
           case 'Wallet already exists for this user':
             errorMessage = 'An account with this email already has a wallet. Please contact support.';
             break;
+          case 'Virtual account creation failed':
+            errorMessage = 'Failed to create a virtual account with Paystack. Please try again or contact support.';
+            break;
           case 'Database error: Duplicate transaction reference':
             errorMessage = 'A server error occurred with transaction references. Please try again or contact support.';
             break;
           case 'Database error: Duplicate key':
             errorMessage = `Registration failed due to duplicate data: ${JSON.stringify(error.response.data.details)}. Please contact support.`;
             break;
-          default:
-            errorMessage = error.response.data.error;
           case 'Password must be at least 8 characters and include uppercase, number, and special character':
             errorMessage = 'Password must be at least 8 characters and include an uppercase letter, number, and special character.';
             break;
+          default:
+            errorMessage = error.response.data.error;
         }
       } else if (error.response?.status === 500) {
         errorMessage = 'Server error. Please try again later.';
@@ -571,6 +589,34 @@ const Register = () => {
                         />
                       </InputGroup>
                       <FormErrorMessage>{errors.email}</FormErrorMessage>
+                    </FormControl>
+
+                    <FormControl isInvalid={!!errors.phoneNumber}>
+                      <FormLabel fontSize="sm" color="gray.300">
+                        Phone Number (Optional)
+                      </FormLabel>
+                      <InputGroup size={{ base: "md", md: "md" }}>
+                        <InputLeftElement
+                          pointerEvents="none"
+                          color="gray.400"
+                          children={<FiPhone />}
+                        />
+                        <Input
+                          type="tel"
+                          name="phoneNumber"
+                          placeholder="e.g., 08012345678 or +2348012345678"
+                          value={formData.phoneNumber}
+                          onChange={handleChange}
+                          focusBorderColor={accentColor}
+                          color="white"
+                          fontSize={{ base: "sm", md: "md" }}
+                          borderRadius="md"
+                          className="input-field"
+                          _hover={{ bg: "gray.600" }}
+                          _focus={{ bg: "gray.600" }}
+                        />
+                      </InputGroup>
+                      <FormErrorMessage>{errors.phoneNumber}</FormErrorMessage>
                     </FormControl>
 
                     <FormControl isRequired isInvalid={!!errors.dateOfBirth}>

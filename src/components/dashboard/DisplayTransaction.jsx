@@ -193,9 +193,9 @@ const TransactionCard = ({
             flexBasis="calc(50% - 4px)"
             minWidth="80px"
             isLoading={isConfirming[transaction._id]}
-            aria-label="Fund with wallet"
+            aria-label="Fund transaction"
           >
-            Fund Wallet
+            Fund Transaction
           </Button>
         )}
       </Flex>
@@ -376,35 +376,24 @@ const DisplayTransaction = ({ userResponse }) => {
   const toast = useToast();
   const navigate = useNavigate();
 
-
   // Check if screen is mobile size
   useEffect(() => {
     const checkScreenSize = () => {
       const isMobileView = window.innerWidth < 768;
       setIsMobile(isMobileView);
-
       // Auto-collapse sidebar on mobile by default
       if (isMobileView) {
         setIsSidebarCollapsed(true);
       }
     };
-
-    // Initial check
     checkScreenSize();
-
-    // Add event listener for resize
     window.addEventListener('resize', checkScreenSize);
-
-    // Cleanup
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
 
-  // Function to handle sidebar collapse state changes
   const handleSidebarCollapseChange = (isCollapsed) => {
     setIsSidebarCollapsed(isCollapsed);
   };
-
-
 
   const fetchData = useCallback(async (showLoader = false) => {
     const token = localStorage.getItem("auth-token");
@@ -440,11 +429,10 @@ const DisplayTransaction = ({ userResponse }) => {
   }, [toast]);
 
   useEffect(() => {
-    fetchData(true); // Initial load with loader
-    const interval = setInterval(() => fetchData(false), 30000); // Background updates without loader
+    fetchData(true);
+    const interval = setInterval(() => fetchData(false), 30000);
     return () => clearInterval(interval);
   }, [fetchData]);
-
 
   useEffect(() => {
     const socket = io(BASE_URL, { auth: { token: localStorage.getItem("auth-token") }, reconnection: true, reconnectionAttempts: 5, reconnectionDelay: 1000 });
@@ -478,12 +466,10 @@ const DisplayTransaction = ({ userResponse }) => {
       if (activeTab === "active" && t.status !== "pending") return false;
       if (activeTab === "completed" && t.status !== "completed") return false;
       if (activeTab === "cancelled" && t.status !== "cancelled") return false;
-
       const participantName = t.participants?.length > 0
         ? `${t.participants[0].firstName || ""} ${t.participants[0].lastName || ""}`.trim().toLowerCase()
         : "";
       const description = t.productDetails?.description?.toLowerCase() || "";
-
       return (
         participantName.includes(query) || description.includes(query)
       );
@@ -613,18 +599,46 @@ const DisplayTransaction = ({ userResponse }) => {
   };
 
   const handleFund = async (transaction) => {
-    if (transaction.locked || !transaction._id || (transaction.paymentAmount <= 0)) {
+    if (transaction.locked || !transaction._id || transaction.paymentAmount <= 0) {
       toast({ title: "Error", description: "Invalid transaction data.", status: "error", duration: 5000, isClosable: true });
       return;
     }
+    setIsConfirming(prev => ({ ...prev, [transaction._id]: true }));
     try {
-      await axios.post(`${BASE_URL}/api/transactions/fund-transaction`, { transactionId: transaction._id, amount: transaction.paymentAmount }, {
-        headers: { "auth-token": localStorage.getItem("auth-token") }
-      });
-      toast({ title: "Transaction funded", status: "success", duration: 3000, isClosable: true });
-      fetchData(false);
+      const amount = parseFloat(transaction.paymentAmount);
+      if (walletBalance >= amount) {
+        // Sufficient balance, proceed with funding from wallet
+        await axios.post(`${BASE_URL}/api/transactions/fund-transaction`, {
+          transactionId: transaction._id,
+          amount: amount
+        }, {
+          headers: { "auth-token": localStorage.getItem("auth-token") }
+        });
+        toast({ title: "Transaction funded", description: "Funded from wallet balance.", status: "success", duration: 3000, isClosable: true });
+        fetchData(false);
+      } else {
+        // Insufficient balance, initiate Paystack funding
+        const shortfall = amount - walletBalance;
+        const fundingAmount = Math.ceil(shortfall * 100) / 100; // Round up to 2 decimal places
+        const response = await axios.post(`${BASE_URL}/api/wallet/fund`, {
+          amount: fundingAmount,
+          email: currentUser.email,
+          phoneNumber: currentUser.phoneNumber || ""
+        }, {
+          headers: { "auth-token": localStorage.getItem("auth-token") }
+        });
+        if (response.data.success && response.data.data.authorization_url) {
+          // Redirect to Paystack payment page
+          window.location.href = response.data.data.authorization_url;
+        } else {
+          throw new Error("Failed to initiate Paystack funding.");
+        }
+      }
     } catch (error) {
-      toast({ title: "Error", description: error.response?.data?.message || "Could not fund transaction.", status: "error", duration: 5000, isClosable: true });
+      const errorMessage = error.response?.data?.error || error.message || "Could not fund transaction.";
+      toast({ title: "Error", description: errorMessage, status: "error", duration: 5000, isClosable: true });
+    } finally {
+      setIsConfirming(prev => ({ ...prev, [transaction._id]: false }));
     }
   };
 
@@ -671,10 +685,12 @@ const DisplayTransaction = ({ userResponse }) => {
   const toggleDescription = (transactionId) => {
     setExpandedDescriptions(prev => ({ ...prev, [transactionId]: !prev[transactionId] }));
   };
+
   const handleShowProfile = () => {
     setShowToggleContainer(false);
     setShowProfile(true);
   };
+
   const handleMyTransaction = () => {
     setShowToggleContainer(true);
     setShowProfile(false);
@@ -688,15 +704,9 @@ const DisplayTransaction = ({ userResponse }) => {
         onCollapseChange={handleSidebarCollapseChange}
       />
       <div
-        className={`transition-all pt-1 duration-300 flex-1 h-screen overflow-y-auto ${!isMobile ? (isSidebarCollapsed ? "ml-[80px]" : "ml-[280px]") : "ml-0"
-          } md:block block`}
+        className={`transition-all pt-1 duration-300 flex-1 h-screen overflow-y-auto ${!isMobile ? (isSidebarCollapsed ? "ml-[80px]" : "ml-[280px]") : "ml-0"} md:block block`}
       >
-        <Box
-          flex={1}
-          // ml={{ base: 0, md: isSidebarCollapsed ? "80px" : "280px" }}
-          // transition="margin-left 0.3s"
-          width={{ base: "100%", md: "auto" }}
-        >
+        <Box flex={1} width={{ base: "100%", md: "auto" }}>
           {showToggleContainer && (
             <Box width="100%">
               <MiniNav />
@@ -754,7 +764,6 @@ const DisplayTransaction = ({ userResponse }) => {
                     </Button>
                   </Flex>
                 </Flex>
-
                 <Flex
                   flexDir={{ base: "column", md: "row" }}
                   gap={4}
@@ -775,13 +784,8 @@ const DisplayTransaction = ({ userResponse }) => {
                     minW={{ base: "auto", md: "350px" }}
                     maxW={{ base: "100%", md: "60%" }}
                     css={{
-                      '&::-webkit-scrollbar': {
-                        height: '6px',
-                      },
-                      '&::-webkit-scrollbar-thumb': {
-                        backgroundColor: '#2D3748',
-                        borderRadius: '3px',
-                      }
+                      '&::-webkit-scrollbar': { height: '6px' },
+                      '&::-webkit-scrollbar-thumb': { backgroundColor: '#2D3748', borderRadius: '3px' }
                     }}
                   >
                     {["all", "active", "completed", "cancelled", "wallet"].map(tab => (
@@ -805,12 +809,7 @@ const DisplayTransaction = ({ userResponse }) => {
                       </Button>
                     ))}
                   </Flex>
-
-                  <Box
-                    pos="relative"
-                    w={{ base: "100%", md: "220px", lg: "250px" }}
-                    flexShrink={0}
-                  >
+                  <Box pos="relative" w={{ base: "100%", md: "220px", lg: "250px" }} flexShrink={0}>
                     <FiSearch style={{ position: "absolute", top: "50%", left: "12px", transform: "translateY(-50%)", color: "#967532" }} />
                     <Input
                       placeholder="Search..."
@@ -841,7 +840,6 @@ const DisplayTransaction = ({ userResponse }) => {
                     )}
                   </Box>
                 </Flex>
-
                 {(isInitialLoading || isManualRefreshing) ? (
                   <TransactionLoader />
                 ) : activeTab === "wallet" ? (
@@ -930,9 +928,7 @@ const DisplayTransaction = ({ userResponse }) => {
               </Box>
             </Box>
           )}
-
           {showProfile && <Box width="100%">{/* Profile content */}</Box>}
-
           <Modal isOpen={modalVisible} onClose={() => setModalVisible(false)} isCentered size={{ base: "xs", sm: "sm" }}>
             <ModalOverlay />
             <ModalContent bg="#1A1E21" color="white" mx={{ base: 3, sm: "auto" }}>
@@ -946,7 +942,6 @@ const DisplayTransaction = ({ userResponse }) => {
               </ModalFooter>
             </ModalContent>
           </Modal>
-
           {Object.keys(showWaybillPopup).map(id => showWaybillPopup[id] && (
             <WaybillModal
               key={`seller-${id}`}
@@ -961,7 +956,6 @@ const DisplayTransaction = ({ userResponse }) => {
               downloadImage={downloadImage}
             />
           ))}
-
           {Object.keys(buyerShowWaybillPopup).map(id => buyerShowWaybillPopup[id] && (
             <WaybillModal
               key={`buyer-${id}`}
@@ -973,7 +967,6 @@ const DisplayTransaction = ({ userResponse }) => {
               downloadImage={downloadImage}
             />
           ))}
-
           {showPaymentDetailsModal && (
             <PaymentDetailsModal
               isOpen={showPaymentDetailsModal}
@@ -985,11 +978,9 @@ const DisplayTransaction = ({ userResponse }) => {
               handleSubmit={handlePaymentSubmit}
             />
           )}
-
           {isMobile && <BottomNav />}
         </Box>
       </div>
-
     </Flex>
   );
 };
