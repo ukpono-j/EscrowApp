@@ -75,7 +75,13 @@ const NotificationComponent = () => {
           },
         });
         console.log('Notifications response:', res.data);
-        const sortedNotifications = res.data.sort((a, b) => 
+        const notificationsArray = res.data.data || []; // Default to empty array
+        if (!Array.isArray(notificationsArray)) {
+          console.warn('Notifications data is not an array:', notificationsArray);
+          setNotifications([]);
+          return;
+        }
+        const sortedNotifications = notificationsArray.sort((a, b) => 
           new Date(b.timestamp) - new Date(a.timestamp)
         );
         setNotifications(sortedNotifications);
@@ -96,16 +102,21 @@ const NotificationComponent = () => {
           duration: 3000,
           isClosable: true,
         });
+        setNotifications([]); // Set empty array on error
       } finally {
         setLoading(false);
         console.log('Loading set to false', 'Filter:', filter);
       }
     };
-
+  
     fetchData();
   }, [toast]);
 
   const getFilteredNotifications = () => {
+    if (!Array.isArray(notifications)) {
+      console.warn('Notifications is not an array:', notifications);
+      return [];
+    }
     const filtered = filter === "all" 
       ? notifications 
       : notifications.filter(n => n.status && n.status.toLowerCase() === filter.toLowerCase());
