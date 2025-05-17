@@ -414,12 +414,21 @@ const DisplayTransaction = ({ userResponse }) => {
         axios.get(`${BASE_URL}/api/wallet/balance`, { headers: { "auth-token": token } }),
         axios.get(`${BASE_URL}/api/wallet/transactions`, { headers: { "auth-token": token } })
       ]);
+      console.log('Transactions response:', txRes.data); // Debug log
+      const transactionsArray = txRes.data.data || []; // Default to empty array
+      if (!Array.isArray(transactionsArray)) {
+        console.warn('Transactions data is not an array:', transactionsArray);
+        setTransactions([]);
+      } else {
+        setTransactions(transactionsArray);
+      }
       setCurrentUser(userRes.data);
-      setTransactions(txRes.data || []);
       setWalletBalance(walletRes.data?.balance ?? 0);
       setWalletTransactions(walletTxRes.data?.transactions || []);
     } catch (error) {
+      console.error('Fetch error:', error.response || error);
       toast({ title: "Error fetching data", description: error.message, status: "error", duration: 3000, isClosable: true });
+      setTransactions([]); // Set empty array on error
     } finally {
       if (showLoader) {
         setIsInitialLoading(false);
@@ -461,6 +470,10 @@ const DisplayTransaction = ({ userResponse }) => {
   const debouncedSearch = useCallback(debounce((value) => setSearchQuery(value), 300), []);
 
   const filteredTransactions = useMemo(() => {
+    if (!Array.isArray(transactions)) {
+      console.warn('Transactions is not an array:', transactions);
+      return [];
+    }
     const query = searchQuery.toLowerCase();
     return transactions.filter((t) => {
       if (activeTab === "active" && t.status !== "pending") return false;
