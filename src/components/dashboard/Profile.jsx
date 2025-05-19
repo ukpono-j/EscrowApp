@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
+import { io } from "socket.io-client";
 import { FaEdit, FaWallet, FaTimes, FaUser, FaCalendarAlt, FaUniversity, FaCreditCard, FaSync, FaMoneyBillWave, FaSave, FaPhone } from "react-icons/fa";
 import { motion } from "framer-motion";
 import {
@@ -326,7 +327,6 @@ const Profile = () => {
   const maxFetchAttempts = 3;
   const isMountedRef = useRef(false);
 
-
   
   const formatDate = (dateString) => {
     if (!dateString) return "Not Provided";
@@ -395,7 +395,7 @@ const Profile = () => {
             duration: 5000,
             isClosable: true,
           });
-          fetchWalletBalance();
+          fetchWalletBalance(); // Refresh balance after successful payment
           onPaymentModalClose();
         } else if (response.data.data.transaction.status === 'failed') {
           clearInterval(interval);
@@ -422,7 +422,6 @@ const Profile = () => {
             duration: 5000,
             isClosable: true,
           });
-          // Keep paymentDetails and reference to allow manual status check
         }
       } catch (error) {
         console.error('Error polling payment status:', error);
@@ -437,7 +436,6 @@ const Profile = () => {
             duration: 5000,
             isClosable: true,
           });
-          // Keep paymentDetails and reference to allow manual status check
         }
       }
     }, 10000); // Poll every 10 seconds
