@@ -326,7 +326,6 @@ const Profile = () => {
   const previousBalanceRef = useRef(null);
   const maxFetchAttempts = 3;
   const isMountedRef = useRef(false);
-
   
   const formatDate = (dateString) => {
     if (!dateString) return "Not Provided";
