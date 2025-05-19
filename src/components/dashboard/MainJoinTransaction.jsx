@@ -30,7 +30,7 @@ import {
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 
 const MainJoinTransaction = () => {
-  const [transactionId, setTransactionId] = useState("");
+  const [transactionId, setTransactionId] = useState(""); // Renamed to transactionId for user input, but will map to _id internally
   const [isLoading, setIsLoading] = useState(false);
   const [responseMessage, setResponseMessage] = useState("");
   const [messageType, setMessageType] = useState("");
@@ -103,12 +103,17 @@ const MainJoinTransaction = () => {
         headers: { "auth-token": token },
       });
 
-      setTransactionDetails(response.data);
-      setShowPreviewModal(true);
+      if (!response.data.success) {
+        setResponseMessage(response.data.error || "Error fetching transaction details");
+        setMessageType("error");
+      } else {
+        setTransactionDetails(response.data.data); // Adjusted for responseFormatter
+        setShowPreviewModal(true);
+      }
     } catch (error) {
       console.error("Error fetching transaction details:", error);
-      if (error.response) {
-        setResponseMessage(error.response.data.message || "Error fetching transaction details");
+      if (error.response && !error.response.data.success) {
+        setResponseMessage(error.response.data.error || "Error fetching transaction details");
       } else {
         setResponseMessage("Network error. Please try again.");
       }
@@ -124,21 +129,26 @@ const MainJoinTransaction = () => {
       const token = localStorage.getItem("auth-token");
       const response = await axios.post(
         `${BASE_URL}/api/transactions/join-transaction`,
-        { transactionId },
+        { id: transactionId }, // Changed to id to match _id in schema
         { headers: { "auth-token": token } }
       );
 
-      setResponseMessage(`Successfully joined as ${response.data.role}. Redirecting...`);
-      setMessageType("success");
-      setShowPreviewModal(false);
+      if (!response.data.success) {
+        setResponseMessage(response.data.error || "Error joining transaction");
+        setMessageType("error");
+      } else {
+        setResponseMessage(`Successfully joined as ${response.data.role}. Redirecting...`);
+        setMessageType("success");
+        setShowPreviewModal(false);
 
-      setTimeout(() => {
-        navigate("/transactions/tab");
-      }, 2000);
+        setTimeout(() => {
+          navigate("/transactions/tab");
+        }, 2000);
+      }
     } catch (error) {
       console.error("Error joining transaction:", error);
-      if (error.response) {
-        setResponseMessage(error.response.data.message || "Error joining transaction");
+      if (error.response && !error.response.data.success) {
+        setResponseMessage(error.response.data.error || "Error joining transaction");
       } else {
         setResponseMessage("Network error. Please try again.");
       }
@@ -163,25 +173,30 @@ const MainJoinTransaction = () => {
       const response = await axios.post(
         `${BASE_URL}/api/transactions/accept-and-update`,
         {
-          transactionId,
+          id: transactionId, // Changed to id to match _id in schema
           description: editDetails.description,
           price: editDetails.price,
         },
         { headers: { "auth-token": token } }
       );
 
-      setResponseMessage(`Successfully joined as ${response.data.role}. Redirecting...`);
-      setMessageType("success");
-      setShowPreviewModal(false);
-      setShowEditModal(false);
+      if (!response.data.success) {
+        setResponseMessage(response.data.error || "Error updating transaction");
+        setMessageType("error");
+      } else {
+        setResponseMessage(`Successfully joined as ${response.data.role}. Redirecting...`);
+        setMessageType("success");
+        setShowPreviewModal(false);
+        setShowEditModal(false);
 
-      setTimeout(() => {
-        navigate("/transactions/tab");
-      }, 2000);
+        setTimeout(() => {
+          navigate("/transactions/tab");
+        }, 2000);
+      }
     } catch (error) {
       console.error("Error accepting and updating transaction:", error);
-      if (error.response) {
-        setResponseMessage(error.response.data.message || "Error updating transaction");
+      if (error.response && !error.response.data.success) {
+        setResponseMessage(error.response.data.error || "Error updating transaction");
       } else {
         setResponseMessage("Network error. Please try again.");
       }
@@ -195,19 +210,24 @@ const MainJoinTransaction = () => {
     try {
       setIsLoading(true);
       const token = localStorage.getItem("auth-token");
-      await axios.post(
+      const response = await axios.post(
         `${BASE_URL}/api/transactions/reject-transaction`,
-        { transactionId },
+        { id: transactionId }, // Changed to id to match _id in schema
         { headers: { "auth-token": token } }
       );
 
-      setResponseMessage("Transaction rejected.");
-      setMessageType("info");
-      setShowPreviewModal(false);
+      if (!response.data.success) {
+        setResponseMessage(response.data.error || "Error rejecting transaction");
+        setMessageType("error");
+      } else {
+        setResponseMessage("Transaction rejected.");
+        setMessageType("info");
+        setShowPreviewModal(false);
+      }
     } catch (error) {
       console.error("Error rejecting transaction:", error);
-      if (error.response) {
-        setResponseMessage(error.response.data.message || "Error rejecting transaction");
+      if (error.response && !error.response.data.success) {
+        setResponseMessage(error.response.data.error || "Error rejecting transaction");
       } else {
         setResponseMessage("Network error. Please try again.");
       }

@@ -28,6 +28,15 @@ import {
 } from "@chakra-ui/react";
 import "./Sidebar.css";
 
+// Utility function to validate user response (inline for simplicity)
+const validateUserResponse = (responseData) => {
+  if (responseData.success && responseData.data?.user) {
+    return responseData.data.user;
+  }
+  console.error("Invalid user data structure:", responseData);
+  throw new Error(responseData.error || "Invalid user data received");
+};
+
 const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => {
   const location = useLocation();
   const [activeLink, setActiveLink] = useState(location.pathname);
@@ -74,17 +83,36 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
     axios
       .get(`${BASE_URL}/api/users/user-details`)
       .then((response) => {
-        console.log("User details response:", response.data); // Debug log
-        const userData = response.data.user || {};
-        if (!userData.firstName) {
-          console.warn("No firstName in user details:", userData);
+        console.log("User details response:", response.data);
+        try {
+          const user = validateUserResponse(response.data);
+          if (!user.firstName) {
+            console.warn("No firstName in user details:", user);
+            setUserName("User");
+          } else {
+            setUserName(user.firstName);
+          }
+        } catch (error) {
+          console.error("Error validating user details:", {
+            message: error.message,
+            response: response.data,
+          });
+          toast({
+            title: "Error fetching user details",
+            description: error.message || "Invalid user data received",
+            status: "error",
+            duration: 3000,
+            isClosable: true,
+          });
           setUserName("User");
-        } else {
-          setUserName(userData.firstName);
         }
       })
       .catch((error) => {
-        console.error("Error fetching user details:", error.response || error);
+        console.error("Error fetching user details:", {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+        });
         toast({
           title: "Error fetching user details",
           description: error.response?.data?.error || "An error occurred",
@@ -92,9 +120,10 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
           duration: 3000,
           isClosable: true,
         });
-        if (error.response?.status === 401) {
+        if (error.response?.status === 401 || error.response?.status === 404) {
           handleLogout();
         }
+        setUserName("User");
       });
   }, [toast]);
 

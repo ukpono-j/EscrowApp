@@ -491,7 +491,7 @@ const DisplayTransaction = ({ userResponse }) => {
 
   const handleChat = async (transactionId) => {
     try {
-      const res = await axios.post(`${BASE_URL}/api/transactions/create-chatroom`, { transactionId }, { headers: { "auth-token": localStorage.getItem("auth-token") } });
+      const res = await axios.post(`${BASE_URL}/api/transactions/create-chatroom`, { id: transactionId }, { headers: { "auth-token": localStorage.getItem("auth-token") } });
       navigate(`/chat/${res.data.chatroomId}`);
     } catch (error) {
       toast({ title: "Error creating chatroom", description: error.message, status: "error", duration: 3000, isClosable: true });

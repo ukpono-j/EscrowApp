@@ -23,27 +23,47 @@ import {
   Divider,
   useColorMode,
   useColorModeValue,
+  Spinner,
+  Center,
+  Fade,
 } from "@chakra-ui/react";
 import defaultProfileImage from "../../assets/profile_icon.png";
 import nigeriaBanks, { getBankNameFromCode } from "../../data/banksList";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 
+// Utility function to validate user response
+const validateUserResponse = (responseData) => {
+  if (responseData.success && responseData.data?.user) {
+    return responseData.data.user;
+  }
+  console.error("Invalid user data structure:", responseData);
+  throw new Error(responseData.error || "Invalid user data received");
+};
+
+// Generic utility to validate API response success
+const validateApiResponse = (responseData, endpoint) => {
+  if (responseData.success) {
+    return responseData.data || {};
+  }
+  console.error(`Invalid response from ${endpoint}:`, responseData);
+  throw new Error(responseData.error || "Invalid response received");
+};
+
 const TransactionCreation = () => {
-  console.log("TransactionCreation: Starting Hook declarations");
+  console.log("TransactionCreation: Component rendering");
 
   // State for paymentAmount
   const [paymentAmount, setPaymentAmount] = useState("");
-  console.log("Hook 1: useState (paymentAmount)");
+  console.log("State: paymentAmount =", paymentAmount);
 
   // Calculate transactionFee and totalAmount
   const transactionFee = paymentAmount ? (paymentAmount * 0.008).toFixed(2) : "0.00";
   const totalAmount = paymentAmount ? (parseFloat(paymentAmount) + parseFloat(transactionFee)).toFixed(2) : "0.00";
+  console.log("Computed: transactionFee =", transactionFee, "totalAmount =", totalAmount);
 
   // Theme Hooks
   const { colorMode } = useColorMode();
-  console.log("Hook 2: useColorMode");
-
   const bgMain = useColorModeValue("white", "#0F1624");
   const bgSecondary = useColorModeValue("#F7FAFC", "#1E293B");
   const bgTertiary = useColorModeValue("#EDF2F7", "#2D3748");
@@ -54,60 +74,33 @@ const TransactionCreation = () => {
   const shadowColor = useColorModeValue("rgba(0, 0, 0, 0.1)", "rgba(0, 0, 0, 0.3)");
   const inputBg = useColorModeValue("white", "#0F1624");
   const cardBorder = useColorModeValue("1px solid #E2E8F0", "none");
-  console.log("Hook 3: useColorModeValue (multiple calls)");
+  console.log("Theme: colorMode =", colorMode);
 
   const toast = useToast();
-  console.log("Hook 4: useToast");
-
   const navigate = useNavigate();
-  console.log("Hook 5: useNavigate");
 
   // Other state Hooks
   const [step, setStep] = useState(1);
-  console.log("Hook 6: useState (step)");
-
   const [nextButtonActive, setNextButtonActive] = useState(false);
-  console.log("Hook 7: useState (nextButtonActive)");
-
   const [paymentBank, setPaymentBank] = useState("");
-  console.log("Hook 8: useState (paymentBank)");
-
   const [paymentAccountNumber, setPaymentAccountNumber] = useState("");
-  console.log("Hook 9: useState (paymentAccountNumber)");
-
   const [paymentDescription, setPaymentDescription] = useState("");
-  console.log("Hook 10: useState (paymentDescription)");
-
   const [email, setEmail] = useState("");
-  console.log("Hook 11: useState (email)");
-
   const [selectedUserType, setSelectedUserType] = useState("");
-  console.log("Hook 12: useState (selectedUserType)");
-
   const [acceptTransactionModel, setAcceptTransactionModel] = useState(false);
-  console.log("Hook 13: useState (acceptTransactionModel)");
-
   const [userDetails, setUserDetails] = useState({});
-  console.log("Hook 14: useState (userDetails)");
-
   const [banks, setBanks] = useState([]);
-  console.log("Hook 15: useState (banks)");
-
   const [selectedBankCode, setSelectedBankCode] = useState("");
-  console.log("Hook 16: useState (selectedBankCode)");
-
   const [uniqueBanks, setUniqueBanks] = useState([]);
-  console.log("Hook 17: useState (uniqueBanks)");
-
   const [formValid, setFormValid] = useState(false);
-  console.log("Hook 18: useState (formValid)");
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState(""); // Added for error display
+
+  console.log("State: isLoading =", isLoading, "userDetails =", userDetails, "banks =", banks);
 
   // Ref Hooks
   const userDetailsFetched = useRef(false);
-  console.log("Hook 19: useRef (userDetailsFetched)");
-
   const banksFetched = useRef(false);
-  console.log("Hook 20: useRef (banksFetched)");
 
   // Memoized callback Hooks
   const handleBankSelection = useCallback(
@@ -119,7 +112,6 @@ const TransactionCreation = () => {
     },
     [uniqueBanks]
   );
-  console.log("Hook 21: useCallback (handleBankSelection)");
 
   const verifyBankAccount = useCallback(async () => {
     if (!selectedBankCode || !paymentAccountNumber) {
@@ -160,12 +152,12 @@ const TransactionCreation = () => {
           bank_name: paymentBank,
         },
         {
-          headers: { "auth-token": token },
+          headers: { Authorization: `Bearer ${token}` },
           timeout: 10000,
         }
       );
-      console.log("Verify bank response:", response.data); // Debug log
-      const responseData = response.data.data || {};
+      console.log("Verify bank response:", response.data);
+      const responseData = validateApiResponse(response.data, "/api/transactions/bank/verify");
       if (responseData.status) {
         toast({
           title: "Account verified!",
@@ -184,13 +176,18 @@ const TransactionCreation = () => {
         });
       }
     } catch (error) {
-      console.error("Verify bank error:", error.response || error);
+      console.error("Verify bank error:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
       let errorMessage = "Network error or invalid account details";
       if (error.response) {
         if (error.response.status === 422) errorMessage = "Invalid account details";
-        else if (error.response.status === 403 || error.response.status === 401)
+        else if (error.response.status === 403 || error.response.status === 401) {
           errorMessage = "Authorization error. Please re-login";
-        else if (error.response?.data?.message) errorMessage = error.response.data.message;
+          navigate("/");
+        } else if (error.response?.data?.error) errorMessage = error.response.data.error;
       }
       toast({
         title: "Verification failed",
@@ -200,8 +197,7 @@ const TransactionCreation = () => {
         isClosable: true,
       });
     }
-  }, [selectedBankCode, paymentAccountNumber, paymentBank, toast]);
-  console.log("Hook 22: useCallback (verifyBankAccount)");
+  }, [selectedBankCode, paymentAccountNumber, paymentBank, toast, navigate]);
 
   const acceptTransactionFunction = useCallback(
     (e) => {
@@ -219,7 +215,6 @@ const TransactionCreation = () => {
     },
     [formValid, toast]
   );
-  console.log("Hook 23: useCallback (acceptTransactionFunction)");
 
   const createNewTransaction = useCallback(
     (e) => {
@@ -244,14 +239,39 @@ const TransactionCreation = () => {
         paymentAccountNumber,
       };
       const token = localStorage.getItem("auth-token");
-      if (token) axios.defaults.headers.common["auth-token"] = token;
       axios
-        .post(`${BASE_URL}/api/transactions/create-transaction`, requestData)
-        .then((response) => {
-          console.log("Create transaction response:", response.data); // Debug log
-          const transactionId = response.data.data?.transactionId || "Unknown";
+        .post(`${BASE_URL}/api/transactions/create-transaction`, requestData, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        .then(async (response) => {
+          console.log("Create transaction response:", response.data);
+          const responseData = validateApiResponse(response.data, "/api/transactions/create-transaction");
+          const transactionId = responseData.transactionId || responseData.data?._id || "Unknown"; // Use _id as fallback
+          
+          // Verify the transaction exists by fetching it
+          try {
+            const verifyResponse = await axios.get(`${BASE_URL}/api/transactions/${transactionId}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            console.log("Transaction verification response:", verifyResponse.data);
+            const verifiedData = validateApiResponse(verifyResponse.data, `/api/transactions/${transactionId}`);
+            if (!verifiedData._id) {
+              throw new Error("Transaction not found after creation");
+            }
+          } catch (verifyError) {
+            console.error("Error verifying transaction:", verifyError);
+            toast({
+              title: "Transaction created but not found",
+              description: "The transaction was created but could not be retrieved. Please check the transaction list manually.",
+              status: "warning",
+              duration: 5000,
+              isClosable: true,
+            });
+          }
+  
           toast({
             title: "Successfully created a transaction",
+            description: `Transaction ID: ${transactionId}`,
             status: "success",
             duration: 3000,
             isClosable: true,
@@ -259,7 +279,11 @@ const TransactionCreation = () => {
           navigate("/transactions/tab");
         })
         .catch((error) => {
-          console.error("Transaction creation error:", error.response || error);
+          console.error("Transaction creation error:", {
+            message: error.message,
+            response: error.response?.data,
+            status: error.response?.status,
+          });
           const errorMessage = error.response?.data?.error || error.message;
           toast({
             title: "Error occurred during transaction",
@@ -284,8 +308,7 @@ const TransactionCreation = () => {
       toast,
     ]
   );
-  console.log("Hook 24: useCallback (createNewTransaction)");
-
+  
   const createNewTransactionForBuyer = useCallback(
     (e) => {
       if (e) e.preventDefault();
@@ -301,12 +324,36 @@ const TransactionCreation = () => {
         isBuyerOnly: true,
       };
       const token = localStorage.getItem("auth-token");
-      if (token) axios.defaults.headers.common["auth-token"] = token;
       axios
-        .post(`${BASE_URL}/api/transactions/create-transaction`, requestData)
-        .then((response) => {
-          console.log("Create buyer transaction response:", response.data); // Debug log
-          const transactionId = response.data.data?.transactionId || "Unknown";
+        .post(`${BASE_URL}/api/transactions/create-transaction`, requestData, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        .then(async (response) => {
+          console.log("Create buyer transaction response:", response.data);
+          const responseData = validateApiResponse(response.data, "/api/transactions/create-transaction");
+          const transactionId = responseData.transactionId || responseData.data?._id || "Unknown";
+  
+          // Verify the transaction exists by fetching it
+          try {
+            const verifyResponse = await axios.get(`${BASE_URL}/api/transactions/${transactionId}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            console.log("Transaction verification response:", verifyResponse.data);
+            const verifiedData = validateApiResponse(verifyResponse.data, `/api/transactions/${transactionId}`);
+            if (!verifiedData._id) {
+              throw new Error("Transaction not found after creation");
+            }
+          } catch (verifyError) {
+            console.error("Error verifying transaction:", verifyError);
+            toast({
+              title: "Transaction created but not found",
+              description: "The transaction was created but could not be retrieved. Please check the transaction list manually.",
+              status: "warning",
+              duration: 5000,
+              isClosable: true,
+            });
+          }
+  
           toast({
             title: "Successfully created a transaction",
             description: `Your transaction ID: ${transactionId}. Share this with the seller.`,
@@ -317,7 +364,11 @@ const TransactionCreation = () => {
           navigate("/transactions/tab");
         })
         .catch((error) => {
-          console.error("Transaction creation error:", error.response || error);
+          console.error("Transaction creation error:", {
+            message: error.message,
+            response: error.response?.data,
+            status: error.response?.status,
+          });
           const errorMessages =
             error.response?.data?.errors?.map((err) => err.msg).join(", ") || error.message;
           toast({
@@ -331,13 +382,11 @@ const TransactionCreation = () => {
     },
     [userDetails.fullName, userDetails.email, totalAmount, paymentDescription, navigate, toast]
   );
-  console.log("Hook 25: useCallback (createNewTransactionForBuyer)");
 
   const handleRadioClick = useCallback((userType) => {
     setSelectedUserType(userType);
     setNextButtonActive(true);
   }, []);
-  console.log("Hook 26: useCallback (handleRadioClick)");
 
   const handleNextClick = useCallback(() => {
     if (step === 1 && selectedUserType) {
@@ -345,7 +394,6 @@ const TransactionCreation = () => {
       setNextButtonActive(false);
     }
   }, [step, selectedUserType]);
-  console.log("Hook 27: useCallback (handleNextClick)");
 
   const handlePreviousClick = useCallback(() => {
     if (step > 1) {
@@ -353,15 +401,29 @@ const TransactionCreation = () => {
       setNextButtonActive(false);
     }
   }, [step]);
-  console.log("Hook 28: useCallback (handlePreviousClick)");
 
   // Effect Hooks
   useEffect(() => {
-    if (userDetailsFetched.current) return;
+    console.log("useEffect: Fetching user details");
+    if (userDetailsFetched.current) {
+      console.log("User details already fetched, skipping");
+      return;
+    }
     const fetchUserDetails = async () => {
+      setIsLoading(true);
+      console.log("Fetching user details, isLoading set to true");
+      const timeout = setTimeout(() => {
+        toast({
+          title: "Taking too long?",
+          description: "Please check your network connection.",
+          status: "warning",
+          duration: 5000,
+          isClosable: true,
+        });
+      }, 10000); // 10 seconds
       const token = localStorage.getItem("auth-token");
       if (!token) {
-        console.warn("No auth token found, skipping user details fetch");
+        console.warn("No auth token found, redirecting to login");
         toast({
           title: "Authentication Error",
           description: "Please log in to continue",
@@ -370,43 +432,68 @@ const TransactionCreation = () => {
           isClosable: true,
         });
         navigate("/");
+        setIsLoading(false);
+        clearTimeout(timeout);
         return;
       }
-      axios.defaults.headers.common["auth-token"] = token;
       try {
-        const response = await axios.get(`${BASE_URL}/api/users/user-details`);
-        console.log("User details response:", response.data); // Debug log
-        const userData = response.data.data?.user || {};
-        setUserDetails(userData);
-        setEmail(userData.email || "");
+        console.log("Making request to /api/users/user-details");
+        const response = await axios.get(`${BASE_URL}/api/users/user-details`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        console.log("User details response:", response.data);
+        const user = validateUserResponse(response.data);
+        if (!user.email) {
+          console.warn("No email in user details:", user);
+        }
+        setUserDetails(user);
+        setEmail(user.email || "");
+        userDetailsFetched.current = true;
       } catch (error) {
-        console.error("Error fetching user details:", error.response || error);
+        console.error("Error fetching user details:", {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+        });
+        setErrorMessage(error.response?.data?.error || error.message || "Unable to fetch user details");
         toast({
           title: "Error fetching user details",
-          description: error.response?.data?.error || error.message,
+          description: error.response?.data?.error || error.message || "Unable to fetch user details",
           status: "error",
           duration: 3000,
           isClosable: true,
         });
-        if (error.response?.status === 401) {
+        if (error.response?.status === 401 || error.response?.status === 404) {
+          console.log("Unauthorized or not found, redirecting to login");
+          localStorage.removeItem("auth-token");
           navigate("/");
         }
+      } finally {
+        console.log("Finished fetching user details, setting isLoading to false");
+        setIsLoading(false);
+        clearTimeout(timeout);
       }
-      userDetailsFetched.current = true;
     };
     fetchUserDetails();
   }, [toast, navigate]);
-  console.log("Hook 29: useEffect (fetchUserDetails)");
 
   useEffect(() => {
-    if (banksFetched.current) return;
+    console.log("useEffect: Fetching banks");
+    if (banksFetched.current) {
+      console.log("Banks already fetched, skipping");
+      return;
+    }
     const cachedBanks = localStorage.getItem("apiBanks");
-    if (cachedBanks) {
+    const cacheTimestamp = localStorage.getItem("apiBanksTimestamp");
+    const cacheAge = cacheTimestamp ? Date.now() - parseInt(cacheTimestamp) : Infinity;
+    if (cachedBanks && cacheAge < 24 * 60 * 60 * 1000) {
       try {
         const parsedBanks = JSON.parse(cachedBanks);
         if (Array.isArray(parsedBanks) && parsedBanks.length > 0) {
+          console.log("Using cached banks:", parsedBanks);
           setBanks(parsedBanks);
           banksFetched.current = true;
+          setIsLoading(false);
           return;
         }
       } catch (e) {
@@ -414,35 +501,68 @@ const TransactionCreation = () => {
       }
     }
     const fetchBanks = async () => {
+      setIsLoading(true);
+      console.log("Fetching banks, isLoading set to true");
+      const timeout = setTimeout(() => {
+        toast({
+          title: "Taking too long?",
+          description: "Please check your network connection.",
+          status: "warning",
+          duration: 5000,
+          isClosable: true,
+        });
+      }, 10000);
       try {
         const token = localStorage.getItem("auth-token");
+        if (!token) {
+          throw new Error("No authentication token found");
+        }
+        console.log("Making request to /api/transactions/banks");
         const response = await axios.get(`${BASE_URL}/api/transactions/banks`, {
-          headers: { "auth-token": token },
+          headers: { Authorization: `Bearer ${token}` },
           timeout: 10000,
         });
-        console.log("Banks response:", response.data); // Debug log
-        const apiBanks = response.data.data?.data?.length > 0 ? response.data.data.data : nigeriaBanks;
+        console.log("Banks response:", response.data);
+        const responseData = validateApiResponse(response.data, "/api/transactions/banks");
+        const apiBanks = responseData.data?.length > 0 ? responseData.data : nigeriaBanks;
         setBanks(apiBanks);
         localStorage.setItem("apiBanks", JSON.stringify(apiBanks));
+        localStorage.setItem("apiBanksTimestamp", Date.now().toString());
+        banksFetched.current = true;
       } catch (error) {
-        console.error("Error fetching banks:", error.response || error);
-        setBanks(nigeriaBanks);
-        localStorage.setItem("apiBanks", JSON.stringify(nigeriaBanks));
+        console.error("Error fetching banks:", {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+        });
+        setErrorMessage(error.response?.data?.error || "Failed to fetch banks from server");
         toast({
           title: "Using default bank list",
-          description: error.response?.data?.error || "Network error occurred",
+          description: error.response?.data?.error || "Failed to fetch banks from server",
           status: "warning",
           duration: 3000,
           isClosable: true,
         });
+        setBanks(nigeriaBanks);
+        localStorage.setItem("apiBanks", JSON.stringify(nigeriaBanks));
+        localStorage.setItem("apiBanksTimestamp", Date.now().toString());
+        if (error.response?.status === 401 || error.response?.status === 404) {
+          console.log("Unauthorized or not found, redirecting to login");
+          localStorage.removeItem("auth-token");
+          navigate("/");
+        }
+      } finally {
+        console.log("Finished fetching banks, setting isLoading to false");
+        setIsLoading(false);
+        clearTimeout(timeout);
       }
-      banksFetched.current = true;
     };
     fetchBanks();
-  }, [toast]);
+  }, [toast, navigate]);
 
   useEffect(() => {
     if (banks.length > 0 && uniqueBanks.length === 0) {
+      console.log("Filtering unique banks");
       const bankMap = new Map();
       banks.forEach((bank) => {
         if (!bankMap.has(bank.code)) bankMap.set(bank.code, bank);
@@ -450,9 +570,9 @@ const TransactionCreation = () => {
       setUniqueBanks(Array.from(bankMap.values()));
     }
   }, [banks, uniqueBanks]);
-  console.log("Hook 31: useEffect (filterUniqueBanks)");
 
   useEffect(() => {
+    console.log("Validating form");
     if (selectedUserType === "buyer") {
       setFormValid(paymentDescription.trim() !== "" && paymentAmount.trim() !== "");
     } else {
@@ -465,11 +585,9 @@ const TransactionCreation = () => {
       );
     }
   }, [email, paymentAmount, selectedBankCode, paymentAccountNumber, paymentDescription, selectedUserType]);
-  console.log("Hook 32: useEffect (formValidation)");
-
-  console.log("TransactionCreation: Finished Hook declarations");
 
   // Render
+  console.log("Rendering component, isLoading =", isLoading, "errorMessage =", errorMessage);
   return (
     <Box
       minH="100vh"
@@ -478,262 +596,216 @@ const TransactionCreation = () => {
       color={textColor}
       transition="background 0.3s ease, color 0.3s ease"
     >
-      <VStack spacing={8} maxW="900px" mx="auto">
-        <Text
-          as="h1"
-          fontSize={{ base: "2xl", md: "3xl" }}
-          className="font-bold"
-          textAlign="center"
-          bgGradient={colorMode === "light" ? "linear(to-r, #957432, #C9A55A)" : "linear(to-r, #957432, #C9A55A)"}
-          bgClip="text"
-          letterSpacing="tight"
-        >
-          Create Transaction
-        </Text>
-        <Box w="full" maxW="500px" position="relative" mb={10}>
-          <Progress
-            value={(step / 2) * 100}
-            size="sm"
-            colorScheme="yellow"
-            bg={bgTertiary}
-            borderRadius="full"
-            sx={{ "& > div": { background: accentColor } }}
-          />
-          <HStack justify="space-between" w="full" position="absolute" top="-16px">
-            {[1, 2].map((number) => (
-              <Flex
-                key={number}
-                w="40px"
-                h="40px"
+      {isLoading ? (
+        <Center minH="100vh">
+          <VStack spacing={4}>
+            <Spinner size="xl" color={accentColor} thickness="4px" />
+            <Text fontSize="lg" color={textColor}>
+              Loading transaction details...
+            </Text>
+          </VStack>
+        </Center>
+      ) : errorMessage ? (
+        <Center minH="100vh">
+          <VStack spacing={4}>
+            <Text fontSize="lg" color="red.500">
+              Error: {errorMessage}
+            </Text>
+            <Button
+              onClick={() => navigate("/")}
+              bg={accentColor}
+              color="white"
+              _hover={{ bg: accentHoverColor }}
+            >
+              Go to Login
+            </Button>
+          </VStack>
+        </Center>
+      ) : (
+        <Fade in={!isLoading}>
+          <VStack spacing={8} maxW="900px" mx="auto">
+            <Text
+              as="h1"
+              fontSize={{ base: "2xl", md: "3xl" }}
+              className="font-bold"
+              textAlign="center"
+              bgGradient={colorMode === "light" ? "linear(to-r, #957432, #C9A55A)" : "linear(to-r, #957432, #C9A55A)"}
+              bgClip="text"
+              letterSpacing="tight"
+            >
+              Create Transaction
+            </Text>
+            <Box w="full" maxW="500px" position="relative" mb={10}>
+              <Progress
+                value={(step / 2) * 100}
+                size="sm"
+                colorScheme="yellow"
+                bg={bgTertiary}
                 borderRadius="full"
-                bg={step >= number ? accentColor : bgTertiary}
-                color={step >= number ? "white" : textColor}
-                justify="center"
- вдоль
-                align="center"
-                fontWeight="bold"
-                boxShadow={`0px 4px 10px ${shadowColor}`}
-                transition="all 0.3s ease"
-                border={step >= number ? "none" : cardBorder}
-              >
-                {number}
-              </Flex>
-            ))}
-          </HStack>
-        </Box>
-        <Heading
-          as="h2"
-          fontSize={{ base: "xl", md: "2xl" }}
-          textAlign="center"
-          fontWeight="600"
-          mb={8}
-          color={textColor}
-        >
-          {step === 1 ? "I'm a" : "Transaction Details"}
-        </Heading>
-        {step === 1 && (
-          <HStack spacing={6} flexWrap={{ base: "wrap", md: "nowrap" }} justify="center">
-            <Box
-              as="label"
-              htmlFor="buyer"
-              cursor="pointer"
-              bg={bgSecondary}
-              borderRadius="xl"
-              p={6}
-              w={{ base: "full", md: "250px" }}
-              textAlign="center"
-              boxShadow={`0px 4px 20px ${shadowColor}`}
-              transition="all 0.3s ease"
-              _hover={{ transform: "translateY(-5px)", boxShadow: `0px 8px 25px ${shadowColor}` }}
-              borderWidth="2px"
-              borderColor={selectedUserType === "buyer" ? accentColor : "transparent"}
-            >
-              <input
-                type="radio"
-                id="buyer"
-                name="userType"
-                className="sr-only"
-                onClick={() => handleRadioClick("buyer")}
-                required
+                sx={{ "& > div": { background: accentColor } }}
               />
-              <VStack spacing={4}>
-                <Flex
-                  w="60px"
-                  h="60px"
-                  borderRadius="full"
-                  bg={selectedUserType === "buyer" ? accentColor : bgTertiary}
-                  color="white"
-                  justify="center"
-                  align="center"
-                  fontSize="2xl"
-                  mx="auto"
-                >
-                  <FaShoppingCart />
-                </Flex>
-                <Text fontSize="lg" fontWeight="bold" color={textColor}>
-                  Buyer
-                </Text>
-              </VStack>
+              <HStack justify="space-between" w="full" position="absolute" top="-16px">
+                {[1, 2].map((number) => (
+                  <Flex
+                    key={number}
+                    w="40px"
+                    h="40px"
+                    borderRadius="full"
+                    bg={step >= number ? accentColor : bgTertiary}
+                    color={step >= number ? "white" : textColor}
+                    justify="center"
+                    align="center"
+                    fontWeight="bold"
+                    boxShadow={`0px 4px 10px ${shadowColor}`}
+                    transition="all 0.3s ease"
+                    border={step >= number ? "none" : cardBorder}
+                  >
+                    {number}
+                  </Flex>
+                ))}
+              </HStack>
             </Box>
-            <Box
-              as="label"
-              htmlFor="seller"
-              cursor="pointer"
-              bg={bgSecondary}
-              borderRadius="xl"
-              p={6}
-              w={{ base: "full", md: "250px" }}
+            <Heading
+              as="h2"
+              fontSize={{ base: "xl", md: "2xl" }}
               textAlign="center"
-              boxShadow={`0px 4px 20px ${shadowColor}`}
-              transition="all 0.3s ease"
-              _hover={{ transform: "translateY(-5px)", boxShadow: `0px 8px 25px ${shadowColor}` }}
-              borderWidth="2px"
-              borderColor={selectedUserType === "seller" ? accentColor : "transparent"}
+              fontWeight="600"
+              mb={8}
+              color={textColor}
             >
-              <input
-                type="radio"
-                id="seller"
-                name="userType"
-                className="sr-only"
-                onClick={() => handleRadioClick("seller")}
-                required
-              />
-              <VStack spacing={4}>
-                <Flex
-                  w="60px"
-                  h="60px"
-                  borderRadius="full"
-                  bg={selectedUserType === "seller" ? accentColor : bgTertiary}
-                  color="white"
-                  justify="center"
-                  align="center"
-                  fontSize="2xl"
-                  mx="auto"
+              {step === 1 ? "I'm a" : "Transaction Details"}
+            </Heading>
+            {step === 1 && (
+              <HStack spacing={6} flexWrap={{ base: "wrap", md: "nowrap" }} justify="center">
+                <Box
+                  as="label"
+                  htmlFor="buyer"
+                  cursor="pointer"
+                  bg={bgSecondary}
+                  borderRadius="xl"
+                  p={6}
+                  w={{ base: "full", md: "250px" }}
+                  textAlign="center"
+                  boxShadow={`0px 4px 20px ${shadowColor}`}
+                  transition="all 0.3s ease"
+                  _hover={{ transform: "translateY(-5px)", boxShadow: `0px 8px 25px ${shadowColor}` }}
+                  borderWidth="2px"
+                  borderColor={selectedUserType === "buyer" ? accentColor : "transparent"}
                 >
-                  <FaStore />
-                </Flex>
-                <Text fontSize="lg" fontWeight="bold" color={textColor}>
-                  Seller
-                </Text>
-              </VStack>
-            </Box>
-          </HStack>
-        )}
-        {step === 2 && (
-          <Box
-            bg={bgSecondary}
-            borderRadius="xl"
-            p={6}
-            w="full"
-            maxW="600px"
-            boxShadow={`0px 8px 30px ${shadowColor}`}
-            border={cardBorder}
-          >
-            <form id="transactionForm" onSubmit={acceptTransactionFunction}>
-              <VStack spacing={5} align="start">
-                <Box w="full">
-                  <Text fontWeight="bold" fontSize="lg" mb={4} color={textColor}>
-                    Product Details
-                  </Text>
-                  <FormControl isRequired>
-                    <FormLabel fontWeight="bold" color={textColor}>
-                      Product Description
-                    </FormLabel>
-                    <Textarea
-                      placeholder="Enter product description"
-                      value={paymentDescription}
-                      onChange={(e) => setPaymentDescription(e.target.value)}
-                      bg={inputBg}
-                      color={textColor}
-                      borderColor={borderColor}
-                      borderRadius="xl"
-                      _hover={{ borderColor: accentColor }}
-                      _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
-                      h="100px"
-                      required
-                    />
-                  </FormControl>
-                  <FormControl isRequired mt={4}>
-                    <FormLabel fontWeight="bold" color={textColor}>
-                      Price/Amount
-                    </FormLabel>
-                    <Input
-                      type="number"
-                      placeholder="Enter price/amount"
-                      value={paymentAmount}
-                      onChange={(e) => setPaymentAmount(e.target.value)}
-                      bg={inputBg}
-                      color={textColor}
-                      borderColor={borderColor}
+                  <input
+                    type="radio"
+                    id="buyer"
+                    name="userType"
+                    className="sr-only"
+                    onClick={() => handleRadioClick("buyer")}
+                    required
+                  />
+                  <VStack spacing={4}>
+                    <Flex
+                      w="60px"
+                      h="60px"
                       borderRadius="full"
-                      _hover={{ borderColor: accentColor }}
-                      _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
-                      required
-                      min="1"
-                    />
-                  </FormControl>
+                      bg={selectedUserType === "buyer" ? accentColor : bgTertiary}
+                      color="white"
+                      justify="center"
+                      align="center"
+                      fontSize="2xl"
+                      mx="auto"
+                    >
+                      <FaShoppingCart />
+                    </Flex>
+                    <Text fontSize="lg" fontWeight="bold" color={textColor}>
+                      Buyer
+                    </Text>
+                  </VStack>
                 </Box>
-                {selectedUserType === "seller" && (
-                  <>
+                <Box
+                  as="label"
+                  htmlFor="seller"
+                  cursor="pointer"
+                  bg={bgSecondary}
+                  borderRadius="xl"
+                  p={6}
+                  w={{ base: "full", md: "250px" }}
+                  textAlign="center"
+                  boxShadow={`0px 4px 20px ${shadowColor}`}
+                  transition="all 0.3s ease"
+                  _hover={{ transform: "translateY(-5px)", boxShadow: `0px 8px 25px ${shadowColor}` }}
+                  borderWidth="2px"
+                  borderColor={selectedUserType === "seller" ? accentColor : "transparent"}
+                >
+                  <input
+                    type="radio"
+                    id="seller"
+                    name="userType"
+                    className="sr-only"
+                    onClick={() => handleRadioClick("seller")}
+                    required
+                  />
+                  <VStack spacing={4}>
+                    <Flex
+                      w="60px"
+                      h="60px"
+                      borderRadius="full"
+                      bg={selectedUserType === "seller" ? accentColor : bgTertiary}
+                      color="white"
+                      justify="center"
+                      align="center"
+                      fontSize="2xl"
+                      mx="auto"
+                    >
+                      <FaStore />
+                    </Flex>
+                    <Text fontSize="lg" fontWeight="bold" color={textColor}>
+                      Seller
+                    </Text>
+                  </VStack>
+                </Box>
+              </HStack>
+            )}
+            {step === 2 && (
+              <Box
+                bg={bgSecondary}
+                borderRadius="xl"
+                p={6}
+                w="full"
+                maxW="600px"
+                boxShadow={`0px 8px 30px ${shadowColor}`}
+                border={cardBorder}
+              >
+                <form id="transactionForm" onSubmit={acceptTransactionFunction}>
+                  <VStack spacing={5} align="start">
                     <Box w="full">
                       <Text fontWeight="bold" fontSize="lg" mb={4} color={textColor}>
-                        Payment Details
+                        Product Details
                       </Text>
                       <FormControl isRequired>
                         <FormLabel fontWeight="bold" color={textColor}>
-                          Email Address
+                          Product Description
                         </FormLabel>
-                        <Input
-                          type="email"
-                          placeholder="Enter Email Address"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
+                        <Textarea
+                          placeholder="Enter product description"
+                          value={paymentDescription}
+                          onChange={(e) => setPaymentDescription(e.target.value)}
                           bg={inputBg}
                           color={textColor}
                           borderColor={borderColor}
-                          borderRadius="full"
+                          borderRadius="xl"
                           _hover={{ borderColor: accentColor }}
                           _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
+                          h="100px"
                           required
                         />
                       </FormControl>
                       <FormControl isRequired mt={4}>
                         <FormLabel fontWeight="bold" color={textColor}>
-                          Bank Name
-                        </FormLabel>
-                        <Select
-                          placeholder="Select Bank"
-                          value={selectedBankCode}
-                          onChange={handleBankSelection}
-                          bg={inputBg}
-                          color={textColor}
-                          borderColor={borderColor}
-                          borderRadius="full"
-                          _hover={{ borderColor: accentColor }}
-                          _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
-                          required
-                        >
-                          {uniqueBanks.map((bank) => (
-                            <option key={bank.code} value={bank.code}>
-                              {bank.name}
-                            </option>
-                          ))}
-                        </Select>
-                      </FormControl>
-                      <FormControl isRequired mt={4}>
-                        <FormLabel fontWeight="bold" color={textColor}>
-                          Account Number
+                          Price/Amount
                         </FormLabel>
                         <Input
-                          type="text"
-                          placeholder="Enter account number"
-                          value={paymentAccountNumber}
-                          onChange={(e) => setPaymentAccountNumber(e.target.value)}
-                          onBlur={() => {
-                            if (paymentAccountNumber.length === 10 && selectedBankCode) {
-                              verifyBankAccount();
-                            }
-                          }}
+                          type="number"
+                          placeholder="Enter price/amount"
+                          value={paymentAmount}
+                          onChange={(e) => setPaymentAmount(e.target.value)}
                           bg={inputBg}
                           color={textColor}
                           borderColor={borderColor}
@@ -741,93 +813,167 @@ const TransactionCreation = () => {
                           _hover={{ borderColor: accentColor }}
                           _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
                           required
-                          pattern="[0-9]+"
-                          title="Please enter a valid account number (numbers only)"
-                          minLength={10}
-                          maxLength={10}
+                          min="1"
                         />
                       </FormControl>
                     </Box>
-                  </>
-                )}
-                {selectedUserType === "seller" && (
-                  <Box
-                    w="full"
-                    bg={useColorModeValue("gray.50", "#0F1624")}
-                    p={4}
-                    borderRadius="lg"
-                    mt={2}
-                    border={cardBorder}
-                  >
-                    <Text fontWeight="bold" mb={2} color={textColor}>
-                      Transaction Summary
-                    </Text>
-                    <Flex justify="space-between" mb={1}>
-                      <Text color={textColor}>Amount:</Text>
-                      <Text color={textColor}>{paymentAmount || "0.00"} NGN</Text>
-                    </Flex>
-                    <Flex justify="space-between" mb={1}>
-                      <Text color={textColor}>Transaction Fee (0.8%):</Text>
-                      <Text color={textColor}>{transactionFee} NGN</Text>
-                    </Flex>
-                    <Divider my={2} borderColor={useColorModeValue("gray.300", "gray.600")} />
-                    <Flex justify="space-between" fontWeight="bold">
-                      <Text color={textColor}>Total Amount:</Text>
-                      <Text color={accentColor}>{totalAmount} NGN</Text>
-                    </Flex>
-                  </Box>
-                )}
+                    {selectedUserType === "seller" && (
+                      <>
+                        <Box w="full">
+                          <Text fontWeight="bold" fontSize="lg" mb={4} color={textColor}>
+                            Payment Details
+                          </Text>
+                          <FormControl isRequired>
+                            <FormLabel fontWeight="bold" color={textColor}>
+                              Email Address
+                            </FormLabel>
+                            <Input
+                              type="email"
+                              placeholder="Enter Email Address"
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value)}
+                              bg={inputBg}
+                              color={textColor}
+                              borderColor={borderColor}
+                              borderRadius="full"
+                              _hover={{ borderColor: accentColor }}
+                              _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
+                              required
+                            />
+                          </FormControl>
+                          <FormControl isRequired mt={4}>
+                            <FormLabel fontWeight="bold" color={textColor}>
+                              Bank Name
+                            </FormLabel>
+                            <Select
+                              placeholder="Select Bank"
+                              value={selectedBankCode}
+                              onChange={handleBankSelection}
+                              bg={inputBg}
+                              color={textColor}
+                              borderColor={borderColor}
+                              borderRadius="full"
+                              _hover={{ borderColor: accentColor }}
+                              _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
+                              required
+                            >
+                              {uniqueBanks.map((bank) => (
+                                <option key={bank.code} value={bank.code}>
+                                  {bank.name}
+                                </option>
+                              ))}
+                            </Select>
+                          </FormControl>
+                          <FormControl isRequired mt={4}>
+                            <FormLabel fontWeight="bold" color={textColor}>
+                              Account Number
+                            </FormLabel>
+                            <Input
+                              type="text"
+                              placeholder="Enter account number"
+                              value={paymentAccountNumber}
+                              onChange={(e) => setPaymentAccountNumber(e.target.value)}
+                              onBlur={() => {
+                                if (paymentAccountNumber.length === 10 && selectedBankCode) {
+                                  verifyBankAccount();
+                                }
+                              }}
+                              bg={inputBg}
+                              color={textColor}
+                              borderColor={borderColor}
+                              borderRadius="full"
+                              _hover={{ borderColor: accentColor }}
+                              _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
+                              required
+                              pattern="[0-9]+"
+                              title="Please enter a valid account number (numbers only)"
+                              minLength={10}
+                              maxLength={10}
+                            />
+                          </FormControl>
+                        </Box>
+                      </>
+                    )}
+                    {selectedUserType === "seller" && (
+                      <Box
+                        w="full"
+                        bg={useColorModeValue("gray.50", "#0F1624")}
+                        p={4}
+                        borderRadius="lg"
+                        mt={2}
+                        border={cardBorder}
+                      >
+                        <Text fontWeight="bold" mb={2} color={textColor}>
+                          Transaction Summary
+                        </Text>
+                        <Flex justify="space-between" mb={1}>
+                          <Text color={textColor}>Amount:</Text>
+                          <Text color={textColor}>{paymentAmount || "0.00"} NGN</Text>
+                        </Flex>
+                        <Flex justify="space-between" mb={1}>
+                          <Text color={textColor}>Transaction Fee (0.8%):</Text>
+                          <Text color={textColor}>{transactionFee} NGN</Text>
+                        </Flex>
+                        <Divider my={2} borderColor={useColorModeValue("gray.300", "gray.600")} />
+                        <Flex justify="space-between" fontWeight="bold">
+                          <Text color={textColor}>Total Amount:</Text>
+                          <Text color={accentColor}>{totalAmount} NGN</Text>
+                        </Flex>
+                      </Box>
+                    )}
+                    <Button
+                      type="submit"
+                      size="lg"
+                      borderRadius="full"
+                      w="full"
+                      mt={4}
+                      bg={formValid ? accentColor : useColorModeValue("gray.300", "#2D3748")}
+                      color="white"
+                      _hover={{ bg: formValid ? accentHoverColor : useColorModeValue("gray.300", "#2D3748") }}
+                      boxShadow={formValid ? `0px 4px 10px ${shadowColor}` : "none"}
+                      isDisabled={!formValid}
+                    >
+                      Start Transaction
+                    </Button>
+                  </VStack>
+                </form>
+              </Box>
+            )}
+            <HStack spacing={4} mt={8}>
+              {step > 1 && (
                 <Button
-                  type="submit"
-                  size="lg"
+                  onClick={handlePreviousClick}
+                  variant="outline"
+                  borderColor={accentColor}
+                  color={textColor}
                   borderRadius="full"
-                  w="full"
-                  mt={4}
-                  bg={formValid ? accentColor : useColorModeValue("gray.300", "#2D3748")}
-                  color="white"
-                  _hover={{ bg: formValid ? accentHoverColor : useColorModeValue("gray.300", "#2D3748") }}
-                  boxShadow={formValid ? `0px 4px 10px ${shadowColor}` : "none"}
-                  isDisabled={!formValid}
+                  size="lg"
+                  px={8}
+                  _hover={{ bg: useColorModeValue("gray.100", "rgba(149, 116, 50, 0.2)") }}
                 >
-                  Start Transaction
+                  Previous
                 </Button>
-              </VStack>
-            </form>
-          </Box>
-        )}
-        <HStack spacing={4} mt={8}>
-          {step > 1 && (
-            <Button
-              onClick={handlePreviousClick}
-              variant="outline"
-              borderColor={accentColor}
-              color={textColor}
-              borderRadius="full"
-              size="lg"
-              px={8}
-              _hover={{ bg: useColorModeValue("gray.100", "rgba(149, 116, 50, 0.2)") }}
-            >
-              Previous
-            </Button>
-          )}
-          {step < 2 && (
-            <Button
-              onClick={handleNextClick}
-              isDisabled={!nextButtonActive}
-              borderRadius="full"
-              size="lg"
-              px={8}
-              color="white"
-              bg={nextButtonActive ? accentColor : useColorModeValue("gray.300", "#2D3748")}
-              opacity={nextButtonActive ? 1 : 0.7}
-              _hover={{ bg: nextButtonActive ? accentHoverColor : useColorModeValue("gray.300", "#2D3748") }}
-              boxShadow={nextButtonActive ? `0px 4px 10px ${shadowColor}` : "none"}
-            >
-              Next
-            </Button>
-          )}
-        </HStack>
-      </VStack>
+              )}
+              {step < 2 && (
+                <Button
+                  onClick={handleNextClick}
+                  isDisabled={!nextButtonActive}
+                  borderRadius="full"
+                  size="lg"
+                  px={8}
+                  color="white"
+                  bg={nextButtonActive ? accentColor : useColorModeValue("gray.300", "#2D3748")}
+                  opacity={nextButtonActive ? 1 : 0.7}
+                  _hover={{ bg: nextButtonActive ? accentHoverColor : useColorModeValue("gray.300", "#2D3748") }}
+                  boxShadow={nextButtonActive ? `0px 4px 10px ${shadowColor}` : "none"}
+                >
+                  Next
+                </Button>
+              )}
+            </HStack>
+          </VStack>
+        </Fade>
+      )}
       {acceptTransactionModel && (
         <Box
           position="fixed"

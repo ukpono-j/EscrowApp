@@ -30,8 +30,8 @@ import { motion } from "framer-motion";
 import axios from "axios";
 import { formatCreatedAt } from "../../utility/DateTimeStramp";
 
-// Temporarily using Box instead of MotionBox
-const MotionBox = Box;
+// Use MotionBox with framer-motion
+const MotionBox = motion(Box);
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 
@@ -57,14 +57,16 @@ const NotificationComponent = () => {
     declined: "red",
     completed: "blue",
     cancelled: "gray",
+    failed: "red", // Added for failed status
     transaction: "purple",
     funding: "teal",
     confirmation: "cyan",
     payment: "pink",
     waybill: "yellow",
+    registration: "blue", // Added for registration type
   };
 
-  const filterOptions = ["all", "pending", "accepted", "declined", "completed", "cancelled"];
+  const filterOptions = ["all", "pending", "accepted", "declined", "completed", "cancelled", "failed"];
 
   useEffect(() => {
     const fetchData = async () => {
@@ -75,7 +77,7 @@ const NotificationComponent = () => {
           },
         });
         console.log('Notifications response:', res.data);
-        const notificationsArray = res.data.data || []; // Default to empty array
+        const notificationsArray = res.data.data || [];
         if (!Array.isArray(notificationsArray)) {
           console.warn('Notifications data is not an array:', notificationsArray);
           setNotifications([]);
@@ -102,14 +104,15 @@ const NotificationComponent = () => {
           duration: 3000,
           isClosable: true,
         });
-        setNotifications([]); // Set empty array on error
+        setNotifications([]);
       } finally {
         setLoading(false);
-        console.log('Loading set to false', 'Filter:', filter);
       }
     };
-  
+
     fetchData();
+    const interval = setInterval(fetchData, 30000);
+    return () => clearInterval(interval);
   }, [toast]);
 
   const getFilteredNotifications = () => {
@@ -119,7 +122,9 @@ const NotificationComponent = () => {
     }
     const filtered = filter === "all" 
       ? notifications 
-      : notifications.filter(n => n.status && n.status.toLowerCase() === filter.toLowerCase());
+      : notifications.filter(n => 
+          n.status && n.status.toLowerCase() === filter.toLowerCase()
+        );
     console.log('Filtered notifications:', filtered);
     return filtered;
   };
@@ -148,11 +153,11 @@ const NotificationComponent = () => {
     }
   };
 
-  const handleUpdateStatus = async (id, status) => {
+  const handleUpdateStatus = async (id, newStatus) => {
     try {
       await axios.patch(
         `${BASE_URL}/api/notifications/notifications/${id}`,
-        { status },
+        { status: newStatus },
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('token')}`,
@@ -160,11 +165,11 @@ const NotificationComponent = () => {
         }
       );
       setNotifications((prev) => {
-        const updated = prev.map((n) => (n._id === id ? { ...n, status } : n));
+        const updated = prev.map((n) => (n._id === id ? { ...n, status: newStatus } : n));
         return updated.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
       });
       toast({
-        title: `Status updated to ${status}`,
+        title: `Status updated to ${newStatus}`,
         status: "success",
         duration: 2000,
         isClosable: true,
@@ -188,6 +193,37 @@ const NotificationComponent = () => {
     });
   };
 
+  const handleMarkAsRead = async (id) => {
+    try {
+      await axios.patch(
+        `${BASE_URL}/api/notifications/notifications/${id}`,
+        { isRead: true },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
+        }
+      );
+      setNotifications((prev) => {
+        const updated = prev.map((n) => (n._id === id ? { ...n, isRead: true } : n));
+        return updated.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      });
+      toast({
+        title: "Notification marked as read",
+        status: "success",
+        duration: 2000,
+        isClosable: true,
+      });
+    } catch (err) {
+      toast({
+        title: "Error marking notification as read",
+        status: "error",
+        duration: 2000,
+        isClosable: true,
+      });
+    }
+  };
+
   const getNotificationIcon = (type) => {
     switch (type) {
       case "transaction":
@@ -200,6 +236,8 @@ const NotificationComponent = () => {
         return <MdOutlinePayment size={20} />;
       case "waybill":
         return <BsBell size={20} />;
+      case "registration":
+        return <MdNotifications size={20} />;
       default:
         return <BsBell size={20} />;
     }
@@ -209,28 +247,28 @@ const NotificationComponent = () => {
     <Box 
       mt={24} 
       mb={20} 
-      px={{ base: 2, md: 8 }} // Reduced base padding for smaller screens
+      px={{ base: 2, md: 8 }} 
       minH="100vh" 
       bg="gray.900" 
       color="white"
-      overflow="auto" // Ensure content is scrollable if it exceeds viewport
+      overflow="auto"
     >
       <Flex 
-        direction={{ base: "column", sm: "row" }} // Adjusted to sm breakpoint
+        direction={{ base: "column", sm: "row" }} 
         justify="space-between" 
         align={{ base: "start", sm: "center" }}
         mb={6}
-        flexWrap="wrap" // Allow wrapping on smaller screens
+        flexWrap="wrap"
       >
         <Text
-          fontSize={{ base: "xl", md: "3xl" }} // Reduced base font size
+          fontSize={{ base: "xl", md: "3xl" }}
           fontWeight="bold"
           color={titleColor}
           mb={{ base: 4, sm: 0 }}
           display="flex"
           alignItems="center"
         >
-          <MdNotifications size={24} style={{ marginRight: '8px' }} /> {/* Reduced icon size */}
+          <MdNotifications size={24} style={{ marginRight: '8px' }} />
           Notifications
         </Text>
 
@@ -239,13 +277,14 @@ const NotificationComponent = () => {
             <Badge 
               key={status}
               as="button" 
-              px={2} py={1} // Reduced padding for smaller screens
+              px={2} 
+              py={1}
               borderRadius="full" 
               colorScheme={filter === status ? badgeColors[status] || "blue" : "gray"}
               onClick={() => setFilter(status)}
               cursor="pointer"
               textTransform="capitalize"
-              fontSize={{ base: "xs", md: "sm" }} // Adjusted font size
+              fontSize={{ base: "xs", md: "sm" }}
             >
               {status}
             </Badge>
@@ -289,7 +328,7 @@ const NotificationComponent = () => {
             >
               <Avatar
                 bg="gray.100"
-                icon={<BsBell size={20} color="gray" />} // Reduced size
+                icon={<BsBell size={20} color="gray" />}
                 size="md"
                 mb={3}
               />
@@ -306,22 +345,25 @@ const NotificationComponent = () => {
               return (
                 <MotionBox
                   key={notification._id}
-                  bg={notification.status === "pending" ? highlightColor : bgCard}
+                  bg={notification.isRead ? bgCard : highlightColor}
                   borderRadius="xl"
-                  p={{ base: 3, md: 5 }} // Reduced padding for smaller screens
+                  p={{ base: 3, md: 5 }}
                   shadow="md"
                   border="1px solid"
                   borderColor={borderColor}
                   position="relative"
-                  w="100%" // Ensure full width
+                  w="100%"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
                 >
                   <Flex direction={{ base: "column", sm: "row" }} justify="space-between">
                     <HStack spacing={3} mb={{ base: 3, sm: 0 }} align="start" flex={1}>
                       <Avatar 
-                        bg={badgeColors[notification.type] + ".100"} 
-                        color={badgeColors[notification.type] + ".700"}
+                        bg={`${badgeColors[notification.type]}.100`} 
+                        color={`${badgeColors[notification.type]}.700`}
                         icon={getNotificationIcon(notification.type)}
-                        size="sm" // Reduced size
+                        size="sm"
                       />
                       
                       <Box flex={1}>
@@ -329,7 +371,7 @@ const NotificationComponent = () => {
                           <Text fontSize={{ base: "sm", md: "lg" }} fontWeight="bold" color={textColor}>
                             {notification.title}
                           </Text>
-                          <Badge colorScheme={badgeColors[notification.status]} borderRadius="full" px={1}>
+                          <Badge colorScheme={badgeColors[notification.status] || "gray"} borderRadius="full" px={1}>
                             {notification.status}
                           </Badge>
                         </HStack>
@@ -362,11 +404,22 @@ const NotificationComponent = () => {
                     </HStack>
 
                     <HStack spacing={1} alignSelf={{ base: "flex-end", sm: "center" }}>
+                      {!notification.isRead && (
+                        <Tooltip label="Mark as Read">
+                          <IconButton
+                            size="xs"
+                            colorScheme="blue"
+                            icon={<MdCheck />}
+                            onClick={() => handleMarkAsRead(notification._id)}
+                            borderRadius="full"
+                          />
+                        </Tooltip>
+                      )}
                       {notification.status === "pending" && (
                         <>
                           <Tooltip label="Accept">
                             <IconButton
-                              size="xs" // Reduced size
+                              size="xs"
                               colorScheme="green"
                               icon={<MdCheck />}
                               onClick={() => handleUpdateStatus(notification._id, "accepted")}
@@ -375,7 +428,7 @@ const NotificationComponent = () => {
                           </Tooltip>
                           <Tooltip label="Decline">
                             <IconButton
-                              size="xs" // Reduced size
+                              size="xs"
                               colorScheme="red"
                               icon={<MdClose />}
                               onClick={() => handleUpdateStatus(notification._id, "declined")}
@@ -390,7 +443,7 @@ const NotificationComponent = () => {
                           as={IconButton}
                           icon={<BsThreeDots />}
                           variant="ghost"
-                          size="xs" // Reduced size
+                          size="xs"
                           colorScheme="gray"
                           _hover={{ bg: hoverBg }}
                           borderRadius="full"
@@ -451,6 +504,8 @@ const NotificationComponent = () => {
                     <Text>Title: {notification.title}</Text>
                     <Text>Message: {notification.message}</Text>
                     <Text>Status: {notification.status || 'undefined'}</Text>
+                    <Text>Type: {notification.type || 'undefined'}</Text>
+                    <Text>Timestamp: {notification.timestamp}</Text>
                   </Box>
                 ))}
               </Box>

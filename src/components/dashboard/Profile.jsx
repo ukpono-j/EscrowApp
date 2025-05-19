@@ -326,6 +326,8 @@ const Profile = () => {
   const maxFetchAttempts = 3;
   const isMountedRef = useRef(false);
 
+
+  
   const formatDate = (dateString) => {
     if (!dateString) return "Not Provided";
     const date = new Date(dateString);
@@ -443,6 +445,18 @@ const Profile = () => {
     setCheckStatusInterval(interval);
   };
 
+  const validateUserResponse = (responseData) => {
+    if (responseData.success && responseData.data?.user) {
+      return responseData.data.user;
+    }
+    if (responseData._id && responseData.firstName && responseData.email) {
+      console.warn('Legacy format detected');
+      return responseData;
+    }
+    console.error('Invalid user data structure:', responseData);
+    throw new Error(responseData.error || 'Invalid user data received');
+  };
+  
   const fetchUserDetails = async () => {
     try {
       const response = await axios.get(`${BASE_URL}/api/users/user-details`, {
@@ -450,19 +464,10 @@ const Profile = () => {
       });
       console.log('User details response:', response.data);
   
-      let user;
-      // Handle both new and legacy response formats
-      if (response.data.success && response.data.user) {
-        user = response.data.user;
-      } else if (response.data._id && response.data.firstName && response.data.email) {
-        console.warn('Received legacy user data format. Update backend to return { success: true, user: {...} }');
-        user = response.data;
-      } else {
-        throw new Error(response.data.error || 'Invalid user data received');
-      }
+      const user = validateUserResponse(response.data);
   
-      // Validate essential user fields
       if (!user.firstName || !user.email) {
+        console.error('User data missing required fields:', user);
         throw new Error('User data missing required fields');
       }
   

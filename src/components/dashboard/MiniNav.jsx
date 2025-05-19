@@ -45,17 +45,43 @@ const MiniNav = () => {
 
     fetchUserData();
 
-    const fetchNotificationCount = async () => {
-      try {
-        const response = await axios.get(`${BASE_URL}/api/notifications/notifications`);
-        const unreadNotifications = response.data.filter((n) => !n.read);
-        setNotificationCount(unreadNotifications.length);
-      } catch (error) {
-        console.error("Error fetching notifications:", error);
+    const fetchNotificationCount = async (retries = 3, delay = 1000) => {
+      for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+          const token = localStorage.getItem("auth-token");
+          const response = await axios.get(`${BASE_URL}/api/notifications/notifications`, {
+            headers: { "auth-token": token },
+            timeout: 30000,
+          });
+          if (response.data.success) {
+            const unreadNotifications = response.data.data.filter((n) => !n.isRead);
+            setNotificationCount(unreadNotifications.length);
+          } else {
+            console.error("Failed to fetch notifications:", response.data.error);
+            setNotificationCount(0);
+          }
+          return; // Success, exit the loop
+        } catch (error) {
+          console.error(`Attempt ${attempt} failed:`, error);
+          if (attempt === retries) {
+            setNotificationCount(0);
+            toast({
+              title: "Error",
+              description: "Failed to fetch notifications after multiple attempts.",
+              status: "error",
+              duration: 3000,
+              isClosable: true,
+            });
+            return;
+          }
+          await new Promise((resolve) => setTimeout(resolve, delay * attempt)); // Exponential backoff
+        }
       }
     };
 
     fetchNotificationCount();
+    const interval = setInterval(fetchNotificationCount, 60000); // Poll every 30 seconds
+    return () => clearInterval(interval);
   }, []);
 
   const handleMenuToggle = () => setMenu(!menu);
