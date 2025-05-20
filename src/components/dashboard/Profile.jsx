@@ -326,14 +326,14 @@ const Profile = () => {
   const previousBalanceRef = useRef(null);
   const maxFetchAttempts = 3;
   const isMountedRef = useRef(false);
-  
+
   const formatDate = (dateString) => {
     if (!dateString) return "Not Provided";
     const date = new Date(dateString);
     return date.toISOString().split('T')[0];
   };
 
-  const pollPaymentStatus = (reference, maxAttempts = 60) => {
+  const pollPaymentStatus = async (reference, maxAttempts = 180, intervalMs = 15000) => {
     if (!reference) {
       console.error('No reference provided for polling payment status');
       toast({
@@ -348,12 +348,12 @@ const Profile = () => {
       localStorage.removeItem('pendingPaymentRef');
       return;
     }
-  
+
     if (checkStatusInterval) {
       console.log('Clearing existing polling interval for reference:', reference);
       clearInterval(checkStatusInterval);
     }
-  
+
     const toastId = toast({
       title: 'Payment Processing',
       description: 'Checking your payment status. This may take a few minutes.',
@@ -361,26 +361,29 @@ const Profile = () => {
       duration: null,
       isClosable: true,
     });
-  
+
     let attempts = 0;
-  
-    const interval = setInterval(async () => {
+    let retryCount = 0;
+    const maxRetries = 3;
+
+    const checkStatus = async () => {
       if (!isMountedRef.current) {
         console.log('Component unmounted, stopping polling');
         clearInterval(interval);
         toast.close(toastId);
         return;
       }
-  
+
       attempts += 1;
-  
+
       try {
         const response = await axios.get(`${BASE_URL}/api/wallet/funding-status/${reference}`, {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+          timeout: 10000,
         });
-  
+
         console.log('Payment status response:', response.data);
-  
+
         if (response.data.success && response.data.data.transaction.status === 'completed') {
           clearInterval(interval);
           setCheckStatusInterval(null);
@@ -394,7 +397,7 @@ const Profile = () => {
             duration: 5000,
             isClosable: true,
           });
-          fetchWalletBalance(); // Refresh balance after successful payment
+          fetchWalletBalance();
           onPaymentModalClose();
         } else if (response.data.data.transaction.status === 'failed') {
           clearInterval(interval);
@@ -423,23 +426,39 @@ const Profile = () => {
           });
         }
       } catch (error) {
-        console.error('Error polling payment status:', error);
-        if (attempts >= maxAttempts) {
+        console.error('Error polling payment status:', {
+          attempt: attempts,
+          reference,
+          message: error.message,
+          status: error.response?.status,
+          data: error.response?.data,
+        });
+
+        retryCount += 1;
+        if (retryCount >= maxRetries || error.response?.status === 401 || error.response?.status === 404) {
           clearInterval(interval);
           setCheckStatusInterval(null);
           toast.close(toastId);
           toast({
             title: 'Error',
-            description: 'Unable to verify payment status. You can manually check the status or try again.',
+            description: error.response?.data?.message || 'Unable to verify payment status. Please try again.',
             status: 'error',
             duration: 5000,
             isClosable: true,
           });
+          if (error.response?.status === 401) {
+            localStorage.removeItem('token');
+            window.location.href = '/login';
+          }
         }
       }
-    }, 10000); // Poll every 10 seconds
-  
+    };
+
+    const interval = setInterval(checkStatus, intervalMs);
     setCheckStatusInterval(interval);
+
+    // Run immediately to avoid initial delay
+    checkStatus();
   };
 
   const validateUserResponse = (responseData) => {
@@ -453,21 +472,21 @@ const Profile = () => {
     console.error('Invalid user data structure:', responseData);
     throw new Error(responseData.error || 'Invalid user data received');
   };
-  
+
   const fetchUserDetails = async () => {
     try {
       const response = await axios.get(`${BASE_URL}/api/users/user-details`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
       });
       console.log('User details response:', response.data);
-  
+
       const user = validateUserResponse(response.data);
-  
+
       if (!user.firstName || !user.email) {
         console.error('User data missing required fields:', user);
         throw new Error('User data missing required fields');
       }
-  
+
       setUserDetails(user);
       setEditedUserDetails({
         firstName: user.firstName || '',
@@ -578,7 +597,7 @@ const Profile = () => {
       });
       return;
     }
-  
+
     if (!phoneNumber || !/^(0\d{10}|\+234\d{10})$/.test(phoneNumber)) {
       toast({
         title: 'Invalid Phone Number',
@@ -589,7 +608,7 @@ const Profile = () => {
       });
       return;
     }
-  
+
     setIsFunding(true);
     try {
       const response = await axios.post(
@@ -784,7 +803,7 @@ const Profile = () => {
                 </Flex>
               </Box>
             </Box>
-  
+
             {/* Right Column: User Details */}
             <Box>
               <Box
@@ -945,7 +964,7 @@ const Profile = () => {
                   </Flex>
                 )}
               </Box>
-  
+
               {/* Funding Section */}
               <Box
                 bg={cardBg}
@@ -1000,7 +1019,7 @@ const Profile = () => {
           </Grid>
         </motion.div>
       )}
-  
+
       <PaymentInfoModal
         isOpen={isPaymentModalOpen}
         onClose={() => {
@@ -1016,7 +1035,7 @@ const Profile = () => {
         onStatusCheck={() => paymentDetails?.reference && pollPaymentStatus(paymentDetails.reference)}
         userName={`${userDetails?.firstName} ${userDetails?.lastName}`}
       />
-  
+
       <WithdrawalModal
         isOpen={isWithdrawalModalOpen}
         onClose={onWithdrawalModalClose}
