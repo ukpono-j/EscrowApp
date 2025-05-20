@@ -51,9 +51,57 @@ const PAYSTACK_BANKS = [
 const BASE_URL = (import.meta.env.VITE_BASE_URL || "http://localhost:3001").replace(/\/$/, "");
 
 const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, userName }) => {
+  const toast = useToast();
   const textColor = useColorModeValue("gray.800", "white");
   const subtleTextColor = useColorModeValue("gray.600", "gray.300");
   const highlightColor = useColorModeValue("blue.500", "blue.400");
+
+  const handleManualReconcile = async () => {
+    if (!paymentDetails?.reference) {
+      toast({
+        title: 'Error',
+        description: 'No reference available for reconciliation.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    try {
+      const response = await axios.post(
+        `${BASE_URL}/api/wallet/reconcile`,
+        { reference: paymentDetails.reference },
+        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+      );
+      if (response.data.success) {
+        toast({
+          title: 'Reconciliation Successful',
+          description: `Your wallet has been funded with ₦${response.data.data.transaction.amount.toFixed(2)}.`,
+          status: 'success',
+          duration: 5000,
+          isClosable: true,
+        });
+        onClose();
+      } else {
+        toast({
+          title: 'Reconciliation Failed',
+          description: response.data.message || 'Unable to reconcile transaction.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Reconciliation Error',
+        description: error.response?.data?.message || 'Unable to reconcile transaction. Please contact support.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+  };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} isCentered>
@@ -101,6 +149,15 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
             _hover={{ bgGradient: `linear(to-r, blue.500, purple.600)` }}
           >
             Check Payment Status
+          </Button>
+          <Button
+            colorScheme="purple"
+            onClick={handleManualReconcile}
+            mr={3}
+            bgGradient={`linear(to-r, purple.400, purple.500)`}
+            _hover={{ bgGradient: `linear(to-r, purple.500, purple.600)` }}
+          >
+            Manually Reconcile
           </Button>
           <Button variant="ghost" onClick={onClose} color={highlightColor}>
             Cancel
@@ -348,12 +405,12 @@ const Profile = () => {
       localStorage.removeItem('pendingPaymentRef');
       return;
     }
-
+  
     if (checkStatusInterval) {
       console.log('Clearing existing polling interval for reference:', reference);
       clearInterval(checkStatusInterval);
     }
-
+  
     const toastId = toast({
       title: 'Payment Processing',
       description: 'Checking your payment status. This may take a few minutes.',
@@ -361,11 +418,11 @@ const Profile = () => {
       duration: null,
       isClosable: true,
     });
-
+  
     let attempts = 0;
     let retryCount = 0;
     const maxRetries = 3;
-
+  
     const checkStatus = async () => {
       if (!isMountedRef.current) {
         console.log('Component unmounted, stopping polling');
@@ -373,17 +430,17 @@ const Profile = () => {
         toast.close(toastId);
         return;
       }
-
+  
       attempts += 1;
-
+  
       try {
         const response = await axios.get(`${BASE_URL}/api/wallet/funding-status/${reference}`, {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
           timeout: 10000,
         });
-
+  
         console.log('Payment status response:', response.data);
-
+  
         if (response.data.success && response.data.data.transaction.status === 'completed') {
           clearInterval(interval);
           setCheckStatusInterval(null);
@@ -419,11 +476,48 @@ const Profile = () => {
           toast.close(toastId);
           toast({
             title: 'Payment Timeout',
-            description: 'Payment verification timed out. You can manually check the status or try again.',
+            description: 'Payment verification timed out. Attempting manual reconciliation.',
             status: 'warning',
             duration: 5000,
             isClosable: true,
           });
+          // Trigger manual reconciliation
+          try {
+            const reconcileResponse = await axios.post(
+              `${BASE_URL}/api/wallet/reconcile`,
+              { reference },
+              { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+            );
+            if (reconcileResponse.data.success) {
+              toast({
+                title: 'Reconciliation Successful',
+                description: `Your wallet has been funded with ₦${reconcileResponse.data.data.transaction.amount.toFixed(2)}.`,
+                status: 'success',
+                duration: 5000,
+                isClosable: true,
+              });
+              fetchWalletBalance();
+              setPaymentDetails(null);
+              localStorage.removeItem('pendingPaymentRef');
+              onPaymentModalClose();
+            } else {
+              toast({
+                title: 'Reconciliation Failed',
+                description: reconcileResponse.data.message || 'Unable to reconcile transaction. Please try again.',
+                status: 'error',
+                duration: 5000,
+                isClosable: true,
+              });
+            }
+          } catch (reconcileError) {
+            toast({
+              title: 'Reconciliation Error',
+              description: reconcileError.response?.data?.message || 'Unable to reconcile transaction. Please contact support.',
+              status: 'error',
+              duration: 5000,
+              isClosable: true,
+            });
+          }
         }
       } catch (error) {
         console.error('Error polling payment status:', {
@@ -433,7 +527,7 @@ const Profile = () => {
           status: error.response?.status,
           data: error.response?.data,
         });
-
+  
         retryCount += 1;
         if (retryCount >= maxRetries || error.response?.status === 401 || error.response?.status === 404) {
           clearInterval(interval);
@@ -453,11 +547,9 @@ const Profile = () => {
         }
       }
     };
-
+  
     const interval = setInterval(checkStatus, intervalMs);
     setCheckStatusInterval(interval);
-
-    // Run immediately to avoid initial delay
     checkStatus();
   };
 
