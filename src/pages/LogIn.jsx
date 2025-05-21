@@ -64,7 +64,7 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-
+  
     if (!email || !password) {
       toast({
         title: "Missing fields",
@@ -77,7 +77,7 @@ const Login = () => {
       setIsLoading(false);
       return;
     }
-
+  
     const maxRetries = 2;
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -85,14 +85,16 @@ const Login = () => {
           email,
           password,
         }, {
-          timeout: 15000, // 10-second timeout
+          timeout: 15000,
         });
         const { success, message, token, user } = response.data;
-
+  
         if (success && message === "Login successful") {
+          console.log('Storing JWT token:', token ? '[REDACTED]' : 'No token');
           localStorage.setItem("auth-token", token);
+          console.log('JWT token stored in localStorage:', localStorage.getItem('auth-token') ? '[REDACTED]' : 'Not found');
           axios.defaults.headers.common["auth-token"] = token;
-
+  
           toast({
             title: "Login Successful",
             description: "Welcome back!",
@@ -101,7 +103,7 @@ const Login = () => {
             isClosable: true,
             position: "top",
           });
-
+  
           setTimeout(() => {
             navigate("/dashboard");
           }, 500);
@@ -114,7 +116,7 @@ const Login = () => {
         if (attempt === maxRetries) {
           let errorMessage = "An unexpected error occurred. Please try again.";
           let errorTitle = "Login Failed";
-
+  
           if (error.response) {
             if (error.response.status === 400) {
               errorTitle = "Invalid Input";
@@ -140,7 +142,7 @@ const Login = () => {
           } else {
             errorMessage = error.message || errorMessage;
           }
-
+  
           toast({
             title: errorTitle,
             description: (
@@ -163,7 +165,7 @@ const Login = () => {
           });
         }
       } finally {
-        if (attempt < maxRetries) await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds before retry
+        if (attempt < maxRetries) await new Promise(resolve => setTimeout(resolve, 2000));
       }
     }
     setIsLoading(false);

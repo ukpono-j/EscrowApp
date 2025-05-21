@@ -73,7 +73,7 @@ const NotificationComponent = () => {
       try {
         const res = await axios.get(`${BASE_URL}/api/notifications/notifications`, {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            Authorization: `Bearer ${localStorage.getItem('auth-token')}`,
           },
         });
         console.log('Notifications response:', res.data);
@@ -133,7 +133,7 @@ const NotificationComponent = () => {
     try {
       await axios.delete(`${BASE_URL}/api/notifications/notifications/${id}`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('auth-token')}`,
         },
       });
       setNotifications((prev) => prev.filter((n) => n._id !== id));
@@ -160,7 +160,7 @@ const NotificationComponent = () => {
         { status: newStatus },
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            Authorization: `Bearer ${localStorage.getItem('auth-token')}`,
           },
         }
       );
@@ -200,7 +200,7 @@ const NotificationComponent = () => {
         { isRead: true },
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            Authorization: `Bearer ${localStorage.getItem('auth-token')}`,
           },
         }
       );

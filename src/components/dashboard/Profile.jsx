@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import { io } from "socket.io-client";
+import jwtDecode from 'jwt-decode';
 import { FaEdit, FaWallet, FaTimes, FaUser, FaCalendarAlt, FaUniversity, FaCreditCard, FaSync, FaMoneyBillWave, FaSave, FaPhone } from "react-icons/fa";
 import { motion } from "framer-motion";
 import {
@@ -57,7 +58,7 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
   const highlightColor = useColorModeValue("blue.500", "blue.400");
 
   const handleManualReconcile = async () => {
-    if (!paymentDetails?.reference) {
+    if (!paymentDetails?.reference && !paymentDetails?.paystackReference) {
       toast({
         title: 'Error',
         description: 'No reference available for reconciliation.',
@@ -71,8 +72,8 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
     try {
       const response = await axios.post(
         `${BASE_URL}/api/wallet/reconcile`,
-        { reference: paymentDetails.reference },
-        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+        { reference: paymentDetails.reference || paymentDetails.paystackReference },
+        { headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` } }
       );
       if (response.data.success) {
         toast({
@@ -110,26 +111,26 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
         <ModalHeader color={textColor}>Fund Wallet</ModalHeader>
         <ModalCloseButton />
         <ModalBody>
-          {paymentDetails ? (
+          {paymentDetails && paymentDetails.virtualAccount ? (
             <>
               <Text color={textColor} mb={2}>
                 Please make a transfer to the account below to fund your wallet:
               </Text>
               <Box p={4} bg="gray.50" borderRadius="md">
                 <Text fontWeight="bold" color={textColor}>
-                  Account Name: {paymentDetails.virtualAccount?.account_name || "N/A"}
+                  Account Name: {paymentDetails.virtualAccount.account_name || 'N/A'}
                 </Text>
                 <Text color={textColor}>
-                  Account Number: {paymentDetails.virtualAccount?.account_number || "N/A"}
+                  Account Number: {paymentDetails.virtualAccount.account_number || 'N/A'}
                 </Text>
                 <Text color={textColor}>
-                  Bank: {paymentDetails.virtualAccount?.bank_name || "N/A"}
+                  Bank: {paymentDetails.virtualAccount.bank_name || 'N/A'}
                 </Text>
                 <Text color={textColor}>
-                  Amount: ₦{paymentDetails.amount?.toFixed(2) || "0.00"}
+                  Amount: ₦{paymentDetails.amount?.toFixed(2) || '0.00'}
                 </Text>
                 <Text color={subtleTextColor} fontSize="sm" mt={2}>
-                  Reference: {paymentDetails.reference || "N/A"}
+                  Reference: {paymentDetails.reference || paymentDetails.paystackReference || 'N/A'}
                 </Text>
               </Box>
               <Text color={subtleTextColor} mt={4} fontSize="sm">
@@ -137,7 +138,9 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
               </Text>
             </>
           ) : (
-            <Text color={textColor}>No payment details available. Please initiate a new funding request.</Text>
+            <Text color={textColor}>
+              No payment details available. Please initiate a new funding request or contact support.
+            </Text>
           )}
         </ModalBody>
         <ModalFooter>
@@ -147,6 +150,7 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
             mr={3}
             bgGradient={`linear(to-r, blue.400, purple.500)`}
             _hover={{ bgGradient: `linear(to-r, blue.500, purple.600)` }}
+            isDisabled={!paymentDetails?.reference && !paymentDetails?.paystackReference}
           >
             Check Payment Status
           </Button>
@@ -156,6 +160,7 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
             mr={3}
             bgGradient={`linear(to-r, purple.400, purple.500)`}
             _hover={{ bgGradient: `linear(to-r, purple.500, purple.600)` }}
+            isDisabled={!paymentDetails?.reference && !paymentDetails?.paystackReference}
           >
             Manually Reconcile
           </Button>
@@ -354,11 +359,7 @@ const Profile = () => {
   const avatarBorderColor = useColorModeValue("blue.400", "blue.500");
   const cancelBtnBg = useColorModeValue("gray.200", "gray.700");
   const cancelBtnHoverBg = useColorModeValue("gray.300", "gray.600");
-  const fieldBg = useColorModeValue("gray.50", "#1A2331");
   const blueShadow = useColorModeValue('rgba(66, 153, 225, 0.3)', 'rgba(66, 153, 225, 0.5)');
-  const backgroundBlue = useColorModeValue("blue.50", "blue.900");
-  const backgroundPurple = useColorModeValue("purple.50", "purple.900");
-  const hoverGradient = `linear(to-r, ${useColorModeValue('blue.500', 'blue.600')}, ${useColorModeValue('purple.600', 'purple.700')})`;
 
   const [userDetails, setUserDetails] = useState(null);
   const [editedUserDetails, setEditedUserDetails] = useState({
@@ -379,9 +380,7 @@ const Profile = () => {
   const [checkStatusInterval, setCheckStatusInterval] = useState(null);
   const [refreshingBalance, setRefreshingBalance] = useState(false);
   const [paymentDetails, setPaymentDetails] = useState(null);
-  const [fetchAttempts, setFetchAttempts] = useState(0);
   const previousBalanceRef = useRef(null);
-  const maxFetchAttempts = 3;
   const isMountedRef = useRef(false);
 
   const formatDate = (dateString) => {
@@ -390,12 +389,11 @@ const Profile = () => {
     return date.toISOString().split('T')[0];
   };
 
-  const pollPaymentStatus = async (reference, maxAttempts = 180, intervalMs = 15000) => {
-    if (!reference) {
-      console.error('No reference provided for polling payment status');
+  const pollPaymentStatus = async (reference, paystackReference, maxAttempts = 180, intervalMs = 15000) => {
+    if (!reference && !paystackReference) {
       toast({
         title: 'Error',
-        description: 'No payment reference available. Please initiate a new funding request.',
+        description: 'No payment reference available.',
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -405,12 +403,12 @@ const Profile = () => {
       localStorage.removeItem('pendingPaymentRef');
       return;
     }
-  
+
     if (checkStatusInterval) {
-      console.log('Clearing existing polling interval for reference:', reference);
+      console.log('Clearing existing polling interval for reference:', reference || paystackReference);
       clearInterval(checkStatusInterval);
     }
-  
+
     const toastId = toast({
       title: 'Payment Processing',
       description: 'Checking your payment status. This may take a few minutes.',
@@ -418,11 +416,11 @@ const Profile = () => {
       duration: null,
       isClosable: true,
     });
-  
+
     let attempts = 0;
     let retryCount = 0;
     const maxRetries = 3;
-  
+
     const checkStatus = async () => {
       if (!isMountedRef.current) {
         console.log('Component unmounted, stopping polling');
@@ -430,17 +428,17 @@ const Profile = () => {
         toast.close(toastId);
         return;
       }
-  
+
       attempts += 1;
-  
+
       try {
-        const response = await axios.get(`${BASE_URL}/api/wallet/funding-status/${reference}`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-          timeout: 10000,
-        });
-  
+        const response = await axios.get(
+          `${BASE_URL}/api/wallet/funding-status/${reference || paystackReference}`,
+          { headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` } }
+        );
+
         console.log('Payment status response:', response.data);
-  
+
         if (response.data.success && response.data.data.transaction.status === 'completed') {
           clearInterval(interval);
           setCheckStatusInterval(null);
@@ -476,58 +474,25 @@ const Profile = () => {
           toast.close(toastId);
           toast({
             title: 'Payment Timeout',
-            description: 'Payment verification timed out. Attempting manual reconciliation.',
+            description: 'Payment verification timed out. Please try manual reconciliation.',
             status: 'warning',
             duration: 5000,
             isClosable: true,
           });
-          // Trigger manual reconciliation
-          try {
-            const reconcileResponse = await axios.post(
-              `${BASE_URL}/api/wallet/reconcile`,
-              { reference },
-              { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
-            );
-            if (reconcileResponse.data.success) {
-              toast({
-                title: 'Reconciliation Successful',
-                description: `Your wallet has been funded with ₦${reconcileResponse.data.data.transaction.amount.toFixed(2)}.`,
-                status: 'success',
-                duration: 5000,
-                isClosable: true,
-              });
-              fetchWalletBalance();
-              setPaymentDetails(null);
-              localStorage.removeItem('pendingPaymentRef');
-              onPaymentModalClose();
-            } else {
-              toast({
-                title: 'Reconciliation Failed',
-                description: reconcileResponse.data.message || 'Unable to reconcile transaction. Please try again.',
-                status: 'error',
-                duration: 5000,
-                isClosable: true,
-              });
-            }
-          } catch (reconcileError) {
-            toast({
-              title: 'Reconciliation Error',
-              description: reconcileError.response?.data?.message || 'Unable to reconcile transaction. Please contact support.',
-              status: 'error',
-              duration: 5000,
-              isClosable: true,
-            });
-          }
+          setPaymentDetails((prev) => ({
+            ...prev,
+            reference: reference || paystackReference,
+          }));
         }
       } catch (error) {
         console.error('Error polling payment status:', {
           attempt: attempts,
-          reference,
+          reference: reference || paystackReference,
           message: error.message,
           status: error.response?.status,
           data: error.response?.data,
         });
-  
+
         retryCount += 1;
         if (retryCount >= maxRetries || error.response?.status === 401 || error.response?.status === 404) {
           clearInterval(interval);
@@ -541,13 +506,13 @@ const Profile = () => {
             isClosable: true,
           });
           if (error.response?.status === 401) {
-            localStorage.removeItem('token');
+            localStorage.removeItem('auth-token');
             window.location.href = '/login';
           }
         }
       }
     };
-  
+
     const interval = setInterval(checkStatus, intervalMs);
     setCheckStatusInterval(interval);
     checkStatus();
@@ -568,7 +533,7 @@ const Profile = () => {
   const fetchUserDetails = async () => {
     try {
       const response = await axios.get(`${BASE_URL}/api/users/user-details`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` },
       });
       console.log('User details response:', response.data);
 
@@ -594,7 +559,7 @@ const Profile = () => {
         response: error.response?.data,
         status: error.response?.status,
       });
-      const errorMessage = error.response?.data?.error || error.message || 'Unable to fetch user details. Please try again.';
+      const errorMessage = error.response?.data?.error || error.message || 'Unable to fetch user details.';
       toast({
         title: 'Error',
         description: errorMessage,
@@ -603,17 +568,17 @@ const Profile = () => {
         isClosable: true,
       });
       if (error.response?.status === 401 || error.response?.status === 404) {
-        localStorage.removeItem('token');
+        localStorage.removeItem('auth-token');
         window.location.href = '/login';
       }
     }
   };
 
-  const fetchWalletBalance = async () => {
+  const fetchWalletBalance = async (retries = 3) => {
     setRefreshingBalance(true);
     try {
       const response = await axios.get(`${BASE_URL}/api/wallet/balance`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` },
       });
       console.log('Wallet balance response:', response.data);
       setWalletBalance(response.data);
@@ -628,18 +593,27 @@ const Profile = () => {
         });
       }
       previousBalanceRef.current = response.data.balance;
-      setFetchAttempts(0);
     } catch (error) {
-      console.error('Error fetching wallet balance:', error);
-      setFetchAttempts((prev) => prev + 1);
-      if (fetchAttempts >= maxFetchAttempts) {
+      console.error('Error fetching wallet balance:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+      if (retries > 0) {
+        console.log(`Retrying fetchWalletBalance (${retries} retries left)`);
+        setTimeout(() => fetchWalletBalance(retries - 1), 2000);
+      } else {
         toast({
           title: 'Error',
-          description: error.response?.data?.message || 'Unable to fetch wallet balance. Please try again later.',
+          description: error.response?.data?.message || 'Unable to fetch wallet balance.',
           status: 'error',
           duration: 5000,
           isClosable: true,
         });
+        if (error.response?.status === 401) {
+          localStorage.removeItem('auth-token');
+          window.location.href = '/login';
+        }
       }
     } finally {
       setRefreshingBalance(false);
@@ -652,7 +626,7 @@ const Profile = () => {
       const response = await axios.put(
         `${BASE_URL}/api/users/profile`,
         { ...editedUserDetails, phoneNumber },
-        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+        { headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` } }
       );
       console.log('Save profile response:', response.data);
       setUserDetails(response.data.user);
@@ -710,13 +684,31 @@ const Profile = () => {
           email: userDetails.email,
           phoneNumber,
         },
-        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` },
+          timeout: 30000,
+        }
       );
       console.log('Fund wallet response:', response.data);
+      if (!response.data.success || !response.data.data?.virtualAccount) {
+        console.error('Invalid funding response:', response.data);
+        toast({
+          title: 'Funding Error',
+          description: response.data.message || 'Failed to initiate funding. Please try again.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+        return;
+      }
       setPaymentDetails(response.data.data);
-      localStorage.setItem('pendingPaymentRef', response.data.data.reference);
+      setVirtualAccount(response.data.data.virtualAccount);
+      localStorage.setItem('pendingPaymentRef', JSON.stringify({
+        reference: response.data.data.reference,
+        paystackReference: response.data.data.virtualAccount.provider_reference,
+      }));
       onPaymentModalOpen();
-      pollPaymentStatus(response.data.data.reference);
+      pollPaymentStatus(response.data.data.reference, response.data.data.virtualAccount.provider_reference);
     } catch (error) {
       console.error('Error initiating funding:', {
         message: error.message,
@@ -724,14 +716,16 @@ const Profile = () => {
         status: error.response?.status,
       });
       let errorMessage = error.response?.data?.message || 'Unable to initiate funding. Please try again later.';
-      if (error.response?.status === 400) {
+      if (error.code === 'ECONNABORTED') {
+        errorMessage = 'Request timed out. Please check your network connection and try again.';
+      } else if (error.response?.status === 400) {
         errorMessage = error.response?.data?.message || 'Invalid funding details. Please check and try again.';
       } else if (error.response?.status === 401) {
         errorMessage = 'Authentication failed. Please log in again.';
-        localStorage.removeItem('token');
+        localStorage.removeItem('auth-token');
         window.location.href = '/login';
-      } else if (error.response?.status === 500 && typeof error.response?.data?.message === 'string' && error.response?.data?.message.includes('Paystack API key')) {
-        errorMessage = 'Funding is currently unavailable due to a configuration issue. Please contact support.';
+      } else if (error.response?.status === 408) {
+        errorMessage = 'Request timed out. Please try again later or contact support.';
       }
       toast({
         title: 'Funding Error',
@@ -750,7 +744,7 @@ const Profile = () => {
       const response = await axios.post(
         `${BASE_URL}/api/wallet/withdraw`,
         { amount, bankCode, accountNumber, accountName },
-        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+        { headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` } }
       );
       console.log('Withdraw response:', response.data);
       await fetchWalletBalance();
@@ -761,34 +755,154 @@ const Profile = () => {
     }
   };
 
-  const checkPendingPayment = () => {
-    const pendingRef = localStorage.getItem('pendingPaymentRef');
-    if (pendingRef) {
-      console.log('Found pending payment reference:', pendingRef);
-      setPaymentDetails((prev) => prev || { reference: pendingRef });
-      onPaymentModalOpen();
-      pollPaymentStatus(pendingRef);
-    }
-  };
-
   useEffect(() => {
     isMountedRef.current = true;
+    const token = localStorage.getItem('auth-token');
+    console.log('JWT Token for Socket.IO:', token ? '[REDACTED]' : 'No token found');
+
+    if (!token) {
+      console.error('No JWT token found, redirecting to login');
+      toast({
+        title: 'Session Expired',
+        description: 'Please log in to continue.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      localStorage.removeItem('auth-token');
+      window.location.href = '/login';
+      return;
+    }
+
+    try {
+      const decoded = jwtDecode(token);
+      if (!decoded || Date.now() >= decoded.exp * 1000) {
+        console.error('Invalid or expired JWT token, redirecting to login');
+        toast({
+          title: 'Session Expired',
+          description: 'Your session has expired. Please log in again.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+        localStorage.removeItem('auth-token');
+        window.location.href = '/login';
+        return;
+      }
+    } catch (error) {
+      console.error('Error decoding JWT token:', error);
+      toast({
+        title: 'Token Error',
+        description: 'Invalid token format. Please log in again.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      localStorage.removeItem('auth-token');
+      window.location.href = '/login';
+      return;
+    }
+
+    const socket = io(BASE_URL, {
+      auth: { token },
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000,
+    });
+
+    socket.on('connect', () => {
+      console.log('Connected to WebSocket');
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('WebSocket connection error:', {
+        message: error.message,
+        type: error.type,
+        description: error.description,
+      });
+      toast({
+        title: 'Connection Error',
+        description: 'Failed to connect to real-time updates. Retrying...',
+        status: 'warning',
+        duration: 5000,
+        isClosable: true,
+      });
+      if (error.message.includes('Authentication error')) {
+        console.error('Authentication error detected, redirecting to login');
+        localStorage.removeItem('auth-token');
+        window.location.href = '/login';
+      }
+    });
+
+    socket.on('error', (error) => {
+      console.error('WebSocket error:', error);
+      if (error.message.includes('Authentication error')) {
+        toast({
+          title: 'Authentication Error',
+          description: 'Your session has expired. Please log in again.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+        localStorage.removeItem('auth-token');
+        window.location.href = '/login';
+      }
+    });
+
+    socket.on('balanceUpdate', (data) => {
+      console.log('Received balance update:', data);
+      setWalletBalance((prev) => ({
+        ...prev,
+        balance: data.balance,
+      }));
+      toast({
+        title: 'Wallet Updated',
+        description: `Your wallet has been funded with ₦${data.transaction.amount.toFixed(2)}.`,
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+      });
+      fetchWalletBalance();
+    });
+
     const fetchData = async () => {
       setLoading(true);
-      await Promise.all([fetchUserDetails(), fetchWalletBalance()]);
-      checkPendingPayment();
-      setLoading(false);
+      try {
+        await Promise.all([fetchUserDetails(), fetchWalletBalance()]);
+        if (userDetails?._id) {
+          socket.emit('join-room', userDetails._id);
+          console.log('Joined room for userId:', userDetails._id);
+        }
+        const pendingRef = localStorage.getItem('pendingPaymentRef');
+        if (pendingRef) {
+          const { reference, paystackReference } = JSON.parse(pendingRef);
+          setPaymentDetails((prev) => prev || { reference, paystackReference });
+          onPaymentModalOpen();
+          pollPaymentStatus(reference, paystackReference);
+        }
+      } catch (error) {
+        console.error('Error fetching initial data:', error);
+        if (error.response?.status === 401) {
+          localStorage.removeItem('auth-token');
+          window.location.href = '/login';
+        }
+      } finally {
+        setLoading(false);
+      }
     };
     fetchData();
 
     return () => {
       isMountedRef.current = false;
+      socket.disconnect();
       if (checkStatusInterval) {
-        console.log('Cleaning up polling interval');
         clearInterval(checkStatusInterval);
       }
     };
-  }, []);
+  }, [userDetails?._id]);
 
   const avatarSvg = multiavatar(userDetails?.email || "default");
 
@@ -811,7 +925,6 @@ const Profile = () => {
           transition={{ duration: 0.5 }}
         >
           <Grid templateColumns={{ base: '1fr', md: '1fr 2fr' }} gap={6}>
-            {/* Left Column: User Avatar and Wallet */}
             <Box>
               <Box
                 bg={cardBg}
@@ -875,7 +988,7 @@ const Profile = () => {
                   <Button
                     bgGradient={`linear(to-r, ${gradientStart}, ${gradientEnd})`}
                     color="white"
-                    _hover={{ bgGradient: hoverGradient }}
+                    _hover={{ bgGradient: `linear(to-r, blue.500, purple.600)` }}
                     leftIcon={<FaMoneyBillWave />}
                     onClick={() => setFundingAmount(0)}
                   >
@@ -895,8 +1008,6 @@ const Profile = () => {
                 </Flex>
               </Box>
             </Box>
-
-            {/* Right Column: User Details */}
             <Box>
               <Box
                 bg={cardBg}
@@ -1047,7 +1158,7 @@ const Profile = () => {
                       leftIcon={<FaSave />}
                       bgGradient={`linear(to-r, ${gradientStart}, ${gradientEnd})`}
                       color="white"
-                      _hover={{ bgGradient: hoverGradient }}
+                      _hover={{ bgGradient: `linear(to-r, blue.500, purple.600)` }}
                       isLoading={saving}
                       onClick={handleSave}
                     >
@@ -1056,8 +1167,6 @@ const Profile = () => {
                   </Flex>
                 )}
               </Box>
-
-              {/* Funding Section */}
               <Box
                 bg={cardBg}
                 p={6}
@@ -1099,7 +1208,7 @@ const Profile = () => {
                 <Button
                   bgGradient={`linear(to-r, ${gradientStart}, ${gradientEnd})`}
                   color="white"
-                  _hover={{ bgGradient: hoverGradient }}
+                  _hover={{ bgGradient: `linear(to-r, blue.500, purple.600)` }}
                   isLoading={isFunding}
                   onClick={handleFundWallet}
                   leftIcon={<FaMoneyBillWave />}
@@ -1124,7 +1233,7 @@ const Profile = () => {
           onPaymentModalClose();
         }}
         paymentDetails={paymentDetails}
-        onStatusCheck={() => paymentDetails?.reference && pollPaymentStatus(paymentDetails.reference)}
+        onStatusCheck={() => paymentDetails && pollPaymentStatus(paymentDetails.reference, paymentDetails.paystackReference)}
         userName={`${userDetails?.firstName} ${userDetails?.lastName}`}
       />
 
