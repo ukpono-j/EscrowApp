@@ -72,7 +72,7 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
     try {
       const response = await axios.post(
         `${BASE_URL}/api/wallet/reconcile`,
-        { reference: paymentDetails.reference || paymentDetails.paystackReference },
+        { reference: paymentDetails.paystackReference || paymentDetails.reference },
         { headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` } }
       );
       if (response.data.success) {
@@ -96,7 +96,7 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
     } catch (error) {
       toast({
         title: 'Reconciliation Error',
-        description: error.response?.data?.message || 'Unable to reconcile transaction. Please contact support.',
+        description: error.response?.data?.message || 'Unable to reconcile transaction.',
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -139,7 +139,7 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
             </>
           ) : (
             <Text color={textColor}>
-              No payment details available. Please initiate a new funding request or contact support.
+              No payment details available. Please initiate a new funding request.
             </Text>
           )}
         </ModalBody>
@@ -405,13 +405,13 @@ const Profile = () => {
     }
 
     if (checkStatusInterval) {
-      console.log('Clearing existing polling interval for reference:', reference || paystackReference);
+      console.log('Clearing existing polling interval');
       clearInterval(checkStatusInterval);
     }
 
     const toastId = toast({
       title: 'Payment Processing',
-      description: 'Checking your payment status. This may take a few minutes.',
+      description: 'Checking your payment status.',
       status: 'info',
       duration: null,
       isClosable: true,
@@ -475,7 +475,7 @@ const Profile = () => {
           toast.close(toastId);
           toast({
             title: 'Payment Failed',
-            description: 'Your payment could not be confirmed. Please try again.',
+            description: 'Your payment could not be confirmed.',
             status: 'error',
             duration: 5000,
             isClosable: true,
@@ -487,7 +487,7 @@ const Profile = () => {
           toast.close(toastId);
           toast({
             title: 'Payment Timeout',
-            description: 'Payment verification timed out. Please try manual reconciliation.',
+            description: 'Payment verification timed out. Try manual reconciliation.',
             status: 'warning',
             duration: 5000,
             isClosable: true,
@@ -495,6 +495,7 @@ const Profile = () => {
           setPaymentDetails((prev) => ({
             ...prev,
             reference: reference || paystackReference,
+            paystackReference,
           }));
         }
       } catch (error) {
@@ -502,8 +503,6 @@ const Profile = () => {
           attempt: attempts,
           reference: reference || paystackReference,
           message: error.message,
-          status: error.response?.status,
-          data: error.response?.data,
         });
 
         retryCount += 1;
@@ -513,7 +512,7 @@ const Profile = () => {
           toast.close(toastId);
           toast({
             title: 'Error',
-            description: error.response?.data?.message || 'Unable to verify payment status. Please try again.',
+            description: error.response?.data?.message || 'Unable to verify payment status.',
             status: 'error',
             duration: 5000,
             isClosable: true,
@@ -773,10 +772,8 @@ const Profile = () => {
   useEffect(() => {
     isMountedRef.current = true;
     const token = localStorage.getItem('auth-token');
-    console.log('JWT Token for Socket.IO:', token ? '[REDACTED]' : 'No token found');
 
     if (!token) {
-      console.error('No JWT token found, redirecting to login');
       toast({
         title: 'Session Expired',
         description: 'Please log in to continue.',
@@ -792,10 +789,9 @@ const Profile = () => {
     try {
       const decoded = jwtDecode(token);
       if (!decoded || Date.now() >= decoded.exp * 1000) {
-        console.error('Invalid or expired JWT token, redirecting to login');
         toast({
           title: 'Session Expired',
-          description: 'Your session has expired. Please log in again.',
+          description: 'Your session has expired.',
           status: 'error',
           duration: 5000,
           isClosable: true,
@@ -805,10 +801,9 @@ const Profile = () => {
         return;
       }
     } catch (error) {
-      console.error('Error decoding JWT token:', error);
       toast({
         title: 'Token Error',
-        description: 'Invalid token format. Please log in again.',
+        description: 'Invalid token format.',
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -833,20 +828,15 @@ const Profile = () => {
     });
 
     socket.on('connect_error', (error) => {
-      console.error('WebSocket connection error:', {
-        message: error.message,
-        type: error.type,
-        description: error.description,
-      });
+      console.error('WebSocket connection error:', error.message);
       toast({
         title: 'Connection Error',
-        description: 'Failed to connect to real-time updates. Retrying...',
+        description: 'Failed to connect to real-time updates.',
         status: 'warning',
         duration: 5000,
         isClosable: true,
       });
       if (error.message.includes('Authentication error')) {
-        console.error('Authentication error detected, redirecting to login');
         localStorage.removeItem('auth-token');
         window.location.href = '/login';
       }
@@ -857,7 +847,7 @@ const Profile = () => {
       if (error.message.includes('Authentication error')) {
         toast({
           title: 'Authentication Error',
-          description: 'Your session has expired. Please log in again.',
+          description: 'Your session has expired.',
           status: 'error',
           duration: 5000,
           isClosable: true,
@@ -884,7 +874,7 @@ const Profile = () => {
       if (isPaymentModalOpen) {
         setPaymentDetails(null);
         localStorage.removeItem('pendingPaymentRef');
-        onPaymentModalClose(); // Close the modal if open
+        onPaymentModalClose();
       }
     });
 
@@ -894,7 +884,7 @@ const Profile = () => {
         await Promise.all([fetchUserDetails(), fetchWalletBalance()]);
         if (userDetails?._id) {
           socket.emit('join-room', userDetails._id);
-          console.log('Joined room for userId:', userDetails._id);
+          console.log('Joined room:', userDetails._id);
         }
         const pendingRef = localStorage.getItem('pendingPaymentRef');
         if (pendingRef) {
@@ -922,7 +912,7 @@ const Profile = () => {
         clearInterval(checkStatusInterval);
       }
     };
-  }, [userDetails?._id]);
+  }, [userDetails?._id])
 
   const avatarSvg = multiavatar(userDetails?.email || "default");
 
