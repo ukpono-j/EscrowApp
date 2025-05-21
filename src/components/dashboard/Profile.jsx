@@ -881,6 +881,11 @@ const Profile = () => {
         isClosable: true,
       });
       fetchWalletBalance();
+      if (isPaymentModalOpen) {
+        setPaymentDetails(null);
+        localStorage.removeItem('pendingPaymentRef');
+        onPaymentModalClose(); // Close the modal if open
+      }
     });
 
     const fetchData = async () => {
