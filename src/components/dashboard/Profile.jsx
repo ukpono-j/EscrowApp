@@ -432,12 +432,25 @@ const Profile = () => {
       attempts += 1;
 
       try {
-        const response = await axios.get(
-          `${BASE_URL}/api/wallet/funding-status/${reference || paystackReference}`,
-          { headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` } }
-        );
+        const referencesToCheck = [reference, paystackReference].filter(Boolean);
+        let response;
+        for (const ref of referencesToCheck) {
+          try {
+            response = await axios.get(
+              `${BASE_URL}/api/wallet/funding-status/${ref}`,
+              { headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` } }
+            );
+            console.log(`Payment status response for ${ref}:`, response.data);
+            if (response.data.success) break;
+          } catch (err) {
+            console.warn(`Status check failed for ${ref}:`, err.message);
+            continue;
+          }
+        }
 
-        console.log('Payment status response:', response.data);
+        if (!response || !response.data.success) {
+          throw new Error('No valid status response received');
+        }
 
         if (response.data.success && response.data.data.transaction.status === 'completed') {
           clearInterval(interval);
