@@ -726,6 +726,8 @@ const Profile = () => {
         window.location.href = '/login';
       } else if (error.response?.status === 408) {
         errorMessage = 'Request timed out. Please try again later or contact support.';
+      } else if (error.response?.status === 500) {
+        errorMessage = 'Unable to create virtual account. Please try again or contact support.';
       }
       toast({
         title: 'Funding Error',
