@@ -20,18 +20,14 @@ const MotionBox = motion(Box);
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrollPosition, setScrollPosition] = useState(0);
-  const [navbarHeight, setNavbarHeight] = useState(60); // Default height
+  const [navbarHeight, setNavbarHeight] = useState(60);
   const navbarRef = useRef(null);
 
-  // Theme colors
   const mobileMenuBg = useColorModeValue("#FAFAFA", "#1A202C");
   const menuBgColor = useColorModeValue("rgba(255, 255, 255, 0.95)", "rgba(26, 32, 44, 0.95)");
   const textHoverColor = useColorModeValue("#B38939", "#E2C07C");
-
-  // Accent color
   const accentColor = "#B38939";
 
-  // Track scroll position
   useEffect(() => {
     const handleScroll = () => {
       setScrollPosition(window.scrollY);
@@ -40,7 +36,6 @@ const Navbar = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Calculate navbar height
   useEffect(() => {
     const updateNavbarHeight = () => {
       if (navbarRef.current) {
@@ -62,7 +57,6 @@ const Navbar = () => {
     });
   };
 
-  // Menu item variants for animation
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -90,7 +84,6 @@ const Navbar = () => {
     { name: "Contact Us", to: "footer", type: "scroll" },
   ];
 
-  // Menu item hover effect
   const menuItemStyle = {
     fontSize: ["md", "lg", "xl"],
     fontWeight: "500",
@@ -142,8 +135,8 @@ const Navbar = () => {
           <Image
             src={Logo}
             alt="Sylo Logo"
-            w={["clamp(80px, 25vw, 100px)", "clamp(100px, 20vw, 120px)", "clamp(120px, 15vw, 140px)", "clamp(130px, 10vw, 150px)"]}
-            maxH={["clamp(24px, 8vw, 28px)", "clamp(28px, 6vw, 32px)", "clamp(32px, 5vw, 36px)", "clamp(34px, 4vw, 40px)"]}
+            w={["clamp(100px, 30vw, 120px)", "clamp(120px, 25vw, 140px)", "clamp(140px, 20vw, 160px)", "clamp(150px, 15vw, 170px)"]}
+            maxH={["clamp(28px, 10vw, 32px)", "clamp(32px, 8vw, 36px)", "clamp(36px, 6vw, 40px)", "clamp(38px, 5vw, 44px)"]}
             objectFit="contain"
             className="logo-responsive"
           />
@@ -151,10 +144,10 @@ const Navbar = () => {
       </Box>
       <Box flex="1" display="flex" justifyContent="flex-end" alignItems="center">
         <Text
-          className="hidden lg:flex desktop-menu"
+          className="desktop-menu"
           fontSize={["sm", "md", "16px"]}
           sx={{ "--space-x": ["4px", "6px", "8px", "10px"] }}
-          display="flex"
+          display={["none", "none", "none", "flex"]} // Hide on mobile, show on lg (1024px) and above
           alignItems="center"
           style={{ gap: "var(--space-x)" }}
         >
@@ -209,12 +202,13 @@ const Navbar = () => {
       </Box>
       <Box display="flex" alignItems="center">
         <Box
-          className="lg:hidden flex items-center mobile-menu-button"
+          className="mobile-menu-button"
+          display={["flex", "flex", "flex", "none"]} // Show on mobile, hide on lg (1024px) and above
           onClick={() => setIsMenuOpen(!isMenuOpen)}
         >
           <Box
             as={isMenuOpen ? AiOutlineClose : AiOutlineMenu}
-            className="text-[clamp(24px, 6vw, 28px)] cursor-pointer"
+            className="text-[clamp(48px, 16vw, 52px)] cursor-pointer" // Increased size for mobile
             transition="transform 0.3s ease"
             transform={isMenuOpen ? "rotate(90deg)" : "rotate(0)"}
             color={isMenuOpen ? accentColor : "currentColor"}
@@ -222,7 +216,6 @@ const Navbar = () => {
         </Box>
       </Box>
 
-      {/* Mobile Menu */}
       <ScaleFade in={isMenuOpen} initialScale={0.9}>
         {isMenuOpen && (
           <MotionBox
@@ -244,7 +237,6 @@ const Navbar = () => {
               h="100%"
               boxShadow="0px -4px 20px rgba(0, 0, 0, 0.1)"
             >
-              {/* Decorative elements */}
               <Box
                 position="absolute"
                 top="5%"
@@ -276,7 +268,6 @@ const Navbar = () => {
                 zIndex={1}
               />
 
-              {/* Menu Items */}
               <Flex direction="column" align="center" justify="center" mt={6} position="relative" zIndex={2}>
                 {menuItems.map((item) => (
                   <MotionBox key={item.name} variants={itemVariants} mb={[6, 8]} textAlign="center">
@@ -320,7 +311,6 @@ const Navbar = () => {
                   </MotionBox>
                 ))}
 
-                {/* Login and Register Buttons */}
                 <MotionBox variants={itemVariants} width="full" maxWidth={["clamp(200px, 70vw, 260px)", "280px"]} mt={4}>
                   <Link
                     to="/login"
@@ -348,7 +338,6 @@ const Navbar = () => {
                   </Link>
                 </MotionBox>
 
-                {/* Social Media Icons */}
                 <MotionBox variants={itemVariants} mt={[8, 12]} display="flex" justifyContent="center" gap={[4, 6]}>
                   <Box
                     w={["8px", "10px"]}

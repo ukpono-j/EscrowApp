@@ -890,12 +890,14 @@ const DisplayTransaction = ({ userResponse }) => {
     if (isConfirming[transactionId]) return;
     setIsConfirming(prev => ({ ...prev, [transactionId]: true }));
     try {
-      await axios.put(`${BASE_URL}/api/transactions/cancel/${transactionId}`, {}, {
+      const response = await axios.put(`${BASE_URL}/api/transactions/cancel/${transactionId}`, {}, {
         headers: { "Authorization": `Bearer ${localStorage.getItem("auth-token")}` }
       });
       toast({
         title: "Transaction Cancelled",
-        description: "Funds refunded if applicable.",
+        description: response.data.refunded > 0 
+          ? `Funds of ₦${response.data.refunded.toLocaleString('en-NG', { minimumFractionDigits: 2 })} refunded to wallet.` 
+          : "No funds were locked for this transaction.",
         status: "success",
         duration: 5000,
         isClosable: true
