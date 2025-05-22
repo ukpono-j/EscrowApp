@@ -11,7 +11,15 @@ import {
 } from "react-icons/md";
 import { FaHandshake, FaExchangeAlt, FaUserShield } from "react-icons/fa";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useToast, Box, Text, Flex, useColorModeValue, Image } from "@chakra-ui/react";
+import {
+  useToast,
+  Box,
+  Text,
+  Flex,
+  useColorModeValue,
+  Image,
+  Spinner,
+} from "@chakra-ui/react";
 import { BsChevronDown } from "react-icons/bs";
 import axios from "axios";
 import Logo from "../../assets/logo1.png"; // Adjust path as needed
@@ -55,6 +63,7 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
   const toast = useToast();
   const navigate = useNavigate();
   const [userName, setUserName] = useState("");
+  const [isUserLoading, setIsUserLoading] = useState(true); // Added for loading state
   const [settingLinks, setSettingLinks] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -98,6 +107,7 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
     }
     axios.defaults.headers.common["auth-token"] = token;
 
+    setIsUserLoading(true); // Start loading
     axios
       .get(`${BASE_URL}/api/users/user-details`)
       .then((response) => {
@@ -137,6 +147,9 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
           handleLogout();
         }
         setUserName("User");
+      })
+      .finally(() => {
+        setIsUserLoading(false); // Stop loading
       });
   }, [toast, navigate]);
 
@@ -210,8 +223,8 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
   );
 
   const MobileToggle = () => {
-    // Only render when sidebar is hidden in mobile view
-    if (isMobile && isSidebarVisible) return null;
+    // Only render on mobile when sidebar is hidden
+    if (!isMobile || isSidebarVisible) return null;
     return (
       <button
         onClick={toggleSidebar}
@@ -274,10 +287,12 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
                       >
                         {isMobile ? (
                           <MdClose className="text-[#9C7933]" />
-                        ) : isCollapsed ? (
-                          <MdMenu className="text-[#9C7933]" />
                         ) : (
-                          <MdClose className="text-[#9C7933]" />
+                          isCollapsed ? (
+                            <MdMenu className="text-[#9C7933]" />
+                          ) : (
+                            <MdClose className="text-[#9C7933]" />
+                          )
                         )}
                       </button>
                     </div>
@@ -293,13 +308,22 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
                             className="flex items-center gap-3"
                           >
                             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#B38939] to-[#8A6D2F] flex items-center justify-center text-lg font-bold text-white shadow-lg ring-2 ring-[#B38939]/20">
-                              {getInitials(userName)}
+                              {isUserLoading ? <Spinner size="sm" color="white" /> : getInitials(userName)}
                             </div>
                             <div className="flex-grow">
                               <Text fontSize="sm" color="gray.500">Welcome back</Text>
-                              <Text fontSize="md" fontWeight="bold" color={bgColor === "white" ? "gray.800" : "white"}>
-                                {userName || "User"}
-                              </Text>
+                              {isUserLoading ? (
+                                <Flex align="center">
+                                  <Spinner size="xs" color="gray.500" mr={2} />
+                                  <Text fontSize="md" color={bgColor === "white" ? "gray.800" : "white"}>
+                                    Loading...
+                                  </Text>
+                                </Flex>
+                              ) : (
+                                <Text fontSize="md" fontWeight="bold" color={bgColor === "white" ? "gray.800" : "white"}>
+                                  {userName}
+                                </Text>
+                              )}
                             </div>
                           </motion.div>
                         ) : (
@@ -310,9 +334,9 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
                             exit={{ scale: 0.8, opacity: 0 }}
                             transition={{ duration: 0.2 }}
                           >
-                            <Tooltip label={userName || "User"}>
+                            <Tooltip label={isUserLoading ? "Loading..." : userName}>
                               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#B38939] to-[#8A6D2F] flex items-center justify-center text-lg font-bold text-white shadow-lg ring-2 ring-[#B38939]/20">
-                                {getInitials(userName)}
+                                {isUserLoading ? <Spinner size="sm" color="white" /> : getInitials(userName)}
                               </div>
                             </Tooltip>
                           </motion.div>
