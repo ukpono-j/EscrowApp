@@ -1,9 +1,115 @@
-/* Add this to your CSS styles */
-.active-link {
-  background-color: white;
-  color: #000;
+.sidebar {
+  transition: width 0.3s ease-in-out;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-.sidebar {
-  transition: none !important;
+.active-link {
+  background: linear-gradient(to right, #B38939, #8A6D2F);
+  color: #ffffff !important;
+  font-weight: 500;
+  width: 100%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+}
+
+.side_links {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  transition: all 0.2s ease-in-out;
+}
+
+.side_links:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.logo-responsive {
+  display: block;
+  transition: all 0.2s ease-in-out;
+}
+
+.logo-responsive-container {
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  max-width: 100%;
+}
+
+/* Very small screens (below 320px) */
+@media (max-width: 319px) {
+  .logo-responsive {
+    max-width: 100px;
+    max-height: 28px;
+    width: 100%;
+    height: auto;
+  }
+}
+
+/* Mobile screens (320px - 767px) */
+@media (min-width: 320px) and (max-width: 767px) {
+  .logo-responsive {
+    max-width: 120px;
+    max-height: 32px;
+    width: 100%;
+    height: auto;
+  }
+  .logo-responsive-container {
+    padding-left: 3.5rem; /* Match pl-14 for mobile toggle */
+  }
+  .side_links {
+    justify-content: flex-start;
+  }
+}
+
+/* Tablet screens (768px - 1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .logo-responsive {
+    max-width: 140px;
+    max-height: 36px;
+    width: 100%;
+    height: auto;
+  }
+  .side_links {
+    justify-content: flex-start;
+  }
+}
+
+/* Desktop screens (1024px and above) */
+@media (min-width: 1024px) {
+  .logo-responsive {
+    max-width: 160px;
+    max-height: 40px;
+    width: 100%;
+    height: auto;
+  }
+  .logo-responsive.collapsed {
+    max-width: 60px;
+    max-height: 32px;
+  }
+  .side_links {
+    justify-content: flex-start;
+  }
+  .side_links.active-link {
+    justify-content: flex-start;
+  }
+}
+
+/* Scrollbar styles */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(179, 137, 57, 0.2) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: rgba(179, 137, 57, 0.2);
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
 }

@@ -1,20 +1,20 @@
-import React, { useEffect, useState, useMemo, useCallback } from "react";
-import { motion } from "framer-motion";
-import { io } from "socket.io-client";
-import axios from "axios";
-import { useNavigate } from "react-router-dom";
-import { format } from "date-fns";
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { motion } from 'framer-motion';
+import { io } from 'socket.io-client';
+import axios from 'axios';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { format } from 'date-fns';
 import {
   Box, Flex, Text, Button, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter,
-  useToast, VStack, Input, Select, IconButton, Image, Spinner
-} from "@chakra-ui/react";
-import { FiSearch, FiEdit } from "react-icons/fi";
-import { BsChatFill } from "react-icons/bs";
-import { MdClose, MdContentCopy } from "react-icons/md";
-import Sidebar from "./Sidebar";
-import BottomNav from "./BottomNav";
-import MiniNav from "./MiniNav";
-import { nigeriaBanks } from "../../data/banksList";
+  useToast, VStack, Input, Select, IconButton, Image, Spinner, useDisclosure
+} from '@chakra-ui/react';
+import { FiSearch, FiEdit } from 'react-icons/fi';
+import { BsChatFill } from 'react-icons/bs';
+import { MdClose, MdContentCopy } from 'react-icons/md';
+import Sidebar from './Sidebar';
+import BottomNav from './BottomNav';
+import MiniNav from './MiniNav';
+import { nigeriaBanks } from '../../data/banksList';
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 const MotionBox = motion(Box);
@@ -38,18 +38,83 @@ const TransactionLoader = () => (
 );
 
 const TransactionCard = ({
-  transaction, currentUser, isConfirming, handleChat, handleWaybill, handleConfirm,
-  handleFund, handleEditPayment, cancelTransaction, copyToClipboard, toggleDescription, expandedDescriptions
+  transaction,
+  currentUser,
+  isConfirming,
+  handleChat,
+  handleWaybill,
+  handleConfirm,
+  handleFund,
+  handleEditPayment,
+  cancelTransaction,
+  copyToClipboard,
+  toggleDescription,
+  expandedDescriptions,
 }) => {
-  const isCreator = currentUser?._id && transaction?.userId?._id === currentUser._id;
-  const isParticipant = transaction?.participants?.some(p => p._id === currentUser?._id || p === currentUser?._id) || false;
-  const isBuyer = (isCreator && transaction?.selectedUserType === "buyer") || (isParticipant && transaction?.selectedUserType !== "buyer");
+  // Ensure IDs are strings for comparison
+  const currentUserId = currentUser?._id?.toString();
+  const creatorId = transaction?.userId?._id?.toString();
+
+  // Determine if the current user is the creator
+  const isCreator = currentUserId && creatorId ? creatorId === currentUserId : false;
+
+  // Safely check participants
+  const isParticipant = transaction?.participants?.some((p) => {
+    if (!p) return false;
+    const participantId = p._id ? p._id.toString() : p.toString();
+    return participantId === currentUserId;
+  }) || false;
+
+  // Use userRole from backend if available, otherwise compute locally
+  const userRole = transaction?.userRole || (
+    isCreator
+      ? transaction?.selectedUserType
+      : transaction?.selectedUserType === "buyer"
+        ? "seller"
+        : transaction?.selectedUserType === "seller"
+          ? "buyer"
+          : "unknown"
+  );
+  const isBuyer = userRole === "buyer";
+
+  // Determine display name (opposite party)
+  let displayName = "No participant yet";
+  if (transaction?.participants?.length > 0 && transaction.participants[0]) {
+    if (isCreator) {
+      // Creator sees participant's name
+      const participant = transaction.participants[0];
+      displayName = participant?.firstName
+        ? `${participant.firstName} ${participant.lastName || ""}`.trim()
+        : participant?.email || "Participant";
+    } else if (isParticipant) {
+      // Participant sees creator's name
+      const creator = transaction.userId;
+      displayName = creator?.firstName
+        ? `${creator.firstName} ${creator.lastName || ""}`.trim()
+        : creator?.email || "Creator";
+    }
+  }
+
   const description = transaction?.productDetails?.description || "No description provided";
   const isExpanded = expandedDescriptions[transaction._id];
   const maxLength = 100;
-  const truncatedDescription = description.length > maxLength && !isExpanded
-    ? `${description.substring(0, maxLength)}...`
-    : description;
+  const truncatedDescription =
+    description.length > maxLength && !isExpanded
+      ? `${description.substring(0, maxLength)}...`
+      : description;
+
+  // Debug log
+  console.log("TransactionCard render:", {
+    transactionId: transaction?._id,
+    isCreator,
+    isParticipant,
+    displayName,
+    userRole,
+    selectedUserType: transaction?.selectedUserType,
+    currentUserId,
+    creatorId,
+    participants: transaction?.participants?.map((p) => p?._id?.toString() || "invalid"),
+  });
 
   return (
     <MotionBox
@@ -67,36 +132,36 @@ const TransactionCard = ({
     >
       <Flex justify="space-between" align="center" mb={{ base: 2, sm: 3 }}>
         <Box>
-          {transaction?.participants?.length > 0 ? (
-            <Text fontSize={{ base: "md", sm: "lg" }} fontWeight="bold" color="white" isTruncated maxW="200px">
-              {transaction.participants[0].firstName ? `${transaction.participants[0].firstName} ${transaction.participants[0].lastName || ""}` : "Participant joined"}
-            </Text>
-          ) : (
-            <Text fontSize={{ base: "sm", sm: "md" }} color="gray.400">No participant yet</Text>
-          )}
+          <Text
+            fontSize={{ base: "md", sm: "lg" }}
+            fontWeight="bold"
+            color="white"
+            isTruncated
+            maxW="200px"
+          >
+            {displayName}
+          </Text>
         </Box>
         <Flex gap={2}>
-          <IconButton aria-label="Edit payment details" icon={<FiEdit />} size="sm" bg="#1d2225" color="white" _hover={{ bg: "#967532" }} onClick={() => handleEditPayment(transaction)} />
-          <IconButton aria-label="Open chat" icon={<BsChatFill />} size="sm" bg="#1d2225" color="white" _hover={{ bg: "#318AE6" }} onClick={() => handleChat(transaction._id)} />
+          <IconButton
+            aria-label="Edit payment details"
+            icon={<FiEdit />}
+            size="sm"
+            bg="#1d2225"
+            color="white"
+            _hover={{ bg: "#967532" }}
+            onClick={() => handleEditPayment(transaction)}
+          />
+          <IconButton
+            aria-label="Open chat"
+            icon={<BsChatFill />}
+            size="sm"
+            bg="#1d2225"
+            color="white"
+            _hover={{ bg: "#318AE6" }}
+            onClick={() => handleChat(transaction._id)}
+          />
         </Flex>
-      </Flex>
-      <Box bg="#1d2225" rounded="md" p={{ base: 2, sm: 3 }} mb={2}>
-        <Text fontSize="xs" color="gray.400" mb={1}>Description</Text>
-        <VStack align="start" spacing={1}>
-          <Text fontSize="sm" color="gray.200">{truncatedDescription}</Text>
-          {description.length > maxLength && (
-            <Button variant="link" size="xs" color="#318AE6" onClick={() => toggleDescription(transaction._id)}>
-              {isExpanded ? "Show less" : "Read more"}
-            </Button>
-          )}
-        </VStack>
-      </Box>
-      <Flex bg="#1d2225" rounded="md" p={{ base: 2, sm: 3 }} mb={2} justify="space-between" align="center">
-        <Box maxW="70%">
-          <Text fontSize="xs" color="gray.400" mb={1}>Transaction ID</Text>
-          <Text fontSize="sm" color="white" isTruncated>{transaction._id}</Text>
-        </Box>
-        <IconButton aria-label="Copy transaction ID" icon={<MdContentCopy />} size="sm" color="gray.400" _hover={{ color: "#318AE6" }} onClick={() => copyToClipboard(transaction._id)} />
       </Flex>
       <Box
         display="grid"
@@ -106,21 +171,73 @@ const TransactionCard = ({
         overflow="hidden"
       >
         {[
+          {
+            label: "Transaction ID",
+            value: (
+              <Flex align="center" gap={1}>
+                <Text
+                  fontSize="sm"
+                  color="white"
+                  isTruncated
+                  whiteSpace="normal"
+                  overflowWrap="break-word"
+                >
+                  {transaction._id}
+                </Text>
+                <IconButton
+                  aria-label="Copy transaction ID"
+                  icon={<MdContentCopy />}
+                  size="xs"
+                  bg="transparent"
+                  color="gray.400"
+                  _hover={{ color: "#318AE6" }}
+                  onClick={() => copyToClipboard(transaction._id)}
+                />
+              </Flex>
+            ),
+          },
           { label: "Email", value: transaction.email || "N/A" },
-          { label: "Amount", value: transaction.paymentAmount ? `₦${parseFloat(transaction.paymentAmount).toFixed(2)}` : "N/A", color: "#318AE6" },
-          { label: "User Type", value: isBuyer ? "Buyer" : "Seller" },
+          {
+            label: "Amount",
+            value: transaction.paymentAmount
+              ? `₦${parseFloat(transaction.paymentAmount).toLocaleString("en-NG", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}`
+              : "N/A",
+            color: "#318AE6",
+          },
+          {
+            label: "User Type",
+            value: userRole.charAt(0).toUpperCase() + userRole.slice(1),
+          },
           {
             label: "Status",
             value: (
               <Text
                 fontSize="xs"
-                bg={transaction.status === "completed" ? "green.900" : transaction.status === "cancelled" ? "red.900" : "yellow.900"}
-                color={transaction.status === "completed" ? "green.300" : transaction.status === "cancelled" ? "red.300" : "yellow.300"}
-                px={2} py={1} rounded="full" textAlign="center"
+                bg={
+                  transaction.status === "completed"
+                    ? "green.900"
+                    : transaction.status === "cancelled"
+                    ? "red.900"
+                    : "yellow.900"
+                }
+                color={
+                  transaction.status === "completed"
+                    ? "green.300"
+                    : transaction.status === "cancelled"
+                    ? "red.300"
+                    : "yellow.300"
+                }
+                px={2}
+                py={1}
+                rounded="full"
+                textAlign="center"
               >
                 {transaction.status || "Unknown"}
               </Text>
-            )
+            ),
           },
           { label: "Bank", value: transaction.paymentBank || "N/A" },
           { label: "Account Number", value: transaction.paymentAccountNumber || "N/A" },
@@ -131,35 +248,64 @@ const TransactionCard = ({
                 fontSize="xs"
                 bg={transaction.proofOfWaybill === "confirmed" ? "green.900" : "yellow.900"}
                 color={transaction.proofOfWaybill === "confirmed" ? "green.300" : "yellow.300"}
-                px={2} py={1} rounded="full" textAlign="center"
+                px={2}
+                py={1}
+                rounded="full"
+                textAlign="center"
               >
                 {transaction.proofOfWaybill || "Not submitted"}
               </Text>
-            )
+            ),
           },
-          { label: "Created", value: transaction.createdAt ? format(new Date(transaction.createdAt), "MMM dd, yyyy") : "N/A" },
+          {
+            label: "Created",
+            value: transaction.createdAt
+              ? format(new Date(transaction.createdAt), "MMM dd, yyyy")
+              : "N/A",
+          },
           {
             label: "Escrow Status",
             value: (
               <Text
                 fontSize="xs"
-                bg={transaction.locked ? "yellow.900" : transaction.status === "completed" ? "green.900" : "gray.900"}
-                color={transaction.locked ? "yellow.300" : transaction.status === "completed" ? "green.300" : "gray.300"}
-                px={2} py={1} rounded="full" textAlign="center"
+                bg={
+                  transaction.locked && transaction.status !== "completed"
+                    ? "yellow.900"
+                    : transaction.status === "completed"
+                    ? "green.900"
+                    : "gray.900"
+                }
+                color={
+                  transaction.locked && transaction.status !== "completed"
+                    ? "yellow.300"
+                    : transaction.status === "completed"
+                    ? "green.300"
+                    : "gray.300"
+                }
+                px={2}
+                py={1}
+                rounded="full"
+                textAlign="center"
               >
-                {transaction.locked ? `Locked: ₦${parseFloat(transaction.lockedAmount || 0).toFixed(2)}` : transaction.status === "completed" ? "Released" : "Not Locked"}
+                {transaction.locked && transaction.status !== "completed"
+                  ? `Locked: ₦${parseFloat(transaction.lockedAmount || 0).toLocaleString(
+                      "en-NG",
+                      { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+                    )}`
+                  : transaction.status === "completed"
+                  ? `Released: ₦${parseFloat(transaction.paymentAmount || 0).toLocaleString(
+                      "en-NG",
+                      { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+                    )}`
+                  : "Not Locked"}
               </Text>
-            )
-          }
+            ),
+          },
         ].map(({ label, value, color }, idx) => (
-          <Box
-            key={idx}
-            bg="#1d2225"
-            rounded="md"
-            p={2}
-            overflow="hidden"
-          >
-            <Text fontSize="xs" color="gray.400" mb={1}>{label}</Text>
+          <Box key={idx} bg="#1d2225" rounded="md" p={2} overflow="hidden">
+            <Text fontSize="xs" color="gray.400" mb={1}>
+              {label}
+            </Text>
             {typeof value === "string" ? (
               <Text
                 fontSize="sm"
@@ -176,11 +322,60 @@ const TransactionCard = ({
           </Box>
         ))}
       </Box>
+      <Box mb={3}>
+        <Text fontSize="xs" color="gray.400" mb={1}>
+          Description
+        </Text>
+        <Text
+          fontSize="sm"
+          color="white"
+          whiteSpace="pre-wrap"
+          cursor={description.length > maxLength ? "pointer" : "default"}
+          onClick={() => toggleDescription(transaction._id)}
+        >
+          {truncatedDescription}
+        </Text>
+      </Box>
       <Flex flexWrap="wrap" gap={2} justify="space-between">
-        <Button onClick={() => cancelTransaction(transaction._id)} bg="red.700" color="white" _hover={{ bg: "red.600" }} size="sm" flex={1} minW="90px" isLoading={isConfirming[transaction._id]} aria-label="Cancel transaction">Cancel</Button>
-        <Button onClick={() => handleWaybill(transaction._id, isBuyer)} bg="#318AE6" color="white" _hover={{ bg: "#2279d8" }} size="sm" flex={1} minW="90px" aria-label={isBuyer ? "View waybill" : "Input waybill"}>{isBuyer ? "View Waybill" : "Input Waybill"}</Button>
+        <Button
+          onClick={() => cancelTransaction(transaction._id)}
+          bg="red.700"
+          color="white"
+          _hover={{ bg: "red.600" }}
+          size="sm"
+          flex={1}
+          minW="90px"
+          isLoading={isConfirming[transaction._id]}
+          aria-label="Cancel transaction"
+        >
+          Cancel
+        </Button>
+        <Button
+          onClick={() => handleWaybill(transaction._id, isBuyer)}
+          bg="#318AE6"
+          color="white"
+          _hover={{ bg: "#2279d8" }}
+          size="sm"
+          flex={1}
+          minW="90px"
+          aria-label={isBuyer ? "View waybill" : "Input waybill"}
+        >
+          {isBuyer ? "View Waybill" : "Input Waybill"}
+        </Button>
         {transaction.status === "pending" && (
-          <Button onClick={() => handleConfirm(transaction._id)} bg="green.700" color="white" _hover={{ bg: "green.600" }} size="sm" flex={1} minW="90px" isLoading={isConfirming[transaction._id]} aria-label="Complete transaction">Complete</Button>
+          <Button
+            onClick={() => handleConfirm(transaction._id)}
+            bg="green.700"
+            color="white"
+            _hover={{ bg: "green.600" }}
+            size="sm"
+            flex={1}
+            minW="90px"
+            isLoading={isConfirming[transaction._id]}
+            aria-label="Complete transaction"
+          >
+            Complete
+          </Button>
         )}
         {isBuyer && !transaction.locked && transaction.status === "pending" && (
           <Button
@@ -350,24 +545,24 @@ const PaymentDetailsModal = ({ isOpen, onClose, transaction, paymentDetails, set
 const DisplayTransaction = ({ userResponse }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [transactions, setTransactions] = useState([]);
-  const [walletBalance, setWalletBalance] = useState(null);
+  const [walletBalance, setWalletBalance] = useState(0);
   const [walletTransactions, setWalletTransactions] = useState([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [activeTab, setActiveTab] = useState("all");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [showToggleContainer, setShowToggleContainer] = useState(true);
   const [showProfile, setShowProfile] = useState(false);
   const [showWaybillPopup, setShowWaybillPopup] = useState({});
   const [buyerShowWaybillPopup, setBuyerShowWaybillPopup] = useState({});
-  const [waybillDetails, setWaybillDetails] = useState({ item: "", image: null, price: "", shippingAddress: "", trackingNumber: "", deliveryDate: "" });
+  const [waybillDetails, setWaybillDetails] = useState({ item: '', image: null, price: '', shippingAddress: '', trackingNumber: '', deliveryDate: '' });
   const [buyerWaybillDetails, setBuyerWaybillDetails] = useState({});
   const [errors, setErrors] = useState({});
   const [showPaymentDetailsModal, setShowPaymentDetailsModal] = useState(false);
   const [currentTransaction, setCurrentTransaction] = useState(null);
-  const [paymentDetails, setPaymentDetails] = useState({ paymentBank: "", paymentAccountNumber: "", selectedBankCode: "", paymentAmount: "" });
+  const [paymentDetails, setPaymentDetails] = useState({ paymentBank: '', paymentAccountNumber: '', selectedBankCode: '', paymentAmount: '' });
   const [paymentErrors, setPaymentErrors] = useState({});
   const [isConfirming, setIsConfirming] = useState({});
   const [expandedDescriptions, setExpandedDescriptions] = useState({});
@@ -375,13 +570,41 @@ const DisplayTransaction = ({ userResponse }) => {
   const [selectedTransactionId, setSelectedTransactionId] = useState(null);
   const toast = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { isOpen: isFundingModalOpen, onOpen: openFundingModal, onClose: closeFundingModal } = useDisclosure();
+
+  // Handle Paystack callback
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const success = params.get('success');
+    const transactionId = params.get('transactionId');
+    const error = params.get('error');
+
+    if (success === 'true' && transactionId) {
+      toast({
+        title: 'Funding Successful',
+        description: 'Transaction has been funded.',
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+      });
+      fetchData(false);
+    } else if (success === 'false' && error) {
+      toast({
+        title: 'Funding Failed',
+        description: decodeURIComponent(error),
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+  }, [location]);
 
   // Check if screen is mobile size
   useEffect(() => {
     const checkScreenSize = () => {
       const isMobileView = window.innerWidth < 768;
       setIsMobile(isMobileView);
-      // Auto-collapse sidebar on mobile by default
       if (isMobileView) {
         setIsSidebarCollapsed(true);
       }
@@ -396,11 +619,12 @@ const DisplayTransaction = ({ userResponse }) => {
   };
 
   const fetchData = useCallback(async (showLoader = false) => {
-    const token = localStorage.getItem("auth-token");
+    const token = localStorage.getItem('auth-token');
     if (!token) {
       setIsInitialLoading(false);
       setIsManualRefreshing(false);
-      toast({ title: "Authentication required", status: "error", duration: 3000, isClosable: true });
+      toast({ title: 'Authentication required', description: 'Please log in.', status: 'error', duration: 3000, isClosable: true });
+      navigate('/');
       return;
     }
     try {
@@ -408,34 +632,63 @@ const DisplayTransaction = ({ userResponse }) => {
         setIsInitialLoading(true);
         setIsManualRefreshing(true);
       }
+      const headers = { 'Authorization': `Bearer ${token}` };
       const [userRes, txRes, walletRes, walletTxRes] = await Promise.all([
-        axios.get(`${BASE_URL}/api/users/user-details`, { headers: { "auth-token": token } }),
-        axios.get(`${BASE_URL}/api/transactions/get-transaction`, { headers: { "auth-token": token } }),
-        axios.get(`${BASE_URL}/api/wallet/balance`, { headers: { "auth-token": token } }),
-        axios.get(`${BASE_URL}/api/wallet/transactions`, { headers: { "auth-token": token } })
+        axios.get(`${BASE_URL}/api/users/user-details`, { headers }),
+        axios.get(`${BASE_URL}/api/transactions/get-transaction`, { headers }),
+        axios.get(`${BASE_URL}/api/wallet/balance`, { headers }),
+        axios.get(`${BASE_URL}/api/wallet/transactions`, { headers })
       ]);
-      console.log('Transactions response:', txRes.data); // Debug log
-      const transactionsArray = txRes.data.data || []; // Default to empty array
+
+      // Handle user response
+      if (!userRes.data?.data?.user) {
+        throw new Error('Failed to fetch user details');
+      }
+      setCurrentUser(userRes.data.data.user);
+
+      // Handle transactions response
+      const transactionsArray = txRes.data?.success && Array.isArray(txRes.data.data) ? txRes.data.data : [];
       if (!Array.isArray(transactionsArray)) {
-        console.warn('Transactions data is not an array:', transactionsArray);
+        console.warn('Transactions data is not an array:', txRes.data);
         setTransactions([]);
       } else {
+        // Log malformed participants
+        transactionsArray.forEach(t => {
+          if (t.participants?.some(p => !p || !p._id || !p.email)) {
+            console.warn('Malformed participant in transaction:', t._id, t.participants);
+          }
+        });
         setTransactions(transactionsArray);
       }
-      setCurrentUser(userRes.data);
-      setWalletBalance(walletRes.data?.balance ?? 0);
-      setWalletTransactions(walletTxRes.data?.transactions || []);
+
+      // Handle wallet responses
+      setWalletBalance(walletRes.data?.success && walletRes.data.balance !== undefined ? walletRes.data.balance : 0);
+      setWalletTransactions(walletTxRes.data?.success && Array.isArray(walletTxRes.data.transactions) ? walletTxRes.data.transactions : []);
+
     } catch (error) {
-      console.error('Fetch error:', error.response || error);
-      toast({ title: "Error fetching data", description: error.message, status: "error", duration: 3000, isClosable: true });
-      setTransactions([]); // Set empty array on error
+      console.error('Fetch error:', error.response?.data || error);
+      const errorMessage = error.response?.data?.errors?.map(e => e.msg).join(', ') || error.response?.data?.error || error.message;
+      toast({
+        title: 'Error fetching data',
+        description: errorMessage,
+        status: 'error',
+        duration: 3000,
+        isClosable: true
+      });
+      if (error.response?.status === 401) {
+        localStorage.removeItem('auth-token');
+        navigate('/');
+      }
+      setTransactions([]);
+      setWalletBalance(0);
+      setWalletTransactions([]);
     } finally {
       if (showLoader) {
         setIsInitialLoading(false);
         setIsManualRefreshing(false);
       }
     }
-  }, [toast]);
+  }, [toast, navigate]);
 
   useEffect(() => {
     fetchData(true);
@@ -444,25 +697,59 @@ const DisplayTransaction = ({ userResponse }) => {
   }, [fetchData]);
 
   useEffect(() => {
-    const socket = io(BASE_URL, { auth: { token: localStorage.getItem("auth-token") }, reconnection: true, reconnectionAttempts: 5, reconnectionDelay: 1000 });
-    socket.on("connect", () => {
-      if (currentUser?._id) socket.emit("join-room", currentUser._id);
+    const socket = io(BASE_URL, { auth: { token: localStorage.getItem('auth-token') }, reconnection: true, reconnectionAttempts: 5, reconnectionDelay: 1000 });
+    socket.on('connect', () => {
+      if (currentUser?._id) socket.emit('join-room', currentUser._id);
     });
-    socket.on("transactionCompleted", (data) => {
-      toast({ title: "Transaction Completed", description: `Transaction ${data.transactionId} completed.`, status: "success", duration: 5000, isClosable: true });
+    socket.on('transactionCreated', (data) => {
+      toast({
+        title: 'Transaction Created',
+        description: `Transaction ${data.transactionId} created successfully.`,
+        status: 'success',
+        duration: 5000,
+        isClosable: true
+      });
       fetchData(false);
     });
-    socket.on("balanceUpdate", (data) => {
+    socket.on('transactionCompleted', (data) => {
+      toast({
+        title: 'Transaction Completed',
+        description: `Transaction ${data.transactionId} completed.`,
+        status: 'success',
+        duration: 5000,
+        isClosable: true
+      });
+      fetchData(false);
+    });
+    socket.on('balanceUpdate', (data) => {
       setWalletBalance(data.balance ?? 0);
-      toast({ title: "Wallet Updated", description: `Credited with ₦${(data.transaction?.amount ?? 0).toFixed(2)}`, status: "success", duration: 5000, isClosable: true });
+      toast({
+        title: 'Wallet Updated',
+        description: `Balance updated to ₦${(data.balance ?? 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        status: 'success',
+        duration: 5000,
+        isClosable: true
+      });
     });
-    socket.on("transactionUpdated", (data) => {
-      toast({ title: "Transaction Update", description: data.message, status: "info", duration: 5000, isClosable: true });
+    socket.on('transactionUpdated', (data) => {
+      toast({
+        title: 'Transaction Update',
+        description: data.message,
+        status: 'info',
+        duration: 5000,
+        isClosable: true
+      });
       fetchData(false);
     });
-    socket.on("reconnect", () => currentUser?._id && socket.emit("join-room", currentUser._id));
-    socket.on("connect_error", (error) => {
-      toast({ title: "Socket Connection Error", description: error.message, status: "error", duration: 3000, isClosable: true });
+    socket.on('reconnect', () => currentUser?._id && socket.emit('join-room', currentUser._id));
+    socket.on('connect_error', (error) => {
+      toast({
+        title: 'Socket Connection Error',
+        description: error.message,
+        status: 'error',
+        duration: 3000,
+        isClosable: true
+      });
     });
     return () => socket.disconnect();
   }, [currentUser?._id, toast, fetchData]);
@@ -476,13 +763,13 @@ const DisplayTransaction = ({ userResponse }) => {
     }
     const query = searchQuery.toLowerCase();
     return transactions.filter((t) => {
-      if (activeTab === "active" && t.status !== "pending") return false;
-      if (activeTab === "completed" && t.status !== "completed") return false;
-      if (activeTab === "cancelled" && t.status !== "cancelled") return false;
+      if (activeTab === 'active' && t.status !== 'pending') return false;
+      if (activeTab === 'completed' && t.status !== 'completed') return false;
+      if (activeTab === 'cancelled' && t.status !== 'cancelled') return false;
       const participantName = t.participants?.length > 0
-        ? `${t.participants[0].firstName || ""} ${t.participants[0].lastName || ""}`.trim().toLowerCase()
-        : "";
-      const description = t.productDetails?.description?.toLowerCase() || "";
+        ? `${t.participants[0].firstName || ''} ${t.participants[0].lastName || ''}`.trim().toLowerCase()
+        : '';
+      const description = t.productDetails?.description?.toLowerCase() || '';
       return (
         participantName.includes(query) || description.includes(query)
       );
@@ -491,10 +778,23 @@ const DisplayTransaction = ({ userResponse }) => {
 
   const handleChat = async (transactionId) => {
     try {
-      const res = await axios.post(`${BASE_URL}/api/transactions/create-chatroom`, { id: transactionId }, { headers: { "auth-token": localStorage.getItem("auth-token") } });
-      navigate(`/chat/${res.data.chatroomId}`);
+      const res = await axios.post(`${BASE_URL}/api/transactions/create-chatroom`, { id: transactionId }, {
+        headers: { "Authorization": `Bearer ${localStorage.getItem("auth-token")}` }
+      });
+      if (res.data?.success && res.data.chatroomId) {
+        navigate(`/chat/${res.data.chatroomId}`);
+      } else {
+        throw new Error('Failed to create chatroom');
+      }
     } catch (error) {
-      toast({ title: "Error creating chatroom", description: error.message, status: "error", duration: 3000, isClosable: true });
+      const errorMessage = error.response?.data?.errors?.map(e => e.msg).join(', ') || error.response?.data?.error || error.message;
+      toast({
+        title: "Error creating chatroom",
+        description: errorMessage,
+        status: "error",
+        duration: 3000,
+        isClosable: true
+      });
     }
   };
 
@@ -509,14 +809,34 @@ const DisplayTransaction = ({ userResponse }) => {
 
   const fetchBuyerWaybillDetails = async (transactionId) => {
     try {
-      const res = await axios.get(`${BASE_URL}/api/transactions/${transactionId}`, { headers: { "auth-token": localStorage.getItem("auth-token") } });
-      const { image, item, price, shippingAddress, trackingNumber, deliveryDate } = res.data.waybillDetails || {};
-      setBuyerWaybillDetails(prev => ({
-        ...prev,
-        [transactionId]: { item: item || "", price: price || "", shippingAddress: shippingAddress || "", trackingNumber: trackingNumber || "", deliveryDate: deliveryDate || "", image: image ? `${BASE_URL}/${image}` : "" }
-      }));
+      const res = await axios.get(`${BASE_URL}/api/transactions/waybill-details/${transactionId}`, {
+        headers: { "Authorization": `Bearer ${localStorage.getItem("auth-token")}` }
+      });
+      if (res.data?.success && res.data.data) {
+        const { image, item, price, shippingAddress, trackingNumber, deliveryDate } = res.data.data;
+        setBuyerWaybillDetails(prev => ({
+          ...prev,
+          [transactionId]: {
+            item: item || "",
+            price: price || "",
+            shippingAddress: shippingAddress || "",
+            trackingNumber: trackingNumber || "",
+            deliveryDate: deliveryDate || "",
+            image: image ? `${BASE_URL}/${image}` : ""
+          }
+        }));
+      } else {
+        throw new Error('Failed to fetch waybill details');
+      }
     } catch (error) {
-      toast({ title: "Error fetching waybill details", description: error.message, status: "error", duration: 3000, isClosable: true });
+      const errorMessage = error.response?.data?.errors?.map(e => e.msg).join(', ') || error.response?.data?.error || error.message;
+      toast({
+        title: "Error fetching waybill details",
+        description: errorMessage,
+        status: "error",
+        duration: 3000,
+        isClosable: true
+      });
     }
   };
 
@@ -535,14 +855,24 @@ const DisplayTransaction = ({ userResponse }) => {
     Object.entries(waybillDetails).forEach(([key, value]) => value && formData.append(key, value));
     try {
       await axios.post(`${BASE_URL}/api/transactions/submit-waybill`, formData, {
-        headers: { "auth-token": localStorage.getItem("auth-token"), "Content-Type": "multipart/form-data" }
+        headers: {
+          "Authorization": `Bearer ${localStorage.getItem("auth-token")}`,
+          "Content-Type": "multipart/form-data"
+        }
       });
       toast({ title: "Waybill submitted", status: "success", duration: 3000, isClosable: true });
       setShowWaybillPopup(prev => ({ ...prev, [transactionId]: false }));
       setWaybillDetails({ item: "", image: null, price: "", shippingAddress: "", trackingNumber: "", deliveryDate: "" });
       fetchData(false);
     } catch (error) {
-      toast({ title: "Error submitting waybill", description: error.message, status: "error", duration: 3000, isClosable: true });
+      const errorMessage = error.response?.data?.errors?.map(e => e.msg).join(', ') || error.response?.data?.error || error.message;
+      toast({
+        title: "Error submitting waybill",
+        description: errorMessage,
+        status: "error",
+        duration: 3000,
+        isClosable: true
+      });
     }
   };
 
@@ -560,12 +890,26 @@ const DisplayTransaction = ({ userResponse }) => {
     if (isConfirming[transactionId]) return;
     setIsConfirming(prev => ({ ...prev, [transactionId]: true }));
     try {
-      await axios.put(`${BASE_URL}/api/transactions/cancel/${transactionId}`, {}, { headers: { "auth-token": localStorage.getItem("auth-token") } });
-      toast({ title: "Transaction Cancelled", description: "Funds refunded.", status: "success", duration: 5000, isClosable: true });
-      setTransactions(prev => prev.filter(t => t._id !== transactionId));
+      await axios.put(`${BASE_URL}/api/transactions/cancel/${transactionId}`, {}, {
+        headers: { "Authorization": `Bearer ${localStorage.getItem("auth-token")}` }
+      });
+      toast({
+        title: "Transaction Cancelled",
+        description: "Funds refunded if applicable.",
+        status: "success",
+        duration: 5000,
+        isClosable: true
+      });
       fetchData(false);
     } catch (error) {
-      toast({ title: "Error", description: error.response?.data?.message || "Failed to cancel.", status: "error", duration: 5000, isClosable: true });
+      const errorMessage = error.response?.data?.errors?.map(e => e.msg).join(', ') || error.response?.data?.error || error.response?.data?.message || error.message;
+      toast({
+        title: "Error",
+        description: errorMessage,
+        status: "error",
+        duration: 5000,
+        isClosable: true
+      });
     } finally {
       setIsConfirming(prev => ({ ...prev, [transactionId]: false }));
     }
@@ -582,7 +926,13 @@ const DisplayTransaction = ({ userResponse }) => {
       setSelectedTransactionId(transactionId);
       setModalVisible(true);
     } catch (error) {
-      toast({ title: "Error", description: error.message, status: "error", duration: 5000, isClosable: true });
+      toast({
+        title: "Error",
+        description: error.message,
+        status: "error",
+        duration: 5000,
+        isClosable: true
+      });
     } finally {
       setIsConfirming(prev => ({ ...prev, [transactionId]: false }));
     }
@@ -592,18 +942,31 @@ const DisplayTransaction = ({ userResponse }) => {
     if (isConfirming[transactionId]) return;
     setIsConfirming(prev => ({ ...prev, [transactionId]: true }));
     try {
-      const res = await axios.post(`${BASE_URL}/api/transactions/confirm`, { transactionId }, { headers: { "auth-token": localStorage.getItem("auth-token") } });
-      const { status } = res.data.transaction || {};
+      const res = await axios.post(`${BASE_URL}/api/transactions/confirm`, { transactionId }, {
+        headers: { "Authorization": `Bearer ${localStorage.getItem("auth-token")}` }
+      });
+      if (res.data?.success) {
+        const { status } = res.data.transaction || {};
+        toast({
+          title: status === "completed" ? "Transaction Completed" : "Confirmation Recorded",
+          description: status === "completed" ? "Funds released to seller." : "Waiting for other party.",
+          status: status === "completed" ? "success" : "info",
+          duration: 5000,
+          isClosable: true
+        });
+        fetchData(false);
+      } else {
+        throw new Error(res.data?.error || 'Failed to confirm transaction');
+      }
+    } catch (error) {
+      const errorMessage = error.response?.data?.errors?.map(e => e.msg).join(', ') || error.response?.data?.error || error.response?.data?.message || error.message;
       toast({
-        title: status === "completed" ? "Transaction Completed" : "Confirmation Recorded",
-        description: status === "completed" ? "Funds released to seller." : "Waiting for other party.",
-        status: status === "completed" ? "success" : "info",
+        title: "Error",
+        description: errorMessage,
+        status: "error",
         duration: 5000,
         isClosable: true
       });
-      fetchData(false);
-    } catch (error) {
-      toast({ title: "Error", description: error.response?.data?.message || "Could not complete transaction.", status: "error", duration: 5000, isClosable: true });
     } finally {
       setIsConfirming(prev => ({ ...prev, [transactionId]: false }));
       setModalVisible(false);
@@ -612,46 +975,107 @@ const DisplayTransaction = ({ userResponse }) => {
   };
 
   const handleFund = async (transaction) => {
-    if (transaction.locked || !transaction._id || transaction.paymentAmount <= 0) {
-      toast({ title: "Error", description: "Invalid transaction data.", status: "error", duration: 5000, isClosable: true });
+    if (!transaction || transaction.locked || !transaction._id || transaction.paymentAmount <= 0) {
+      toast({
+        title: 'Error',
+        description: 'Invalid transaction data.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true
+      });
       return;
     }
     setIsConfirming(prev => ({ ...prev, [transaction._id]: true }));
     try {
       const amount = parseFloat(transaction.paymentAmount);
+      setCurrentTransaction(transaction);
       if (walletBalance >= amount) {
-        // Sufficient balance, proceed with funding from wallet
-        await axios.post(`${BASE_URL}/api/transactions/fund-transaction`, {
+        const response = await axios.post(`${BASE_URL}/api/transactions/fund-transaction`, {
           transactionId: transaction._id,
-          amount: amount
+          amount: amount,
         }, {
-          headers: { "auth-token": localStorage.getItem("auth-token") }
+          headers: { "Authorization": `Bearer ${localStorage.getItem("auth-token")}` }
         });
-        toast({ title: "Transaction funded", description: "Funded from wallet balance.", status: "success", duration: 3000, isClosable: true });
-        fetchData(false);
-      } else {
-        // Insufficient balance, initiate Paystack funding
-        const shortfall = amount - walletBalance;
-        const fundingAmount = Math.ceil(shortfall * 100) / 100; // Round up to 2 decimal places
-        const response = await axios.post(`${BASE_URL}/api/wallet/fund`, {
-          amount: fundingAmount,
-          email: currentUser.email,
-          phoneNumber: currentUser.phoneNumber || ""
-        }, {
-          headers: { "auth-token": localStorage.getItem("auth-token") }
-        });
-        if (response.data.success && response.data.data.authorization_url) {
-          // Redirect to Paystack payment page
-          window.location.href = response.data.data.authorization_url;
+        if (response.data?.success) {
+          toast({
+            title: 'Transaction Funded',
+            description: 'Funded from wallet balance.',
+            status: 'success',
+            duration: 5000,
+            isClosable: true
+          });
+          fetchData(false);
         } else {
-          throw new Error("Failed to initiate Paystack funding.");
+          throw new Error(response.data?.error || 'Failed to fund transaction');
         }
+      } else {
+        openFundingModal();
       }
     } catch (error) {
-      const errorMessage = error.response?.data?.error || error.message || "Could not fund transaction.";
-      toast({ title: "Error", description: errorMessage, status: "error", duration: 5000, isClosable: true });
+      const errorMessage = error.response?.data?.errors?.map(e => e.msg).join(', ') || error.response?.data?.error || error.message;
+      if (error.response?.status === 400 && error.response?.data?.shortfall) {
+        toast({
+          title: 'Insufficient Balance',
+          description: `You need an additional ₦${error.response.data.shortfall.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} to fund this transaction.`,
+          status: 'warning',
+          duration: 5000,
+          isClosable: true
+        });
+        openFundingModal();
+      } else {
+        toast({
+          title: 'Error',
+          description: errorMessage,
+          status: 'error',
+          duration: 5000,
+          isClosable: true
+        });
+      }
     } finally {
       setIsConfirming(prev => ({ ...prev, [transaction._id]: false }));
+    }
+  };
+
+  const confirmFunding = async (transaction) => {
+    if (!transaction || !transaction.paymentAmount) {
+      toast({
+        title: 'Error',
+        description: 'Invalid transaction data.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true
+      });
+      closeFundingModal();
+      return;
+    }
+    try {
+      const amount = parseFloat(transaction.paymentAmount);
+      const shortfall = Math.max(amount - walletBalance, 0);
+      const fundingAmount = Math.ceil(shortfall * 100) / 100;
+      const response = await axios.post(`${BASE_URL}/api/wallet/fund`, {
+        amount: fundingAmount,
+        email: currentUser?.email || '',
+        phoneNumber: currentUser?.phoneNumber || '',
+        transactionId: transaction._id,
+      }, {
+        headers: { "Authorization": `Bearer ${localStorage.getItem("auth-token")}` }
+      });
+      if (response.data?.success && response.data.data?.authorization_url) {
+        window.location.href = response.data.data.authorization_url;
+      } else {
+        throw new Error(response.data?.error || 'Failed to initiate Paystack funding');
+      }
+    } catch (error) {
+      const errorMessage = error.response?.data?.errors?.map(e => e.msg).join(', ') || error.response?.data?.error || error.message;
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        status: 'error',
+        duration: 5000,
+        isClosable: true
+      });
+    } finally {
+      closeFundingModal();
     }
   };
 
@@ -672,27 +1096,45 @@ const DisplayTransaction = ({ userResponse }) => {
     const newErrors = {};
     if (!paymentDetails.selectedBankCode) newErrors.selectedBankCode = "Select a bank";
     if (!/^\d{10}$/.test(paymentDetails.paymentAccountNumber)) newErrors.paymentAccountNumber = "Invalid account number";
-    if (paymentDetails.paymentAmount <= 0) newErrors.paymentAmount = "Invalid amount";
+    if (parseFloat(paymentDetails.paymentAmount) <= 0) newErrors.paymentAmount = "Invalid amount";
     if (Object.keys(newErrors).length) {
       setPaymentErrors(newErrors);
       return;
     }
     try {
       await axios.put(`${BASE_URL}/api/transactions/update-payment-details/${currentTransaction._id}`, paymentDetails, {
-        headers: { "auth-token": localStorage.getItem("auth-token") }
+        headers: { "Authorization": `Bearer ${localStorage.getItem("auth-token")}` }
       });
-      toast({ title: "Payment details updated", status: "success", duration: 3000, isClosable: true });
+      toast({
+        title: "Payment details updated",
+        status: "success",
+        duration: 3000,
+        isClosable: true
+      });
       setShowPaymentDetailsModal(false);
       setCurrentTransaction(null);
       setPaymentDetails({ paymentBank: "", paymentAccountNumber: "", selectedBankCode: "", paymentAmount: "" });
+      setPaymentErrors({});
       fetchData(false);
     } catch (error) {
-      toast({ title: "Error", description: error.response?.data?.message || "Could not update payment details.", status: "error", duration: 5000, isClosable: true });
+      const errorMessage = error.response?.data?.errors?.map(e => e.msg).join(', ') || error.response?.data?.error || error.response?.data?.message || error.message;
+      toast({
+        title: "Error",
+        description: errorMessage,
+        status: "error",
+        duration: 5000,
+        isClosable: true
+      });
     }
   };
 
   const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text).then(() => toast({ title: "Copied to clipboard", status: "success", duration: 2000, isClosable: true }));
+    navigator.clipboard.writeText(text).then(() => toast({
+      title: "Copied to clipboard",
+      status: "success",
+      duration: 2000,
+      isClosable: true
+    }));
   };
 
   const toggleDescription = (transactionId) => {
@@ -760,7 +1202,7 @@ const DisplayTransaction = ({ userResponse }) => {
                         textOverflow="ellipsis"
                         maxW={{ base: "full", sm: "auto", md: "auto" }}
                       >
-                        Wallet Balance: ₦{walletBalance.toFixed(2)}
+                        Wallet Balance: ₦{walletBalance.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </Text>
                     )}
                     <Button
@@ -891,7 +1333,7 @@ const DisplayTransaction = ({ userResponse }) => {
                               fontSize={{ base: "xs", sm: "sm" }}
                               fontWeight="medium"
                             >
-                              {tx.type === "deposit" ? "+" : "-"} ₦{(tx.amount || 0).toFixed(2)}
+                              {tx.type === "deposit" ? "+" : "-"} ₦{(tx.amount || 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </Text>
                           </Flex>
                           <Text color="gray.400" fontSize="xs" mt={1}>Purpose: {tx.metadata?.purpose || "N/A"}</Text>
@@ -955,6 +1397,23 @@ const DisplayTransaction = ({ userResponse }) => {
               </ModalFooter>
             </ModalContent>
           </Modal>
+          <Modal isOpen={isFundingModalOpen} onClose={closeFundingModal} isCentered size={{ base: 'full', sm: 'md' }}>
+            <ModalOverlay />
+            <ModalContent bg="#1A1E21" color="white" p={{ base: 4, sm: 6 }} rounded="xl">
+              <ModalHeader>Fund Transaction</ModalHeader>
+              <ModalBody>
+                <Text fontSize="sm" mb={4}>
+                  Your wallet balance (₦{walletBalance.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}) is insufficient to fund this transaction.
+                  You need an additional ₦{currentTransaction ? (currentTransaction.paymentAmount - walletBalance).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}.
+                  Proceed to fund your wallet via Paystack?
+                </Text>
+              </ModalBody>
+              <ModalFooter>
+                <Button bg="gray.600" color="white" _hover={{ bg: 'gray.700' }} size="sm" onClick={closeFundingModal} mr={3}>Cancel</Button>
+                <Button bg="#318AE6" color="white" _hover={{ bg: '#2279d8' }} size="sm" onClick={() => confirmFunding(currentTransaction)}>Proceed to Paystack</Button>
+              </ModalFooter>
+            </ModalContent>
+          </Modal>
           {Object.keys(showWaybillPopup).map(id => showWaybillPopup[id] && (
             <WaybillModal
               key={`seller-${id}`}
@@ -983,7 +1442,12 @@ const DisplayTransaction = ({ userResponse }) => {
           {showPaymentDetailsModal && (
             <PaymentDetailsModal
               isOpen={showPaymentDetailsModal}
-              onClose={() => { setShowPaymentDetailsModal(false); setCurrentTransaction(null); setPaymentDetails({ paymentBank: "", paymentAccountNumber: "", selectedBankCode: "", paymentAmount: "" }); }}
+              onClose={() => {
+                setShowPaymentDetailsModal(false);
+                setCurrentTransaction(null);
+                setPaymentDetails({ paymentBank: "", paymentAccountNumber: "", selectedBankCode: "", paymentAmount: "" });
+                setPaymentErrors({});
+              }}
               transaction={currentTransaction}
               paymentDetails={paymentDetails}
               setPaymentDetails={setPaymentDetails}

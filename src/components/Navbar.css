@@ -1,29 +1,107 @@
+/* Navbar.css */
+
 .navbar {
   font-family: "Raleway", sans-serif !important;
-  transition: 0.4s;
+  transition: all 0.3s ease;
   width: 100%;
   box-sizing: border-box;
 }
 
-/* Better breakpoint handling */
-@media (max-width: 1024px) {
+/* Responsive logo styles */
+.navbar .logo-responsive {
+  transition: all 0.3s ease-in-out;
+  display: block;
+}
+
+/* Ultra-small screens (below 320px) */
+@media (max-width: 319px) {
+  .navbar .logo-responsive {
+    max-width: clamp(70px, 22vw, 80px);
+    max-height: clamp(20px, 7vw, 24px);
+    width: 100%;
+    height: auto;
+  }
+}
+
+/* Small mobile screens (320px - 479px) */
+@media (min-width: 320px) and (max-width: 479px) {
+  .navbar .logo-responsive {
+    max-width: clamp(80px, 25vw, 100px);
+    max-height: clamp(24px, 8vw, 28px);
+    width: 100%;
+    height: auto;
+  }
+}
+
+/* Mobile screens (480px - 767px) */
+@media (min-width: 480px) and (max-width: 767px) {
+  .navbar .logo-responsive {
+    max-width: clamp(100px, 25vw, 110px);
+    max-height: clamp(26px, 8vw, 30px);
+    width: 100%;
+    height: auto;
+  }
+}
+
+/* Tablet screens (768px - 899px) */
+@media (min-width: 768px) and (max-width: 899px) {
+  .navbar .logo-responsive {
+    max-width: clamp(110px, 20vw, 120px);
+    max-height: clamp(28px, 6vw, 32px);
+    width: 100%;
+    height: auto;
+  }
+}
+
+/* Small desktop screens (900px - 1199px) */
+@media (min-width: 900px) and (max-width: 1199px) {
+  .navbar .logo-responsive {
+    max-width: clamp(120px, 15vw, 140px);
+    max-height: clamp(32px, 5vw, 36px);
+    width: 100%;
+    height: auto;
+  }
+}
+
+/* Desktop screens (1200px - 1919px) */
+@media (min-width: 1200px) and (max-width: 1919px) {
+  .navbar .logo-responsive {
+    max-width: clamp(130px, 12vw, 140px);
+    max-height: clamp(34px, 4vw, 38px);
+    width: 100%;
+    height: auto;
+  }
+}
+
+/* Large desktop screens (1920px and above) */
+@media (min-width: 1920px) {
+  .navbar .logo-responsive {
+    max-width: clamp(140px, 10vw, 150px);
+    max-height: clamp(36px, 4vw, 40px);
+    width: 100%;
+    height: auto;
+  }
+}
+
+/* Desktop menu visibility */
+@media (max-width: 899px) {
   .desktop-menu {
     display: none !important;
   }
-  
+
   .mobile-menu-button {
     display: flex !important;
   }
 }
 
-/* Show mobile menu at a larger breakpoint */
-@media (min-width: 769px) and (max-width: 1024px) {
-  .navbar .hidden.md\:flex {
+/* Ensure mobile menu for tablet sizes */
+@media (min-width: 768px) and (max-width: 899px) {
+  .navbar .hidden.lg\:flex {
     display: none !important;
   }
 }
 
-/* Mobile menu animations */
+/* Animations */
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -47,43 +125,61 @@
   }
 }
 
-/* Additional effects for menu items */
+/* Menu item effects */
 .menu-item:hover {
   letter-spacing: 0.5px;
 }
 
-/* Custom hover effect for buttons */
+/* Button hover effect */
 .button-effect:hover {
   transform: translateY(-3px) !important;
   box-shadow: 0 10px 20px rgba(179, 137, 57, 0.3) !important;
 }
 
-/* Adding 3D perspective to the menu container */
+/* Menu container */
 .menu-content {
   transform-style: preserve-3d;
   perspective: 1000px;
 }
 
-/* Special effects for theme toggle when menu is open */
+/* Theme toggle effect */
 .theme-toggle-active {
   animation: pulseGlow 2s infinite;
 }
 
-/* Enhanced responsive adjustments */
-@media (max-width: 768px) {
+/* Responsive padding */
+@media (max-width: 479px) {
   .navbar {
-    padding-left: 20px !important;
-    padding-right: 20px !important;
+    padding-left: clamp(8px, 3vw, 12px) !important;
+    padding-right: clamp(8px, 3vw, 12px) !important;
+    padding-top: clamp(8px, 3vw, 12px) !important;
+    padding-bottom: clamp(8px, 3vw, 12px) !important;
   }
 }
 
-@media (max-width: 360px) {
+@media (min-width: 480px) and (max-width: 767px) {
   .navbar {
-    padding-left: 12px !important;
-    padding-right: 12px !important;
+    padding-left: clamp(12px, 4vw, 16px) !important;
+    padding-right: clamp(12px, 4vw, 16px) !important;
+    padding-top: clamp(10px, 3vw, 14px) !important;
+    padding-bottom: clamp(10px, 3vw, 14px) !important;
   }
-  
-  .navbar img {
-    width: 110px !important;
+}
+
+@media (min-width: 768px) and (max-width: 899px) {
+  .navbar {
+    padding-left: clamp(16px, 4vw, 24px) !important;
+    padding-right: clamp(16px, 4vw, 24px) !important;
+    padding-top: clamp(12px, 3vw, 16px) !important;
+    padding-bottom: clamp(12px, 3vw, 16px) !important;
+  }
+}
+
+@media (min-width: 900px) {
+  .navbar {
+    padding-left: clamp(24px, 5vw, 40px) !important;
+    padding-right: clamp(24px, 5vw, 40px) !important;
+    padding-top: clamp(14px, 3vw, 16px) !important;
+    padding-bottom: clamp(14px, 3vw, 16px) !important;
   }
 }

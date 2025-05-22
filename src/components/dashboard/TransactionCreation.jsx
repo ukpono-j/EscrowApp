@@ -50,17 +50,140 @@ const validateApiResponse = (responseData, endpoint) => {
   throw new Error(responseData.error || "Invalid response received");
 };
 
+// Modal Component
+const AcceptTransactionModal = ({
+  isOpen,
+  onClose,
+  userDetails,
+  paymentAmount,
+  selectedUserType,
+  textColor,
+  accentColor,
+  accentHoverColor,
+  bgSecondary,
+  cardBorder,
+  shadowColor,
+  modalHeaderBg,
+  modalHeaderBorder,
+  modalButtonHoverBg,
+  createNewTransaction,
+  createNewTransactionForBuyer,
+}) => {
+  const formatCurrency = (amount) =>
+    parseFloat(amount || 0).toLocaleString("en-NG", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+
+  return (
+    <Box
+      position="fixed"
+      top={0}
+      left={0}
+      right={0}
+      bottom={0}
+      bg="rgba(0, 0, 0, 0.7)"
+      zIndex={999}
+      display={isOpen ? "flex" : "none"}
+      alignItems="center"
+      justifyContent="center"
+      p={4}
+    >
+      <Box
+        bg={bgSecondary}
+        borderRadius="xl"
+        maxW="400px"
+        w="full"
+        overflow="hidden"
+        boxShadow="0px 10px 30px rgba(0, 0, 0, 0.3)"
+        border={cardBorder}
+      >
+        <Box
+          p={4}
+          bg={modalHeaderBg}
+          borderBottomWidth="1px"
+          borderColor={modalHeaderBorder}
+        >
+          <Flex justify="space-between" align="center">
+            <Heading size="md" color={textColor}>
+              Accept Escrow Transaction
+            </Heading>
+            <Button
+              variant="ghost"
+              p={1}
+              onClick={onClose}
+              color={textColor}
+              _hover={{ bg: modalButtonHoverBg }}
+            >
+              <MdClose size={24} />
+            </Button>
+          </Flex>
+        </Box>
+        <Box p={5}>
+          <Flex align="center" mb={4}>
+            <Avatar
+              src={
+                userDetails.avatarImage
+                  ? `${BASE_URL}/api/avatar/${userDetails.avatarImage}`
+                  : defaultProfileImage
+              }
+              size="md"
+              bg={accentColor}
+              boxShadow={`0px 2px 8px ${shadowColor}`}
+            />
+            <Box ml={3}>
+              <Text fontWeight="bold" color={textColor}>
+                {userDetails.fullName || "Transaction"}
+              </Text>
+              <Text fontSize="sm" color={accentColor}>
+                {formatCurrency(paymentAmount)} NGN
+              </Text>
+            </Box>
+          </Flex>
+          <VStack spacing={4}>
+            <Text color={textColor}>
+              You are about to create a transaction as a {selectedUserType}.
+            </Text>
+            <Button
+              onClick={
+                selectedUserType === "buyer"
+                  ? createNewTransactionForBuyer
+                  : createNewTransaction
+              }
+              bg={accentColor}
+              color="white"
+              _hover={{ bg: accentHoverColor }}
+              borderRadius="full"
+              size="lg"
+              w="full"
+            >
+              Confirm Transaction
+            </Button>
+            <Button
+              onClick={onClose}
+              variant="outline"
+              borderColor={accentColor}
+              color={textColor}
+              borderRadius="full"
+              size="lg"
+              w="full"
+            >
+              Cancel
+            </Button>
+          </VStack>
+        </Box>
+      </Box>
+    </Box>
+  );
+};
+
 const TransactionCreation = () => {
   console.log("TransactionCreation: Component rendering");
 
-  // State for paymentAmount
+  // State for paymentAmount (raw number) and displayAmount (formatted string)
   const [paymentAmount, setPaymentAmount] = useState("");
-  console.log("State: paymentAmount =", paymentAmount);
-
-  // Calculate transactionFee and totalAmount
-  const transactionFee = paymentAmount ? (paymentAmount * 0.008).toFixed(2) : "0.00";
-  const totalAmount = paymentAmount ? (parseFloat(paymentAmount) + parseFloat(transactionFee)).toFixed(2) : "0.00";
-  console.log("Computed: transactionFee =", transactionFee, "totalAmount =", totalAmount);
+  const [displayAmount, setDisplayAmount] = useState("");
+  console.log("State: paymentAmount =", paymentAmount, "displayAmount =", displayAmount);
 
   // Theme Hooks
   const { colorMode } = useColorMode();
@@ -74,6 +197,13 @@ const TransactionCreation = () => {
   const shadowColor = useColorModeValue("rgba(0, 0, 0, 0.1)", "rgba(0, 0, 0, 0.3)");
   const inputBg = useColorModeValue("white", "#0F1624");
   const cardBorder = useColorModeValue("1px solid #E2E8F0", "none");
+  // Modal-specific theme values
+  const modalHeaderBg = useColorModeValue("gray.50", "#0F1624");
+  const modalHeaderBorder = useColorModeValue("gray.200", "gray.700");
+  const modalButtonHoverBg = useColorModeValue("gray.100", "gray.700");
+  // Button hover values
+  const disabledButtonHoverBg = useColorModeValue("gray.300", "#2D3748");
+  const nextButtonHoverBg = useColorModeValue("gray.100", "rgba(149, 116, 50, 0.2)");
   console.log("Theme: colorMode =", colorMode);
 
   const toast = useToast();
@@ -94,13 +224,37 @@ const TransactionCreation = () => {
   const [uniqueBanks, setUniqueBanks] = useState([]);
   const [formValid, setFormValid] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState(""); // Added for error display
+  const [errorMessage, setErrorMessage] = useState("");
 
   console.log("State: isLoading =", isLoading, "userDetails =", userDetails, "banks =", banks);
 
   // Ref Hooks
   const userDetailsFetched = useRef(false);
   const banksFetched = useRef(false);
+
+  // Function to format numbers with commas and two decimal places
+  const formatCurrency = (amount) => {
+    return parseFloat(amount || 0).toLocaleString("en-NG", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
+  // Handle input change for Price/Amount
+  const handleAmountChange = (e) => {
+    const input = e.target.value.replace(/,/g, ""); // Remove commas
+    if (input === "" || /^\d*\.?\d{0,2}$/.test(input)) {
+      setPaymentAmount(input);
+      setDisplayAmount(
+        input
+          ? parseFloat(input).toLocaleString("en-NG", {
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 2,
+            })
+          : ""
+      );
+    }
+  };
 
   // Memoized callback Hooks
   const handleBankSelection = useCallback(
@@ -230,13 +384,13 @@ const TransactionCreation = () => {
       }
       const requestData = {
         paymentName: userDetails.fullName || "User",
-        email,
-        paymentAmount: totalAmount,
+        email: email || userDetails.email,
+        paymentAmount: parseFloat(paymentAmount),
         paymentDescription,
         selectedUserType,
-        paymentBank,
-        paymentBankCode: selectedBankCode,
-        paymentAccountNumber,
+        paymentBank: selectedUserType === "buyer" ? "Pending" : paymentBank,
+        paymentBankCode: selectedUserType === "buyer" ? "000" : selectedBankCode,
+        paymentAccountNumber: selectedUserType === "buyer" ? "0" : paymentAccountNumber,
       };
       const token = localStorage.getItem("auth-token");
       axios
@@ -246,9 +400,8 @@ const TransactionCreation = () => {
         .then(async (response) => {
           console.log("Create transaction response:", response.data);
           const responseData = validateApiResponse(response.data, "/api/transactions/create-transaction");
-          const transactionId = responseData.transactionId || responseData.data?._id || "Unknown"; // Use _id as fallback
-          
-          // Verify the transaction exists by fetching it
+          const transactionId = responseData.transactionId || "Unknown";
+  
           try {
             const verifyResponse = await axios.get(`${BASE_URL}/api/transactions/${transactionId}`, {
               headers: { Authorization: `Bearer ${token}` },
@@ -297,8 +450,9 @@ const TransactionCreation = () => {
     [
       formValid,
       userDetails.fullName,
+      userDetails.email,
       email,
-      totalAmount,
+      paymentAmount,
       paymentDescription,
       selectedUserType,
       paymentBank,
@@ -308,20 +462,19 @@ const TransactionCreation = () => {
       toast,
     ]
   );
-  
+
   const createNewTransactionForBuyer = useCallback(
     (e) => {
       if (e) e.preventDefault();
       const requestData = {
         paymentName: userDetails.fullName || "Buyer",
-        email: userDetails.email || "",
-        paymentAmount: totalAmount,
+        email: userDetails.email || email || "",
+        paymentAmount: parseFloat(paymentAmount),
         paymentDescription,
         selectedUserType: "buyer",
         paymentBank: "Pending",
         paymentBankCode: "000",
-        paymentAccountNumber: "0000000000",
-        isBuyerOnly: true,
+        paymentAccountNumber: "0",
       };
       const token = localStorage.getItem("auth-token");
       axios
@@ -331,9 +484,8 @@ const TransactionCreation = () => {
         .then(async (response) => {
           console.log("Create buyer transaction response:", response.data);
           const responseData = validateApiResponse(response.data, "/api/transactions/create-transaction");
-          const transactionId = responseData.transactionId || responseData.data?._id || "Unknown";
+          const transactionId = responseData.transactionId || "Unknown";
   
-          // Verify the transaction exists by fetching it
           try {
             const verifyResponse = await axios.get(`${BASE_URL}/api/transactions/${transactionId}`, {
               headers: { Authorization: `Bearer ${token}` },
@@ -380,7 +532,7 @@ const TransactionCreation = () => {
           });
         });
     },
-    [userDetails.fullName, userDetails.email, totalAmount, paymentDescription, navigate, toast]
+    [userDetails.fullName, userDetails.email, email, paymentAmount, paymentDescription, navigate, toast]
   );
 
   const handleRadioClick = useCallback((userType) => {
@@ -420,7 +572,7 @@ const TransactionCreation = () => {
           duration: 5000,
           isClosable: true,
         });
-      }, 10000); // 10 seconds
+      }, 10000);
       const token = localStorage.getItem("auth-token");
       if (!token) {
         console.warn("No auth token found, redirecting to login");
@@ -455,10 +607,13 @@ const TransactionCreation = () => {
           response: error.response?.data,
           status: error.response?.status,
         });
-        setErrorMessage(error.response?.data?.error || error.message || "Unable to fetch user details");
+        setErrorMessage(
+          error.response?.data?.error || error.message || "Unable to fetch user details"
+        );
         toast({
           title: "Error fetching user details",
-          description: error.response?.data?.error || error.message || "Unable to fetch user details",
+          description:
+            error.response?.data?.error || error.message || "Unable to fetch user details",
           status: "error",
           duration: 3000,
           isClosable: true,
@@ -578,10 +733,10 @@ const TransactionCreation = () => {
     } else {
       setFormValid(
         email.trim() !== "" &&
-          paymentAmount.trim() !== "" &&
-          selectedBankCode.trim() !== "" &&
-          paymentAccountNumber.trim() !== "" &&
-          paymentDescription.trim() !== ""
+        paymentAmount.trim() !== "" &&
+        selectedBankCode.trim() !== "" &&
+        paymentAccountNumber.trim() !== "" &&
+        paymentDescription.trim() !== ""
       );
     }
   }, [email, paymentAmount, selectedBankCode, paymentAccountNumber, paymentDescription, selectedUserType]);
@@ -629,7 +784,11 @@ const TransactionCreation = () => {
               fontSize={{ base: "2xl", md: "3xl" }}
               className="font-bold"
               textAlign="center"
-              bgGradient={colorMode === "light" ? "linear(to-r, #957432, #C9A55A)" : "linear(to-r, #957432, #C9A55A)"}
+              bgGradient={
+                colorMode === "light"
+                  ? "linear(to-r, #957432, #C9A55A)"
+                  : "linear(to-r, #957432, #C9A55A)"
+              }
               bgClip="text"
               letterSpacing="tight"
             >
@@ -688,7 +847,10 @@ const TransactionCreation = () => {
                   textAlign="center"
                   boxShadow={`0px 4px 20px ${shadowColor}`}
                   transition="all 0.3s ease"
-                  _hover={{ transform: "translateY(-5px)", boxShadow: `0px 8px 25px ${shadowColor}` }}
+                  _hover={{
+                    transform: "translateY(-5px)",
+                    boxShadow: `0px 8px 25px ${shadowColor}`,
+                  }}
                   borderWidth="2px"
                   borderColor={selectedUserType === "buyer" ? accentColor : "transparent"}
                 >
@@ -730,7 +892,10 @@ const TransactionCreation = () => {
                   textAlign="center"
                   boxShadow={`0px 4px 20px ${shadowColor}`}
                   transition="all 0.3s ease"
-                  _hover={{ transform: "translateY(-5px)", boxShadow: `0px 8px 25px ${shadowColor}` }}
+                  _hover={{
+                    transform: "translateY(-5px)",
+                    boxShadow: `0px 8px 25px ${shadowColor}`,
+                  }}
                   borderWidth="2px"
                   borderColor={selectedUserType === "seller" ? accentColor : "transparent"}
                 >
@@ -792,7 +957,10 @@ const TransactionCreation = () => {
                           borderColor={borderColor}
                           borderRadius="xl"
                           _hover={{ borderColor: accentColor }}
-                          _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
+                          _focus={{
+                            borderColor: accentColor,
+                            boxShadow: `0 0 0 1px ${accentColor}`,
+                          }}
                           h="100px"
                           required
                         />
@@ -802,18 +970,21 @@ const TransactionCreation = () => {
                           Price/Amount
                         </FormLabel>
                         <Input
-                          type="number"
+                          type="text"
                           placeholder="Enter price/amount"
-                          value={paymentAmount}
-                          onChange={(e) => setPaymentAmount(e.target.value)}
+                          value={displayAmount}
+                          onChange={handleAmountChange}
                           bg={inputBg}
                           color={textColor}
                           borderColor={borderColor}
                           borderRadius="full"
                           _hover={{ borderColor: accentColor }}
-                          _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
+                          _focus={{
+                            borderColor: accentColor,
+                            boxShadow: `0 0 0 1px ${accentColor}`,
+                          }}
                           required
-                          min="1"
+                          title="Please enter a valid number (e.g., 300000 or 300000.00)"
                         />
                       </FormControl>
                     </Box>
@@ -837,7 +1008,10 @@ const TransactionCreation = () => {
                               borderColor={borderColor}
                               borderRadius="full"
                               _hover={{ borderColor: accentColor }}
-                              _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
+                              _focus={{
+                                borderColor: accentColor,
+                                boxShadow: `0 0 0 1px ${accentColor}`,
+                              }}
                               required
                             />
                           </FormControl>
@@ -854,7 +1028,10 @@ const TransactionCreation = () => {
                               borderColor={borderColor}
                               borderRadius="full"
                               _hover={{ borderColor: accentColor }}
-                              _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
+                              _focus={{
+                                borderColor: accentColor,
+                                boxShadow: `0 0 0 1px ${accentColor}`,
+                              }}
                               required
                             >
                               {uniqueBanks.map((bank) => (
@@ -883,43 +1060,24 @@ const TransactionCreation = () => {
                               borderColor={borderColor}
                               borderRadius="full"
                               _hover={{ borderColor: accentColor }}
-                              _focus={{ borderColor: accentColor, boxShadow: `0 0 0 1px ${accentColor}` }}
+                              _focus={{
+                                borderColor: accentColor,
+                                boxShadow: `0 0 0 1px ${accentColor}`,
+                              }}
                               required
                               pattern="[0-9]+"
-                              title="Please enter a valid account number (numbers only)"
+                              title="Please enter a valid 10-digit account number (numbers only)"
                               minLength={10}
                               maxLength={10}
                             />
                           </FormControl>
                         </Box>
+                        <Box w="full" mt={2}>
+                          <Text fontWeight="bold" color={textColor}>
+                            Amount: {formatCurrency(paymentAmount)} NGN
+                          </Text>
+                        </Box>
                       </>
-                    )}
-                    {selectedUserType === "seller" && (
-                      <Box
-                        w="full"
-                        bg={useColorModeValue("gray.50", "#0F1624")}
-                        p={4}
-                        borderRadius="lg"
-                        mt={2}
-                        border={cardBorder}
-                      >
-                        <Text fontWeight="bold" mb={2} color={textColor}>
-                          Transaction Summary
-                        </Text>
-                        <Flex justify="space-between" mb={1}>
-                          <Text color={textColor}>Amount:</Text>
-                          <Text color={textColor}>{paymentAmount || "0.00"} NGN</Text>
-                        </Flex>
-                        <Flex justify="space-between" mb={1}>
-                          <Text color={textColor}>Transaction Fee (0.8%):</Text>
-                          <Text color={textColor}>{transactionFee} NGN</Text>
-                        </Flex>
-                        <Divider my={2} borderColor={useColorModeValue("gray.300", "gray.600")} />
-                        <Flex justify="space-between" fontWeight="bold">
-                          <Text color={textColor}>Total Amount:</Text>
-                          <Text color={accentColor}>{totalAmount} NGN</Text>
-                        </Flex>
-                      </Box>
                     )}
                     <Button
                       type="submit"
@@ -927,9 +1085,9 @@ const TransactionCreation = () => {
                       borderRadius="full"
                       w="full"
                       mt={4}
-                      bg={formValid ? accentColor : useColorModeValue("gray.300", "#2D3748")}
+                      bg={formValid ? accentColor : disabledButtonHoverBg}
                       color="white"
-                      _hover={{ bg: formValid ? accentHoverColor : useColorModeValue("gray.300", "#2D3748") }}
+                      _hover={{ bg: formValid ? accentHoverColor : disabledButtonHoverBg }}
                       boxShadow={formValid ? `0px 4px 10px ${shadowColor}` : "none"}
                       isDisabled={!formValid}
                     >
@@ -949,7 +1107,7 @@ const TransactionCreation = () => {
                   borderRadius="full"
                   size="lg"
                   px={8}
-                  _hover={{ bg: useColorModeValue("gray.100", "rgba(149, 116, 50, 0.2)") }}
+                  _hover={{ bg: nextButtonHoverBg }}
                 >
                   Previous
                 </Button>
@@ -962,9 +1120,9 @@ const TransactionCreation = () => {
                   size="lg"
                   px={8}
                   color="white"
-                  bg={nextButtonActive ? accentColor : useColorModeValue("gray.300", "#2D3748")}
+                  bg={nextButtonActive ? accentColor : disabledButtonHoverBg}
                   opacity={nextButtonActive ? 1 : 0.7}
-                  _hover={{ bg: nextButtonActive ? accentHoverColor : useColorModeValue("gray.300", "#2D3748") }}
+                  _hover={{ bg: nextButtonActive ? accentHoverColor : disabledButtonHoverBg }}
                   boxShadow={nextButtonActive ? `0px 4px 10px ${shadowColor}` : "none"}
                 >
                   Next
@@ -974,134 +1132,24 @@ const TransactionCreation = () => {
           </VStack>
         </Fade>
       )}
-      {acceptTransactionModel && (
-        <Box
-          position="fixed"
-          top={0}
-          left={0}
-          right={0}
-          bottom={0}
-          bg="rgba(0, 0, 0, 0.7)"
-          zIndex={999}
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-          p={4}
-        >
-          <Box
-            bg={bgSecondary}
-            borderRadius="xl"
-            maxW="400px"
-            w="full"
-            overflow="hidden"
-            boxShadow="0px 10px 30px rgba(0, 0, 0, 0.3)"
-            border={cardBorder}
-          >
-            <Box
-              p={4}
-              bg={useColorModeValue("gray.50", "#0F1624")}
-              borderBottomWidth="1px"
-              borderColor={useColorModeValue("gray.200", "gray.700")}
-            >
-              <Flex justify="space-between" align="center">
-                <Heading size="md" color={textColor}>
-                  Accept Escrow Transaction
-                </Heading>
-                <Button
-                  variant="ghost"
-                  p={1}
-                  onClick={() => setAcceptTransactionModel(false)}
-                  color={textColor}
-                  _hover={{ bg: useColorModeValue("gray.100", "gray.700") }}
-                >
-                  <MdClose size={24} />
-                </Button>
-              </Flex>
-            </Box>
-            <Box p={5}>
-              <Flex align="center" mb={4}>
-                <Avatar
-                  src={userDetails.avatarImage ? `${BASE_URL}/${userDetails.avatarImage}` : defaultProfileImage}
-                  size="md"
-                  bg={accentColor}
-                  boxShadow={`0px 2px 8px ${shadowColor}`}
-                />
-                <Box ml={3}>
-                  <Text fontWeight="bold" color={textColor}>
-                    {userDetails.fullName || "Transaction"}
-                  </Text>
-                  {selectedUserType === "seller" && (
-                    <Text fontSize="sm" color={accentColor}>
-                      {totalAmount} NGN
-                    </Text>
-                  )}
-                </Box>
-              </Flex>
-              <Text fontSize="sm" mb={4} color={textColor}>
-                You are about to {selectedUserType === "buyer" ? "create" : "accept"} the escrow transaction.
-                Make sure you understand the terms before proceeding.
-              </Text>
-              <Box bg={useColorModeValue("gray.50", "#0F1624")} p={4} borderRadius="md" fontSize="sm" border={cardBorder}>
-                <Heading size="xs" mb={3} color={textColor}>
-                  Terms
-                </Heading>
-                <Flex justify="space-between" mb={2}>
-                  <Text color={textColor}>Product Description</Text>
-                  <Text color={textColor}>{paymentDescription || "Not specified"}</Text>
-                </Flex>
-                <Flex justify="space-between" mb={2}>
-                  <Text color={textColor}>Price/Amount</Text>
-                  <Text color={textColor}>{paymentAmount || "0.00"} NGN</Text>
-                </Flex>
-                {selectedUserType === "seller" && (
-                  <>
-                    <Flex justify="space-between" mb={2}>
-                      <Text color={textColor}>Payment Method</Text>
-                      <Text color={textColor}>Wire Transfer</Text>
-                    </Flex>
-                    <Flex justify="space-between" mb={2}>
-                      <Text color={textColor}>Transaction Fee</Text>
-                      <Text color={textColor}>0.8%</Text>
-                    </Flex>
-                    <Flex justify="space-between" mb={2}>
-                      <Text color={textColor}>Bank</Text>
-                      <Text color={textColor}>{paymentBank || "Not specified"}</Text>
-                    </Flex>
-                    <Flex justify="space-between" mb={2}>
-                      <Text color={textColor}>Account Number</Text>
-                      <Text color={textColor}>{paymentAccountNumber}</Text>
-                    </Flex>
-                    <Divider my={2} borderColor={useColorModeValue("gray.300", "gray.600")} />
-                    <Flex justify="space-between" fontWeight="bold">
-                      <Text color={textColor}>Total Amount</Text>
-                      <Text color={accentColor}>{totalAmount} NGN</Text>
-                    </Flex>
-                  </>
-                )}
-              </Box>
-              <Button
-                size="lg"
-                w="full"
-                mt={4}
-                borderRadius="full"
-                bg={accentColor}
-                color="white"
-                _hover={{ bg: accentHoverColor }}
-                onClick={(e) => {
-                  setAcceptTransactionModel(false);
-                  if (selectedUserType === "buyer") {
-                    createNewTransactionForBuyer(e);
-                  } else {
-                    createNewTransaction(e);
-                  }
-                }}
-              >
-                {selectedUserType === "buyer" ? "Create Transaction" : "Accept"}
-              </Button>
-            </Box>
-          </Box>
-        </Box>
-      )}
+      <AcceptTransactionModal
+        isOpen={acceptTransactionModel}
+        onClose={() => setAcceptTransactionModel(false)}
+        userDetails={userDetails}
+        paymentAmount={paymentAmount}
+        selectedUserType={selectedUserType}
+        textColor={textColor}
+        accentColor={accentColor}
+        accentHoverColor={accentHoverColor}
+        bgSecondary={bgSecondary}
+        cardBorder={cardBorder}
+        shadowColor={shadowColor}
+        modalHeaderBg={modalHeaderBg}
+        modalHeaderBorder={modalHeaderBorder}
+        modalButtonHoverBg={modalButtonHoverBg}
+        createNewTransaction={createNewTransaction}
+        createNewTransactionForBuyer={createNewTransactionForBuyer}
+      />
     </Box>
   );
 };

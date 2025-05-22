@@ -30,7 +30,7 @@ import {
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 
 const MainJoinTransaction = () => {
-  const [transactionId, setTransactionId] = useState(""); // Renamed to transactionId for user input, but will map to _id internally
+  const [transactionId, setTransactionId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [responseMessage, setResponseMessage] = useState("");
   const [messageType, setMessageType] = useState("");
@@ -43,7 +43,6 @@ const MainJoinTransaction = () => {
   const toast = useToast();
   const { colorMode } = useColorMode();
 
-  // Dynamic colors based on color mode
   const boxBg = useColorModeValue("white", "gray.800");
   const headingColor = useColorModeValue("gray.800", "white");
   const textColor = useColorModeValue("gray.600", "gray.300");
@@ -62,29 +61,6 @@ const MainJoinTransaction = () => {
       return () => clearTimeout(timeoutId);
     }
   }, [responseMessage]);
-
-  useEffect(() => {
-    const checkWallet = async () => {
-      try {
-        const token = localStorage.getItem("auth-token");
-        const response = await axios.get(`${BASE_URL}/api/users/user-details`, {
-          headers: { "auth-token": token },
-        });
-        if (!response.data.walletId) {
-          toast({
-            title: "Wallet not found",
-            description: "Please contact support to set up your wallet.",
-            status: "error",
-            duration: 5000,
-            isClosable: true,
-          });
-        }
-      } catch (error) {
-        console.error("Error checking wallet:", error);
-      }
-    };
-    checkWallet();
-  }, [toast]);
 
   const fetchTransactionDetails = async (e) => {
     e.preventDefault();
@@ -107,13 +83,15 @@ const MainJoinTransaction = () => {
         setResponseMessage(response.data.error || "Error fetching transaction details");
         setMessageType("error");
       } else {
-        setTransactionDetails(response.data.data); // Adjusted for responseFormatter
+        setTransactionDetails(response.data.data);
         setShowPreviewModal(true);
       }
     } catch (error) {
       console.error("Error fetching transaction details:", error);
-      if (error.response && !error.response.data.success) {
-        setResponseMessage(error.response.data.error || "Error fetching transaction details");
+      if (error.response?.data?.error === "Transaction not found") {
+        setResponseMessage("Invalid transaction ID. Please check and try again.");
+      } else if (error.response?.data?.error === "Unauthorized to view this transaction") {
+        setResponseMessage("You are not authorized to view this transaction.");
       } else {
         setResponseMessage("Network error. Please try again.");
       }
@@ -129,7 +107,7 @@ const MainJoinTransaction = () => {
       const token = localStorage.getItem("auth-token");
       const response = await axios.post(
         `${BASE_URL}/api/transactions/join-transaction`,
-        { id: transactionId }, // Changed to id to match _id in schema
+        { id: transactionId },
         { headers: { "auth-token": token } }
       );
 
@@ -137,7 +115,7 @@ const MainJoinTransaction = () => {
         setResponseMessage(response.data.error || "Error joining transaction");
         setMessageType("error");
       } else {
-        setResponseMessage(`Successfully joined as ${response.data.role}. Redirecting...`);
+        setResponseMessage(`Successfully joined as ${response.data.data.role}. Redirecting...`);
         setMessageType("success");
         setShowPreviewModal(false);
 
@@ -147,8 +125,12 @@ const MainJoinTransaction = () => {
       }
     } catch (error) {
       console.error("Error joining transaction:", error);
-      if (error.response && !error.response.data.success) {
-        setResponseMessage(error.response.data.error || "Error joining transaction");
+      if (error.response?.data?.error === "You cannot join your own transaction") {
+        setResponseMessage("You cannot join a transaction you created.");
+      } else if (error.response?.data?.error === "You are already a participant") {
+        setResponseMessage("You are already part of this transaction.");
+      } else if (error.response?.data?.error === "Only pending transactions can be joined") {
+        setResponseMessage("This transaction is no longer available to join.");
       } else {
         setResponseMessage("Network error. Please try again.");
       }
@@ -173,7 +155,7 @@ const MainJoinTransaction = () => {
       const response = await axios.post(
         `${BASE_URL}/api/transactions/accept-and-update`,
         {
-          id: transactionId, // Changed to id to match _id in schema
+          id: transactionId,
           description: editDetails.description,
           price: editDetails.price,
         },
@@ -195,8 +177,12 @@ const MainJoinTransaction = () => {
       }
     } catch (error) {
       console.error("Error accepting and updating transaction:", error);
-      if (error.response && !error.response.data.success) {
-        setResponseMessage(error.response.data.error || "Error updating transaction");
+      if (error.response?.data?.error === "You cannot join your own transaction") {
+        setResponseMessage("You cannot join a transaction you created.");
+      } else if (error.response?.data?.error === "You are already a participant") {
+        setResponseMessage("You are already part of this transaction.");
+      } else if (error.response?.data?.error === "Only pending transactions can be joined") {
+        setResponseMessage("This transaction is no longer available to join.");
       } else {
         setResponseMessage("Network error. Please try again.");
       }
@@ -212,7 +198,7 @@ const MainJoinTransaction = () => {
       const token = localStorage.getItem("auth-token");
       const response = await axios.post(
         `${BASE_URL}/api/transactions/reject-transaction`,
-        { id: transactionId }, // Changed to id to match _id in schema
+        { id: transactionId },
         { headers: { "auth-token": token } }
       );
 
@@ -226,8 +212,10 @@ const MainJoinTransaction = () => {
       }
     } catch (error) {
       console.error("Error rejecting transaction:", error);
-      if (error.response && !error.response.data.success) {
-        setResponseMessage(error.response.data.error || "Error rejecting transaction");
+      if (error.response?.data?.error === "You cannot reject your own transaction") {
+        setResponseMessage("You cannot reject a transaction you created.");
+      } else if (error.response?.data?.error === "You are already a participant") {
+        setResponseMessage("You are already part of this transaction.");
       } else {
         setResponseMessage("Network error. Please try again.");
       }
@@ -327,7 +315,6 @@ const MainJoinTransaction = () => {
         </Box>
       </Box>
 
-      {/* Preview Modal */}
       <Modal isOpen={showPreviewModal} onClose={() => setShowPreviewModal(false)} isCentered size="md">
         <ModalOverlay />
         <ModalContent bg={boxBg} color={textColor}>
@@ -347,7 +334,7 @@ const MainJoinTransaction = () => {
                 </Box>
                 <Box>
                   <Text fontSize="sm" fontWeight="bold">Price:</Text>
-                  <Text>₦{parseFloat(transactionDetails.paymentAmount).toFixed(2)}</Text>
+                  <Text>₦{parseFloat(transactionDetails.paymentAmount).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                 </Box>
               </VStack>
             )}
@@ -392,8 +379,7 @@ const MainJoinTransaction = () => {
         </ModalContent>
       </Modal>
 
-      {/* Edit Details Modal */}
-      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} isCentered size="md">
+      <Modal isOpen={showEditModal} onClose={() => { setShowEditModal(false); setEditErrors({}); }} isCentered size="md">
         <ModalOverlay />
         <ModalContent bg={boxBg} color={textColor}>
           <ModalHeader>
@@ -432,7 +418,7 @@ const MainJoinTransaction = () => {
           </ModalBody>
           <ModalFooter>
             <Button
-              onClick={() => setShowEditModal(false)}
+              onClick={() => { setShowEditModal(false); setEditErrors({}); }}
               bg="gray.500"
               color="white"
               _hover={{ bg: "gray.600" }}

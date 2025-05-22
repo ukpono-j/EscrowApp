@@ -1,16 +1,25 @@
 import { extendTheme } from "@chakra-ui/react";
 
-// Define custom theme colors (optional)
 const theme = extendTheme({
   config: {
-    initialColorMode: "dark", // or 'dark'
+    initialColorMode: "dark",
     useSystemColorMode: false,
+  },
+  colors: {
+    brand: {
+      500: "#B38939", // Primary brand color (used in sidebar)
+      600: "#8A6D2F", // Secondary brand color (gradient)
+    },
+    gray: {
+      800: "#0F172A", // Dark background for sidebar and body
+      100: "#FAFAFA", // Light background
+    },
   },
   styles: {
     global: (props) => ({
       body: {
-        bg: props.colorMode === "dark" ? "#1A202C" : "#FAFAFA",
-        color: props.colorMode === "dark" ? "#FAFAFA" : "#1A202C",
+        bg: props.colorMode === "dark" ? "gray.800" : "gray.100",
+        color: props.colorMode === "dark" ? "gray.100" : "gray.800",
       },
     }),
   },

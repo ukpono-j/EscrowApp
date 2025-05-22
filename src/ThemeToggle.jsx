@@ -15,7 +15,7 @@ const ThemeToggle = () => {
       onClick={toggleColorMode}
       size="md"
       variant="ghost"
-      colorScheme={isDark ? "#D6AE56" : "blue"}
+      color="brand.500" // Use theme color
       borderRadius="full"
       whileHover={{ scale: 1.2 }}
       whileTap={{ scale: 0.95, rotate: 20 }}

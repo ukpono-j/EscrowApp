@@ -11,24 +11,36 @@ import {
 } from "react-icons/md";
 import { FaHandshake, FaExchangeAlt, FaUserShield } from "react-icons/fa";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useToast } from "@chakra-ui/react";
+import { useToast, Box, Text, Flex, useColorModeValue, Image } from "@chakra-ui/react";
+import { BsChevronDown } from "react-icons/bs";
 import axios from "axios";
-const BASE_URL = import.meta.env.VITE_BASE_URL;
-import { BsChevronDown, BsChevronRight } from "react-icons/bs";
-import Logo from "../../assets/logo1.png";
+import Logo from "../../assets/logo1.png"; // Adjust path as needed
 import ThemeToggle from "../../ThemeToggle";
-import {
-  Box,
-  Text,
-  Flex,
-  ScaleFade,
-  useColorModeValue,
-  Avatar,
-  Image,
-} from "@chakra-ui/react";
 import "./Sidebar.css";
 
-// Utility function to validate user response (inline for simplicity)
+const BASE_URL = import.meta.env.VITE_BASE_URL;
+
+// Error Boundary to catch runtime errors
+class SidebarErrorBoundary extends React.Component {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, info) {
+    console.error("Sidebar error:", error, info);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <Box p={4} color="red.500">Something went wrong in Sidebar.</Box>;
+    }
+    return this.props.children;
+  }
+}
+
+// Utility function to validate user response
 const validateUserResponse = (responseData) => {
   if (responseData.success && responseData.data?.user) {
     return responseData.data.user;
@@ -48,11 +60,15 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
   const [isMobile, setIsMobile] = useState(false);
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
 
+  // Use Chakra UI's color mode for consistent theming
+  const bgColor = useColorModeValue("white", "#0F172A");
+  const borderColor = useColorModeValue("whiteAlpha.100", "whiteAlpha.100");
+
+  // Check screen size and update states
   useEffect(() => {
     const checkScreenSize = () => {
       const mobileView = window.innerWidth < 768;
       setIsMobile(mobileView);
-
       if (mobileView) {
         setIsSidebarVisible(false);
         setIsCollapsed(false);
@@ -67,10 +83,12 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
     return () => window.removeEventListener("resize", checkScreenSize);
   }, []);
 
+  // Update active link on location change
   useEffect(() => {
     setActiveLink(location.pathname);
   }, [location.pathname]);
 
+  // Fetch user details
   useEffect(() => {
     const token = localStorage.getItem("auth-token");
     if (!token) {
@@ -86,12 +104,7 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
         console.log("User details response:", response.data);
         try {
           const user = validateUserResponse(response.data);
-          if (!user.firstName) {
-            console.warn("No firstName in user details:", user);
-            setUserName("User");
-          } else {
-            setUserName(user.firstName);
-          }
+          setUserName(user.firstName || "User");
         } catch (error) {
           console.error("Error validating user details:", {
             message: error.message,
@@ -125,12 +138,11 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
         }
         setUserName("User");
       });
-  }, [toast]);
+  }, [toast, navigate]);
 
+  // Notify parent of collapse state changes
   useEffect(() => {
-    if (onCollapseChange) {
-      onCollapseChange(isMobile ? isSidebarVisible : isCollapsed);
-    }
+    onCollapseChange?.(isMobile ? isSidebarVisible : isCollapsed);
   }, [isCollapsed, isSidebarVisible, isMobile, onCollapseChange]);
 
   const toggleSidebar = () => {
@@ -189,286 +201,285 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
   const Tooltip = ({ children, label }) => (
     <div className="group relative">
       {children}
-      <div
-        className={`absolute left-full ml-2 px-2 py-1 bg-gray-800 text-xs rounded-md whitespace-nowrap opacity-0 invisible transition-all duration-200 z-50 ${
-          isCollapsed && !isMobile ? "group-hover:opacity-100 group-hover:visible" : ""
-        }`}
-      >
-        {label}
-      </div>
+      {isCollapsed && !isMobile && (
+        <div className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-xs rounded-md whitespace-nowrap opacity-0 invisible transition-all duration-200 z-50 group-hover:opacity-100 group-hover:visible">
+          {label}
+        </div>
+      )}
     </div>
   );
 
-  const MobileToggle = () => (
-    <button
-      onClick={toggleSidebar}
-      className="fixed top-4 left-4 z-50 flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-[#B38939] to-[#8A6D2F] shadow-lg"
-      aria-label="Toggle Sidebar"
-    >
-      <MdMenu className="text-white text-xl" />
-    </button>
-  );
+  const MobileToggle = () => {
+    // Only render when sidebar is hidden in mobile view
+    if (isMobile && isSidebarVisible) return null;
+    return (
+      <button
+        onClick={toggleSidebar}
+        className="fixed top-4 left-4 z-50 flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-[#B38939] to-[#8A6D2F] shadow-lg"
+        aria-label="Toggle Sidebar"
+      >
+        <MdMenu className="text-white text-xl" />
+      </button>
+    );
+  };
 
   return (
-    <>
-      {isMobile && <MobileToggle />}
-
-      <AnimatePresence>
-        {(!isMobile || (isMobile && isSidebarVisible)) && (
-          <motion.div
-            key="sidebar"
-            initial={{ x: isMobile ? "-100%" : 0 }}
-            animate={{ x: 0 }}
-            exit={{ x: isMobile ? "-100%" : 0 }}
-            transition={{ duration: 0.2 }}
-            style={{ position: "fixed", top: 0, left: 0, height: "100vh", zIndex: 40 }}
-          >
-            <Box
-              className="h-full flex flex-col shadow-xl"
-              style={{
-                background: useColorModeValue("white", "#0F172A"),
-                width: isMobile ? "280px" : isCollapsed ? "80px" : "280px",
-              }}
+    <SidebarErrorBoundary>
+      <>
+        <MobileToggle />
+        <AnimatePresence>
+          {(!isMobile || isSidebarVisible) && (
+            <motion.div
+              key="sidebar"
+              initial={{ x: isMobile ? "-100%" : 0 }}
+              animate={{ x: 0 }}
+              exit={{ x: isMobile ? "-100%" : 0 }}
+              transition={{ duration: 0.2 }}
+              style={{ position: "fixed", top: 0, left: 0, height: "100vh", zIndex: 40 }}
             >
-              <div className="flex flex-col h-full overflow-hidden">
-                <div className="flex-shrink-0 border-b border-white/10">
-                  <div className="flex items-center justify-between p-5">
-                    {(!isCollapsed || isMobile) && (
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: 0.2 }}
-                      >
-                        <Link to="/dashboard" className="block">
-                          <Image
-                            src={Logo}
-                            alt="Sylo"
-                            h={["32px", "40px"]}
-                            maxH="40px"
-                            maxW="auto"
-                            objectFit="contain"
-                          />
-                        </Link>
-                      </motion.div>
-                    )}
-
-                    <button
-                      onClick={toggleSidebar}
-                      className={`flex items-center justify-center w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 transition-colors duration-200 ${
-                        isCollapsed && !isMobile ? "mx-auto" : ""
-                      }`}
-                    >
-                      {isMobile ? (
-                        <MdClose className="text-[#9C7933]" />
-                      ) : isCollapsed ? (
-                        <MdMenu className="text-[#9C7933]" />
-                      ) : (
-                        <MdClose className="text-[#9C7933]" />
-                      )}
-                    </button>
-                  </div>
-
-                  <div className={`px-5 pb-5 ${isCollapsed && !isMobile ? "flex justify-center" : ""}`}>
-                    <AnimatePresence>
-                      {(!isCollapsed || isMobile) ? (
+              <Box
+                className="h-full flex flex-col shadow-xl sidebar"
+                bg={bgColor}
+                borderRight="1px"
+                borderColor={borderColor}
+                width={isMobile ? "280px" : isCollapsed ? "80px" : "280px"}
+              >
+                <div className="flex flex-col h-full overflow-hidden">
+                  {/* Header */}
+                  <div className="flex-shrink-0 border-b" borderColor={borderColor}>
+                    <div className="flex items-center justify-between p-5">
+                      {(!isCollapsed || isMobile) && (
                         <motion.div
-                          key="expanded-profile"
-                          initial={{ opacity: 0, y: -20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -20 }}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
                           transition={{ duration: 0.2 }}
-                          className="flex items-center gap-3"
                         >
-                          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#B38939] to-[#8A6D2F] flex items-center justify-center text-lg font-bold shadow-lg ring-2 ring-[#B38939]/20">
-                            {getInitials(userName)}
-                          </div>
-                          <div className="flex-grow">
-                            <p className="text-sm">Welcome back</p>
-                            <h3 className="font-bold">{userName || "User"}</h3>
-                          </div>
+                          <Link to="/dashboard" className="block">
+                            <Image
+                              src={Logo}
+                              alt="Sylo"
+                              maxH={["28px", "32px", "36px", "40px"]}
+                              maxW="160px"
+                              objectFit="contain"
+                              className="logo-responsive"
+                            />
+                          </Link>
                         </motion.div>
-                      ) : (
-                        <motion.div
-                          key="collapsed-profile"
-                          initial={{ scale: 0.8, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          exit={{ scale: 0.8, opacity: 0 }}
-                          transition={{ duration: 0.2 }}
-                        >
-                          <Tooltip label={userName || "User"}>
-                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#B38939] to-[#8A6D2F] flex items-center justify-center text-lg font-bold shadow-lg ring-2 ring-[#B38939]/20">
+                      )}
+                      <button
+                        onClick={toggleSidebar}
+                        className={`flex items-center justify-center w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 transition-colors duration-200 ${
+                          isCollapsed && !isMobile ? "mx-auto" : ""
+                        }`}
+                      >
+                        {isMobile ? (
+                          <MdClose className="text-[#9C7933]" />
+                        ) : isCollapsed ? (
+                          <MdMenu className="text-[#9C7933]" />
+                        ) : (
+                          <MdClose className="text-[#9C7933]" />
+                        )}
+                      </button>
+                    </div>
+                    <div className={`px-5 pb-5 ${isCollapsed && !isMobile ? "flex justify-center" : ""}`}>
+                      <AnimatePresence>
+                        {(!isCollapsed || isMobile) ? (
+                          <motion.div
+                            key="expanded-profile"
+                            initial={{ opacity: 0, y: -20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            transition={{ duration: 0.2 }}
+                            className="flex items-center gap-3"
+                          >
+                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#B38939] to-[#8A6D2F] flex items-center justify-center text-lg font-bold text-white shadow-lg ring-2 ring-[#B38939]/20">
                               {getInitials(userName)}
                             </div>
-                          </Tooltip>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                </div>
-
-                <div className="flex-grow font-[500] overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-[#B38939]/20 scrollbar-track-transparent">
-                  <div className={`px-3 py-5 ${isCollapsed && !isMobile ? "flex flex-col items-center" : ""}`}>
-                    <div className="space-y-1">
-                      {links.map((link, index) => (
-                        <Tooltip key={index} label={isCollapsed && !isMobile ? link.label : ""}>
-                          <motion.div
-                            whileHover={{ x: isCollapsed && !isMobile ? 0 : 4 }}
-                            whileTap={{ scale: 0.98 }}
-                            transition={{ duration: 0.1 }}
-                          >
-                            <Link
-                              to={link.to}
-                              onClick={() => handleLinkClick(link.to)}
-                              className={`flex items-center gap-3 px-4 side_links py-3 rounded-xl transition-all duration-200 ${
-                                isCollapsed && !isMobile ? "justify-center" : ""
-                              } ${
-                                activeLink === link.to
-                                  ? "bg-gradient-to-r from-[#B38939] to-[#8A6D2F] font-medium shadow-lg"
-                                  : "font-[500] hover:bg-white/5"
-                              }`}
-                            >
-                              <span className={activeLink === link.to ? "text-white" : "text-[#B38939]"}>
-                                {link.icon}
-                              </span>
-                              {(!isCollapsed || isMobile) && (
-                                <span className="text-sm whitespace-nowrap">{link.label}</span>
-                              )}
-                              {(!isCollapsed || isMobile) && activeLink === link.to && (
-                                <motion.div
-                                  layoutId="active-pill"
-                                  className="absolute right-3 w-1.5 h-1.5 rounded-full bg-white"
-                                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                                />
-                              )}
-                            </Link>
+                            <div className="flex-grow">
+                              <Text fontSize="sm" color="gray.500">Welcome back</Text>
+                              <Text fontSize="md" fontWeight="bold" color={bgColor === "white" ? "gray.800" : "white"}>
+                                {userName || "User"}
+                              </Text>
+                            </div>
                           </motion.div>
-                        </Tooltip>
-                      ))}
-                    </div>
-
-                    {(!isCollapsed || isMobile) && (
-                      <div className="mt-8 mb-2">
-                        <span className="px-4 text-xs uppercase tracking-wider font-bold mb-3 block">
-                          Settings
-                        </span>
-                      </div>
-                    )}
-
-                    {isCollapsed && !isMobile && <div className="my-8 w-8 h-px bg-gray-700/30" />}
-
-                    {setting_links.map((link, index) => (
-                      <Tooltip key={index} label={isCollapsed && !isMobile ? link.label : ""}>
-                        <div className="relative">
+                        ) : (
                           <motion.div
-                            whileHover={{ x: isCollapsed && !isMobile ? 0 : 4 }}
-                            whileTap={{ scale: 0.98 }}
-                            transition={{ duration: 0.1 }}
+                            key="collapsed-profile"
+                            initial={{ scale: 0.8, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.8, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
                           >
-                            <button
-                              onClick={() => handleSettingLinkClick(link.to)}
-                              className={`w-full flex items-center ${
-                                isCollapsed && !isMobile ? "justify-center" : "justify-between"
-                              } px-4 py-3 rounded-xl transition-all duration-200 ${
-                                activeLink === link.to
-                                  ? "bg-gradient-to-r from-[#B38939] to-[#8A6D2F] font-medium shadow-lg"
-                                  : "hover:bg-white/5"
-                              }`}
+                            <Tooltip label={userName || "User"}>
+                              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#B38939] to-[#8A6D2F] flex items-center justify-center text-lg font-bold text-white shadow-lg ring-2 ring-[#B38939]/20">
+                                {getInitials(userName)}
+                              </div>
+                            </Tooltip>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </div>
+                  {/* Navigation */}
+                  <div className="flex-grow font-[500] overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-[#B38939]/20 scrollbar-track-transparent">
+                    <div className={`px-3 py-5 ${isCollapsed && !isMobile ? "flex flex-col items-center" : ""}`}>
+                      <div className="space-y-1">
+                        {links.map((link, index) => (
+                          <Tooltip key={index} label={isCollapsed && !isMobile ? link.label : ""}>
+                            <motion.div
+                              whileHover={{ x: isCollapsed && !isMobile ? 0 : 4 }}
+                              whileTap={{ scale: 0.98 }}
+                              transition={{ duration: 0.1 }}
                             >
-                              <div className={`flex items-center gap-3 ${isCollapsed && !isMobile ? "justify-center" : ""}`}>
+                              <Link
+                                to={link.to}
+                                onClick={() => handleLinkClick(link.to)}
+                                className={`flex items-center gap-3 px-4 side_links py-3 rounded-xl transition-all duration-200 ${
+                                  isCollapsed && !isMobile ? "justify-center" : ""
+                                } ${
+                                  activeLink === link.to
+                                    ? "bg-gradient-to-r from-[#B38939] to-[#8A6D2F] font-medium shadow-lg text-white"
+                                    : "font-[500] hover:bg-white/5 text-[#B38939]"
+                                }`}
+                              >
                                 <span className={activeLink === link.to ? "text-white" : "text-[#B38939]"}>
                                   {link.icon}
                                 </span>
                                 {(!isCollapsed || isMobile) && (
                                   <span className="text-sm whitespace-nowrap">{link.label}</span>
                                 )}
-                              </div>
-
-                              {(!isCollapsed || isMobile) && (
-                                <motion.div
-                                  animate={{ rotate: settingLinks ? 180 : 0 }}
-                                  transition={{ duration: 0.2 }}
-                                  className="w-5 h-5 rounded-full flex items-center justify-center bg-white/10"
-                                >
-                                  <BsChevronDown size={10} className="text-[#A47F35]" />
-                                </motion.div>
-                              )}
-                            </button>
-                          </motion.div>
-
-                          {(!isCollapsed || isMobile) && (
-                            <motion.div
-                              initial={false}
-                              animate={{ height: settingLinks ? "auto" : 0, opacity: settingLinks ? 1 : 0 }}
-                              transition={{ duration: 0.2 }}
-                              className="overflow-hidden"
-                            >
-                              <div className="pl-12 pr-4 py-2 space-y-1">
-                                {securitySettingLinks.map((settingLink, settingIndex) => (
+                                {(!isCollapsed || isMobile) && activeLink === link.to && (
                                   <motion.div
-                                    key={settingIndex}
-                                    whileHover={{ x: 4 }}
-                                    whileTap={{ scale: 0.98 }}
-                                    transition={{ duration: 0.1 }}
-                                  >
-                                    <Link
-                                      to={settingLink.to}
-                                      onClick={() => handleLinkClick(settingLink.to)}
-                                      className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 ${
-                                        activeLink === settingLink.to ? "bg-[#B38939]/30 font-medium" : ""
-                                      }`}
-                                    >
-                                      <span
-                                        className={activeLink === settingLink.to ? "text-[#B38939]" : "text-[#A88136]"}
-                                      >
-                                        {settingLink.icon}
-                                      </span>
-                                      <span className="text-sm">{settingLink.label}</span>
-                                    </Link>
-                                  </motion.div>
-                                ))}
-                              </div>
+                                    layoutId="active-pill"
+                                    className="absolute right-3 w-1.5 h-1.5 rounded-full bg-white"
+                                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                                  />
+                                )}
+                              </Link>
                             </motion.div>
-                          )}
-                        </div>
-                      </Tooltip>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex-shrink-0 mt-auto border-t border-white/10">
-                  {(!isCollapsed || isMobile) ? (
-                    <div className="p-5">
-                      <div className="flex items-center justify-between mb-4">
-                        <span className="text-xs">© 2025 Sylo</span>
-                        <ThemeToggle />
+                          </Tooltip>
+                        ))}
                       </div>
-                      <button
-                        onClick={handleLogout}
-                        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-red-600/10 to-red-700/10 hover:from-red-600/20 hover:to-red-700/20 transition-all duration-200 text-sm font-medium"
-                      >
-                        <MdLogout className="text-red-500" />
-                        <span className="text-red-500">Logout</span>
-                      </button>
+                      {(!isCollapsed || isMobile) && (
+                        <div className="mt-8 mb-2">
+                          <Text px={4} fontSize="xs" textTransform="uppercase" fontWeight="bold" color="gray.500">
+                            Settings
+                          </Text>
+                        </div>
+                      )}
+                      {isCollapsed && !isMobile && <div className="my-8 w-8 h-px bg-gray-700/30" />}
+                      {setting_links.map((link, index) => (
+                        <Tooltip key={index} label={isCollapsed && !isMobile ? link.label : ""}>
+                          <div className="relative">
+                            <motion.div
+                              whileHover={{ x: isCollapsed && !isMobile ? 0 : 4 }}
+                              whileTap={{ scale: 0.98 }}
+                              transition={{ duration: 0.1 }}
+                            >
+                              <button
+                                onClick={() => handleSettingLinkClick(link.to)}
+                                className={`w-full flex items-center ${
+                                  isCollapsed && !isMobile ? "justify-center" : "justify-between"
+                                } px-4 py-3 rounded-xl transition-all duration-200 ${
+                                  activeLink === link.to
+                                    ? "bg-gradient-to-r from-[#B38939] to-[#8A6D2F] font-medium shadow-lg text-white"
+                                    : "hover:bg-white/5 text-[#B38939]"
+                                }`}
+                              >
+                                <div className={`flex items-center gap-3 ${isCollapsed && !isMobile ? "justify-center" : ""}`}>
+                                  <span className={activeLink === link.to ? "text-white" : "text-[#B38939]"}>
+                                    {link.icon}
+                                  </span>
+                                  {(!isCollapsed || isMobile) && (
+                                    <span className="text-sm whitespace-nowrap">{link.label}</span>
+                                  )}
+                                </div>
+                                {(!isCollapsed || isMobile) && (
+                                  <motion.div
+                                    animate={{ rotate: settingLinks ? 180 : 0 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="w-5 h-5 rounded-full flex items-center justify-center bg-white/10"
+                                  >
+                                    <BsChevronDown size={10} className="text-[#A47F35]" />
+                                  </motion.div>
+                                )}
+                              </button>
+                            </motion.div>
+                            {(!isCollapsed || isMobile) && (
+                              <motion.div
+                                initial={false}
+                                animate={{ height: settingLinks ? "auto" : 0, opacity: settingLinks ? 1 : 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="overflow-hidden"
+                              >
+                                <div className="pl-12 pr-4 py-2 space-y-1">
+                                  {securitySettingLinks.map((settingLink, settingIndex) => (
+                                    <motion.div
+                                      key={settingIndex}
+                                      whileHover={{ x: 4 }}
+                                      whileTap={{ scale: 0.98 }}
+                                      transition={{ duration: 0.1 }}
+                                    >
+                                      <Link
+                                        to={settingLink.to}
+                                        onClick={() => handleLinkClick(settingLink.to)}
+                                        className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 ${
+                                          activeLink === settingLink.to ? "bg-[#B38939]/30 font-medium text-[#B38939]" : "text-[#A88136]"
+                                        }`}
+                                      >
+                                        <span
+                                          className={activeLink === settingLink.to ? "text-[#B38939]" : "text-[#A88136]"}
+                                        >
+                                          {settingLink.icon}
+                                        </span>
+                                        <span className="text-sm">{settingLink.label}</span>
+                                      </Link>
+                                    </motion.div>
+                                  ))}
+                                </div>
+                              </motion.div>
+                            )}
+                          </div>
+                        </Tooltip>
+                      ))}
                     </div>
-                  ) : (
-                    <div className="p-5 flex justify-center">
-                      <Tooltip label="Logout">
+                  </div>
+                  {/* Footer */}
+                  <div className="flex-shrink-0 mt-auto border-t" borderColor={borderColor}>
+                    {(!isCollapsed || isMobile) ? (
+                      <div className="p-5">
+                        <div className="flex items-center justify-between mb-4">
+                          <Text fontSize="xs" color="gray.500">© 2025 Sylo</Text>
+                          <ThemeToggle />
+                        </div>
                         <button
                           onClick={handleLogout}
-                          className="flex items-center justify-center w-12 h-12 rounded-xl bg-red-500/10 hover:bg-red-500/20 transition-all duration-200"
+                          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-red-600/10 to-red-700/10 hover:from-red-600/20 hover:to-red-700/20 transition-all duration-200 text-sm font-medium"
                         >
-                          <MdLogout className="text-red-500 text-xl" />
+                          <MdLogout className="text-red-500" />
+                          <Text className="text-red-500">Logout</Text>
                         </button>
-                      </Tooltip>
-                    </div>
-                  )}
+                      </div>
+                    ) : (
+                      <div className="p-5 flex justify-center">
+                        <Tooltip label="Logout">
+                          <button
+                            onClick={handleLogout}
+                            className="flex items-center justify-center w-12 h-12 rounded-xl bg-red-500/10 hover:bg-red-500/20 transition-all duration-200"
+                          >
+                            <MdLogout className="text-red-500 text-xl" />
+                          </button>
+                        </Tooltip>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </Box>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
+              </Box>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </>
+    </SidebarErrorBoundary>
   );
 };
 

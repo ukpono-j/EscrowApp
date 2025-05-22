@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Box, useBreakpointValue } from "@chakra-ui/react";
 import Sidebar from "../components/dashboard/Sidebar";
 import MyTransaction from "../components/dashboard/MyTransaction";
 import Profile from "../components/dashboard/Profile";
@@ -25,64 +26,69 @@ const UserDashboard = () => {
     setIsSidebarCollapsed(isCollapsed);
   };
 
+  // Use Chakra UI's breakpoint utility to determine mobile vs desktop
+  const isMobile = useBreakpointValue({ base: true, md: false });
+
+  // Calculate main content width based on sidebar collapse state
+  const mainContentWidth = useBreakpointValue({
+    base: "100%",
+    md: isSidebarCollapsed ? "calc(100% - 80px)" : "calc(100% - 280px)",
+  });
+
   return (
-    <div className="flex h-screen">
+    <Box display="flex" minH="100vh" overflow="hidden">
       <Sidebar
         onShowProfile={handleShowProfile}
         onShowToggleComponent={handleMyTransaction}
         onCollapseChange={handleSidebarCollapseChange}
       />
-      <div
-        className={`fixed top-0 right-0 h-screen overflow-y-auto transition-all duration-300 ${
-          isSidebarCollapsed 
-            ? "w-[calc(100%-80px)]" 
-            : "w-[calc(100%-280px)]"
-        } md:block hidden`}
+      {/* Desktop view */}
+      <Box
+        display={{ base: "none", md: "block" }}
+        position="fixed"
+        top={0}
+        right={0}
+        w={mainContentWidth}
+        h="100vh"
+        overflowY="auto"
+        transition="width 0.3s"
+        className="scrollbar-thin scrollbar-thumb-[#B38939]/20 scrollbar-track-transparent"
       >
-        <div className="h-full overflow-y-auto scrollbar-thin scrollbar-thumb-[#B38939]/20 scrollbar-track-transparent">
-          <div
-            className={
-              showToggleContainer ? "h-auto" : "hidden"
-            }
-          >
+        <Box h="full">
+          <Box display={showToggleContainer ? "block" : "none"}>
             <MiniNav />
-            <div className="p-5">
+            <Box p={5}>
               <MyTransaction />
-            </div>
-          </div>
-          <div className={showProfile ? "p-5" : "hidden"}>
-            {/* =============== Profile Component ============= */}
+            </Box>
+          </Box>
+          <Box display={showProfile ? "block" : "none"} p={5}>
             <Profile />
-            {/* ===============End of Profile Component ============= */}
-          </div>
-        </div>
-      </div>
-      
+          </Box>
+        </Box>
+      </Box>
       {/* Mobile view */}
-      <div className="md:hidden w-full">
-        <div
-          className="min-h-screen w-full overflow-y-auto pb-24"
-        >
-          <div
-            className={
-              showToggleContainer ? "h-auto" : "hidden"
-            }
-          >
-            <MiniNav />
-            <div className="p-4">
-              <MyTransaction />
-            </div>
-          </div>
-          <div className={showProfile ? "p-4" : "hidden"}>
-            <Profile />
-          </div>
-        </div>
+      <Box
+        display={{ base: "block", md: "none" }}
+        w="full"
+        minH="100vh"
+        overflowY="auto"
+        pb={24}
+      >
+        <Box display={showToggleContainer ? "block" : "none"}>
+          <MiniNav />
+          <Box p={4}>
+            <MyTransaction />
+          </Box>
+        </Box>
+        <Box display={showProfile ? "block" : "none"} p={4}>
+          <Profile />
+        </Box>
         <BottomNav
           onShowProfile={handleShowProfile}
           onShowToggleComponent={handleMyTransaction}
         />
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 };
 

@@ -1,5 +1,4 @@
-// Navbar.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link as ScrollLink, scroller } from "react-scroll";
 import { AiOutlineMenu, AiOutlineClose } from "react-icons/ai";
 import { Link } from "react-router-dom";
@@ -11,32 +10,48 @@ import {
   Text,
   Flex,
   ScaleFade,
-  useColorModeValue
+  useColorModeValue,
+  Image,
 } from "@chakra-ui/react";
 import { motion } from "framer-motion";
 
 const MotionBox = motion(Box);
 
 const Navbar = () => {
-  // Move all Hooks to the top level, ensure they're called in the same order every time
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrollPosition, setScrollPosition] = useState(0);
-  
-  // Call all useColorModeValue hooks unconditionally at the top
+  const [navbarHeight, setNavbarHeight] = useState(60); // Default height
+  const navbarRef = useRef(null);
+
+  // Theme colors
   const mobileMenuBg = useColorModeValue("#FAFAFA", "#1A202C");
   const menuBgColor = useColorModeValue("rgba(255, 255, 255, 0.95)", "rgba(26, 32, 44, 0.95)");
   const textHoverColor = useColorModeValue("#B38939", "#E2C07C");
-  
-  // Constants that don't need to be re-computed
+
+  // Accent color
   const accentColor = "#B38939";
 
-  // Track scroll position to add effects
+  // Track scroll position
   useEffect(() => {
     const handleScroll = () => {
       setScrollPosition(window.scrollY);
     };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Calculate navbar height
+  useEffect(() => {
+    const updateNavbarHeight = () => {
+      if (navbarRef.current) {
+        const height = navbarRef.current.offsetHeight;
+        setNavbarHeight(height);
+      }
+    };
+
+    updateNavbarHeight();
+    window.addEventListener("resize", updateNavbarHeight);
+    return () => window.removeEventListener("resize", updateNavbarHeight);
   }, []);
 
   const scrollTo = (element) => {
@@ -47,16 +62,16 @@ const Navbar = () => {
     });
   };
 
-  // Menu item variants for staggered animation
+  // Menu item variants for animation
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
       transition: {
         staggerChildren: 0.1,
-        delayChildren: 0.2
-      }
-    }
+        delayChildren: 0.2,
+      },
+    },
   };
 
   const itemVariants = {
@@ -64,20 +79,20 @@ const Navbar = () => {
     visible: {
       opacity: 1,
       y: 0,
-      transition: { duration: 0.5 }
-    }
+      transition: { duration: 0.5 },
+    },
   };
 
   const menuItems = [
     { name: "About Us", to: "about", type: "scroll" },
     { name: "Services", to: "services", type: "scroll" },
     { name: "FAQ", to: "faq", type: "scroll" },
-    { name: "Contact Us", to: "footer", type: "scroll" }
+    { name: "Contact Us", to: "footer", type: "scroll" },
   ];
 
-  // Custom style for menu item hover effect
+  // Menu item hover effect
   const menuItemStyle = {
-    fontSize: "xl",
+    fontSize: ["md", "lg", "xl"],
     fontWeight: "500",
     position: "relative",
     display: "inline-block",
@@ -92,41 +107,87 @@ const Navbar = () => {
       left: "50%",
       transform: "translateX(-50%)",
       backgroundColor: accentColor,
-      transition: "width 0.3s ease"
-    }
+      transition: "width 0.3s ease",
+    },
   };
 
-  // Style for underline animation on hover
   const hoverUnderlineStyle = {
-    width: "100%"
+    width: "100%",
   };
 
   return (
     <Box
-      className="navbar pl-5 pr-5 md:pl-[60px] md:pr-[60px] left-0 justify-between fixed z-50 top-0 pt-5 pb-5 w-[100%] flex items-center"
+      ref={navbarRef}
+      className="navbar"
+      pl={["12px", "16px", "24px", "40px"]}
+      pr={["12px", "16px", "24px", "40px"]}
+      left={0}
+      justifyContent="space-between"
+      position="fixed"
+      zIndex={50}
+      top={0}
+      pt={["12px", "14px", "16px"]}
+      pb={["12px", "14px", "16px"]}
+      w="100%"
+      display="flex"
+      alignItems="center"
       bg={mobileMenuBg}
       style={{
         boxShadow: scrollPosition > 20 ? "0px 2px 20px rgba(0, 0, 0, 0.1)" : "none",
-        transition: "box-shadow 0.3s ease"
+        transition: "box-shadow 0.3s ease",
       }}
     >
-      <div className="font-bold cursor-pointer md:text-2xl text-2xl">
+      <Box fontWeight="bold" cursor="pointer" fontSize={["xl", "2xl", "2xl"]}>
         <Link to="/" className="outline-none" onClick={() => scrollTo("home")}>
-          <img src={Logo} alt="Logo Detail" className="w-[130px]" />
+          <Image
+            src={Logo}
+            alt="Sylo Logo"
+            w={["clamp(80px, 25vw, 100px)", "clamp(100px, 20vw, 120px)", "clamp(120px, 15vw, 140px)", "clamp(130px, 10vw, 150px)"]}
+            maxH={["clamp(24px, 8vw, 28px)", "clamp(28px, 6vw, 32px)", "clamp(32px, 5vw, 36px)", "clamp(34px, 4vw, 40px)"]}
+            objectFit="contain"
+            className="logo-responsive"
+          />
         </Link>
-      </div>
-      <div className="flex w-full justify-end">
-        <Text className="hidden lg:flex text-[16px] space-x-6 items-center desktop-menu">
-          <ScrollLink className="cursor-pointer hover:text-[#B38939] transition-colors duration-300" to="about" smooth={true} duration={800}>
+      </Box>
+      <Box flex="1" display="flex" justifyContent="flex-end" alignItems="center">
+        <Text
+          className="hidden lg:flex desktop-menu"
+          fontSize={["sm", "md", "16px"]}
+          sx={{ "--space-x": ["4px", "6px", "8px", "10px"] }}
+          display="flex"
+          alignItems="center"
+          style={{ gap: "var(--space-x)" }}
+        >
+          <ScrollLink
+            className="cursor-pointer hover:text-[#B38939] transition-colors duration-300"
+            to="about"
+            smooth={true}
+            duration={800}
+          >
             About Us
           </ScrollLink>
-          <ScrollLink className="cursor-pointer hover:text-[#B38939] transition-colors duration-300" to="services" smooth={true} duration={800}>
+          <ScrollLink
+            className="cursor-pointer hover:text-[#B38939] transition-colors duration-300"
+            to="services"
+            smooth={true}
+            duration={800}
+          >
             Services
           </ScrollLink>
-          <ScrollLink className="cursor-pointer hover:text-[#B38939] transition-colors duration-300" to="faq" smooth={true} duration={800}>
+          <ScrollLink
+            className="cursor-pointer hover:text-[#B38939] transition-colors duration-300"
+            to="faq"
+            smooth={true}
+            duration={800}
+          >
             FAQ
           </ScrollLink>
-          <ScrollLink className="cursor-pointer hover:text-[#B38939] transition-colors duration-300" to="footer" smooth={true} duration={800}>
+          <ScrollLink
+            className="cursor-pointer hover:text-[#B38939] transition-colors duration-300"
+            to="footer"
+            smooth={true}
+            duration={800}
+          >
             Contact Us
           </ScrollLink>
           <Link
@@ -142,63 +203,87 @@ const Navbar = () => {
             Register
           </Link>
         </Text>
-        <div className="ml-4">
+        <Box ml={["2", "3", "4"]}>
           <ThemeToggle />
-        </div>
-      </div>
-      <div className="flex items-center">
+        </Box>
+      </Box>
+      <Box display="flex" alignItems="center">
         <Box
           className="lg:hidden flex items-center mobile-menu-button"
           onClick={() => setIsMenuOpen(!isMenuOpen)}
         >
           <Box
             as={isMenuOpen ? AiOutlineClose : AiOutlineMenu}
-            className="text-3xl cursor-pointer"
+            className="text-[clamp(24px, 6vw, 28px)] cursor-pointer"
             transition="transform 0.3s ease"
             transform={isMenuOpen ? "rotate(90deg)" : "rotate(0)"}
             color={isMenuOpen ? accentColor : "currentColor"}
           />
         </Box>
-      </div>
+      </Box>
 
-      {/* Mobile Menu with Enhanced Styling */}
+      {/* Mobile Menu */}
       <ScaleFade in={isMenuOpen} initialScale={0.9}>
         {isMenuOpen && (
           <MotionBox
             initial="hidden"
             animate="visible"
             variants={containerVariants}
-            className="md:hidden z-30 fixed top-[80px] left-0 w-full h-screen overflow-y-auto"
-            position="fixed"
+            className="lg:hidden z-30 fixed left-0 w-full"
             style={{
+              top: `${navbarHeight}px`,
+              height: `calc(100vh - ${navbarHeight}px)`,
               backdropFilter: "blur(10px)",
-              WebkitBackdropFilter: "blur(10px)"
+              WebkitBackdropFilter: "blur(10px)",
             }}
+            overflowY="auto"
           >
             <Box
-              className="menu-content py-8 px-6 flex flex-col"
+              className="menu-content py-[clamp(20px, 6vw, 28px)] px-[clamp(12px, 4vw, 20px)] flex flex-col"
               bg={menuBgColor}
               h="100%"
               boxShadow="0px -4px 20px rgba(0, 0, 0, 0.1)"
             >
               {/* Decorative elements */}
-              <Box position="absolute" top="5%" right="10%" w="40px" h="40px" borderRadius="full" bg={`${accentColor}30`} />
-              <Box position="absolute" top="30%" left="10%" w="25px" h="25px" borderRadius="full" bg={`${accentColor}20`} />
-              <Box position="absolute" bottom="20%" right="20%" w="60px" h="60px" borderRadius="full" bg={`${accentColor}15`} />
+              <Box
+                position="absolute"
+                top="5%"
+                right="10%"
+                w={["24px", "32px"]}
+                h={["24px", "32px"]}
+                borderRadius="full"
+                bg={`${accentColor}30`}
+                zIndex={1}
+              />
+              <Box
+                position="absolute"
+                top="30%"
+                left="10%"
+                w={["16px", "20px"]}
+                h={["16px", "20px"]}
+                borderRadius="full"
+                bg={`${accentColor}20`}
+                zIndex={1}
+              />
+              <Box
+                position="absolute"
+                bottom="20%"
+                right="20%"
+                w={["32px", "48px"]}
+                h={["32px", "48px"]}
+                borderRadius="full"
+                bg={`${accentColor}15`}
+                zIndex={1}
+              />
 
-              {/* Menu Items with animations */}
+              {/* Menu Items */}
               <Flex direction="column" align="center" justify="center" mt={6} position="relative" zIndex={2}>
                 {menuItems.map((item) => (
-                  <MotionBox
-                    key={item.name}
-                    variants={itemVariants}
-                    mb={8}
-                    textAlign="center"
-                  >
+                  <MotionBox key={item.name} variants={itemVariants} mb={[6, 8]} textAlign="center">
                     {item.type === "scroll" ? (
                       <ScrollLink
                         to={item.to}
-                        className="block text-xl font-medium menu-item"
+                        className="block text-[clamp(16px, 4vw, 18px)] font-medium menu-item"
                         smooth={true}
                         duration={800}
                         onClick={() => setIsMenuOpen(false)}
@@ -208,7 +293,7 @@ const Navbar = () => {
                           sx={menuItemStyle}
                           _hover={{
                             color: textHoverColor,
-                            _after: hoverUnderlineStyle
+                            _after: hoverUnderlineStyle,
                           }}
                         >
                           {item.name}
@@ -217,7 +302,7 @@ const Navbar = () => {
                     ) : (
                       <Link
                         to={item.to}
-                        className="block text-xl font-medium menu-item"
+                        className="block text-[clamp(16px, 4vw, 18px)] font-medium menu-item"
                         onClick={() => setIsMenuOpen(false)}
                       >
                         <Box
@@ -225,7 +310,7 @@ const Navbar = () => {
                           sx={menuItemStyle}
                           _hover={{
                             color: textHoverColor,
-                            _after: hoverUnderlineStyle
+                            _after: hoverUnderlineStyle,
                           }}
                         >
                           {item.name}
@@ -235,60 +320,68 @@ const Navbar = () => {
                   </MotionBox>
                 ))}
 
-                {/* Login and Register Buttons with animations */}
-                <MotionBox
-                  variants={itemVariants}
-                  width="full"
-                  maxWidth="280px"
-                  mt={4}
-                >
+                {/* Login and Register Buttons */}
+                <MotionBox variants={itemVariants} width="full" maxWidth={["clamp(200px, 70vw, 260px)", "280px"]} mt={4}>
                   <Link
                     to="/login"
                     className="flex items-center justify-center px-7 py-3 rounded-full text-white text-[15px] bg-[#B38939] w-full button-effect"
                     onClick={() => setIsMenuOpen(false)}
                     style={{
                       boxShadow: "0 6px 15px rgba(179, 137, 57, 0.3)",
-                      transition: "all 0.3s ease"
+                      transition: "all 0.3s ease",
                     }}
                   >
                     Log In
                   </Link>
                 </MotionBox>
 
-                <MotionBox
-                  variants={itemVariants}
-                  width="full"
-                  maxWidth="280px"
-                  mt={4}
-                >
+                <MotionBox variants={itemVariants} width="full" maxWidth={["clamp(200px, 70vw, 260px)", "280px"]} mt={4}>
                   <Link
                     to="/register"
                     className="flex items-center justify-center px-7 py-3 rounded-full text-[15px] bg-transparent border-2 border-[#B38939] w-full button-effect"
                     onClick={() => setIsMenuOpen(false)}
                     style={{
-                      transition: "all 0.3s ease"
+                      transition: "all 0.3s ease",
                     }}
                   >
                     Register
                   </Link>
                 </MotionBox>
 
-                {/* Social Media Icons or Additional Elements */}
-                <MotionBox
-                  variants={itemVariants}
-                  mt={12}
-                  display="flex"
-                  justifyContent="center"
-                  gap={6}
-                >
-                  <Box w={10} h={10} borderRadius="full" bg={`${accentColor}50`} display="flex" alignItems="center" justifyContent="center">
-                    <Box w={6} h={6} borderRadius="full" bg={accentColor} />
+                {/* Social Media Icons */}
+                <MotionBox variants={itemVariants} mt={[8, 12]} display="flex" justifyContent="center" gap={[4, 6]}>
+                  <Box
+                    w={["8px", "10px"]}
+                    h={["8px", "10px"]}
+                    borderRadius="full"
+                    bg={`${accentColor}50`}
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
+                  >
+                    <Box w={["4px", "6px"]} h={["4px", "6px"]} borderRadius="full" bg={accentColor} />
                   </Box>
-                  <Box w={10} h={10} borderRadius="full" bg={`${accentColor}30`} display="flex" alignItems="center" justifyContent="center">
-                    <Box w={6} h={6} borderRadius="full" bg={accentColor} />
+                  <Box
+                    w={["8px", "10px"]}
+                    h={["8px", "10px"]}
+                    borderRadius="full"
+                    bg={`${accentColor}30`}
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
+                  >
+                    <Box w={["4px", "6px"]} h={["4px", "6px"]} borderRadius="full" bg={accentColor} />
                   </Box>
-                  <Box w={10} h={10} borderRadius="full" bg={`${accentColor}50`} display="flex" alignItems="center" justifyContent="center">
-                    <Box w={6} h={6} borderRadius="full" bg={accentColor} />
+                  <Box
+                    w={["8px", "10px"]}
+                    h={["8px", "10px"]}
+                    borderRadius="full"
+                    bg={`${accentColor}50`}
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
+                  >
+                    <Box w={["4px", "6px"]} h={["4px", "6px"]} borderRadius="full" bg={accentColor} />
                   </Box>
                 </MotionBox>
               </Flex>
