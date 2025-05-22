@@ -3,6 +3,7 @@ import axios from "axios";
 import { io } from "socket.io-client";
 import jwtDecode from 'jwt-decode';
 import { FaEdit, FaWallet, FaTimes, FaUser, FaCalendarAlt, FaUniversity, FaCreditCard, FaSync, FaMoneyBillWave, FaSave, FaPhone } from "react-icons/fa";
+import { MdContentCopy } from "react-icons/md";
 import { motion } from "framer-motion";
 import {
   Box,
@@ -37,6 +38,7 @@ import {
   NumberDecrementStepper,
   Divider,
   Select,
+  IconButton,
 } from "@chakra-ui/react";
 import multiavatar from "@multiavatar/multiavatar/esm";
 
@@ -56,13 +58,18 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
   const textColor = useColorModeValue("gray.800", "white");
   const subtleTextColor = useColorModeValue("gray.600", "gray.300");
   const highlightColor = useColorModeValue("blue.500", "blue.400");
+  const boxBg = useColorModeValue("gray.100", "gray.700");
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+  };
 
   const handleManualReconcile = async () => {
     if (!paymentDetails?.reference && !paymentDetails?.paystackReference) {
       toast({
-        title: 'Error',
-        description: 'No reference available for reconciliation.',
-        status: 'error',
+        title: "Error",
+        description: "No reference available for reconciliation.",
+        status: "error",
         duration: 5000,
         isClosable: true,
       });
@@ -73,31 +80,31 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
       const response = await axios.post(
         `${BASE_URL}/api/wallet/reconcile`,
         { reference: paymentDetails.paystackReference || paymentDetails.reference },
-        { headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` } }
+        { headers: { Authorization: `Bearer ${localStorage.getItem("auth-token")}` } }
       );
       if (response.data.success) {
         toast({
-          title: 'Reconciliation Successful',
+          title: "Reconciliation Successful",
           description: `Your wallet has been funded with ₦${response.data.data.transaction.amount.toFixed(2)}.`,
-          status: 'success',
+          status: "success",
           duration: 5000,
           isClosable: true,
         });
         onClose();
       } else {
         toast({
-          title: 'Reconciliation Failed',
-          description: response.data.message || 'Unable to reconcile transaction.',
-          status: 'error',
+          title: "Reconciliation Failed",
+          description: response.data.message || "Unable to reconcile transaction.",
+          status: "error",
           duration: 5000,
           isClosable: true,
         });
       }
     } catch (error) {
       toast({
-        title: 'Reconciliation Error',
-        description: error.response?.data?.message || 'Unable to reconcile transaction.',
-        status: 'error',
+        title: "Reconciliation Error",
+        description: error.response?.data?.message || "Unable to reconcile transaction.",
+        status: "error",
         duration: 5000,
         isClosable: true,
       });
@@ -105,51 +112,164 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} isCentered>
+    <Modal isOpen={isOpen} onClose={onClose} isCentered size={{ base: "full", sm: "md", md: "lg" }}>
       <ModalOverlay />
       <ModalContent>
         <ModalHeader color={textColor}>Fund Wallet</ModalHeader>
         <ModalCloseButton />
-        <ModalBody>
+        <ModalBody px={{ base: 4, sm: 6 }} py={4}>
           {paymentDetails && paymentDetails.virtualAccount ? (
             <>
-              <Text color={textColor} mb={2}>
+              <Text color={textColor} mb={2} fontSize={{ base: "sm", sm: "md" }}>
                 Please make a transfer to the account below to fund your wallet:
               </Text>
-              <Box p={4} bg="gray.50" borderRadius="md">
-                <Text fontWeight="bold" color={textColor}>
-                  Account Name: {paymentDetails.virtualAccount.account_name || 'N/A'}
-                </Text>
-                <Text color={textColor}>
-                  Account Number: {paymentDetails.virtualAccount.account_number || 'N/A'}
-                </Text>
-                <Text color={textColor}>
-                  Bank: {paymentDetails.virtualAccount.bank_name || 'N/A'}
-                </Text>
-                <Text color={textColor}>
-                  Amount: ₦{paymentDetails.amount?.toFixed(2) || '0.00'}
-                </Text>
-                <Text color={subtleTextColor} fontSize="sm" mt={2}>
-                  Reference: {paymentDetails.reference || paymentDetails.paystackReference || 'N/A'}
-                </Text>
+              <Box p={4} bg={boxBg} borderRadius="md">
+                <Flex align="center" justify="space-between" mb={2}>
+                  <Text fontWeight="bold" color={textColor} fontSize={{ base: "sm", sm: "md" }}>
+                    Account Name: {paymentDetails.virtualAccount.account_name || "N/A"}
+                  </Text>
+                  {paymentDetails.virtualAccount.account_name && (
+                    <IconButton
+                      aria-label="Copy account name"
+                      icon={<MdContentCopy />}
+                      size="xs"
+                      bg="transparent"
+                      color={subtleTextColor}
+                      _hover={{ color: highlightColor }}
+                      onClick={() => {
+                        copyToClipboard(paymentDetails.virtualAccount.account_name);
+                        toast({
+                          title: "Copied",
+                          description: "Account name copied to clipboard.",
+                          status: "success",
+                          duration: 3000,
+                          isClosable: true,
+                        });
+                      }}
+                    />
+                  )}
+                </Flex>
+                <Flex align="center" justify="space-between" mb={2}>
+                  <Text color={textColor} fontSize={{ base: "sm", sm: "md" }}>
+                    Account Number: {paymentDetails.virtualAccount.account_number || "N/A"}
+                  </Text>
+                  {paymentDetails.virtualAccount.account_number && (
+                    <IconButton
+                      aria-label="Copy account number"
+                      icon={<MdContentCopy />}
+                      size="xs"
+                      bg="transparent"
+                      color={subtleTextColor}
+                      _hover={{ color: highlightColor }}
+                      onClick={() => {
+                        copyToClipboard(paymentDetails.virtualAccount.account_number);
+                        toast({
+                          title: "Copied",
+                          description: "Account number copied to clipboard.",
+                          status: "success",
+                          duration: 3000,
+                          isClosable: true,
+                        });
+                      }}
+                    />
+                  )}
+                </Flex>
+                <Flex align="center" justify="space-between" mb={2}>
+                  <Text color={textColor} fontSize={{ base: "sm", sm: "md" }}>
+                    Bank: {paymentDetails.virtualAccount.bank_name || "N/A"}
+                  </Text>
+                  {paymentDetails.virtualAccount.bank_name && (
+                    <IconButton
+                      aria-label="Copy bank name"
+                      icon={<MdContentCopy />}
+                      size="xs"
+                      bg="transparent"
+                      color={subtleTextColor}
+                      _hover={{ color: highlightColor }}
+                      onClick={() => {
+                        copyToClipboard(paymentDetails.virtualAccount.bank_name);
+                        toast({
+                          title: "Copied",
+                          description: "Bank name copied to clipboard.",
+                          status: "success",
+                          duration: 3000,
+                          isClosable: true,
+                        });
+                      }}
+                    />
+                  )}
+                </Flex>
+                <Flex align="center" justify="space-between" mb={2}>
+                  <Text color={textColor} fontSize={{ base: "sm", sm: "md" }}>
+                    Amount: ₦{paymentDetails.amount?.toFixed(2) || "0.00"}
+                  </Text>
+                  {paymentDetails.amount && (
+                    <IconButton
+                      aria-label="Copy amount"
+                      icon={<MdContentCopy />}
+                      size="xs"
+                      bg="transparent"
+                      color={subtleTextColor}
+                      _hover={{ color: highlightColor }}
+                      onClick={() => {
+                        copyToClipboard(`₦${paymentDetails.amount.toFixed(2)}`);
+                        toast({
+                          title: "Copied",
+                          description: "Amount copied to clipboard.",
+                          status: "success",
+                          duration: 3000,
+                          isClosable: true,
+                        });
+                      }}
+                    />
+                  )}
+                </Flex>
+                <Flex align="center" justify="space-between">
+                  <Text color={subtleTextColor} fontSize={{ base: "xs", sm: "sm" }} mt={2}>
+                    Reference: {paymentDetails.reference || paymentDetails.paystackReference || "N/A"}
+                  </Text>
+                  {(paymentDetails.reference || paymentDetails.paystackReference) && (
+                    <IconButton
+                      aria-label="Copy reference"
+                      icon={<MdContentCopy />}
+                      size="xs"
+                      bg="transparent"
+                      color={subtleTextColor}
+                      _hover={{ color: highlightColor }}
+                      onClick={() => {
+                        copyToClipboard(paymentDetails.reference || paymentDetails.paystackReference);
+                        toast({
+                          title: "Copied",
+                          description: "Reference copied to clipboard.",
+                          status: "success",
+                          duration: 3000,
+                          isClosable: true,
+                        });
+                      }}
+                    />
+                  )}
+                </Flex>
               </Box>
-              <Text color={subtleTextColor} mt={4} fontSize="sm">
+              <Text color={subtleTextColor} mt={4} fontSize={{ base: "xs", sm: "sm" }}>
                 After making the payment, click below to verify the transaction.
               </Text>
             </>
           ) : (
-            <Text color={textColor}>
+            <Text color={textColor} fontSize={{ base: "sm", sm: "md" }}>
               No payment details available. Please initiate a new funding request.
             </Text>
           )}
         </ModalBody>
-        <ModalFooter>
+        <ModalFooter flexDirection={{ base: "column", sm: "row" }} gap={{ base: 2, sm: 0 }}>
           <Button
             colorScheme="blue"
             onClick={onStatusCheck}
-            mr={3}
-            bgGradient={`linear(to-r, blue.400, purple.500)`}
-            _hover={{ bgGradient: `linear(to-r, blue.500, purple.600)` }}
+            size={{ base: "sm", sm: "md", md: "lg" }}
+            fontSize={{ base: "sm", sm: "md" }}
+            mr={{ base: 0, sm: 3 }}
+            mb={{ base: 2, sm: 0 }}
+            bgGradient="linear(to-r, blue.400, purple.500)"
+            _hover={{ bgGradient: "linear(to-r, blue.500, purple.600)" }}
             isDisabled={!paymentDetails?.reference && !paymentDetails?.paystackReference}
           >
             Check Payment Status
@@ -157,14 +277,23 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
           <Button
             colorScheme="purple"
             onClick={handleManualReconcile}
-            mr={3}
-            bgGradient={`linear(to-r, purple.400, purple.500)`}
-            _hover={{ bgGradient: `linear(to-r, purple.500, purple.600)` }}
+            size={{ base: "sm", sm: "md", md: "lg" }}
+            fontSize={{ base: "sm", sm: "md" }}
+            mr={{ base: 0, sm: 3 }}
+            mb={{ base: 2, sm: 0 }}
+            bgGradient="linear(to-r, purple.400, purple.500)"
+            _hover={{ bgGradient: "linear(to-r, purple.500, purple.600)" }}
             isDisabled={!paymentDetails?.reference && !paymentDetails?.paystackReference}
           >
             Manually Reconcile
           </Button>
-          <Button variant="ghost" onClick={onClose} color={highlightColor}>
+          <Button
+            variant="ghost"
+            onClick={onClose}
+            color={highlightColor}
+            size={{ base: "sm", sm: "md", md: "lg" }}
+            fontSize={{ base: "sm", sm: "md" }}
+          >
             Cancel
           </Button>
         </ModalFooter>
@@ -382,6 +511,8 @@ const Profile = () => {
   const [paymentDetails, setPaymentDetails] = useState(null);
   const previousBalanceRef = useRef(null);
   const isMountedRef = useRef(false);
+  const toastIdRef = useRef(null); // Added to track toast ID
+  const activePollingRef = useRef(null); // Added to track active polling reference
 
   const formatDate = (dateString) => {
     if (!dateString) return "Not Provided";
@@ -404,18 +535,39 @@ const Profile = () => {
       return;
     }
 
+    // Prevent duplicate polling for the same reference
+    const refKey = reference || paystackReference;
+    if (activePollingRef.current === refKey) {
+      console.log(`Polling already active for reference: ${refKey}`);
+      return;
+    }
+
+    // Clear any existing polling
     if (checkStatusInterval) {
       console.log('Clearing existing polling interval');
       clearInterval(checkStatusInterval);
+      setCheckStatusInterval(null);
     }
 
-    const toastId = toast({
-      title: 'Payment Processing',
-      description: 'Checking your payment status.',
-      status: 'info',
-      duration: null,
-      isClosable: true,
-    });
+    // Clear any existing toast
+    if (toastIdRef.current) {
+      toast.close(toastIdRef.current);
+      toastIdRef.current = null;
+    }
+
+    // Set the active polling reference
+    activePollingRef.current = refKey;
+
+    // Create or update the toast
+    if (!toastIdRef.current) {
+      toastIdRef.current = toast({
+        title: 'Payment Processing',
+        description: 'Checking your payment status.',
+        status: 'info',
+        duration: null,
+        isClosable: true,
+      });
+    }
 
     let attempts = 0;
     let retryCount = 0;
@@ -425,7 +577,10 @@ const Profile = () => {
       if (!isMountedRef.current) {
         console.log('Component unmounted, stopping polling');
         clearInterval(interval);
-        toast.close(toastId);
+        toast.close(toastIdRef.current);
+        toastIdRef.current = null;
+        activePollingRef.current = null;
+        setCheckStatusInterval(null);
         return;
       }
 
@@ -455,9 +610,11 @@ const Profile = () => {
         if (response.data.success && response.data.data.transaction.status === 'completed') {
           clearInterval(interval);
           setCheckStatusInterval(null);
+          activePollingRef.current = null;
+          toast.close(toastIdRef.current);
+          toastIdRef.current = null;
           setPaymentDetails(null);
           localStorage.removeItem('pendingPaymentRef');
-          toast.close(toastId);
           toast({
             title: 'Payment Confirmed',
             description: `Your wallet has been funded with ₦${response.data.data.transaction.amount.toFixed(2)}.`,
@@ -470,9 +627,11 @@ const Profile = () => {
         } else if (response.data.data.transaction.status === 'failed') {
           clearInterval(interval);
           setCheckStatusInterval(null);
+          activePollingRef.current = null;
+          toast.close(toastIdRef.current);
+          toastIdRef.current = null;
           setPaymentDetails(null);
           localStorage.removeItem('pendingPaymentRef');
-          toast.close(toastId);
           toast({
             title: 'Payment Failed',
             description: 'Your payment could not be confirmed.',
@@ -484,7 +643,9 @@ const Profile = () => {
         } else if (attempts >= maxAttempts) {
           clearInterval(interval);
           setCheckStatusInterval(null);
-          toast.close(toastId);
+          activePollingRef.current = null;
+          toast.close(toastIdRef.current);
+          toastIdRef.current = null;
           toast({
             title: 'Payment Timeout',
             description: 'Payment verification timed out. Try manual reconciliation.',
@@ -509,7 +670,9 @@ const Profile = () => {
         if (retryCount >= maxRetries || error.response?.status === 401 || error.response?.status === 404) {
           clearInterval(interval);
           setCheckStatusInterval(null);
-          toast.close(toastId);
+          activePollingRef.current = null;
+          toast.close(toastIdRef.current);
+          toastIdRef.current = null;
           toast({
             title: 'Error',
             description: error.response?.data?.message || 'Unable to verify payment status.',
@@ -684,6 +847,19 @@ const Profile = () => {
         duration: 3000,
         isClosable: true,
       });
+      return;
+    }
+
+    // Prevent funding if polling is active
+    if (activePollingRef.current) {
+      toast({
+        title: 'Payment in Progress',
+        description: 'A payment is already being processed. Please wait or cancel the current payment.',
+        status: 'warning',
+        duration: 3000,
+        isClosable: true,
+      });
+      onPaymentModalOpen();
       return;
     }
 
@@ -872,6 +1048,16 @@ const Profile = () => {
       });
       fetchWalletBalance();
       if (isPaymentModalOpen) {
+        // Clear polling and toast on balance update
+        if (checkStatusInterval) {
+          clearInterval(checkStatusInterval);
+          setCheckStatusInterval(null);
+        }
+        if (toastIdRef.current) {
+          toast.close(toastIdRef.current);
+          toastIdRef.current = null;
+        }
+        activePollingRef.current = null;
         setPaymentDetails(null);
         localStorage.removeItem('pendingPaymentRef');
         onPaymentModalClose();
@@ -887,7 +1073,7 @@ const Profile = () => {
           console.log('Joined room:', userDetails._id);
         }
         const pendingRef = localStorage.getItem('pendingPaymentRef');
-        if (pendingRef) {
+        if (pendingRef && !activePollingRef.current) {
           const { reference, paystackReference } = JSON.parse(pendingRef);
           setPaymentDetails((prev) => prev || { reference, paystackReference });
           onPaymentModalOpen();
@@ -910,9 +1096,15 @@ const Profile = () => {
       socket.disconnect();
       if (checkStatusInterval) {
         clearInterval(checkStatusInterval);
+        setCheckStatusInterval(null);
       }
+      if (toastIdRef.current) {
+        toast.close(toastIdRef.current);
+        toastIdRef.current = null;
+      }
+      activePollingRef.current = null;
     };
-  }, [userDetails?._id])
+  }, [userDetails?._id]);
 
   const avatarSvg = multiavatar(userDetails?.email || "default");
 
@@ -1238,6 +1430,11 @@ const Profile = () => {
             clearInterval(checkStatusInterval);
             setCheckStatusInterval(null);
           }
+          if (toastIdRef.current) {
+            toast.close(toastIdRef.current);
+            toastIdRef.current = null;
+          }
+          activePollingRef.current = null;
           setPaymentDetails(null);
           localStorage.removeItem('pendingPaymentRef');
           onPaymentModalClose();
