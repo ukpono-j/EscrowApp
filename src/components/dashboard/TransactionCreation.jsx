@@ -106,7 +106,7 @@ const AcceptTransactionModal = ({
         >
           <Flex justify="space-between" align="center">
             <Heading size="md" color={textColor}>
-              Accept Escrow Transaction
+              Create Escrow Transaction
             </Heading>
             <Button
               variant="ghost"

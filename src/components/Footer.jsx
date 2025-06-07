@@ -81,10 +81,10 @@ const Footer = () => {
               bgGradient={`linear(to-r, ${accentColor}, white)`}
               bgClip="text"
             >
-              Subscribe To Our Newsletter
+             Let's Keep you updated
             </Text>
             <Text textAlign="center" maxW="700px" fontSize={{ base: "sm", md: "md" }} color="gray.300">
-              Stay updated with our latest offers, product updates, and industry news delivered straight to your inbox.
+            First 100 users of Sylo get Zero Fees for life!!!
             </Text>
             <Flex 
               direction={{ base: "column", md: "row" }} 
@@ -95,8 +95,8 @@ const Footer = () => {
               gap={3}
             >
               <Input 
-                type="email" 
-                placeholder="Enter your email" 
+                type="number" 
+                placeholder="Enter WhatsApp Number" 
                 py={6} 
                 px={4}
                 borderRadius="full"
@@ -296,7 +296,33 @@ const Footer = () => {
                     <Icon as={FaPhone} boxSize={4} />
                   </Box>
                   <Text fontSize={{ base: "sm", md: "md" }} color="gray.300">
-                    +234 123 456 7890
+                    +234 903 833 2467 
+                  </Text>
+                </Flex>
+                <Flex align="center" gap={3}>
+                  <Box 
+                    p={2} 
+                    bg={`${accentColor}30`} 
+                    borderRadius="md"
+                    color={accentColor}
+                  >
+                    <Icon as={FaPhone} boxSize={4} />
+                  </Box>
+                  <Text fontSize={{ base: "sm", md: "md" }} color="gray.300">
+                    +234 812 927 3412
+                  </Text>
+                </Flex>
+                <Flex align="center" gap={3}>
+                  <Box 
+                    p={2} 
+                    bg={`${accentColor}30`} 
+                    borderRadius="md"
+                    color={accentColor}
+                  >
+                    <Icon as={FaPhone} boxSize={4} />
+                  </Box>
+                  <Text fontSize={{ base: "sm", md: "md" }} color="gray.300">
+                    +234 912 995 6648
                   </Text>
                 </Flex>
                 <Flex align="center" gap={3}>

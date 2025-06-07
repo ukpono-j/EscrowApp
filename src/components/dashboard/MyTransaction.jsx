@@ -53,36 +53,36 @@ const MyTransaction = ({ sidebarCollapsed = true }) => {
 
   const headerVariants = {
     hidden: { opacity: 0, y: 20 },
-    visible: { 
-      opacity: 1, 
-      y: 0, 
-      transition: { 
-        duration: 0.6, 
-        ease: "easeOut" 
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.6,
+        ease: "easeOut"
       }
     },
   };
 
   const sectionVariants = {
     hidden: { opacity: 0, y: 20 },
-    visible: { 
-      opacity: 1, 
-      y: 0, 
-      transition: { 
-        duration: 0.5, 
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.5,
         ease: "easeOut",
-        staggerChildren: 0.2 
+        staggerChildren: 0.2
       }
     },
   };
 
   const childVariants = {
     hidden: { opacity: 0, y: 10 },
-    visible: { 
-      opacity: 1, 
-      y: 0, 
-      transition: { 
-        duration: 0.4, 
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.4,
         ease: "easeOut"
       }
     },
@@ -91,11 +91,11 @@ const MyTransaction = ({ sidebarCollapsed = true }) => {
   // Animation for the CTA card
   const ctaVariants = {
     hidden: { opacity: 0, y: 20 },
-    visible: { 
-      opacity: 1, 
-      y: 0, 
-      transition: { 
-        duration: 0.5, 
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.5,
         ease: "easeOut"
       }
     },
@@ -123,9 +123,9 @@ const MyTransaction = ({ sidebarCollapsed = true }) => {
           variants={headerVariants}
         >
           <div className="absolute top-0 left-0 w-24 h-24 bg-gradient-to-br from-yellow-400/20 to-amber-600/10 rounded-br-full opacity-50" />
-          
+
           <div className="relative z-10">
-            <Text className="text-5xl sm:text-3xl font-bold leading-tight sm:text-left mb-3">
+            <Text className="text-3xl sm:text-4xl font-bold leading-tight sm:text-left mb-3">
               Secure Escrow Against Scams
             </Text>
             <Text className="text-left mb-12 md:text-lg">
@@ -147,9 +147,8 @@ const MyTransaction = ({ sidebarCollapsed = true }) => {
                 {tab === "create" ? "Create Transaction" : "Join Transaction"}
               </Text>
               <div
-                className={`absolute bottom-0 left-0 h-1 bg-[#987733] rounded-t-md transition-all duration-300 ${
-                  activeTab === tab ? "w-full" : "w-0"
-                }`}
+                className={`absolute bottom-0 left-0 h-1 bg-[#987733] rounded-t-md transition-all duration-300 ${activeTab === tab ? "w-full" : "w-0"
+                  }`}
               />
             </button>
           ))}
@@ -187,54 +186,7 @@ const MyTransaction = ({ sidebarCollapsed = true }) => {
                   </motion.div>
 
                   <motion.div variants={childVariants}>
-                    <Text
-                      className="text-xl font-bold mb-3 leading-relaxed"
-                      style={{
-                        textShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-                        color: "#9B7933",
-                      }}
-                    >
-                      How Does Sylo Secure Your Deals?
-                    </Text>
-                  </motion.div>
-
-                  <motion.div variants={childVariants}>
-                    <Text className="mb-8 text-sm leading-relaxed text-gray-300">
-                      Sylo locks funds until both parties meet agreed terms, ensuring scam-free transactions.
-                      You get EXACTLY what you agreed for.
-                    </Text>
-                  </motion.div>
-
-                  <motion.div variants={childVariants}>
-                    <div className="space-y-6">
-                      <div className="flex items-start gap-4 p-4 rounded-lg hover:bg-white/5 transition-all duration-300 hover:shadow-[0_0_15px_rgba(183,138,51,0.2)]">
-                        <div className="p-2 bg-gradient-to-br from-yellow-400/20 to-amber-600/20 rounded-lg">
-                          <FaWallet className="text-xl text-yellow-400" />
-                        </div>
-                        <div>
-                          <h3 className="font-bold mb-1 text-white">Funds Stay Safe Until Terms Are Met</h3>
-                          <p className="text-sm text-gray-300">
-                            Funds are locked with Sylo until both buyer and seller fulfill their agreed terms, guaranteeing ABSOLUTE FAIRPLAY.
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-start gap-4 p-4 rounded-lg hover:bg-white/5 transition-all duration-300 hover:shadow-[0_0_15px_rgba(183,138,51,0.2)]">
-                        <div className="p-2 bg-gradient-to-br from-yellow-400/20 to-amber-600/20 rounded-lg">
-                          <FaUmbrella className="text-xl text-yellow-400" />
-                        </div>
-                        <div>
-                          <h3 className="font-bold mb-1 text-white">Transactions Backed by Insurance</h3>
-                          <p className="text-sm text-gray-300">
-                            Every deal is protected with insurance, covering losses from fraud or disputes, so you can transact with confidence.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-
-                  <motion.div variants={childVariants}>
-                    <h4 className="font-bold text-xl text-[#9B7933] mb-6 mt-8">
+                    <h4 className="font-bold text-xl text-[#9B7933] mb-6">
                       Your Options
                     </h4>
                     <div className="space-y-6">
@@ -247,8 +199,8 @@ const MyTransaction = ({ sidebarCollapsed = true }) => {
                             <MdAddCircle className="text-xl text-white" />
                           </div>
                           <div>
-                            <Text className="font-bold mb-1 text-white">Create a New Transaction</Text>
-                            <Text className="text-sm text-gray-300">
+                            <Text className="font-bold mb-1">Create a New Transaction</Text>
+                            <Text className="text-sm">
                               Start a deal as a buyer or seller. Define terms, invite the other party, while Sylo secures it.
                             </Text>
                           </div>
@@ -264,8 +216,8 @@ const MyTransaction = ({ sidebarCollapsed = true }) => {
                             <FaUserCheck className="text-xl text-white" />
                           </div>
                           <div>
-                            <Text className="font-bold mb-1 text-white">Join a Transaction</Text>
-                            <Text className="text-sm text-gray-300">
+                            <Text className="font-bold mb-1">Join a Transaction</Text>
+                            <Text className="text-sm">
                               Got an invite code? Paste it to join the deal. Review terms, agree, and proceed with our coverage.
                             </Text>
                           </div>
@@ -283,6 +235,55 @@ const MyTransaction = ({ sidebarCollapsed = true }) => {
                       <span>Create Transaction</span>
                     </Link>
                   </motion.div>
+
+                  <motion.div variants={childVariants}>
+                    <Text
+                      className="text-xl font-bold mb-3 mt-8 leading-relaxed"
+                      style={{
+                        textShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+                        color: "#9B7933",
+                      }}
+                    >
+                      How Does Sylo Secure Your Deals?
+                    </Text>
+                  </motion.div>
+
+                  <motion.div variants={childVariants}>
+                    <Text className="mb-8 text-sm leading-relaxed">
+                      Sylo locks funds until both parties meet agreed terms, ensuring scam-free transactions.
+                      You get EXACTLY what you agreed for.
+                    </Text>
+                  </motion.div>
+
+                  <motion.div variants={childVariants}>
+                    <div className="space-y-6">
+                      <div className="flex items-start gap-4 p-4 rounded-lg hover:bg-white/5 transition-all duration-300 hover:shadow-[0_0_15px_rgba(183,138,51,0.2)]">
+                        <div className="p-2 bg-gradient-to-br from-yellow-400/20 to-amber-600/20 rounded-lg">
+                          <FaWallet className="text-xl text-yellow-400" />
+                        </div>
+                        <div>
+                          <h3 className="font-bold mb-1">Funds Stay Safe Until Terms Are Met</h3>
+                          <p className="text-sm">
+                            Funds are locked with Sylo until both buyer and seller fulfill their agreed terms, guaranteeing ABSOLUTE FAIRPLAY.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-4 p-4 rounded-lg hover:bg-white/5 transition-all duration-300 hover:shadow-[0_0_15px_rgba(183,138,51,0.2)]">
+                        <div className="p-2 bg-gradient-to-br from-yellow-400/20 to-amber-600/20 rounded-lg">
+                          <FaUmbrella className="text-xl text-yellow-400" />
+                        </div>
+                        <div>
+                          <h3 className="font-bold mb-1">Transactions Backed by Insurance</h3>
+                          <p className="text-sm">
+                            Every deal is protected with insurance, covering losses from fraud or disputes, so you can transact with confidence.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+
+
                 </Box>
               </motion.div>
             ) : (
@@ -378,7 +379,7 @@ const MyTransaction = ({ sidebarCollapsed = true }) => {
                       {activeTab === "create" ? "Start a Secure Transaction Today" : "Join a Deal with Confidence"}
                     </Text>
                   </div>
-                  <Text className="text-sm text-gray-300 mb-6">
+                  <Text className="text-sm mb-6">
                     {activeTab === "create"
                       ? "Create a transaction with Sylo’s escrow protection and ensure a scam-free deal."
                       : "Enter your invite code and join a secure transaction with full transparency."}

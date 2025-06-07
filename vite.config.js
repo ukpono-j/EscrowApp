@@ -17,5 +17,14 @@ export default defineConfig({
   },
   build: {
     chunkSizeWarningLimit: 1000,
+    minify: 'esbuild', // Enable minification
+    sourcemap: false,  // Disable source maps for smaller build
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'axios', '@chakra-ui/react'], // Separate vendor libs
+        },
+      },
+    },
   },
 });

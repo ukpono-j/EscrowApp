@@ -350,7 +350,7 @@ const MainJoinTransaction = () => {
             >
               Accept
             </Button>
-            <Button
+            {/* <Button
               onClick={() => {
                 setEditDetails({
                   description: transactionDetails?.productDetails.description || "",
@@ -365,7 +365,7 @@ const MainJoinTransaction = () => {
               mr={3}
             >
               Accept and Change Details
-            </Button>
+            </Button> */}
             <Button
               onClick={handleReject}
               isLoading={isLoading}

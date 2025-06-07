@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import "./About.css";
-import AboutImage from "../../assets/about.png";
+import AboutImage from "../../assets/PhoneMockup (1).png";
 import { Link } from "react-router-dom";
+import { Box, Image } from "@chakra-ui/react";
 
 const About = () => {
   const [isVisible, setIsVisible] = useState(false);
@@ -34,7 +35,20 @@ const About = () => {
           <div className={`about-image-column ${isVisible ? "animate-in" : ""}`}>
             <div className="image-wrapper">
               <div className="image-border">
-                <img src={AboutImage} alt="About Sylo" className="main-image" />
+                {/* <img src={AboutImage} alt="About Sylo" className="main-image" /> */}
+                <Box p={4} height="calc(100% - 40px)" className="moving-content" position="relative">
+                  <Image
+                    src={AboutImage}
+                    alt="About Us Image"
+                    width="100%"
+                    height="640px"
+                    objectFit="contain"
+                    objectPosition="center"
+                    borderRadius="md"
+                    // transform="scale(1.1)"
+                    transformOrigin="center"
+                  />
+                </Box>
                 <div className="accent-shape top-left"></div>
                 <div className="accent-shape bottom-right"></div>
                 <div className="glow-effect"></div>
@@ -48,7 +62,7 @@ const About = () => {
           <div className={`about-content-column ${isVisible ? "animate-in" : ""}`}>
             <div className="content-wrapper">
               <div className="heading-container">
-                <span className="subheading font-bold">Who We Are</span>
+                <span className="subheading font-bold">About our Tech Lead, Mbuodile Obiosio:</span>
                 <h2 className="main-heading">Built for Trust, Powered by Security</h2>
                 <div className="heading-accent"></div>
               </div>

@@ -44,11 +44,28 @@ import multiavatar from "@multiavatar/multiavatar/esm";
 
 const PAYSTACK_BANKS = [
   { name: "Access Bank", code: "044" },
+  { name: "Wema Bank", code: "035" }, // Consolidated ALAT by Wema and Wema Bank
+  { name: "Citibank Nigeria", code: "023" },
+  { name: "Ecobank Nigeria", code: "050" },
+  { name: "Fidelity Bank", code: "070" },
   { name: "First Bank of Nigeria", code: "011" },
-  { name: "Guaranty Trust Bank", code: "058" },
+  { name: "First City Monument Bank (FCMB)", code: "214" },
+  { name: "Guaranty Trust Bank (GTBank)", code: "058" },
+  { name: "Heritage Bank", code: "030" },
+  { name: "Keystone Bank", code: "082" },
+  { name: "Kuda Bank", code: "090267" },
+  { name: "Moniepoint Microfinance Bank", code: "50515" },
+  { name: "Opay", code: "100004" }, // Verify with Paystack
+  { name: "Palmpay", code: "999992" },
+  { name: "Polaris Bank", code: "076" },
+  { name: "Providus Bank", code: "101" },
+  { name: "Stanbic IBTC Bank", code: "221" },
+  { name: "Standard Chartered Bank", code: "068" },
+  { name: "Sterling Bank", code: "232" },
+  { name: "Union Bank of Nigeria", code: "032" },
+  { name: "United Bank for Africa (UBA)", code: "033" },
+  { name: "Unity Bank", code: "215" },
   { name: "Zenith Bank", code: "057" },
-  { name: "United Bank for Africa", code: "033" },
-  { name: "Wema Bank", code: "035" },
 ];
 
 const BASE_URL = (import.meta.env.VITE_BASE_URL || "http://localhost:3001").replace(/\/$/, "");
@@ -308,10 +325,166 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance, onWithdraw }) => {
   const [accountNumber, setAccountNumber] = useState("");
   const [accountName, setAccountName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verifiedAccountName, setVerifiedAccountName] = useState("");
+  const [banks, setBanks] = useState(PAYSTACK_BANKS); // Initialize with static fallback
+  const [isLoadingBanks, setIsLoadingBanks] = useState(false);
   const toast = useToast();
   const textColor = useColorModeValue("gray.800", "white");
   const inputBg = useColorModeValue("gray.50", "#1A2331");
   const inputHoverBg = useColorModeValue("gray.100", "#232D3F");
+
+  // Fetch banks when modal opens, with static fallback
+  useEffect(() => {
+    if (isOpen) {
+      const fetchBanks = async () => {
+        setIsLoadingBanks(true);
+        try {
+          const response = await axios.get(`${BASE_URL}/api/wallet/banks`, {
+            headers: { Authorization: `Bearer ${localStorage.getItem("auth-token")}` },
+            timeout: 15000,
+          });
+
+          if (response.data.success && Array.isArray(response.data.data) && response.data.data.length > 0) {
+            const normalizeName = (name) => name.trim().toLowerCase();
+            let banks = response.data.data
+              .map((bank) => ({
+                name: bank.name.trim(),
+                code: bank.code,
+              }))
+              .filter((bank) => bank.name && bank.code);
+
+            // Merge with PAYSTACK_BANKS, prioritizing API banks
+            const allBanksMap = new Map();
+
+            // Add API banks first
+            banks.forEach((bank) => {
+              allBanksMap.set(bank.code, bank);
+            });
+
+            // Add PAYSTACK_BANKS only if code doesn't exist
+            PAYSTACK_BANKS.forEach((bank) => {
+              if (!allBanksMap.has(bank.code)) {
+                allBanksMap.set(bank.code, bank);
+              }
+            });
+
+            const allBanks = Array.from(allBanksMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+
+            // Check for key banks
+            const expectedBanks = ['Access Bank', 'Opay', 'Kuda Bank', 'Zenith Bank'];
+            const missingBanks = expectedBanks.filter(
+              (name) => !allBanks.some((bank) => normalizeName(bank.name) === normalizeName(name))
+            );
+
+            if (missingBanks.length > 0) {
+              console.warn(`Missing banks in API response: ${missingBanks.join(', ')}`);
+              toast({
+                title: 'Warning',
+                description: `Some banks are missing: ${missingBanks.join(', ')}. Contact support if your bank is not listed.`,
+                status: 'warning',
+                duration: 5000,
+                isClosable: true,
+              });
+            }
+
+            setBanks(allBanks);
+            console.log(`Fetched ${allBanks.length} banks:`, allBanks.map((b) => b.name));
+          } else {
+            throw new Error('Invalid or empty bank list from API');
+          }
+        } catch (error) {
+          console.error('Error fetching banks:', {
+            message: error.message,
+            status: error.response?.status,
+            data: error.response?.data,
+          });
+          toast({
+            title: 'Warning',
+            description: 'Unable to load bank list from server. Using fallback bank list.',
+            status: 'warning',
+            duration: 5000,
+            isClosable: true,
+          });
+          const normalizeName = (name) => name.trim().toLowerCase();
+          const uniqueBanksMap = new Map(PAYSTACK_BANKS.map((bank) => [bank.code, bank]));
+          const uniqueBanks = Array.from(uniqueBanksMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+          setBanks(uniqueBanks);
+          console.log(`Using fallback bank list (${uniqueBanks.length} banks):`, uniqueBanks.map((b) => b.name));
+        } finally {
+          setIsLoadingBanks(false);
+        }
+      };
+      fetchBanks();
+    }
+  }, [isOpen, toast]);
+
+  const verifyAccount = async () => {
+    if (!bankCode || !/^\d{10}$/.test(accountNumber)) {
+      toast({
+        title: "Invalid Details",
+        description: "Please select a bank and enter a valid 10-digit account number.",
+        status: "warning",
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    setIsVerifying(true);
+    try {
+      const response = await axios.post(
+        `${BASE_URL}/api/wallet/verify-account`,
+        { bankCode, accountNumber },
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("auth-token")}` },
+          timeout: 15000,
+        }
+      );
+      if (response.data.success) {
+        setVerifiedAccountName(response.data.accountName);
+        setAccountName(response.data.accountName);
+        toast({
+          title: "Account Verified",
+          description: `Account name: ${response.data.accountName}`,
+          status: "success",
+          duration: 3000,
+          isClosable: true,
+        });
+      } else {
+        throw new Error(response.data.message || "Account verification failed");
+      }
+    } catch (error) {
+      console.error('Account verification error:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+      let errorMessage = error.response?.data?.message || "Unable to verify account. Please check your details and try again.";
+      if (error.response?.status === 401) {
+        errorMessage = "Authentication error. Please log in again.";
+        localStorage.removeItem("auth-token");
+        window.location.href = "/login";
+      } else if (error.response?.status === 500 && error.response?.data?.error.includes("PAYSTACK_SECRET_KEY")) {
+        errorMessage = "Server configuration issue. Please contact support.";
+      } else if (error.response?.status === 422) {
+        errorMessage = error.response?.data?.error || "Invalid account details. Please verify the bank code and account number.";
+      } else if (error.code === "ECONNABORTED") {
+        errorMessage = "Request timed out. Please check your network and try again.";
+      }
+      toast({
+        title: "Verification Failed",
+        description: errorMessage,
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+      setVerifiedAccountName("");
+      setAccountName("");
+    } finally {
+      setIsVerifying(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!amount || amount <= 0 || amount > (walletBalance?.balance || 0)) {
@@ -347,10 +520,10 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance, onWithdraw }) => {
       return;
     }
 
-    if (!accountName || accountName.trim().length < 3) {
+    if (!accountName || accountName !== verifiedAccountName) {
       toast({
-        title: "Invalid Account Name",
-        description: "Please enter a valid account name.",
+        title: "Account Not Verified",
+        description: "Please verify the account before withdrawing.",
         status: "warning",
         duration: 3000,
         isClosable: true,
@@ -360,20 +533,20 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance, onWithdraw }) => {
 
     setIsSubmitting(true);
     try {
-      await onWithdraw({ amount, bankCode, accountNumber, accountName });
+      const response = await onWithdraw({ amount, bankCode, accountNumber, accountName });
       toast({
         title: "Withdrawal Initiated",
-        description: "Your withdrawal request has been processed.",
+        description: `Your withdrawal request of ₦${amount.toFixed(2)} has been initiated. Reference: ${response.data.reference}`,
         status: "success",
         duration: 5000,
         isClosable: true,
       });
       onClose();
     } catch (error) {
-      const errorMessage = error.response?.data?.message || "Unable to process withdrawal. Please try again.";
+      console.error('Withdrawal error:', error);
       toast({
         title: "Withdrawal Failed",
-        description: errorMessage,
+        description: error.response?.data?.message || "Unable to process withdrawal.",
         status: "error",
         duration: 5000,
         isClosable: true,
@@ -412,15 +585,20 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance, onWithdraw }) => {
           <FormControl mb={4}>
             <FormLabel color={textColor}>Bank</FormLabel>
             <Select
-              placeholder="Select bank"
+              placeholder={isLoadingBanks ? "Loading banks..." : "Select bank"}
               value={bankCode}
-              onChange={(e) => setBankCode(e.target.value)}
+              onChange={(e) => {
+                setBankCode(e.target.value);
+                setVerifiedAccountName("");
+                setAccountName("");
+              }}
               bg={inputBg}
               _hover={{ bg: inputHoverBg }}
               color={textColor}
+              isDisabled={isLoadingBanks}
             >
-              {PAYSTACK_BANKS.map((bank) => (
-                <option key={bank.code} value={bank.code}>
+              {banks.map((bank, index) => (
+                <option key={`${bank.code}-${bank.name}`} value={bank.code}>
                   {bank.name}
                 </option>
               ))}
@@ -428,14 +606,29 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance, onWithdraw }) => {
           </FormControl>
           <FormControl mb={4}>
             <FormLabel color={textColor}>Account Number</FormLabel>
-            <Input
-              value={accountNumber}
-              onChange={(e) => setAccountNumber(e.target.value)}
-              placeholder="Enter 10-digit account number"
-              bg={inputBg}
-              _hover={{ bg: inputHoverBg }}
-              color={textColor}
-            />
+            <Flex>
+              <Input
+                value={accountNumber}
+                onChange={(e) => {
+                  setAccountNumber(e.target.value);
+                  setVerifiedAccountName("");
+                  setAccountName("");
+                }}
+                placeholder="Enter 10-digit account number"
+                bg={inputBg}
+                _hover={{ bg: inputHoverBg }}
+                color={textColor}
+              />
+              <Button
+                ml={2}
+                colorScheme="blue"
+                isLoading={isVerifying}
+                onClick={verifyAccount}
+                isDisabled={!bankCode || !/^\d{10}$/.test(accountNumber)}
+              >
+                Verify
+              </Button>
+            </Flex>
           </FormControl>
           <FormControl mb={4}>
             <FormLabel color={textColor}>Account Name</FormLabel>
@@ -446,6 +639,7 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance, onWithdraw }) => {
               bg={inputBg}
               _hover={{ bg: inputHoverBg }}
               color={textColor}
+              isDisabled={!!verifiedAccountName}
             />
           </FormControl>
         </ModalBody>
@@ -455,8 +649,9 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance, onWithdraw }) => {
             onClick={handleSubmit}
             isLoading={isSubmitting}
             mr={3}
-            bgGradient={`linear(to-r, blue.400, purple.500)`}
-            _hover={{ bgGradient: `linear(to-r, blue.500, purple.600)` }}
+            bgGradient="linear(to-r, blue.400, purple.500)"
+            _hover={{ bgGradient: "linear(to-r, blue.500, purple.600)" }}
+            isDisabled={!verifiedAccountName}
           >
             Withdraw
           </Button>
@@ -929,18 +1124,34 @@ const Profile = () => {
     }
   };
 
-  const handleWithdraw = async ({ amount, bankCode, accountNumber, accountName }) => {
+  const handleWithdraw = async ({ amount, bankCode, accountNumber, accountName }, retries = 2) => {
     try {
       const response = await axios.post(
         `${BASE_URL}/api/wallet/withdraw`,
         { amount, bankCode, accountNumber, accountName },
-        { headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` } }
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("auth-token")}` },
+          timeout: 30000,
+        }
       );
       console.log('Withdraw response:', response.data);
       await fetchWalletBalance();
       return response.data;
     } catch (error) {
       console.error('Error withdrawing funds:', error);
+      if (retries > 0 && error.response?.status === 408) {
+        console.log(`Retrying withdrawal (${retries} retries left)`);
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        return handleWithdraw({ amount, bankCode, accountNumber, accountName }, retries - 1);
+      }
+      const errorMessage = error.response?.data?.message || 'Unable to process withdrawal. Please try again.';
+      toast({
+        title: 'Withdrawal Failed',
+        description: errorMessage,
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
       throw error;
     }
   };
@@ -991,7 +1202,7 @@ const Profile = () => {
 
     const socket = io(BASE_URL, {
       auth: { token },
-      transports: ['websocket', 'polling'],
+      transports: ['websocket'],
       reconnection: true,
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
@@ -1040,15 +1251,13 @@ const Profile = () => {
         balance: data.balance,
       }));
       toast({
-        title: 'Wallet Updated',
-        description: `Your wallet has been funded with ₦${data.transaction.amount.toFixed(2)}.`,
-        status: 'success',
+        title: data.transaction.status === 'completed' ? 'Withdrawal Completed' : data.transaction.status === 'failed' ? 'Withdrawal Failed' : 'Withdrawal Initiated',
+        description: `Your wallet balance is now ₦${data.balance.toFixed(2)}. Transaction: ₦${data.transaction.amount.toFixed(2)} (${data.transaction.reference})`,
+        status: data.transaction.status === 'completed' ? 'success' : data.transaction.status === 'failed' ? 'error' : 'info',
         duration: 5000,
         isClosable: true,
       });
-      fetchWalletBalance();
       if (isPaymentModalOpen) {
-        // Clear polling and toast on balance update
         if (checkStatusInterval) {
           clearInterval(checkStatusInterval);
           setCheckStatusInterval(null);

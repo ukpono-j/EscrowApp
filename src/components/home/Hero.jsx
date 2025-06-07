@@ -1,17 +1,17 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { 
-  Box, 
-  Text, 
-  Container, 
-  Flex, 
-  Badge, 
+import {
+  Box,
+  Text,
+  Container,
+  Flex,
+  Badge,
   useColorMode,
   Image,
   Grid,
   GridItem
 } from "@chakra-ui/react";
-import HeroImage from "../../assets/hero.png";
+import HeroImage from "../../assets/PhoneMockup (3).png";
 import "./Hero.css";
 
 const Hero = () => {
@@ -19,28 +19,28 @@ const Hero = () => {
   const isDark = colorMode === "dark";
 
   return (
-    <Box 
-      className="hero-section" 
+    <Box
+      className="hero-section"
       position="relative"
       overflow="hidden"
       bg={isDark ? "gray.900" : "linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)"}
       color={isDark ? "white" : "gray.800"}
-      py={{base: "130px", md: "140px", lg: "160px"}}
-      px={{base: 0, md: 6, lg: 8}}
+      py={{ base: "130px", md: "140px", lg: "160px" }}
+      px={{ base: 0, md: 6, lg: 8 }}
     >
       {/* Background elements */}
-      <Box 
-        position="absolute" 
-        top="0" 
-        right="0" 
-        width="100%" 
-        height="100%" 
+      <Box
+        position="absolute"
+        top="0"
+        right="0"
+        width="100%"
+        height="100%"
         opacity="0.03"
         backgroundImage="url('data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')"
         zIndex="0"
         pointerEvents="none"
       />
-      
+
 
       <Container maxW="1440px" position="relative" zIndex="1">
         <Flex
@@ -50,18 +50,18 @@ const Hero = () => {
           position="relative"
         >
           {/* Left content - Text and CTA */}
-          <Box 
+          <Box
             width={{ base: "100%", lg: "45%" }}
             pr={{ base: 0, lg: 10 }}
             mb={{ base: 12, lg: 0 }}
             textAlign={{ base: "left", lg: "left" }}
           >
-            <Badge 
-              bg={isDark ? "#B38939" : "#192331"} 
-              color="white" 
-              px={3} 
-              py={1} 
-              borderRadius="full" 
+            <Badge
+              bg={isDark ? "#B38939" : "#192331"}
+              color="white"
+              px={3}
+              py={1}
+              borderRadius="full"
               mb={4}
               boxShadow="md"
               fontSize="sm"
@@ -69,7 +69,7 @@ const Hero = () => {
             >
               TRUSTED BY MILLIONS
             </Badge>
-            
+
             <Text
               as="h1"
               fontSize={{ base: "36px", sm: "44px", md: "52px", lg: "60px" }}
@@ -80,9 +80,9 @@ const Hero = () => {
               mb={6}
               letterSpacing="-0.02em"
             >
-              Sylo: Trade with Confidence, Every Time
+              Shop Online without fear of scams
             </Text>
-            
+
             <Text
               fontSize={{ base: "16px", md: "18px" }}
               color={isDark ? "gray.300" : "#4A5568"}
@@ -90,18 +90,18 @@ const Hero = () => {
               fontWeight="400"
               mb={8}
               maxW={{ base: "100%", md: "90%", lg: "100%" }}
-              // mx={{ base: "auto", lg: "0" }}
+            // mx={{ base: "auto", lg: "0" }}
             >
-               <Text as="span" fontWeight="600" color="#B38939">Sylo</Text> is Nigeria’s trusted escrow platform — protecting buyers and sellers by securely holding funds until delivery is confirmed. Whether you're buying a phone on Instagram or selling goods to rural customers, our platform ensures that every transaction is handled with integrity and security, especially in the $6.7 billion off-grid market.
-{/* 
+              <Text as="span" fontWeight="600" color="#B38939">Sylo</Text> is Nigeria’s trusted escrow platform — protecting buyers and sellers by securely holding funds until delivery is confirmed. Whether you're buying a phone on Instagram or selling goods to rural customers, our platform ensures that every transaction is handled with integrity and security, especially in the $6.7 billion off-grid market.
+              {/* 
               Experience peace of mind with <Text as="span" fontWeight="600" color="#B38939">Sylo</Text>, 
               your trusted partner for secure and transparent business dealings.  */}
               {/* Our platform ensures that 
               every transaction is handled with integrity, providing a seamless experience for both buyers and sellers. */}
             </Text>
-            
-            <Flex 
-              gap={4} 
+
+            <Flex
+              gap={4}
               direction={{ base: "column", sm: "row" }}
               justify={{ base: "flef-start", lg: "flex-start" }}
               align="start"
@@ -129,7 +129,7 @@ const Hero = () => {
                   Start Transactions
                 </Box>
               </Link>
-              
+
               <Link to="/learn-more">
                 <Box
                   as="button"
@@ -152,10 +152,10 @@ const Hero = () => {
                 </Box>
               </Link>
             </Flex>
-            
-            <Flex 
-              mt={10} 
-              gap={6} 
+
+            <Flex
+              mt={10}
+              gap={6}
               align="center"
               justify={{ base: "flex-start", lg: "flex-start" }}
               display={{ base: "none", md: "flex" }}
@@ -176,9 +176,9 @@ const Hero = () => {
               </Box>
             </Flex>
           </Box>
-          
+
           {/* Right content - Enhanced Hero visualization */}
-          <Box 
+          <Box
             width={{ base: "100%", lg: "55%" }}
             position="relative"
             height={{ base: "400px", md: "480px", lg: "540px" }}
@@ -237,20 +237,23 @@ const Hero = () => {
                     app.sylo.com/dashboard
                   </Box>
                 </Box>
-                
+
                 {/* Content area with the main hero image */}
                 <Box p={4} height="calc(100% - 40px)" className="moving-content" position="relative">
                   <Image
                     src={HeroImage}
                     alt="Sylo Platform"
                     width="100%"
-                    height="100%"
-                    objectFit="cover"
+                  height="640px"
+                    objectFit="contain"
+                    objectPosition="center"
                     borderRadius="md"
+                    transform="scale(1.1)"
+                    transformOrigin="center"
                   />
                 </Box>
               </Box>
-              
+
               {/* Floating features badges */}
               <Box
                 position="absolute"
@@ -274,7 +277,7 @@ const Hero = () => {
                   </Box>
                 </Flex>
               </Box>
-              
+
               <Box
                 position="absolute"
                 left="-30px"
@@ -297,7 +300,7 @@ const Hero = () => {
                   </Box>
                 </Flex>
               </Box>
-              
+
               {/* Activity pulse indicators */}
               <Box
                 position="absolute"
@@ -324,7 +327,7 @@ const Hero = () => {
                   }}
                 ></Box>
               </Box>
-              
+
               <Grid
                 templateColumns="repeat(4, 1fr)"
                 gap={2}
@@ -383,7 +386,7 @@ const Hero = () => {
                     borderRadius="md"
                     p={2}
                     boxShadow={isDark ? "dark-lg" : "lg"}
-                    textAlign="center" 
+                    textAlign="center"
                     className="stat-card"
                     border={isDark ? "1px solid #4A5568" : "1px solid #E2E8F0"}
                   >

@@ -1,10 +1,10 @@
 import React, { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-import Vesa from "../../assets/vesa.png";
-import Card from "../../assets/card.png";
-import Girl from "../../assets/about.png";
+import Girl from "../../assets/PhoneMockup (5).png";
+import Card from "../../assets/PhoneMockup (4).png";
+import Vesa from "../../assets/PhoneMockup (2).png";
 import "./ServicesComponent.css";
-import { Box, Text, Flex, Container, useColorModeValue } from "@chakra-ui/react";
+import { Box, Text, Flex, Container, useColorModeValue, Image } from "@chakra-ui/react";
 
 const ServicesComponent = () => {
   const sectionRefs = useRef([]);
@@ -57,7 +57,7 @@ const ServicesComponent = () => {
           {/* Main Title */}
           <Box
             className="service_title"
-            textAlign={{base: "left", md:"center"}}
+            textAlign={{ base: "left", md: "center" }}
             mb={{ base: 12, md: 16 }}
             fontWeight="900"
             fontSize={{ base: "34px", md: "50px" }}
@@ -141,11 +141,24 @@ const ServicesComponent = () => {
                 bottom="30px"
                 left="-20px"
               />
-              <img
+              {/* <img
                 src={Card}
                 alt="Buyer Protection Card"
                 className="sm:w-[100%] w-[80%] mx-auto"
-              />
+              /> */}
+              <Box p={4} className="moving-content" position="relative">
+                <Image
+                  src={Card}
+                  alt="Buyer Protection Card"
+                  width="100%"
+                  height="640px"
+                  objectFit="contain"
+                  objectPosition="center"
+                  borderRadius="md"
+                  transform="scale(1.1)"
+                  transformOrigin="center"
+                />
+              </Box>
             </Box>
           </Flex>
 
@@ -179,11 +192,24 @@ const ServicesComponent = () => {
                 bottom="-40px"
                 right="-30px"
               />
-              <img
+              {/* <img
                 src={Girl}
                 alt="Seller Protection"
                 className="w-[90%] mx-auto"
-              />
+              /> */}
+              <Box p={4} className="moving-content" position="relative">
+                <Image
+                  src={Girl}
+                  alt="Sylo Platform"
+                  width="100%"
+                  height="640px"
+                  objectFit="contain"
+                  objectPosition="center"
+                  borderRadius="md"
+                  transform="scale(1.1)"
+                  transformOrigin="center"
+                />
+              </Box>
             </Box>
 
             <Box
@@ -201,7 +227,7 @@ const ServicesComponent = () => {
                 Ship With Confidence
               </Text>
               <Text mt={4} fontSize="17px">
-              As a seller, you deserve the assurance that your time and effort won't go to waste. With Sylo, funds from the buyer are securely held in escrow before you ship or deliver any service. This means you never have to worry about fake buyers, delayed payments, or chargebacks.
+                As a seller, you deserve the assurance that your time and effort won't go to waste. With Sylo, funds from the buyer are securely held in escrow before you ship or deliver any service. This means you never have to worry about fake buyers, delayed payments, or chargebacks.
               </Text>
 
               <Text mt={4} fontSize="17px">
@@ -250,7 +276,7 @@ const ServicesComponent = () => {
               </h1>
 
               <Text fontWeight="bold" mt={4} fontSize="17px">
-              We don’t just secure transactions — we help fight fraud.
+                We don’t just secure transactions — we help fight fraud.
               </Text>
               <Text mt={4} fontSize="17px">
                 At Sylo, your safety goes beyond just holding funds. Every transaction is processed through Bondly's secure wallets and verification systems, ensuring every user is authenticated and each payment is monitored for legitimacy.
@@ -295,11 +321,24 @@ const ServicesComponent = () => {
                 bottom="-60px"
                 left="-60px"
               />
-              <img
+              {/* <img
                 src={Vesa}
                 alt="Fraud Protection"
                 className="h-[100%] w-[100%] object-cover object-center rounded-3xl"
-              />
+              /> */}
+              <Box p={4} height="calc(100% - 40px)" className="moving-content" position="relative">
+                <Image
+                  src={Vesa}
+                  alt="Buyer Protection Card"
+                  width="100%"
+                  height="640px"
+                  objectFit="contain"
+                  objectPosition="center"
+                  borderRadius="md"
+                  // transform="scale(1.1)"
+                  transformOrigin="center"
+                />
+              </Box>
             </Box>
           </Flex>
         </div>

@@ -1,11 +1,13 @@
-// service-worker.js - save at the root of your public directory
-const CACHE_NAME = "middleman-cache-v2";
+const CACHE_NAME = "sylo-cache-v1";
 
 // List of resources to cache
 const urlsToCache = [
   '/',
   '/index.html',
   '/manifest.json',
+  '/assets/index-DdJq_EA-.js',
+  '/assets/vendor-D3JYJaD0.js',
+  '/assets/index--T8xFeeC.css',
   '/icons/favicon-32x32.png',
   '/icons/favicon.ico',
   '/icons/android-chrome-512x512.png',
