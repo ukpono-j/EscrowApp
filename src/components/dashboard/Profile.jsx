@@ -334,7 +334,7 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance, onWithdraw }) => {
   const inputBg = useColorModeValue("gray.50", "#1A2331");
   const inputHoverBg = useColorModeValue("gray.100", "#232D3F");
 
-  // Fetch banks when modal opens, with static fallback
+  // Fetch banks when modal opens
   useEffect(() => {
     if (isOpen) {
       const fetchBanks = async () => {
@@ -381,7 +381,7 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance, onWithdraw }) => {
               console.warn(`Missing banks in API response: ${missingBanks.join(', ')}`);
               toast({
                 title: 'Warning',
-                description: `Some banks are missing: ${missingBanks.join(', ')}. Contact support if your bank is not listed.`,
+                description: `Some banks are missing: ${missingBanks.join(', ')}. Using fallback list.`,
                 status: 'warning',
                 duration: 5000,
                 isClosable: true,
@@ -544,9 +544,17 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance, onWithdraw }) => {
       onClose();
     } catch (error) {
       console.error('Withdrawal error:', error);
+      let errorMessage = error.response?.data?.message || "Unable to process withdrawal. Please try again.";
+      if (error.response?.status === 400 && errorMessage.includes("Insufficient funds in payment gateway")) {
+        errorMessage = "Insufficient funds in the platform's payment gateway. Please contact support to resolve this issue.";
+      } else if (error.response?.status === 401) {
+        errorMessage = "Authentication error. Please log in again.";
+        localStorage.removeItem("auth-token");
+        window.location.href = "/login";
+      }
       toast({
         title: "Withdrawal Failed",
-        description: error.response?.data?.message || "Unable to process withdrawal.",
+        description: errorMessage,
         status: "error",
         duration: 5000,
         isClosable: true,
