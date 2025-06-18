@@ -55,8 +55,8 @@ const PAYSTACK_BANKS = [
   { name: "Keystone Bank", code: "082" },
   { name: "Kuda Bank", code: "090267" },
   { name: "Moniepoint Microfinance Bank", code: "50515" },
-  { name: "Opay", code: "100004" }, // Verify with Paystack
-  { name: "Palmpay", code: "999992" },
+  { name: "OPay Digital Services Limited", code: "999992" }, // Corrected OPay code
+  { name: "PalmPay", code: "999991" }, // Corrected PalmPay code
   { name: "Polaris Bank", code: "076" },
   { name: "Providus Bank", code: "101" },
   { name: "Stanbic IBTC Bank", code: "221" },
