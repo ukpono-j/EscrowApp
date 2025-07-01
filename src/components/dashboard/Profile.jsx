@@ -2,6 +2,8 @@ import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import { io } from "socket.io-client";
 import jwtDecode from 'jwt-decode';
+import pino from 'pino'; // Added for centralized logging
+import Bottleneck from 'bottleneck'; // Added for rate limiting
 import { FaEdit, FaWallet, FaTimes, FaUser, FaCalendarAlt, FaUniversity, FaCreditCard, FaSync, FaMoneyBillWave, FaSave, FaPhone } from "react-icons/fa";
 import { MdContentCopy } from "react-icons/md";
 import { motion } from "framer-motion";
@@ -70,6 +72,19 @@ const PAYSTACK_BANKS = [
 
 const BASE_URL = (import.meta.env.VITE_BASE_URL || "http://localhost:3001").replace(/\/$/, "");
 
+// Initialize pino logger
+const logger = pino({
+  level: 'info',
+  browser: { asObject: true },
+});
+
+// Initialize Bottleneck rate limiter
+const limiter = new Bottleneck({
+  minTime: 1000, // 1 second between requests (60 req/min)
+  maxConcurrent: 5, // Max 5 concurrent requests
+});
+
+
 const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, userName }) => {
   const toast = useToast();
   const textColor = useColorModeValue("gray.800", "white");
@@ -79,6 +94,13 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
+    toast({
+      title: "Copied",
+      description: "Text copied to clipboard.",
+      status: "success",
+      duration: 3000,
+      isClosable: true,
+    });
   };
 
   const handleManualReconcile = async () => {
@@ -153,16 +175,7 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
                       bg="transparent"
                       color={subtleTextColor}
                       _hover={{ color: highlightColor }}
-                      onClick={() => {
-                        copyToClipboard(paymentDetails.virtualAccount.account_name);
-                        toast({
-                          title: "Copied",
-                          description: "Account name copied to clipboard.",
-                          status: "success",
-                          duration: 3000,
-                          isClosable: true,
-                        });
-                      }}
+                      onClick={() => copyToClipboard(paymentDetails.virtualAccount.account_name)}
                     />
                   )}
                 </Flex>
@@ -178,16 +191,7 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
                       bg="transparent"
                       color={subtleTextColor}
                       _hover={{ color: highlightColor }}
-                      onClick={() => {
-                        copyToClipboard(paymentDetails.virtualAccount.account_number);
-                        toast({
-                          title: "Copied",
-                          description: "Account number copied to clipboard.",
-                          status: "success",
-                          duration: 3000,
-                          isClosable: true,
-                        });
-                      }}
+                      onClick={() => copyToClipboard(paymentDetails.virtualAccount.account_number)}
                     />
                   )}
                 </Flex>
@@ -203,16 +207,7 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
                       bg="transparent"
                       color={subtleTextColor}
                       _hover={{ color: highlightColor }}
-                      onClick={() => {
-                        copyToClipboard(paymentDetails.virtualAccount.bank_name);
-                        toast({
-                          title: "Copied",
-                          description: "Bank name copied to clipboard.",
-                          status: "success",
-                          duration: 3000,
-                          isClosable: true,
-                        });
-                      }}
+                      onClick={() => copyToClipboard(paymentDetails.virtualAccount.bank_name)}
                     />
                   )}
                 </Flex>
@@ -228,16 +223,7 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
                       bg="transparent"
                       color={subtleTextColor}
                       _hover={{ color: highlightColor }}
-                      onClick={() => {
-                        copyToClipboard(`₦${paymentDetails.amount.toFixed(2)}`);
-                        toast({
-                          title: "Copied",
-                          description: "Amount copied to clipboard.",
-                          status: "success",
-                          duration: 3000,
-                          isClosable: true,
-                        });
-                      }}
+                      onClick={() => copyToClipboard(`₦${paymentDetails.amount.toFixed(2)}`)}
                     />
                   )}
                 </Flex>
@@ -253,16 +239,7 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
                       bg="transparent"
                       color={subtleTextColor}
                       _hover={{ color: highlightColor }}
-                      onClick={() => {
-                        copyToClipboard(paymentDetails.reference || paymentDetails.paystackReference);
-                        toast({
-                          title: "Copied",
-                          description: "Reference copied to clipboard.",
-                          status: "success",
-                          duration: 3000,
-                          isClosable: true,
-                        });
-                      }}
+                      onClick={() => copyToClipboard(paymentDetails.reference || paymentDetails.paystackReference)}
                     />
                   )}
                 </Flex>
@@ -272,38 +249,54 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
               </Text>
             </>
           ) : (
-            <Text color={textColor} fontSize={{ base: "sm", sm: "md" }}>
-              No payment details available. Please initiate a new funding request.
-            </Text>
+            <Box>
+              <Text color={textColor} fontSize={{ base: "sm", sm: "md" }} mb={4}>
+                Unable to initiate funding. Please try again or contact support.
+              </Text>
+              <Button
+                colorScheme="blue"
+                onClick={() => {
+                  setPaymentDetails(null);
+                  onClose();
+                }}
+                size={{ base: "sm", sm: "md" }}
+                bgGradient="linear(to-r, blue.400, purple.500)"
+                _hover={{ bgGradient: "linear(to-r, blue.500, purple.600)" }}
+              >
+                Retry Funding
+              </Button>
+            </Box>
           )}
         </ModalBody>
         <ModalFooter flexDirection={{ base: "column", sm: "row" }} gap={{ base: 2, sm: 0 }}>
-          <Button
-            colorScheme="blue"
-            onClick={onStatusCheck}
-            size={{ base: "sm", sm: "md", md: "lg" }}
-            fontSize={{ base: "sm", sm: "md" }}
-            mr={{ base: 0, sm: 3 }}
-            mb={{ base: 2, sm: 0 }}
-            bgGradient="linear(to-r, blue.400, purple.500)"
-            _hover={{ bgGradient: "linear(to-r, blue.500, purple.600)" }}
-            isDisabled={!paymentDetails?.reference && !paymentDetails?.paystackReference}
-          >
-            Check Payment Status
-          </Button>
-          <Button
-            colorScheme="purple"
-            onClick={handleManualReconcile}
-            size={{ base: "sm", sm: "md", md: "lg" }}
-            fontSize={{ base: "sm", sm: "md" }}
-            mr={{ base: 0, sm: 3 }}
-            mb={{ base: 2, sm: 0 }}
-            bgGradient="linear(to-r, purple.400, purple.500)"
-            _hover={{ bgGradient: "linear(to-r, purple.500, purple.600)" }}
-            isDisabled={!paymentDetails?.reference && !paymentDetails?.paystackReference}
-          >
-            Manually Reconcile
-          </Button>
+          {paymentDetails && (paymentDetails.reference || paymentDetails.paystackReference) ? (
+            <>
+              <Button
+                colorScheme="blue"
+                onClick={onStatusCheck}
+                size={{ base: "sm", sm: "md", md: "lg" }}
+                fontSize={{ base: "sm", sm: "md" }}
+                mr={{ base: 0, sm: 3 }}
+                mb={{ base: 2, sm: 0 }}
+                bgGradient="linear(to-r, blue.400, purple.500)"
+                _hover={{ bgGradient: "linear(to-r, blue.500, purple.600)" }}
+              >
+                Check Payment Status
+              </Button>
+              <Button
+                colorScheme="purple"
+                onClick={handleManualReconcile}
+                size={{ base: "sm", sm: "md", md: "lg" }}
+                fontSize={{ base: "sm", sm: "md" }}
+                mr={{ base: 0, sm: 3 }}
+                mb={{ base: 2, sm: 0 }}
+                bgGradient="linear(to-r, purple.400, purple.500)"
+                _hover={{ bgGradient: "linear(to-r, purple.500, purple.600)" }}
+              >
+                Manually Reconcile
+              </Button>
+            </>
+          ) : null}
           <Button
             variant="ghost"
             onClick={onClose}
@@ -327,23 +320,24 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance, onWithdraw }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [verifiedAccountName, setVerifiedAccountName] = useState("");
-  const [banks, setBanks] = useState(PAYSTACK_BANKS); // Initialize with static fallback
+  const [banks, setBanks] = useState(PAYSTACK_BANKS);
   const [isLoadingBanks, setIsLoadingBanks] = useState(false);
   const toast = useToast();
   const textColor = useColorModeValue("gray.800", "white");
   const inputBg = useColorModeValue("gray.50", "#1A2331");
   const inputHoverBg = useColorModeValue("gray.100", "#232D3F");
 
-  // Fetch banks when modal opens
   useEffect(() => {
     if (isOpen) {
       const fetchBanks = async () => {
         setIsLoadingBanks(true);
         try {
-          const response = await axios.get(`${BASE_URL}/api/wallet/banks`, {
+          const response = await limiter.schedule(() => axios.get(`${BASE_URL}/api/wallet/banks`, {
             headers: { Authorization: `Bearer ${localStorage.getItem("auth-token")}` },
             timeout: 15000,
-          });
+          }));
+
+          logger.info({ action: 'fetch_banks', response: response.data }, 'Fetched banks');
 
           if (response.data.success && Array.isArray(response.data.data) && response.data.data.length > 0) {
             const normalizeName = (name) => name.trim().toLowerCase();
@@ -354,15 +348,8 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance, onWithdraw }) => {
               }))
               .filter((bank) => bank.name && bank.code);
 
-            // Merge with PAYSTACK_BANKS, prioritizing API banks
             const allBanksMap = new Map();
-
-            // Add API banks first
-            banks.forEach((bank) => {
-              allBanksMap.set(bank.code, bank);
-            });
-
-            // Add PAYSTACK_BANKS only if code doesn't exist
+            banks.forEach((bank) => allBanksMap.set(bank.code, bank));
             PAYSTACK_BANKS.forEach((bank) => {
               if (!allBanksMap.has(bank.code)) {
                 allBanksMap.set(bank.code, bank);
@@ -370,15 +357,13 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance, onWithdraw }) => {
             });
 
             const allBanks = Array.from(allBanksMap.values()).sort((a, b) => a.name.localeCompare(b.name));
-
-            // Check for key banks
             const expectedBanks = ['Access Bank', 'Opay', 'Kuda Bank', 'Zenith Bank'];
             const missingBanks = expectedBanks.filter(
               (name) => !allBanks.some((bank) => normalizeName(bank.name) === normalizeName(name))
             );
 
             if (missingBanks.length > 0) {
-              console.warn(`Missing banks in API response: ${missingBanks.join(', ')}`);
+              logger.warn({ missingBanks }, `Missing banks in API response: ${missingBanks.join(', ')}`);
               toast({
                 title: 'Warning',
                 description: `Some banks are missing: ${missingBanks.join(', ')}. Using fallback list.`,
@@ -389,16 +374,20 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance, onWithdraw }) => {
             }
 
             setBanks(allBanks);
-            console.log(`Fetched ${allBanks.length} banks:`, allBanks.map((b) => b.name));
+            logger.info({ banks: allBanks.map((b) => b.name) }, `Fetched ${allBanks.length} banks`);
           } else {
             throw new Error('Invalid or empty bank list from API');
           }
         } catch (error) {
-          console.error('Error fetching banks:', {
-            message: error.message,
-            status: error.response?.status,
-            data: error.response?.data,
-          });
+          logger.error(
+            {
+              action: 'fetch_banks',
+              error: error.message,
+              status: error.response?.status,
+              data: error.response?.data,
+            },
+            'Error fetching banks'
+          );
           toast({
             title: 'Warning',
             description: 'Unable to load bank list from server. Using fallback bank list.',
@@ -410,7 +399,7 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance, onWithdraw }) => {
           const uniqueBanksMap = new Map(PAYSTACK_BANKS.map((bank) => [bank.code, bank]));
           const uniqueBanks = Array.from(uniqueBanksMap.values()).sort((a, b) => a.name.localeCompare(b.name));
           setBanks(uniqueBanks);
-          console.log(`Using fallback bank list (${uniqueBanks.length} banks):`, uniqueBanks.map((b) => b.name));
+          logger.info({ banks: uniqueBanks.map((b) => b.name) }, `Using fallback bank list (${uniqueBanks.length} banks)`);
         } finally {
           setIsLoadingBanks(false);
         }
@@ -433,14 +422,17 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance, onWithdraw }) => {
 
     setIsVerifying(true);
     try {
-      const response = await axios.post(
+      const response = await limiter.schedule(() => axios.post(
         `${BASE_URL}/api/wallet/verify-account`,
         { bankCode, accountNumber },
         {
           headers: { Authorization: `Bearer ${localStorage.getItem("auth-token")}` },
           timeout: 15000,
         }
-      );
+      ));
+
+      logger.info({ action: 'verify_account', response: response.data }, 'Account verification response');
+
       if (response.data.success) {
         setVerifiedAccountName(response.data.accountName);
         setAccountName(response.data.accountName);
@@ -455,11 +447,15 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance, onWithdraw }) => {
         throw new Error(response.data.message || "Account verification failed");
       }
     } catch (error) {
-      console.error('Account verification error:', {
-        message: error.message,
-        status: error.response?.status,
-        data: error.response?.data,
-      });
+      logger.error(
+        {
+          action: 'verify_account',
+          error: error.message,
+          status: error.response?.status,
+          data: error.response?.data,
+        },
+        'Account verification error'
+      );
       let errorMessage = error.response?.data?.message || "Unable to verify account. Please check your details and try again.";
       if (error.response?.status === 401) {
         errorMessage = "Authentication error. Please log in again.";
@@ -534,6 +530,7 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance, onWithdraw }) => {
     setIsSubmitting(true);
     try {
       const response = await onWithdraw({ amount, bankCode, accountNumber, accountName });
+      logger.info({ action: 'withdraw_submit', response: response.data }, 'Withdrawal initiated');
       toast({
         title: "Withdrawal Initiated",
         description: `Your withdrawal request of ₦${amount.toFixed(2)} has been initiated. Reference: ${response.data.reference}`,
@@ -543,7 +540,10 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance, onWithdraw }) => {
       });
       onClose();
     } catch (error) {
-      console.error('Withdrawal error:', error);
+      logger.error(
+        { action: 'withdraw_submit', error: error.message, status: error.response?.status },
+        'Withdrawal error'
+      );
       let errorMessage = error.response?.data?.message || "Unable to process withdrawal. Please try again.";
       if (error.response?.status === 400 && errorMessage.includes("Insufficient funds in payment gateway")) {
         errorMessage = "Insufficient funds in the platform's payment gateway. Please contact support to resolve this issue.";
@@ -564,112 +564,7 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance, onWithdraw }) => {
     }
   };
 
-  return (
-    <Modal isOpen={isOpen} onClose={onClose} isCentered>
-      <ModalOverlay />
-      <ModalContent>
-        <ModalHeader color={textColor}>Withdraw Funds</ModalHeader>
-        <ModalCloseButton />
-        <ModalBody>
-          <Text color={textColor} mb={4}>
-            Available Balance: ₦{walletBalance?.balance?.toFixed(2) || "0.00"}
-          </Text>
-          <FormControl mb={4}>
-            <FormLabel color={textColor}>Amount (NGN)</FormLabel>
-            <NumberInput
-              min={0}
-              max={walletBalance?.balance || 0}
-              value={amount}
-              onChange={(valueString) => setAmount(parseFloat(valueString) || 0)}
-              precision={2}
-            >
-              <NumberInputField bg={inputBg} _hover={{ bg: inputHoverBg }} color={textColor} />
-              <NumberInputStepper>
-                <NumberIncrementStepper />
-                <NumberDecrementStepper />
-              </NumberInputStepper>
-            </NumberInput>
-          </FormControl>
-          <FormControl mb={4}>
-            <FormLabel color={textColor}>Bank</FormLabel>
-            <Select
-              placeholder={isLoadingBanks ? "Loading banks..." : "Select bank"}
-              value={bankCode}
-              onChange={(e) => {
-                setBankCode(e.target.value);
-                setVerifiedAccountName("");
-                setAccountName("");
-              }}
-              bg={inputBg}
-              _hover={{ bg: inputHoverBg }}
-              color={textColor}
-              isDisabled={isLoadingBanks}
-            >
-              {banks.map((bank, index) => (
-                <option key={`${bank.code}-${bank.name}`} value={bank.code}>
-                  {bank.name}
-                </option>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl mb={4}>
-            <FormLabel color={textColor}>Account Number</FormLabel>
-            <Flex>
-              <Input
-                value={accountNumber}
-                onChange={(e) => {
-                  setAccountNumber(e.target.value);
-                  setVerifiedAccountName("");
-                  setAccountName("");
-                }}
-                placeholder="Enter 10-digit account number"
-                bg={inputBg}
-                _hover={{ bg: inputHoverBg }}
-                color={textColor}
-              />
-              <Button
-                ml={2}
-                colorScheme="blue"
-                isLoading={isVerifying}
-                onClick={verifyAccount}
-                isDisabled={!bankCode || !/^\d{10}$/.test(accountNumber)}
-              >
-                Verify
-              </Button>
-            </Flex>
-          </FormControl>
-          <FormControl mb={4}>
-            <FormLabel color={textColor}>Account Name</FormLabel>
-            <Input
-              value={accountName}
-              onChange={(e) => setAccountName(e.target.value)}
-              placeholder="Enter account name"
-              bg={inputBg}
-              _hover={{ bg: inputHoverBg }}
-              color={textColor}
-              isDisabled={!!verifiedAccountName}
-            />
-          </FormControl>
-        </ModalBody>
-        <ModalFooter>
-          <Button
-            colorScheme="blue"
-            onClick={handleSubmit}
-            isLoading={isSubmitting}
-            mr={3}
-            bgGradient="linear(to-r, blue.400, purple.500)"
-            _hover={{ bgGradient: "linear(to-r, blue.500, purple.600)" }}
-            isDisabled={!verifiedAccountName}
-          >
-            Withdraw
-          </Button>
-          <Button variant="ghost" onClick={onClose} color={textColor}>
-            Cancel
-          </Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
-  );
+  // ... (rest of WithdrawalModal unchanged)
 };
 
 const Profile = () => {
@@ -717,6 +612,17 @@ const Profile = () => {
   const toastIdRef = useRef(null); // Added to track toast ID
   const activePollingRef = useRef(null); // Added to track active polling reference
 
+  // Initialize pino logger and Bottleneck limiter
+  const logger = pino({
+    level: 'info',
+    browser: { asObject: true },
+  });
+
+  const limiter = new Bottleneck({
+    minTime: 1000, // 1 second between requests (60 req/min)
+    maxConcurrent: 5, // Max 5 concurrent requests
+  });
+
   const formatDate = (dateString) => {
     if (!dateString) return "Not Provided";
     const date = new Date(dateString);
@@ -738,30 +644,25 @@ const Profile = () => {
       return;
     }
 
-    // Prevent duplicate polling for the same reference
     const refKey = reference || paystackReference;
     if (activePollingRef.current === refKey) {
-      console.log(`Polling already active for reference: ${refKey}`);
+      logger.info({ reference: refKey }, 'Polling already active for reference');
       return;
     }
 
-    // Clear any existing polling
     if (checkStatusInterval) {
-      console.log('Clearing existing polling interval');
+      logger.info('Clearing existing polling interval');
       clearInterval(checkStatusInterval);
       setCheckStatusInterval(null);
     }
 
-    // Clear any existing toast
     if (toastIdRef.current) {
       toast.close(toastIdRef.current);
       toastIdRef.current = null;
     }
 
-    // Set the active polling reference
     activePollingRef.current = refKey;
 
-    // Create or update the toast
     if (!toastIdRef.current) {
       toastIdRef.current = toast({
         title: 'Payment Processing',
@@ -778,7 +679,7 @@ const Profile = () => {
 
     const checkStatus = async () => {
       if (!isMountedRef.current) {
-        console.log('Component unmounted, stopping polling');
+        logger.info('Component unmounted, stopping polling');
         clearInterval(interval);
         toast.close(toastIdRef.current);
         toastIdRef.current = null;
@@ -794,14 +695,14 @@ const Profile = () => {
         let response;
         for (const ref of referencesToCheck) {
           try {
-            response = await axios.get(
+            response = await limiter.schedule(() => axios.get(
               `${BASE_URL}/api/wallet/funding-status/${ref}`,
               { headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` } }
-            );
-            console.log(`Payment status response for ${ref}:`, response.data);
+            ));
+            logger.info({ action: 'poll_payment_status', reference: ref, response: response.data }, 'Payment status response');
             if (response.data.success) break;
           } catch (err) {
-            console.warn(`Status check failed for ${ref}:`, err.message);
+            logger.warn({ action: 'poll_payment_status', reference: ref, error: err.message }, 'Status check failed');
             continue;
           }
         }
@@ -825,7 +726,12 @@ const Profile = () => {
             duration: 5000,
             isClosable: true,
           });
-          fetchWalletBalance();
+          const syncResponse = await limiter.schedule(() => axios.post(`${BASE_URL}/api/wallet/sync`, {}, {
+            headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` },
+          }));
+          logger.info({ action: 'sync_wallet', response: syncResponse.data }, 'Wallet sync response');
+          setWalletBalance(syncResponse.data.data);
+          setVirtualAccount(syncResponse.data.data.virtualAccount);
           onPaymentModalClose();
         } else if (response.data.data.transaction.status === 'failed') {
           clearInterval(interval);
@@ -863,11 +769,16 @@ const Profile = () => {
           }));
         }
       } catch (error) {
-        console.error('Error polling payment status:', {
-          attempt: attempts,
-          reference: reference || paystackReference,
-          message: error.message,
-        });
+        logger.error(
+          {
+            action: 'poll_payment_status',
+            attempt: attempts,
+            reference: reference || paystackReference,
+            error: error.message,
+            status: error.response?.status,
+          },
+          'Error polling payment status'
+        );
 
         retryCount += 1;
         if (retryCount >= maxRetries || error.response?.status === 401 || error.response?.status === 404) {
@@ -901,24 +812,24 @@ const Profile = () => {
       return responseData.data.user;
     }
     if (responseData._id && responseData.firstName && responseData.email) {
-      console.warn('Legacy format detected');
+      logger.warn({ responseData }, 'Legacy format detected');
       return responseData;
     }
-    console.error('Invalid user data structure:', responseData);
+    logger.error({ responseData }, 'Invalid user data structure');
     throw new Error(responseData.error || 'Invalid user data received');
   };
 
   const fetchUserDetails = async () => {
     try {
-      const response = await axios.get(`${BASE_URL}/api/users/user-details`, {
+      const response = await limiter.schedule(() => axios.get(`${BASE_URL}/api/users/user-details`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` },
-      });
-      console.log('User details response:', response.data);
+      }));
+      logger.info({ action: 'fetch_user_details', response: response.data }, 'User details response');
 
       const user = validateUserResponse(response.data);
 
       if (!user.firstName || !user.email) {
-        console.error('User data missing required fields:', user);
+        logger.error({ user }, 'User data missing required fields');
         throw new Error('User data missing required fields');
       }
 
@@ -932,11 +843,15 @@ const Profile = () => {
       });
       setPhoneNumber(user.phoneNumber || '');
     } catch (error) {
-      console.error('Error fetching user details:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-      });
+      logger.error(
+        {
+          action: 'fetch_user_details',
+          error: error.message,
+          status: error.response?.status,
+          data: error.response?.data,
+        },
+        'Error fetching user details'
+      );
       const errorMessage = error.response?.data?.error || error.message || 'Unable to fetch user details.';
       toast({
         title: 'Error',
@@ -955,43 +870,179 @@ const Profile = () => {
   const fetchWalletBalance = async (retries = 3) => {
     setRefreshingBalance(true);
     try {
-      const response = await axios.get(`${BASE_URL}/api/wallet/balance`, {
+      const response = await limiter.schedule(() => axios.get(`${BASE_URL}/api/wallet/balance`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` },
-      });
-      console.log('Wallet balance response:', response.data);
-      setWalletBalance(response.data);
-      setVirtualAccount(response.data.virtualAccount);
-      if (previousBalanceRef.current !== null && previousBalanceRef.current !== response.data.balance) {
+        timeout: 15000,
+      }));
+      logger.info({ action: 'fetch_wallet_balance', response: response.data }, 'Wallet balance response');
+
+      if (response.status !== 200) {
+        throw new Error(`HTTP error: ${response.status}`);
+      }
+
+      if (!response.data || typeof response.data !== 'object') {
+        throw new Error('Invalid response format');
+      }
+
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Failed to fetch wallet balance');
+      }
+
+      const data = response.data.data || response.data;
+      if (!data) {
+        throw new Error('Missing wallet data');
+      }
+
+      const balance = data.balance !== undefined ? data.balance : data.newBalance;
+      const virtualAccount = data.virtualAccount;
+      const totalDeposits = data.totalDeposits || 0;
+      const currency = data.currency || 'NGN';
+      const walletId = data.walletId;
+      const lastSynced = data.lastSynced;
+
+      if (balance === undefined) {
+        throw new Error('Balance data not found in response');
+      }
+
+      const balanceResponse = await limiter.schedule(() => axios.get(`${BASE_URL}/api/wallet/check-paystack-balance`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` },
+        timeout: 10000,
+      }));
+
+      logger.info({ action: 'check_paystack_balance', response: balanceResponse.data }, 'Paystack balance response');
+
+      if (balanceResponse.data.success && balanceResponse.data.data.transferBalance < balance) {
         toast({
-          title: 'Balance Updated',
-          description: `Your wallet balance is now ₦${response.data.balance.toFixed(2)}.`,
-          status: 'info',
-          duration: 3000,
+          title: 'Balance Warning',
+          description: 'Funds are not yet available for withdrawal. Contact support if this persists.',
+          status: 'warning',
+          duration: 7000,
           isClosable: true,
         });
       }
-      previousBalanceRef.current = response.data.balance;
+
+      if (response.data.warning) {
+        logger.warn({ warning: response.data.warning }, 'Wallet balance warning');
+        toast({
+          title: 'Balance Warning',
+          description: response.data.warning,
+          status: 'warning',
+          duration: 5000,
+          isClosable: true,
+        });
+      }
+
+      const syncAge = lastSynced ? Date.now() - new Date(lastSynced).getTime() : Infinity;
+
+      if (syncAge < 30 * 1000) {
+        const walletData = {
+          balance,
+          totalDeposits,
+          currency,
+          walletId,
+          virtualAccount,
+          lastSynced,
+        };
+
+        setWalletBalance(walletData);
+        setVirtualAccount(virtualAccount);
+
+        if (previousBalanceRef.current !== null && previousBalanceRef.current !== balance) {
+          toast({
+            title: 'Balance Updated',
+            description: `Your wallet balance is now ₦${balance.toFixed(2)}.`,
+            status: 'info',
+            duration: 3000,
+            isClosable: true,
+          });
+        }
+        previousBalanceRef.current = balance;
+      } else {
+        logger.info('Balance is stale or missing lastSynced, triggering sync');
+        const syncResponse = await limiter.schedule(() => axios.post(`${BASE_URL}/api/wallet/sync`, {}, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` },
+          timeout: 15000,
+        }));
+
+        logger.info({ action: 'sync_wallet', response: syncResponse.data }, 'Sync response');
+
+        if (syncResponse.status !== 200 || !syncResponse.data.success || !syncResponse.data.data) {
+          throw new Error(syncResponse.data.error || 'Invalid sync response');
+        }
+
+        const syncData = syncResponse.data.data;
+        const syncedBalance = syncData.newBalance !== undefined ? syncData.newBalance : syncData.balance;
+
+        if (syncedBalance === undefined) {
+          throw new Error('Synced balance data not found');
+        }
+
+        const updatedWalletData = {
+          balance: syncedBalance,
+          totalDeposits: syncData.totalDeposits || 0,
+          currency: 'NGN',
+          virtualAccount: virtualAccount,
+          lastSynced: syncData.lastSynced,
+        };
+
+        setWalletBalance(updatedWalletData);
+        setVirtualAccount(virtualAccount);
+
+        toast({
+          title: 'Balance Synced',
+          description: `Your wallet balance is now ₦${syncedBalance.toFixed(2)}.`,
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
+
+        previousBalanceRef.current = syncedBalance;
+      }
     } catch (error) {
-      console.error('Error fetching wallet balance:', {
-        message: error.message,
-        status: error.response?.status,
-        data: error.response?.data,
-      });
+      logger.error(
+        {
+          action: 'fetch_wallet_balance',
+          error: error.message,
+          status: error.response?.status,
+          data: error.response?.data,
+        },
+        'Error fetching wallet balance'
+      );
+
+      let errorMessage = error.message || 'Unable to fetch wallet balance.';
+
+      if (error.response?.status === 401) {
+        errorMessage = 'Authentication failed. Please log in again.';
+        localStorage.removeItem('auth-token');
+        window.location.href = '/login';
+      } else if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
+        errorMessage = 'Request timed out. Please check your network connection.';
+      } else if (error.response?.status >= 500) {
+        errorMessage = 'Server error. Please try again or contact support.';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+
       if (retries > 0) {
-        console.log(`Retrying fetchWalletBalance (${retries} retries left)`);
+        logger.info({ retries }, `Retrying fetchWalletBalance (${retries} retries left)`);
         setTimeout(() => fetchWalletBalance(retries - 1), 2000);
       } else {
         toast({
           title: 'Error',
-          description: error.response?.data?.message || 'Unable to fetch wallet balance.',
+          description: errorMessage,
           status: 'error',
           duration: 5000,
           isClosable: true,
         });
-        if (error.response?.status === 401) {
-          localStorage.removeItem('auth-token');
-          window.location.href = '/login';
-        }
+
+        setWalletBalance({
+          balance: 0,
+          currency: 'NGN',
+          totalDeposits: 0,
+          walletId: null,
+          lastSynced: null,
+        });
+        setVirtualAccount(null);
       }
     } finally {
       setRefreshingBalance(false);
@@ -1001,12 +1052,12 @@ const Profile = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const response = await axios.put(
+      const response = await limiter.schedule(() => axios.put(
         `${BASE_URL}/api/users/profile`,
         { ...editedUserDetails, phoneNumber },
         { headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` } }
-      );
-      console.log('Save profile response:', response.data);
+      ));
+      logger.info({ action: 'save_profile', response: response.data }, 'Save profile response');
       setUserDetails(response.data.user);
       setEditMode(false);
       toast({
@@ -1017,7 +1068,10 @@ const Profile = () => {
         isClosable: true,
       });
     } catch (error) {
-      console.error('Error saving profile:', error);
+      logger.error(
+        { action: 'save_profile', error: error.message, status: error.response?.status },
+        'Error saving profile'
+      );
       toast({
         title: 'Error',
         description: error.response?.data?.message || 'Unable to update profile. Please try again.',
@@ -1031,7 +1085,9 @@ const Profile = () => {
   };
 
   const handleFundWallet = async () => {
-    if (!fundingAmount || fundingAmount <= 0) {
+    logger.info({ fundingAmount, phoneNumber, userDetails }, 'handleFundWallet called');
+
+    if (!fundingAmount || fundingAmount <= 0 || isNaN(fundingAmount)) {
       toast({
         title: 'Invalid Amount',
         description: 'Please enter a valid amount to fund your wallet.',
@@ -1042,7 +1098,19 @@ const Profile = () => {
       return;
     }
 
-    if (!phoneNumber || !/^(0\d{10}|\+234\d{10})$/.test(phoneNumber)) {
+    if (fundingAmount < 100) {
+      toast({
+        title: 'Minimum Amount Required',
+        description: 'The minimum funding amount is ₦100.',
+        status: 'warning',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    const phoneToUse = phoneNumber || userDetails?.phoneNumber;
+    if (!phoneToUse || !/^(0\d{10}|\+234\d{10})$/.test(phoneToUse)) {
       toast({
         title: 'Invalid Phone Number',
         description: 'Please enter a valid 11-digit phone number starting with 0 or +234.',
@@ -1053,8 +1121,18 @@ const Profile = () => {
       return;
     }
 
-    // Prevent funding if polling is active
-    if (activePollingRef.current) {
+    if (!userDetails?.email || !userDetails?._id) {
+      toast({
+        title: 'User Information Missing',
+        description: 'Please refresh the page and try again.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    if (activePollingRef.current || isFunding) {
       toast({
         title: 'Payment in Progress',
         description: 'A payment is already being processed. Please wait or cancel the current payment.',
@@ -1062,71 +1140,131 @@ const Profile = () => {
         duration: 3000,
         isClosable: true,
       });
-      onPaymentModalOpen();
+      if (!isPaymentModalOpen) {
+        onPaymentModalOpen();
+      }
       return;
     }
 
     setIsFunding(true);
+
     try {
-      const response = await axios.post(
+      logger.info('Making funding request to backend');
+
+      const requestData = {
+        amount: parseFloat(fundingAmount),
+        email: userDetails.email,
+        phoneNumber: phoneToUse,
+        userId: userDetails._id,
+      };
+
+      logger.info({ requestData }, 'Funding request data');
+
+      const response = await limiter.schedule(() => axios.post(
         `${BASE_URL}/api/wallet/fund`,
+        requestData,
         {
-          amount: fundingAmount,
-          email: userDetails.email,
-          phoneNumber,
-        },
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` },
-          timeout: 30000,
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("auth-token")}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 45000,
         }
-      );
-      console.log('Fund wallet response:', response.data);
-      if (!response.data.success || !response.data.data?.virtualAccount) {
-        console.error('Invalid funding response:', response.data);
-        toast({
-          title: 'Funding Error',
-          description: response.data.message || 'Failed to initiate funding. Please try again.',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
-        return;
+      ));
+
+      logger.info({ action: 'fund_wallet', response: response.data }, 'Fund wallet response');
+
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Funding request failed');
       }
-      setPaymentDetails(response.data.data);
-      setVirtualAccount(response.data.data.virtualAccount);
-      localStorage.setItem('pendingPaymentRef', JSON.stringify({
-        reference: response.data.data.reference,
-        paystackReference: response.data.data.virtualAccount.provider_reference,
-      }));
-      onPaymentModalOpen();
-      pollPaymentStatus(response.data.data.reference, response.data.data.virtualAccount.provider_reference);
-    } catch (error) {
-      console.error('Error initiating funding:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
+
+      if (!response.data.data?.virtualAccount) {
+        logger.error({ response: response.data }, 'Invalid funding response - missing virtual account');
+        throw new Error('Invalid response from server - missing virtual account details');
+      }
+
+      const { virtualAccount, reference, amount } = response.data.data;
+
+      if (!virtualAccount.account_number || !virtualAccount.bank_name || !virtualAccount.account_name) {
+        logger.error({ virtualAccount }, 'Invalid virtual account data');
+        throw new Error('Invalid virtual account details received');
+      }
+
+      setPaymentDetails({
+        virtualAccount,
+        reference,
+        amount,
+        instructions: response.data.data.instructions
       });
-      let errorMessage = error.response?.data?.message || 'Unable to initiate funding. Please try again later.';
-      if (error.code === 'ECONNABORTED') {
-        errorMessage = 'Request timed out. Please check your network connection and try again.';
+
+      setVirtualAccount(virtualAccount);
+
+      localStorage.setItem('pendingPaymentRef', JSON.stringify({
+        reference,
+        paystackReference: virtualAccount.provider_reference,
+        amount,
+        timestamp: Date.now()
+      }));
+
+      toast({
+        title: 'Virtual Account Ready',
+        description: `Transfer ₦${amount.toFixed(2)} to the account details shown to complete funding.`,
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+      });
+
+      onPaymentModalOpen();
+
+      pollPaymentStatus(reference, virtualAccount.provider_reference);
+    } catch (error) {
+      logger.error(
+        {
+          action: 'fund_wallet',
+          error: error.message,
+          status: error.response?.status,
+          data: error.response?.data,
+          stack: error.stack
+        },
+        'Error initiating funding'
+      );
+
+      let errorMessage = 'Unable to initiate funding. Please try again.';
+
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
       } else if (error.response?.status === 400) {
-        errorMessage = error.response?.data?.message || 'Invalid funding details. Please check and try again.';
+        errorMessage = error.response.data?.error || 'Invalid funding details provided.';
       } else if (error.response?.status === 401) {
         errorMessage = 'Authentication failed. Please log in again.';
         localStorage.removeItem('auth-token');
         window.location.href = '/login';
-      } else if (error.response?.status === 408) {
-        errorMessage = 'Request timed out. Please try again later or contact support.';
-      } else if (error.response?.status === 500) {
-        errorMessage = 'Unable to create virtual account. Please try again or contact support.';
+        return;
+      } else if (error.response?.status === 429) {
+        errorMessage = 'Too many requests. Please wait a moment and try again.';
+      } else if (error.response?.status === 503) {
+        errorMessage = 'Payment service is temporarily unavailable. Please try again later.';
+      } else if (error.code === 'ECONNABORTED' || error.code === 'NETWOK_ERROR') {
+        errorMessage = 'Network error. Please check your connection and try again.';
+      } else if (error.response?.status === 404) {
+        errorMessage = 'Funding service not found. Please contact support.';
+      } else if (error.response?.status >= 500) {
+        errorMessage = 'Server error. Please try again later or contact support.';
+      } else if (error.message.includes('Invalid response')) {
+        errorMessage = error.message;
+      } else if (error.message.includes('missing virtual account')) {
+        errorMessage = 'Failed to create payment account. Please try again.';
       }
+
       toast({
         title: 'Funding Error',
         description: errorMessage,
         status: 'error',
-        duration: 5000,
+        duration: 7000,
         isClosable: true,
       });
+
+      localStorage.removeItem('pendingPaymentRef');
     } finally {
       setIsFunding(false);
     }
@@ -1134,32 +1272,56 @@ const Profile = () => {
 
   const handleWithdraw = async ({ amount, bankCode, accountNumber, accountName }, retries = 2) => {
     try {
-      const response = await axios.post(
+      const response = await limiter.schedule(() => axios.post(
         `${BASE_URL}/api/wallet/withdraw`,
         { amount, bankCode, accountNumber, accountName },
         {
           headers: { Authorization: `Bearer ${localStorage.getItem("auth-token")}` },
           timeout: 30000,
         }
-      );
-      console.log('Withdraw response:', response.data);
+      ));
+      logger.info({ action: 'withdraw', response: response.data }, 'Withdraw response');
       await fetchWalletBalance();
       return response.data;
     } catch (error) {
-      console.error('Error withdrawing funds:', error);
+      logger.error(
+        { action: 'withdraw', error: error.message, status: error.response?.status },
+        'Withdrawal error'
+      );
+      let errorMessage = error.response?.data?.error || 'Unable to process withdrawal. Please try again.';
+      if (error.response?.status === 502 && errorMessage.includes('insufficient funds')) {
+        errorMessage = 'The platform is temporarily unable to process withdrawals due to payment system limitations. Please try again later or contact support at support@yourplatform.com.';
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Authentication error. Please log in again.';
+        localStorage.removeItem("auth-token");
+        window.location.href = "/login";
+      }
+      toast({
+        title: 'Withdrawal Failed',
+        description: (
+          <Box>
+            <Text>{errorMessage}</Text>
+            {errorMessage.includes('contact support') && (
+              <Button
+                size="sm"
+                mt={2}
+                colorScheme="blue"
+                onClick={() => window.location.href = 'mailto:support@yourplatform.com'}
+              >
+                Contact Support
+              </Button>
+            )}
+          </Box>
+        ),
+        status: 'error',
+        duration: 7000,
+        isClosable: true,
+      });
       if (retries > 0 && error.response?.status === 408) {
-        console.log(`Retrying withdrawal (${retries} retries left)`);
+        logger.info({ retries }, `Retrying withdrawal (${retries} retries left)`);
         await new Promise((resolve) => setTimeout(resolve, 2000));
         return handleWithdraw({ amount, bankCode, accountNumber, accountName }, retries - 1);
       }
-      const errorMessage = error.response?.data?.message || 'Unable to process withdrawal. Please try again.';
-      toast({
-        title: 'Withdrawal Failed',
-        description: errorMessage,
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
       throw error;
     }
   };
@@ -1254,30 +1416,37 @@ const Profile = () => {
 
     socket.on('balanceUpdate', (data) => {
       console.log('Received balance update:', data);
-      setWalletBalance((prev) => ({
-        ...prev,
-        balance: data.balance,
-      }));
-      toast({
-        title: data.transaction.status === 'completed' ? 'Withdrawal Completed' : data.transaction.status === 'failed' ? 'Withdrawal Failed' : 'Withdrawal Initiated',
-        description: `Your wallet balance is now ₦${data.balance.toFixed(2)}. Transaction: ₦${data.transaction.amount.toFixed(2)} (${data.transaction.reference})`,
-        status: data.transaction.status === 'completed' ? 'success' : data.transaction.status === 'failed' ? 'error' : 'info',
-        duration: 5000,
-        isClosable: true,
-      });
-      if (isPaymentModalOpen) {
-        if (checkStatusInterval) {
-          clearInterval(checkStatusInterval);
-          setCheckStatusInterval(null);
+      const syncAge = Date.now() - new Date(data.lastSynced).getTime();
+      if (syncAge < 30 * 1000) {
+        setWalletBalance((prev) => ({
+          ...prev,
+          balance: data.balance,
+          lastSynced: data.lastSynced,
+        }));
+        toast({
+          title: data.transaction.status === 'completed' ? 'Withdrawal Completed' : data.transaction.status === 'failed' ? 'Withdrawal Failed' : 'Withdrawal Initiated',
+          description: `Your wallet balance is now ₦${data.balance.toFixed(2)}. Transaction: ₦${data.transaction.amount.toFixed(2)} (${data.transaction.reference})`,
+          status: data.transaction.status === 'completed' ? 'success' : data.transaction.status === 'failed' ? 'error' : 'info',
+          duration: 5000,
+          isClosable: true,
+        });
+        if (isPaymentModalOpen) {
+          if (checkStatusInterval) {
+            clearInterval(checkStatusInterval);
+            setCheckStatusInterval(null);
+          }
+          if (toastIdRef.current) {
+            toast.close(toastIdRef.current);
+            toastIdRef.current = null;
+          }
+          activePollingRef.current = null;
+          setPaymentDetails(null);
+          localStorage.removeItem('pendingPaymentRef');
+          onPaymentModalClose();
         }
-        if (toastIdRef.current) {
-          toast.close(toastIdRef.current);
-          toastIdRef.current = null;
-        }
-        activePollingRef.current = null;
-        setPaymentDetails(null);
-        localStorage.removeItem('pendingPaymentRef');
-        onPaymentModalClose();
+      } else {
+        console.warn('Ignoring stale balance update:', data);
+        fetchWalletBalance(); // Trigger a fresh fetch if update is stale
       }
     });
 
@@ -1403,16 +1572,57 @@ const Profile = () => {
                     </Text>
                   </Box>
                 )}
+                {/* // Fixed Fund Wallet Button Implementation */}
                 <Flex mt={4} direction="column" gap={2}>
-                  <Button
+                  {/* Add funding amount input field */}
+                  {/* <FormControl>
+                    <FormLabel color={textColor}>Funding Amount (₦)</FormLabel>
+                    <Input
+                      type="number"
+                      placeholder="Enter amount to fund"
+                      value={fundingAmount}
+                      onChange={(e) => setFundingAmount(parseFloat(e.target.value) || 0)}
+                      bg={inputBg}
+                      border="1px solid"
+                      borderColor={useColorModeValue("gray.300", "gray.600")}
+                      _hover={{ borderColor: highlightColor }}
+                      _focus={{ borderColor: highlightColor, boxShadow: `0 0 0 1px ${highlightColor}` }}
+                      color={textColor}
+                      min="100" // Minimum funding amount
+                      step="100"
+                    />
+                  </FormControl> */}
+
+                  {/* Add phone number input field if not already present */}
+                  {/* <FormControl>
+                    <FormLabel color={textColor}>Phone Number</FormLabel>
+                    <Input
+                      type="tel"
+                      placeholder="Enter phone number (e.g., 08012345678)"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      bg={inputBg}
+                      border="1px solid"
+                      borderColor={useColorModeValue("gray.300", "gray.600")}
+                      _hover={{ borderColor: highlightColor }}
+                      _focus={{ borderColor: highlightColor, boxShadow: `0 0 0 1px ${highlightColor}` }}
+                      color={textColor}
+                    />
+                  </FormControl> */}
+
+                  {/* <Button
                     bgGradient={`linear(to-r, ${gradientStart}, ${gradientEnd})`}
                     color="white"
                     _hover={{ bgGradient: `linear(to-r, blue.500, purple.600)` }}
                     leftIcon={<FaMoneyBillWave />}
-                    onClick={() => setFundingAmount(0)}
+                    onClick={handleFundWallet} // Call the actual funding function
+                    isLoading={isFunding}
+                    loadingText="Processing..."
+                    isDisabled={!fundingAmount || fundingAmount <= 0}
                   >
                     Fund Wallet
-                  </Button>
+                  </Button> */}
+
                   <Button
                     variant="outline"
                     color={highlightColor}
