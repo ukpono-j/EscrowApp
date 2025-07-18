@@ -21,14 +21,13 @@ import {
   Spinner,
 } from "@chakra-ui/react";
 import { BsChevronDown } from "react-icons/bs";
-import axios from "axios";
-import Logo from "../../assets/logo1.png"; // Adjust path as needed
+import axios from "../../utils/axiosConfig";
+import Logo from "../../assets/logo1.png";
 import ThemeToggle from "../../ThemeToggle";
 import "./Sidebar.css";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 
-// Error Boundary to catch runtime errors
 class SidebarErrorBoundary extends React.Component {
   state = { hasError: false };
 
@@ -48,7 +47,6 @@ class SidebarErrorBoundary extends React.Component {
   }
 }
 
-// Utility function to validate user response
 const validateUserResponse = (responseData) => {
   if (responseData.success && responseData.data?.user) {
     return responseData.data.user;
@@ -63,17 +61,15 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
   const toast = useToast();
   const navigate = useNavigate();
   const [userName, setUserName] = useState("");
-  const [isUserLoading, setIsUserLoading] = useState(true); // Added for loading state
+  const [isUserLoading, setIsUserLoading] = useState(true);
   const [settingLinks, setSettingLinks] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
 
-  // Use Chakra UI's color mode for consistent theming
   const bgColor = useColorModeValue("white", "#0F172A");
   const borderColor = useColorModeValue("whiteAlpha.100", "whiteAlpha.100");
 
-  // Check screen size and update states
   useEffect(() => {
     const checkScreenSize = () => {
       const mobileView = window.innerWidth < 768;
@@ -92,45 +88,26 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
     return () => window.removeEventListener("resize", checkScreenSize);
   }, []);
 
-  // Update active link on location change
   useEffect(() => {
     setActiveLink(location.pathname);
   }, [location.pathname]);
 
-  // Fetch user details
   useEffect(() => {
-    const token = localStorage.getItem("auth-token");
-    if (!token) {
-      console.warn("No auth token found, skipping user details fetch");
-      handleLogout();
-      return;
-    }
-    axios.defaults.headers.common["auth-token"] = token;
+    const verifyToken = async () => {
+      const token = localStorage.getItem("access-token");
+      if (!token) {
+        console.warn("No access token found, redirecting to login");
+        handleLogout();
+        return;
+      }
 
-    setIsUserLoading(true); // Start loading
-    axios
-      .get(`${BASE_URL}/api/users/user-details`)
-      .then((response) => {
+      setIsUserLoading(true);
+      try {
+        const response = await axios.get(`${BASE_URL}/api/users/user-details`);
         console.log("User details response:", response.data);
-        try {
-          const user = validateUserResponse(response.data);
-          setUserName(user.firstName || "User");
-        } catch (error) {
-          console.error("Error validating user details:", {
-            message: error.message,
-            response: response.data,
-          });
-          toast({
-            title: "Error fetching user details",
-            description: error.message || "Invalid user data received",
-            status: "error",
-            duration: 3000,
-            isClosable: true,
-          });
-          setUserName("User");
-        }
-      })
-      .catch((error) => {
+        const user = validateUserResponse(response.data);
+        setUserName(user.firstName || "User");
+      } catch (error) {
         console.error("Error fetching user details:", {
           message: error.message,
           response: error.response?.data,
@@ -147,13 +124,13 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
           handleLogout();
         }
         setUserName("User");
-      })
-      .finally(() => {
-        setIsUserLoading(false); // Stop loading
-      });
+      } finally {
+        setIsUserLoading(false);
+      }
+    };
+    verifyToken();
   }, [toast, navigate]);
 
-  // Notify parent of collapse state changes
   useEffect(() => {
     onCollapseChange?.(isMobile ? isSidebarVisible : isCollapsed);
   }, [isCollapsed, isSidebarVisible, isMobile, onCollapseChange]);
@@ -196,15 +173,15 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("auth-token");
-    delete axios.defaults.headers.common["auth-token"];
+    localStorage.removeItem("access-token");
+    localStorage.removeItem("refresh-token");
     toast({
       title: "Logout Successful!",
       status: "success",
       duration: 2000,
       isClosable: true,
     });
-    navigate("/");
+    navigate("/login");
   };
 
   const getInitials = (name) => {
@@ -223,7 +200,6 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
   );
 
   const MobileToggle = () => {
-    // Only render on mobile when sidebar is hidden
     if (!isMobile || isSidebarVisible) return null;
     return (
       <button

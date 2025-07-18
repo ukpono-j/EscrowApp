@@ -6,7 +6,7 @@ const ContactUs = () => {
   return (
     <div className="">
       <Navbar />
-      <div className="sm:pt-[100px] pt-[150px] bg-[#101629] sm:pb-[40px] pb-[70px] text-[#fff] font-[Poppins] sm:flex items-center justify-between md:pl-20 pl-5 pr-5  md:pr-28  font-[Poppins] border border-black h-[auto]">
+      <div className="sm:pt-[100px] pt-[150px] bg-[#101629] sm:pb-[40px] pb-[70px] text-[#fff] sm:flex items-center justify-between md:pl-20 pl-5 pr-5  md:pr-28 border border-black h-[auto]">
         <div className="sm:w-[50%] w-[100%]">
           <h3 className="text-[17px]  font-bold">Contact</h3>
           <h1 className="text-[42px] text-[#fff] font-bold">Get in touch</h1>

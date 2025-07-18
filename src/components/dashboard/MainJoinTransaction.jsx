@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import axios from "../../utils/axiosConfig";
 import { useNavigate } from "react-router-dom";
 import {
   Box,
@@ -66,7 +66,7 @@ const MainJoinTransaction = () => {
     e.preventDefault();
     try {
       setIsLoading(true);
-      const token = localStorage.getItem("auth-token");
+      const token = localStorage.getItem("access-token");
 
       if (!token) {
         setResponseMessage("You must be logged in to join a transaction");
@@ -76,7 +76,7 @@ const MainJoinTransaction = () => {
       }
 
       const response = await axios.get(`${BASE_URL}/api/transactions/${transactionId}`, {
-        headers: { "auth-token": token },
+        headers: { "access-token": token },
       });
 
       if (!response.data.success) {
@@ -104,11 +104,11 @@ const MainJoinTransaction = () => {
   const handleAccept = async () => {
     try {
       setIsLoading(true);
-      const token = localStorage.getItem("auth-token");
+      const token = localStorage.getItem("access-token");
       const response = await axios.post(
         `${BASE_URL}/api/transactions/join-transaction`,
         { id: transactionId },
-        { headers: { "auth-token": token } }
+        { headers: { "access-token": token } }
       );
 
       if (!response.data.success) {
@@ -151,7 +151,7 @@ const MainJoinTransaction = () => {
 
     try {
       setIsLoading(true);
-      const token = localStorage.getItem("auth-token");
+      const token = localStorage.getItem("access-token");
       const response = await axios.post(
         `${BASE_URL}/api/transactions/accept-and-update`,
         {
@@ -159,7 +159,7 @@ const MainJoinTransaction = () => {
           description: editDetails.description,
           price: editDetails.price,
         },
-        { headers: { "auth-token": token } }
+        { headers: { "access-token": token } }
       );
 
       if (!response.data.success) {
@@ -195,11 +195,11 @@ const MainJoinTransaction = () => {
   const handleReject = async () => {
     try {
       setIsLoading(true);
-      const token = localStorage.getItem("auth-token");
+      const token = localStorage.getItem("access-token");
       const response = await axios.post(
         `${BASE_URL}/api/transactions/reject-transaction`,
         { id: transactionId },
-        { headers: { "auth-token": token } }
+        { headers: { "access-token": token } }
       );
 
       if (!response.data.success) {

@@ -3,6 +3,8 @@ import ReactDOM from "react-dom/client";
 import App from "./App.jsx";
 import { ChakraProvider, ColorModeScript } from "@chakra-ui/react";
 import { BrowserRouter } from "react-router-dom";
+import { Provider } from 'react-redux';
+import { store } from './store';
 import theme from "./ThemeContext.jsx";
 import "./index.css";
 
@@ -61,13 +63,15 @@ if (typeof window !== "undefined" && !window.ethereum) {
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
   <AppErrorBoundary>
-    <BrowserRouter>
-      <React.StrictMode>
-        <ChakraProvider theme={theme}>
-          <ColorModeScript initialColorMode={theme.config.initialColorMode} />
-          <App />
-        </ChakraProvider>
-      </React.StrictMode>
-    </BrowserRouter>
+    <Provider store={store}>
+      <BrowserRouter>
+        <React.StrictMode>
+          <ChakraProvider theme={theme}>
+            <ColorModeScript initialColorMode={theme.config.initialColorMode} />
+            <App />
+          </ChakraProvider>
+        </React.StrictMode>
+      </BrowserRouter>
+    </Provider>
   </AppErrorBoundary>
 );

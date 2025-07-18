@@ -169,6 +169,7 @@
   
   .welcome-heading {
     position: relative;
+      font-family: "Bricolage Grotesque", sans-serif;
   }
   
   .welcome-heading::after {

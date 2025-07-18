@@ -1,10 +1,8 @@
 .hero-section {
   position: relative;
   overflow: hidden;
-  font-family: "Raleway", sans-serif !important;
 }
 
-/* Remove default styles that might interfere */
 .hero-section a {
   text-decoration: none;
 }
@@ -12,126 +10,134 @@
 /* Animation definitions */
 @keyframes moveUpDown {
   0% { transform: translateY(0); }
-  100% { transform: translateY(-15px); }
+  100% { transform: translateY(-10px); }
 }
 
 @keyframes slideInLeft {
-  0% { transform: translateX(-30px); opacity: 0; }
+  0% { transform: translateX(-20px); opacity: 0; }
   100% { transform: translateX(0); opacity: 1; }
 }
 
 @keyframes slideInRight {
-  0% { transform: translateX(30px); opacity: 0; }
+  0% { transform: translateX(20px); opacity: 0; }
   100% { transform: translateX(0); opacity: 1; }
 }
 
 @keyframes fadeInUp {
-  0% { transform: translateY(20px); opacity: 0; }
+  0% { transform: translateY(15px); opacity: 0; }
   100% { transform: translateY(0); opacity: 1; }
 }
 
 @keyframes pulse {
   0% { transform: scale(1); opacity: 0.5; }
-  70% { transform: scale(2); opacity: 0; }
+  70% { transform: scale(1.8); opacity: 0; }
   100% { transform: scale(1); opacity: 0; }
 }
 
 @keyframes glow {
-  0%, 100% { box-shadow: 0 0 15px rgba(179, 137, 57, 0.6); }
-  50% { box-shadow: 0 0 25px rgba(179, 137, 57, 0.9); }
+  0%, 100% { box-shadow: 0 0 10px rgba(179, 137, 57, 0.5); }
+  50% { box-shadow: 0 0 20px rgba(179, 137, 57, 0.8); }
 }
 
-/* Apply animations to elements */
+/* Apply animations */
 .moving-content {
-  animation: moveUpDown 4s ease-in-out infinite alternate;
+  animation: moveUpDown 3.5s ease-in-out infinite alternate;
 }
 
 .platform-showcase {
-  animation: fadeInUp 1s ease-out forwards;
+  animation: fadeInUp 0.8s ease-out forwards;
 }
 
 .feature-badge.badge-left {
-  animation: slideInLeft 0.7s ease-out 0.3s forwards;
+  animation: slideInLeft 0.6s ease-out 0.2s forwards;
 }
 
 .feature-badge.badge-right {
-  animation: slideInRight 0.7s ease-out 0.6s forwards;
+  animation: slideInRight 0.6s ease-out 0.4s forwards;
 }
 
 .stat-card {
-  animation: fadeInUp 0.5s ease-out forwards;
+  animation: fadeInUp 0.4s ease-out forwards;
   animation-fill-mode: both;
 }
 
-.stat-card:nth-child(1) {
-  animation-delay: 0.4s;
-}
-
-.stat-card:nth-child(2) {
-  animation-delay: 0.6s;
-}
-
-.stat-card:nth-child(3) {
-  animation-delay: 0.8s;
-}
-
-.stat-card:nth-child(4) {
-  animation-delay: 1s;
-}
+.stat-card:nth-child(1) { animation-delay: 0.3s; }
+.stat-card:nth-child(2) { animation-delay: 0.4s; }
+.stat-card:nth-child(3) { animation-delay: 0.5s; }
+.stat-card:nth-child(4) { animation-delay: 0.6s; }
 
 .glow-button {
-  animation: glow 3s infinite;
+  animation: glow 2.5s infinite;
 }
 
-/* For mobile-first design */
-@media (max-width: 768px) {
+/* Responsive design */
+@media (max-width: 1024px) {
   .hero-section {
     text-align: center;
   }
-  
+
   .feature-badge.badge-left {
     left: 10px;
   }
-  
+
   .feature-badge.badge-right {
     right: 10px;
   }
 }
 
-/* Improve focus states for accessibility */
-.hero-section button:focus,
-.hero-section a:focus {
-  outline: 2px solid #B38939;
-  outline-offset: 2px;
-}
-
-/* Add smooth transition for all elements */
-.hero-section * {
-  transition: all 0.3s ease;
-}
-
-/* High-contrast mode support */
-@media (forced-colors: active) {
-  .hero-section button {
-    border: 2px solid currentColor;
+@media (max-width: 768px) {
+  .hero-section {
+    padding: 60px 16px;
   }
-}
 
-/* Additional hover effects for buttons */
-.hero-section button:active {
-  transform: translateY(1px);
-}
-
-/* Fix for any potential animation issues on mobile */
-@media (max-width: 480px) {
   .moving-content {
     animation-duration: 3s;
   }
-  
+
+  .feature-badge {
+    transform: scale(0.9);
+  }
+
   .stat-card {
     animation-delay: 0.2s;
   }
 }
 
-/* Dark mode specific adjustments handled by Chakra UI props */
-/* No need for additional CSS for dark mode as we're using Chakra's useColorMode */
+@media (max-width: 480px) {
+  .hero-section {
+    padding: 40px 12px;
+  }
+
+  .feature-badge {
+    padding: 8px;
+  }
+
+  .pulse-indicator {
+    bottom: 15%;
+    right: 10%;
+  }
+}
+
+/* Accessibility */
+.hero-section button:focus,
+.hero-section a:focus {
+  outline: 3px solid #B38939;
+  outline-offset: 4px;
+}
+
+.hero-section button:active {
+  transform: translateY(1px);
+}
+
+/* High-contrast mode */
+@media (forced-colors: active) {
+  .hero-section button,
+  .hero-section a {
+    border: 2px solid currentColor;
+  }
+}
+
+/* Smooth transitions */
+.hero-section * {
+  transition: all 0.3s ease;
+}

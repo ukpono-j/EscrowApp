@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios from "../utils/axiosConfig";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Buffer } from "buffer";
@@ -28,7 +28,7 @@ const SetAvatar = () => {
 
   useEffect(() => {
     // Retrieve the token from localStorage when the component is mounted
-    const storedToken = localStorage.getItem("auth-token");
+    const storedToken = localStorage.getItem("access-token");
     if (storedToken) {
       setToken(storedToken);
     } else {
@@ -50,14 +50,14 @@ const SetAvatar = () => {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const token = localStorage.getItem("auth-token");
+        const token = localStorage.getItem("access-token");
         if (token) {
-          axios.defaults.headers.common["auth-token"] = token;
+          axios.defaults.headers.common["access-token"] = token;
         }
         // console.log("Token from localStorage:", token);
         const response = await axios.get(`${BASE_URL}/user-details`, {
           headers: {
-            "auth-token": token,
+            "access-token": token,
           },
         });
         // console.log(response.data);

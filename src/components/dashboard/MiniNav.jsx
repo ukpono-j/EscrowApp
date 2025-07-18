@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { AiFillMessage } from "react-icons/ai";
 import { MdClose, MdMenu, MdNotifications } from "react-icons/md";
 import { Link } from "react-router-dom";
-import axios from "axios";
+import axios from "../../utils/axiosConfig";
 import Logo from "../../assets/logo3.png";
 import Logo2 from "../../assets/logo-m.png";
 import Menu from "./Menu";
@@ -31,11 +31,11 @@ const MiniNav = () => {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const token = localStorage.getItem("auth-token");
-        if (token) axios.defaults.headers.common["auth-token"] = token;
+        const token = localStorage.getItem("access-token");
+        if (token) axios.defaults.headers.common["access-token"] = token;
 
         const response = await axios.get(`${BASE_URL}/api/users/user-details`, {
-          headers: { "auth-token": token },
+          headers: { "access-token": token },
         });
         setUserData(response.data);
       } catch (error) {
@@ -48,9 +48,9 @@ const MiniNav = () => {
     const fetchNotificationCount = async (retries = 3, delay = 1000) => {
       for (let attempt = 1; attempt <= retries; attempt++) {
         try {
-          const token = localStorage.getItem("auth-token");
+          const token = localStorage.getItem("access-token");
           const response = await axios.get(`${BASE_URL}/api/notifications/notifications`, {
-            headers: { "auth-token": token },
+            headers: { "access-token": token },
             timeout: 30000,
           });
           if (response.data.success) {

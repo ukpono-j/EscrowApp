@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 const BASE_URL = import.meta.env.VITE_BASE_URL ;
 import axios from "axios";
-import {formatCreatedAt } from "../../utility/DateTimeStramp"
+import {formatCreatedAt } from "../../utils/DateTimeStramp"
 
 const NotificationVerification = ({}) => {
   const [notifications, setNotifications] = useState([]);

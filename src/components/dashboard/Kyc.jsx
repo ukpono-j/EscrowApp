@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Sidebar from "./Sidebar";
 import BottomNav from "./BottomNav";
-import axios from "axios";
+import axios from "../../utils/axiosConfig";
 import { useToast, Box, Text, Spinner, Flex, VStack, HStack, Button, FormControl, FormLabel, Select, Input, Image, useColorModeValue, Heading, Badge } from "@chakra-ui/react";
 import { motion } from "framer-motion";
 import { FaUpload, FaCheck, FaIdCard, FaUser, FaCalendarAlt, FaFileAlt } from "react-icons/fa";
@@ -327,13 +327,13 @@ const Kyc = () => {
     const fetchKycStatus = async () => {
       try {
         setIsLoading(true);
-        const token = localStorage.getItem("auth-token");
+        const token = localStorage.getItem("access-token");
         if (token) {
-          axios.defaults.headers.common["auth-token"] = token;
+          axios.defaults.headers.common["access-token"] = token;
         }
         const response = await axios.get(`${BASE_URL}/api/kyc/kyc-details`, {
           headers: {
-            "auth-token": token,
+            "access-token": token,
           },
         });
 
@@ -387,7 +387,7 @@ const Kyc = () => {
 
     try {
       setIsSubmitting(true);
-      const token = localStorage.getItem("auth-token");
+      const token = localStorage.getItem("access-token");
 
       const formDataToSend = new FormData();
       formDataToSend.append("documentType", formData.documentType);
@@ -401,7 +401,7 @@ const Kyc = () => {
 
       await axios.post(`${BASE_URL}/api/kyc/submit-kyc`, formDataToSend, {
         headers: {
-          "auth-token": token,
+          "access-token": token,
           "Content-Type": "multipart/form-data",
         },
       });

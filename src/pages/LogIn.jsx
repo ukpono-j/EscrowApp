@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
+import axios from "../utils/axiosConfig";
 import {
   useToast, Box, Text, Input, Button, FormControl, FormLabel,
   VStack, Flex, Container, Heading, InputGroup, InputRightElement,
@@ -10,6 +10,8 @@ import { motion } from "framer-motion";
 import { FiEye, FiEyeOff, FiArrowRight, FiMail, FiLock } from "react-icons/fi";
 import Logo from "../assets/logo1.png";
 import "./Login.css";
+import { useDispatch } from 'react-redux';
+import { setUserDetails } from '../store/slices/userSlice';
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 
@@ -25,14 +27,13 @@ const Login = () => {
   const [mounted, setMounted] = useState(false);
   const navigate = useNavigate();
   const toast = useToast();
+  const dispatch = useDispatch();
 
-  // Set mounted state for animations
   useEffect(() => {
     setMounted(true);
     return () => setMounted(false);
   }, []);
 
-  // Color mode values
   const bgColor = useColorModeValue("white", "gray.900");
   const formBgColor = useColorModeValue("gray.50", "gray.800");
   const textColor = useColorModeValue("gray.800", "white");
@@ -40,7 +41,6 @@ const Login = () => {
   const buttonBgColor = useColorModeValue("#031420", "#051e2f");
   const buttonHoverBgColor = "#B38939";
 
-  // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -64,7 +64,7 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-  
+
     if (!email || !password) {
       toast({
         title: "Missing fields",
@@ -77,24 +77,28 @@ const Login = () => {
       setIsLoading(false);
       return;
     }
-  
+
     const maxRetries = 2;
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
+        console.log(`Login attempt ${attempt} for email: ${email}`);
         const response = await axios.post(`${BASE_URL}/api/auth/login`, {
           email,
           password,
         }, {
-          timeout: 15000,
+          timeout: 30000,
         });
-        const { success, message, token, user } = response.data;
-  
-        if (success && message === "Login successful") {
-          console.log('Storing JWT token:', token ? '[REDACTED]' : 'No token');
-          localStorage.setItem("auth-token", token);
-          console.log('JWT token stored in localStorage:', localStorage.getItem('auth-token') ? '[REDACTED]' : 'Not found');
-          axios.defaults.headers.common["auth-token"] = token;
-  
+
+        console.log("Login response:", response.data);
+
+        if (response.data?.success && response.data?.message === "Login successful") {
+          const { accessToken, refreshToken, user } = response.data;
+          console.log("Storing tokens:", { accessToken, refreshToken });
+          localStorage.setItem("access-token", accessToken);
+          localStorage.setItem("refresh-token", refreshToken);
+          axios.defaults.headers.common["Authorization"] = `Bearer ${accessToken}`; // Use Bearer standard
+          dispatch(setUserDetails(user));
+
           toast({
             title: "Login Successful",
             description: "Welcome back!",
@@ -103,20 +107,19 @@ const Login = () => {
             isClosable: true,
             position: "top",
           });
-  
-          setTimeout(() => {
-            navigate("/dashboard");
-          }, 500);
+
+          console.log("Navigating to /dashboard");
+          navigate("/dashboard");
           break;
         } else {
-          throw new Error("Unexpected response from server");
+          throw new Error(response.data?.error || "Unexpected response format");
         }
       } catch (error) {
-        console.error('Login error (Attempt ' + attempt + '):', error.response?.data || error);
+        console.error(`Login error (Attempt ${attempt}):`, error);
         if (attempt === maxRetries) {
-          let errorMessage = "An unexpected error occurred. Please try again.";
           let errorTitle = "Login Failed";
-  
+          let errorMessage = "An unexpected error occurred. Please try again.";
+
           if (error.response) {
             if (error.response.status === 400) {
               errorTitle = "Invalid Input";
@@ -124,9 +127,7 @@ const Login = () => {
             } else if (error.response.status === 404) {
               errorTitle = "User Not Found";
               errorMessage = "No account exists with this email. Would you like to register?";
-              setTimeout(() => {
-                navigate("/register", { state: { email } });
-              }, 3000);
+              navigate("/register", { state: { email } });
             } else if (error.response.status === 401) {
               errorTitle = "Invalid Credentials";
               errorMessage = "Incorrect email or password. Try resetting your password if you forgot it.";
@@ -136,13 +137,16 @@ const Login = () => {
             } else {
               errorMessage = error.response.data?.error || errorMessage;
             }
+          } else if (error.code === "ECONNABORTED") {
+            errorTitle = "Connection Timeout";
+            errorMessage = "The server took too long to respond. Please check your connection and try again.";
           } else if (error.request) {
             errorTitle = "Connection Error";
             errorMessage = "Unable to connect to the server. Please check your internet connection or try again later.";
           } else {
             errorMessage = error.message || errorMessage;
           }
-  
+
           toast({
             title: errorTitle,
             description: (
@@ -151,7 +155,7 @@ const Login = () => {
                 {error.response?.status === 401 && (
                   <>
                     {" "}
-                    <Link to="/forgot-password" style={{ color: accentColor, textDecoration: "underline" }}>
+                    <Link to="/forgot-password" style={{ color: "#B38939", textDecoration: "underline" }}>
                       Reset Password
                     </Link>
                   </>
@@ -164,11 +168,15 @@ const Login = () => {
             position: "top",
           });
         }
+        if (attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+        }
       } finally {
-        if (attempt < maxRetries) await new Promise(resolve => setTimeout(resolve, 2000));
+        if (attempt === maxRetries) {
+          setIsLoading(false);
+        }
       }
     }
-    setIsLoading(false);
   };
 
   return (
@@ -179,7 +187,6 @@ const Login = () => {
       position="relative"
       overflow="hidden"
     >
-      {/* Animated Background Elements */}
       <Box className="background-shapes">
         <MotionBox
           position="absolute"
@@ -246,7 +253,6 @@ const Login = () => {
         />
       </Box>
 
-      {/* Main Content Container */}
       <MotionContainer
         maxW="container.xl"
         height="100vh"
@@ -268,7 +274,6 @@ const Login = () => {
           gap={{ base: 8, lg: 12 }}
           variants={itemVariants}
         >
-          {/* Left Column - Brand Message */}
           <MotionBox
             flex="1"
             display={{ base: "none", lg: "flex" }}
@@ -318,7 +323,6 @@ const Login = () => {
             </MotionBox>
           </MotionBox>
 
-          {/* Right Column - Login Form */}
           <MotionBox
             flex="1"
             width={{ base: "100%", sm: "90%", md: "450px" }}
@@ -335,7 +339,6 @@ const Login = () => {
                 overflow="hidden"
                 className="form-container"
               >
-                {/* Form Header - Mobile Version */}
                 <VStack
                   spacing={1}
                   mb={6}
@@ -350,7 +353,6 @@ const Login = () => {
                   </Text>
                 </VStack>
 
-                {/* Login Form */}
                 <form onSubmit={handleSubmit}>
                   <VStack spacing={5}>
                     <FormControl isRequired>
@@ -458,7 +460,6 @@ const Login = () => {
                   </VStack>
                 </form>
 
-                {/* Decorative accent line */}
                 <Box
                   position="absolute"
                   bottom="0"
@@ -470,7 +471,6 @@ const Login = () => {
               </Box>
             </ScaleFade>
 
-            {/* Register Link */}
             <MotionBox
               textAlign="center"
               mt={6}

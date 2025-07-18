@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { Box, useBreakpointValue } from "@chakra-ui/react";
+import { Box, useBreakpointValue, useToast } from "@chakra-ui/react";
+import { useNavigate } from "react-router-dom";
+import axios from "../utils/axiosConfig";
 import Sidebar from "../components/dashboard/Sidebar";
 import MyTransaction from "../components/dashboard/MyTransaction";
 import Profile from "../components/dashboard/Profile";
@@ -10,6 +12,8 @@ const UserDashboard = () => {
   const [showToggleContainer, setShowToggleContainer] = useState(true);
   const [showProfile, setShowProfile] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const navigate = useNavigate();
+  const toast = useToast();
 
   const handleShowProfile = () => {
     setShowToggleContainer(false);
@@ -21,15 +25,46 @@ const UserDashboard = () => {
     setShowProfile(false);
   };
 
-  // Function to handle sidebar collapse state changes
   const handleSidebarCollapseChange = (isCollapsed) => {
     setIsSidebarCollapsed(isCollapsed);
   };
 
-  // Use Chakra UI's breakpoint utility to determine mobile vs desktop
-  const isMobile = useBreakpointValue({ base: true, md: false });
+  useEffect(() => {
+    const verifyToken = async () => {
+      const token = localStorage.getItem("access-token");
+      if (!token) {
+        console.warn("No access token found, redirecting to login");
+        navigate("/login");
+        return;
+      }
 
-  // Calculate main content width based on sidebar collapse state
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_BASE_URL}/api/users/user-details`);
+        console.log("User details response:", response.data);
+      } catch (error) {
+        console.error("Token verification failed:", {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+        });
+        if (error.response?.status === 401) {
+          toast({
+            title: "Session Expired",
+            description: "Please log in again.",
+            status: "error",
+            duration: 5000,
+            isClosable: true,
+          });
+          localStorage.removeItem("access-token");
+          localStorage.removeItem("refresh-token");
+          navigate("/login");
+        }
+      }
+    };
+    verifyToken();
+  }, [navigate, toast]);
+
+  const isMobile = useBreakpointValue({ base: true, md: false });
   const mainContentWidth = useBreakpointValue({
     base: "100%",
     md: isSidebarCollapsed ? "calc(100% - 80px)" : "calc(100% - 280px)",
@@ -42,7 +77,6 @@ const UserDashboard = () => {
         onShowToggleComponent={handleMyTransaction}
         onCollapseChange={handleSidebarCollapseChange}
       />
-      {/* Desktop view */}
       <Box
         display={{ base: "none", md: "block" }}
         position="fixed"
@@ -56,7 +90,7 @@ const UserDashboard = () => {
       >
         <Box h="full">
           <Box display={showToggleContainer ? "block" : "none"}>
-            <MiniNav />
+            {/* <MiniNav /> */}
             <Box p={5}>
               <MyTransaction />
             </Box>
@@ -66,7 +100,6 @@ const UserDashboard = () => {
           </Box>
         </Box>
       </Box>
-      {/* Mobile view */}
       <Box
         display={{ base: "block", md: "none" }}
         w="full"

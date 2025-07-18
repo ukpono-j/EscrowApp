@@ -27,8 +27,8 @@ import {
   MdNotifications
 } from "react-icons/md";
 import { motion } from "framer-motion";
-import axios from "axios";
-import { formatCreatedAt } from "../../utility/DateTimeStramp";
+import axios from "../../utils/axiosConfig";
+import { formatCreatedAt } from "../../utils/DateTimeStramp";
 
 // Use MotionBox with framer-motion
 const MotionBox = motion(Box);
@@ -73,7 +73,7 @@ const NotificationComponent = () => {
       try {
         const res = await axios.get(`${BASE_URL}/api/notifications/notifications`, {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('auth-token')}`,
+            Authorization: `Bearer ${localStorage.getItem('access-token')}`,
           },
         });
         console.log('Notifications response:', res.data);
@@ -133,7 +133,7 @@ const NotificationComponent = () => {
     try {
       await axios.delete(`${BASE_URL}/api/notifications/notifications/${id}`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('auth-token')}`,
+          Authorization: `Bearer ${localStorage.getItem('access-token')}`,
         },
       });
       setNotifications((prev) => prev.filter((n) => n._id !== id));
@@ -160,7 +160,7 @@ const NotificationComponent = () => {
         { status: newStatus },
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('auth-token')}`,
+            Authorization: `Bearer ${localStorage.getItem('access-token')}`,
           },
         }
       );
@@ -200,7 +200,7 @@ const NotificationComponent = () => {
         { isRead: true },
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('auth-token')}`,
+            Authorization: `Bearer ${localStorage.getItem('access-token')}`,
           },
         }
       );

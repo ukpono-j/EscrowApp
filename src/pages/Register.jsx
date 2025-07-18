@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
+import axios from "../utils/axiosConfig";
 import {
   useToast, Box, Text, Input, Button, FormControl, FormLabel,
   VStack, HStack, Flex, Container, Heading, InputGroup, InputRightElement,
@@ -211,7 +211,7 @@ const Register = () => {
       const { token, wallet } = response.data;
 
       // Store token
-      localStorage.setItem('auth-token', token);
+      localStorage.setItem('access-token', token);
 
       // Prepare success message with virtual account details
       let successMessage = "Your account and wallet have been created. Redirecting to your dashboard...";
@@ -591,9 +591,9 @@ const Register = () => {
                       <FormErrorMessage>{errors.email}</FormErrorMessage>
                     </FormControl>
 
-                    <FormControl isInvalid={!!errors.phoneNumber}>
+                    <FormControl isRequired isInvalid={!!errors.phoneNumber}>
                       <FormLabel fontSize="sm" color="gray.300">
-                        Phone Number (Optional)
+                        Phone Number
                       </FormLabel>
                       <InputGroup size={{ base: "md", md: "md" }}>
                         <InputLeftElement

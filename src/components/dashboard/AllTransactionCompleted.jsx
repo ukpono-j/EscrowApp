@@ -2,13 +2,13 @@ import React, { useState } from "react";
 import { PiCurrencyNgnDuotone } from "react-icons/pi";
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 import { useToast } from "@chakra-ui/react";
-import { formatCreatedAt } from "../../utility/DateTimeStramp";
+import { formatCreatedAt } from "../../utils/DateTimeStramp";
 import "./AllTransactionCompleted.css";
 import PaystackPop from "@paystack/inline-js";
 import { MdMarkChatUnread } from "react-icons/md";
 import { BsFillChatFill } from "react-icons/bs";
 import { Link } from "react-router-dom";
-import axios from "axios";
+import axios from "../../utils/axiosConfig";
 import { Tooltip } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom"; // Import useNavigate
 
@@ -65,14 +65,14 @@ const AllTransactionCompleted = ({
       paymentBank: paymentDetails.paymentBank,
       onSuccess(transaction) {
         try {
-          const token = localStorage.getItem("auth-token");
+          const token = localStorage.getItem("access-token");
 
           const response = axios.post(
             `${BASE_URL}/api/transactions/update-payment-status`,
             { transactionId: transactionId, paymentStatus: "paid" },
             {
               headers: {
-                "auth-token": token,
+                "access-token": token,
               },
             }
           );
@@ -102,7 +102,7 @@ const AllTransactionCompleted = ({
         axios
           .post(`${BASE_URL}/notifications`, newNotification, {
             headers: {
-              "auth-token": token,
+              "access-token": token,
             },
           })
           .then((notificationResponse) => {
@@ -151,7 +151,7 @@ const AllTransactionCompleted = ({
 
 
   const handleConfirmReceipt = async (transactionId) => {
-    const token = localStorage.getItem("auth-token");
+    const token = localStorage.getItem("access-token");
 
     try {
       // Make a POST request to the server to confirm the receipt
@@ -160,7 +160,7 @@ const AllTransactionCompleted = ({
         {},
         {
           headers: {
-            "auth-token": token,
+            "access-token": token,
           },
         }
       );
@@ -205,12 +205,12 @@ const AllTransactionCompleted = ({
   
   const handleChatClick = async (transactionId) => {
     
-    const token = localStorage.getItem("auth-token");
+    const token = localStorage.getItem("access-token");
     try {
       // Fetch transaction data from the server
       const transactionResponse = await axios.get(`${BASE_URL}/api/transactions/${transactionId}`, {
         headers: {
-          "auth-token": token,
+          "access-token": token,
         },
       });
   
@@ -239,7 +239,7 @@ const AllTransactionCompleted = ({
         { transactionId, userId },
         {
           headers: {
-            "auth-token": token,
+            "access-token": token,
           },
         }
       );

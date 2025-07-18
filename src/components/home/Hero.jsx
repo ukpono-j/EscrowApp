@@ -9,7 +9,7 @@ import {
   useColorMode,
   Image,
   Grid,
-  GridItem
+  GridItem,
 } from "@chakra-ui/react";
 import HeroImage from "../../assets/PhoneMockup (3).png";
 import "./Hero.css";
@@ -25,106 +25,96 @@ const Hero = () => {
       overflow="hidden"
       bg={isDark ? "gray.900" : "linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)"}
       color={isDark ? "white" : "gray.800"}
-      py={{ base: "130px", md: "140px", lg: "160px" }}
-      px={{ base: 0, md: 6, lg: 8 }}
+      py={{ base: "80px", sm: "100px", md: "120px", lg: "140px" }}
+      px={{ base: 4, sm: 6, md: 8 }}
     >
-      {/* Background elements */}
+      {/* Background pattern */}
       <Box
         position="absolute"
         top="0"
-        right="0"
+        left="0"
         width="100%"
         height="100%"
-        opacity="0.03"
+        opacity={isDark ? "0.05" : "0.03"}
         backgroundImage="url('data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')"
         zIndex="0"
         pointerEvents="none"
       />
 
-
-      <Container maxW="1440px" position="relative" zIndex="1">
+      <Container maxW="7xl" position="relative" zIndex="1">
         <Flex
           direction={{ base: "column", lg: "row" }}
           align="center"
           justify="space-between"
-          position="relative"
+          gap={{ base: 8, lg: 12 }}
         >
           {/* Left content - Text and CTA */}
           <Box
-            width={{ base: "100%", lg: "45%" }}
-            pr={{ base: 0, lg: 10 }}
-            mb={{ base: 12, lg: 0 }}
-            textAlign={{ base: "left", lg: "left" }}
+            width={{ base: "100%", lg: "50%" }}
+            textAlign={{ base: "center", lg: "left" }}
           >
             <Badge
               bg={isDark ? "#B38939" : "#192331"}
               color="white"
-              px={3}
-              py={1}
+              px={4}
+              py={2}
               borderRadius="full"
-              mb={4}
+              mb={6}
               boxShadow="md"
-              fontSize="sm"
-              letterSpacing="0.5px"
+              fontSize={{ base: "sm", md: "md" }}
+              letterSpacing="wide"
             >
               TRUSTED BY MILLIONS
             </Badge>
 
             <Text
               as="h1"
-              fontSize={{ base: "36px", sm: "44px", md: "52px", lg: "60px" }}
-              fontWeight="900"
-              lineHeight="1.1"
+              fontSize={{ base: "2xl", sm: "3xl", md: "4xl", lg: "5xl" }}
+              fontWeight="extrabold"
+              lineHeight="1.2"
               bgGradient={isDark ? "linear(to-r, #e9d8b4, #B38939)" : "linear(to-r, #192331, #354458)"}
               bgClip="text"
               mb={6}
-              letterSpacing="-0.02em"
             >
-              Shop Online without fear of scams
+              Shop Online without fear of scams
             </Text>
 
             <Text
-              fontSize={{ base: "16px", md: "18px" }}
-              color={isDark ? "gray.300" : "#4A5568"}
-              lineHeight="1.7"
-              fontWeight="400"
+              fontSize={{ base: "md", md: "lg" }}
+              color={isDark ? "gray.300" : "gray.600"}
+              lineHeight="1.8"
               mb={8}
-              maxW={{ base: "100%", md: "90%", lg: "100%" }}
-            // mx={{ base: "auto", lg: "0" }}
+              maxW={{ base: "100%", md: "80%", lg: "90%" }}
+              mx={{ base: "auto", lg: "0" }}
             >
-              <Text as="span" fontWeight="600" color="#B38939">Sylo</Text> is Nigeria’s trusted escrow platform — protecting buyers and sellers by securely holding funds until delivery is confirmed. Whether you're buying a phone on Instagram or selling goods to rural customers, our platform ensures that every transaction is handled with integrity and security, especially in the $6.7 billion off-grid market.
-              {/* 
-              Experience peace of mind with <Text as="span" fontWeight="600" color="#B38939">Sylo</Text>, 
-              your trusted partner for secure and transparent business dealings.  */}
-              {/* Our platform ensures that 
-              every transaction is handled with integrity, providing a seamless experience for both buyers and sellers. */}
+              <Text as="span" fontWeight="semibold" color="#B38939">Sylo</Text> is Nigeria’s trusted escrow platform — protecting buyers and sellers by securely holding funds until delivery is confirmed. Whether you're buying a phone on Instagram or selling goods to rural customers, our platform ensures that every transaction is handled with integrity and security, especially in the $6.7 billion off-grid market.
             </Text>
 
             <Flex
               gap={4}
               direction={{ base: "column", sm: "row" }}
-              justify={{ base: "flef-start", lg: "flex-start" }}
-              align="start"
+              justify={{ base: "center", lg: "flex-start" }}
+              align="center"
             >
               <Link to="/login">
                 <Box
                   as="button"
                   bg="#B38939"
                   color="white"
-                  px={8}
-                  py={4}
+                  px={{ base: 6, md: 8 }}
+                  py={{ base: 3, md: 4 }}
                   borderRadius="full"
-                  fontWeight="700"
-                  fontSize={{ base: "16px", md: "18px" }}
+                  fontWeight="bold"
+                  fontSize={{ base: "md", md: "lg" }}
                   transition="all 0.3s ease"
                   _hover={{
                     bg: "#a17732",
                     transform: "translateY(-2px)",
                     boxShadow: "lg",
                   }}
-                  boxShadow={isDark ? "0 0 20px rgba(179, 137, 57, 0.4)" : "md"}
+                  boxShadow={isDark ? "0 0 15px rgba(179, 137, 57, 0.3)" : "md"}
                   className="glow-button"
-                  width={{ base: "full", sm: "auto" }}
+                  width={{ base: "100%", sm: "auto" }}
                 >
                   Start Transactions
                 </Box>
@@ -135,18 +125,18 @@ const Hero = () => {
                   as="button"
                   bg="transparent"
                   color={isDark ? "white" : "#192331"}
-                  px={8}
-                  py={4}
+                  px={{ base: 6, md: 8 }}
+                  py={{ base: 3, md: 4 }}
                   borderRadius="full"
                   border={`2px solid ${isDark ? "white" : "#192331"}`}
-                  fontWeight="600"
-                  fontSize={{ base: "16px", md: "18px" }}
+                  fontWeight="semibold"
+                  fontSize={{ base: "md", md: "lg" }}
                   transition="all 0.3s ease"
                   _hover={{
                     bg: isDark ? "whiteAlpha.200" : "#192331",
                     color: isDark ? "white" : "white",
                   }}
-                  width={{ base: "full", sm: "auto" }}
+                  width={{ base: "100%", sm: "auto" }}
                 >
                   Learn More
                 </Box>
@@ -155,42 +145,47 @@ const Hero = () => {
 
             <Flex
               mt={10}
-              gap={6}
+              gap={4}
               align="center"
-              justify={{ base: "flex-start", lg: "flex-start" }}
-              display={{ base: "none", md: "flex" }}
+              justify={{ base: "center", lg: "flex-start" }}
+              wrap="wrap"
             >
-              <Box textAlign="center">
-                <Text fontWeight="700" fontSize="24px" color={isDark ? "#B38939" : "#192331"}>20M+</Text>
-                <Text fontSize="14px" color={isDark ? "gray.400" : "#4A5568"}>Active Users</Text>
+              <Box textAlign="center" minW="100px">
+                <Text fontWeight="bold" fontSize={{ base: "xl", md: "2xl" }} color={isDark ? "#B38939" : "#192331"}>
+                  20M+
+                </Text>
+                <Text fontSize="sm" color={isDark ? "gray.400" : "gray.500"}>Active Users</Text>
               </Box>
-              <Box width="1px" height="30px" bg={isDark ? "gray.700" : "#CBD5E0"} />
-              <Box textAlign="center">
-                <Text fontWeight="700" fontSize="24px" color={isDark ? "#B38939" : "#192331"}>99.9%</Text>
-                <Text fontSize="14px" color={isDark ? "gray.400" : "#4A5568"}>Success Rate</Text>
+              <Box width="1px" height="30px" bg={isDark ? "gray.700" : "gray.300"} display={{ base: "none", md: "block" }} />
+              <Box textAlign="center" minW="100px">
+                <Text fontWeight="bold" fontSize={{ base: "xl", md: "2xl" }} color={isDark ? "#B38939" : "#192331"}>
+                  99.9%
+                </Text>
+                <Text fontSize="sm" color={isDark ? "gray.400" : "gray.500"}>Success Rate</Text>
               </Box>
-              <Box width="1px" height="30px" bg={isDark ? "gray.700" : "#CBD5E0"} />
-              <Box textAlign="center">
-                <Text fontWeight="700" fontSize="24px" color={isDark ? "#B38939" : "#192331"}>50+</Text>
-                <Text fontSize="14px" color={isDark ? "gray.400" : "#4A5568"}>Countries</Text>
+              <Box width="1px" height="30px" bg={isDark ? "gray.700" : "gray.300"} display={{ base: "none", md: "block" }} />
+              <Box textAlign="center" minW="100px">
+                <Text fontWeight="bold" fontSize={{ base: "xl", md: "2xl" }} color={isDark ? "#B38939" : "#192331"}>
+                  50+
+                </Text>
+                <Text fontSize="sm" color={isDark ? "gray.400" : "gray.500"}>Countries</Text>
               </Box>
             </Flex>
           </Box>
 
           {/* Right content - Enhanced Hero visualization */}
           <Box
-            width={{ base: "100%", lg: "55%" }}
+            width={{ base: "100%", lg: "50%" }}
             position="relative"
-            height={{ base: "400px", md: "480px", lg: "540px" }}
+            height={{ base: "300px", sm: "400px", md: "450px", lg: "500px" }}
           >
-            {/* Main platform showcase */}
             <Box
               position="relative"
               width="100%"
               height="100%"
-              borderRadius="xl"
+              borderRadius="2xl"
               overflow="hidden"
-              boxShadow={isDark ? "dark-lg" : "xl"}
+              boxShadow={isDark ? "0 10px 30px rgba(0,0,0,0.5)" : "0 10px 30px rgba(0,0,0,0.1)"}
               bg={isDark ? "gray.800" : "white"}
               className="platform-showcase"
             >
@@ -198,39 +193,34 @@ const Hero = () => {
               <Box
                 position="absolute"
                 top="5%"
-                left="0"
-                right="0"
-                bottom="0"
+                left="5%"
+                right="5%"
+                bottom="5%"
                 borderRadius="xl"
                 overflow="hidden"
                 bg={isDark ? "gray.800" : "white"}
                 border={isDark ? "1px solid #2D3748" : "1px solid #E2E8F0"}
-                boxShadow={isDark ? "0 20px 40px rgba(0,0,0,0.4)" : "0 20px 40px rgba(0,0,0,0.1)"}
-                mx="auto"
-                width="90%"
-                height="90%"
-                zIndex="2"
+                boxShadow={isDark ? "0 15px 30px rgba(0,0,0,0.3)" : "0 15px 30px rgba(0,0,0,0.08)"}
               >
-                {/* Browser-like header */}
                 <Box
-                  bg={isDark ? "gray.700" : "#F7FAFC"}
+                  bg={isDark ? "gray.700" : "gray.100"}
                   p={2}
                   borderBottom={isDark ? "1px solid #2D3748" : "1px solid #E2E8F0"}
                   display="flex"
                   alignItems="center"
                 >
                   <Flex gap={2} ml={2}>
-                    <Box borderRadius="full" bg={isDark ? "red.400" : "red.500"} w={3} h={3}></Box>
-                    <Box borderRadius="full" bg={isDark ? "yellow.400" : "yellow.500"} w={3} h={3}></Box>
-                    <Box borderRadius="full" bg={isDark ? "green.400" : "green.500"} w={3} h={3}></Box>
+                    <Box borderRadius="full" bg={isDark ? "red.400" : "red.500"} w={3} h={3} />
+                    <Box borderRadius="full" bg={isDark ? "yellow.400" : "yellow.500"} w={3} h={3} />
+                    <Box borderRadius="full" bg={isDark ? "green.400" : "green.500"} w={3} h={3} />
                   </Flex>
                   <Box
-                    bg={isDark ? "gray.600" : "#EDF2F7"}
+                    bg={isDark ? "gray.600" : "gray.200"}
                     borderRadius="md"
                     px={4}
                     py={1}
                     mx="auto"
-                    fontSize="xs"
+                    fontSize={{ base: "xs", md: "sm" }}
                     width="60%"
                     textAlign="center"
                   >
@@ -238,31 +228,29 @@ const Hero = () => {
                   </Box>
                 </Box>
 
-                {/* Content area with the main hero image */}
-                <Box p={4} height="calc(100% - 40px)" className="moving-content" position="relative">
+                <Box p={{ base: 2, md: 4 }} height="calc(100% - 40px)" className="moving-content">
                   <Image
                     src={HeroImage}
                     alt="Sylo Platform"
                     width="100%"
-                  height="640px"
+                    height="100%"
                     objectFit="contain"
-                    objectPosition="center"
                     borderRadius="md"
-                    transform="scale(1.1)"
-                    transformOrigin="center"
+                    transform="scale(1.05)"
+                    transition="transform 0.3s ease"
                   />
                 </Box>
               </Box>
 
-              {/* Floating features badges */}
+              {/* Floating feature badges */}
               <Box
                 position="absolute"
-                top="15%"
-                right="-30px"
+                top={{ base: "10%", md: "15%" }}
+                right={{ base: "5px", md: "-20px" }}
                 bg={isDark ? "gray.700" : "white"}
                 borderRadius="lg"
                 p={3}
-                boxShadow={isDark ? "dark-lg" : "lg"}
+                boxShadow={isDark ? "0 8px 16px rgba(0,0,0,0.3)" : "0 8px 16px rgba(0,0,0,0.1)"}
                 zIndex="10"
                 className="feature-badge badge-right"
                 border={isDark ? "1px solid #4A5568" : "1px solid #E2E8F0"}
@@ -272,20 +260,24 @@ const Hero = () => {
                     <Box as="span" fontSize="xl" role="img" aria-label="Shield">🔒</Box>
                   </Box>
                   <Box>
-                    <Text fontWeight="bold" fontSize="sm">Secure Transactions</Text>
-                    <Text fontSize="xs" color={isDark ? "gray.400" : "gray.500"}>End-to-end encryption</Text>
+                    <Text fontWeight="semibold" fontSize={{ base: "xs", md: "sm" }}>
+                      Secure Transactions
+                    </Text>
+                    <Text fontSize={{ base: "2xs", md: "xs" }} color={isDark ? "gray.400" : "gray.500"}>
+                      End-to-end encryption
+                    </Text>
                   </Box>
                 </Flex>
               </Box>
 
               <Box
                 position="absolute"
-                left="-30px"
-                bottom="25%"
+                left={{ base: "5px", md: "-20px" }}
+                bottom={{ base: "15%", md: "25%" }}
                 bg={isDark ? "gray.700" : "white"}
                 borderRadius="lg"
                 p={3}
-                boxShadow={isDark ? "dark-lg" : "lg"}
+                boxShadow={isDark ? "0 8px 16px rgba(0,0,0,0.3)" : "0 8px 16px rgba(0,0,0,0.1)"}
                 zIndex="10"
                 className="feature-badge badge-left"
                 border={isDark ? "1px solid #4A5568" : "1px solid #E2E8F0"}
@@ -295,23 +287,27 @@ const Hero = () => {
                     <Box as="span" fontSize="xl" role="img" aria-label="Chart">📊</Box>
                   </Box>
                   <Box>
-                    <Text fontWeight="bold" fontSize="sm">Real-time Analytics</Text>
-                    <Text fontSize="xs" color={isDark ? "gray.400" : "gray.500"}>Track your transactions</Text>
+                    <Text fontWeight="semibold" fontSize={{ base: "xs", md: "sm" }}>
+                      Real-time Analytics
+                    </Text>
+                    <Text fontSize={{ base: "2xs", md: "xs" }} color={isDark ? "gray.400" : "gray.500"}>
+                      Track your transactions
+                    </Text>
                   </Box>
                 </Flex>
               </Box>
 
-              {/* Activity pulse indicators */}
+              {/* Activity pulse indicator */}
               <Box
                 position="absolute"
                 bottom="10%"
-                right="20%"
+                right="15%"
                 zIndex="10"
                 className="pulse-indicator"
               >
                 <Box
-                  width="15px"
-                  height="15px"
+                  width={{ base: "12px", md: "15px" }}
+                  height={{ base: "12px", md: "15px" }}
                   borderRadius="full"
                   bg="#4CAF50"
                   position="relative"
@@ -323,77 +319,47 @@ const Hero = () => {
                     borderRadius: "full",
                     bg: "#4CAF50",
                     opacity: "0.5",
-                    animation: "pulse 2s infinite"
+                    animation: "pulse 2s infinite",
                   }}
-                ></Box>
+                />
               </Box>
 
+              {/* Stats grid */}
               <Grid
-                templateColumns="repeat(4, 1fr)"
-                gap={2}
+                templateColumns={{ base: "repeat(2, 1fr)", md: "repeat(4, 1fr)" }}
+                gap={3}
                 position="absolute"
-                bottom="-25px"
+                bottom={{ base: "-20px", md: "-25px" }}
                 left="50%"
                 transform="translateX(-50%)"
-                width="80%"
+                width={{ base: "90%", md: "80%" }}
                 zIndex="20"
               >
-                <GridItem colSpan={1}>
-                  <Box
-                    bg={isDark ? "gray.700" : "white"}
-                    borderRadius="md"
-                    p={2}
-                    boxShadow={isDark ? "dark-lg" : "lg"}
-                    textAlign="center"
-                    className="stat-card"
-                    border={isDark ? "1px solid #4A5568" : "1px solid #E2E8F0"}
-                  >
-                    <Text fontSize="sm" fontWeight="bold" color="#B38939">$2.4B+</Text>
-                    <Text fontSize="xs" color={isDark ? "gray.400" : "gray.500"}>Transactions</Text>
-                  </Box>
-                </GridItem>
-                <GridItem colSpan={1}>
-                  <Box
-                    bg={isDark ? "gray.700" : "white"}
-                    borderRadius="md"
-                    p={2}
-                    boxShadow={isDark ? "dark-lg" : "lg"}
-                    textAlign="center"
-                    className="stat-card"
-                    border={isDark ? "1px solid #4A5568" : "1px solid #E2E8F0"}
-                  >
-                    <Text fontSize="sm" fontWeight="bold" color="#B38939">3,400+</Text>
-                    <Text fontSize="xs" color={isDark ? "gray.400" : "gray.500"}>Companies</Text>
-                  </Box>
-                </GridItem>
-                <GridItem colSpan={1}>
-                  <Box
-                    bg={isDark ? "gray.700" : "white"}
-                    borderRadius="md"
-                    p={2}
-                    boxShadow={isDark ? "dark-lg" : "lg"}
-                    textAlign="center"
-                    className="stat-card"
-                    border={isDark ? "1px solid #4A5568" : "1px solid #E2E8F0"}
-                  >
-                    <Text fontSize="sm" fontWeight="bold" color="#B38939">24/7</Text>
-                    <Text fontSize="xs" color={isDark ? "gray.400" : "gray.500"}>Support</Text>
-                  </Box>
-                </GridItem>
-                <GridItem colSpan={1}>
-                  <Box
-                    bg={isDark ? "gray.700" : "white"}
-                    borderRadius="md"
-                    p={2}
-                    boxShadow={isDark ? "dark-lg" : "lg"}
-                    textAlign="center"
-                    className="stat-card"
-                    border={isDark ? "1px solid #4A5568" : "1px solid #E2E8F0"}
-                  >
-                    <Text fontSize="sm" fontWeight="bold" color="#B38939">99.9%</Text>
-                    <Text fontSize="xs" color={isDark ? "gray.400" : "gray.500"}>Uptime</Text>
-                  </Box>
-                </GridItem>
+                {[
+                  { value: "$2.4B+", label: "Transactions" },
+                  { value: "3,400+", label: "Companies" },
+                  { value: "24/7", label: "Support" },
+                  { value: "99.9%", label: "Uptime" },
+                ].map((stat, index) => (
+                  <GridItem key={index}>
+                    <Box
+                      bg={isDark ? "gray.700" : "white"}
+                      borderRadius="md"
+                      p={3}
+                      boxShadow={isDark ? "0 4px 12px rgba(0,0,0,0.2)" : "0 4px 12px rgba(0,0,0,0.05)"}
+                      textAlign="center"
+                      className="stat-card"
+                      border={isDark ? "1px solid #4A5568" : "1px solid #E2E8F0"}
+                    >
+                      <Text fontSize={{ base: "sm", md: "md" }} fontWeight="bold" color="#B38939">
+                        {stat.value}
+                      </Text>
+                      <Text fontSize={{ base: "xs", md: "sm" }} color={isDark ? "gray.400" : "gray.500"}>
+                        {stat.label}
+                      </Text>
+                    </Box>
+                  </GridItem>
+                ))}
               </Grid>
             </Box>
           </Box>

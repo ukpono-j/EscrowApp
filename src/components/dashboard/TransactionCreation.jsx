@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { FaShoppingCart, FaStore } from "react-icons/fa";
 import { MdClose } from "react-icons/md";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import axios from "../../utils/axiosConfig";
 import {
   useToast,
   Box,
@@ -15,7 +15,6 @@ import {
   FormLabel,
   Input,
   Textarea,
-  Select,
   Stack,
   Heading,
   VStack,
@@ -28,11 +27,9 @@ import {
   Fade,
 } from "@chakra-ui/react";
 import defaultProfileImage from "../../assets/profile_icon.png";
-import nigeriaBanks, { getBankNameFromCode } from "../../data/banksList";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 
-// Utility function to validate user response
 const validateUserResponse = (responseData) => {
   if (responseData.success && responseData.data?.user) {
     return responseData.data.user;
@@ -41,7 +38,6 @@ const validateUserResponse = (responseData) => {
   throw new Error(responseData.error || "Invalid user data received");
 };
 
-// Generic utility to validate API response success
 const validateApiResponse = (responseData, endpoint) => {
   if (responseData.success) {
     return responseData.data || {};
@@ -50,7 +46,6 @@ const validateApiResponse = (responseData, endpoint) => {
   throw new Error(responseData.error || "Invalid response received");
 };
 
-// Modal Component
 const AcceptTransactionModal = ({
   isOpen,
   onClose,
@@ -180,12 +175,10 @@ const AcceptTransactionModal = ({
 const TransactionCreation = () => {
   console.log("TransactionCreation: Component rendering");
 
-  // State for paymentAmount (raw number) and displayAmount (formatted string)
   const [paymentAmount, setPaymentAmount] = useState("");
   const [displayAmount, setDisplayAmount] = useState("");
   console.log("State: paymentAmount =", paymentAmount, "displayAmount =", displayAmount);
 
-  // Theme Hooks
   const { colorMode } = useColorMode();
   const bgMain = useColorModeValue("white", "#0F1624");
   const bgSecondary = useColorModeValue("#F7FAFC", "#1E293B");
@@ -197,11 +190,9 @@ const TransactionCreation = () => {
   const shadowColor = useColorModeValue("rgba(0, 0, 0, 0.1)", "rgba(0, 0, 0, 0.3)");
   const inputBg = useColorModeValue("white", "#0F1624");
   const cardBorder = useColorModeValue("1px solid #E2E8F0", "none");
-  // Modal-specific theme values
   const modalHeaderBg = useColorModeValue("gray.50", "#0F1624");
   const modalHeaderBorder = useColorModeValue("gray.200", "gray.700");
   const modalButtonHoverBg = useColorModeValue("gray.100", "gray.700");
-  // Button hover values
   const disabledButtonHoverBg = useColorModeValue("gray.300", "#2D3748");
   const nextButtonHoverBg = useColorModeValue("gray.100", "rgba(149, 116, 50, 0.2)");
   console.log("Theme: colorMode =", colorMode);
@@ -209,30 +200,21 @@ const TransactionCreation = () => {
   const toast = useToast();
   const navigate = useNavigate();
 
-  // Other state Hooks
   const [step, setStep] = useState(1);
   const [nextButtonActive, setNextButtonActive] = useState(false);
-  const [paymentBank, setPaymentBank] = useState("");
-  const [paymentAccountNumber, setPaymentAccountNumber] = useState("");
   const [paymentDescription, setPaymentDescription] = useState("");
   const [email, setEmail] = useState("");
   const [selectedUserType, setSelectedUserType] = useState("");
   const [acceptTransactionModel, setAcceptTransactionModel] = useState(false);
   const [userDetails, setUserDetails] = useState({});
-  const [banks, setBanks] = useState([]);
-  const [selectedBankCode, setSelectedBankCode] = useState("");
-  const [uniqueBanks, setUniqueBanks] = useState([]);
   const [formValid, setFormValid] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
 
-  console.log("State: isLoading =", isLoading, "userDetails =", userDetails, "banks =", banks);
+  console.log("State: isLoading =", isLoading, "userDetails =", userDetails);
 
-  // Ref Hooks
   const userDetailsFetched = useRef(false);
-  const banksFetched = useRef(false);
 
-  // Function to format numbers with commas and two decimal places
   const formatCurrency = (amount) => {
     return parseFloat(amount || 0).toLocaleString("en-NG", {
       minimumFractionDigits: 2,
@@ -240,9 +222,8 @@ const TransactionCreation = () => {
     });
   };
 
-  // Handle input change for Price/Amount
   const handleAmountChange = (e) => {
-    const input = e.target.value.replace(/,/g, ""); // Remove commas
+    const input = e.target.value.replace(/,/g, "");
     if (input === "" || /^\d*\.?\d{0,2}$/.test(input)) {
       setPaymentAmount(input);
       setDisplayAmount(
@@ -255,103 +236,6 @@ const TransactionCreation = () => {
       );
     }
   };
-
-  // Memoized callback Hooks
-  const handleBankSelection = useCallback(
-    (e) => {
-      const code = e.target.value;
-      setSelectedBankCode(code);
-      const selectedBank = uniqueBanks.find((bank) => bank.code === code);
-      setPaymentBank(selectedBank ? selectedBank.name : getBankNameFromCode(code));
-    },
-    [uniqueBanks]
-  );
-
-  const verifyBankAccount = useCallback(async () => {
-    if (!selectedBankCode || !paymentAccountNumber) {
-      toast({
-        title: "Validation Error",
-        description: "Please provide an account number and select a bank",
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
-      return;
-    }
-    if (paymentAccountNumber.length !== 10) {
-      toast({
-        title: "Invalid Account Number",
-        description: "Please enter a valid 10-digit account number",
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
-      return;
-    }
-    try {
-      const token = localStorage.getItem("auth-token");
-      const bankName = getBankNameFromCode(selectedBankCode);
-      toast({
-        title: "Verifying account...",
-        description: `${bankName} - ${paymentAccountNumber}`,
-        status: "info",
-        duration: 2000,
-        isClosable: true,
-      });
-      const response = await axios.post(
-        `${BASE_URL}/api/transactions/bank/verify`,
-        {
-          account_number: paymentAccountNumber,
-          bank_code: selectedBankCode,
-          bank_name: paymentBank,
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          timeout: 10000,
-        }
-      );
-      console.log("Verify bank response:", response.data);
-      const responseData = validateApiResponse(response.data, "/api/transactions/bank/verify");
-      if (responseData.status) {
-        toast({
-          title: "Account verified!",
-          description: responseData.data?.account_name || "Account verified",
-          status: "success",
-          duration: 3000,
-          isClosable: true,
-        });
-      } else {
-        toast({
-          title: "Verification failed",
-          description: responseData.message || "Could not verify account details",
-          status: "error",
-          duration: 3000,
-          isClosable: true,
-        });
-      }
-    } catch (error) {
-      console.error("Verify bank error:", {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-      });
-      let errorMessage = "Network error or invalid account details";
-      if (error.response) {
-        if (error.response.status === 422) errorMessage = "Invalid account details";
-        else if (error.response.status === 403 || error.response.status === 401) {
-          errorMessage = "Authorization error. Please re-login";
-          navigate("/");
-        } else if (error.response?.data?.error) errorMessage = error.response.data.error;
-      }
-      toast({
-        title: "Verification failed",
-        description: errorMessage,
-        status: "error",
-        duration: 4000,
-        isClosable: true,
-      });
-    }
-  }, [selectedBankCode, paymentAccountNumber, paymentBank, toast, navigate]);
 
   const acceptTransactionFunction = useCallback(
     (e) => {
@@ -370,170 +254,181 @@ const TransactionCreation = () => {
     [formValid, toast]
   );
 
-  const createNewTransaction = useCallback(
-    (e) => {
-      e.preventDefault();
-      if (!formValid) {
+const createNewTransaction = useCallback(
+  (e) => {
+    e.preventDefault();
+    if (!formValid) {
+      toast({
+        title: "Please fill all required fields",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+    const requestData = {
+      paymentName: userDetails.fullName || "User",
+      email: email || userDetails.email || "",
+      paymentAmount: parseFloat(paymentAmount),
+      paymentDescription,
+      selectedUserType,
+      paymentBank: "Pending",
+      paymentBankCode: "000",
+      paymentAccountNumber: "0",
+    };
+    console.log("Sending create transaction request:", requestData); // Add logging
+    if (!requestData.email || !requestData.paymentAmount || !requestData.paymentDescription || !requestData.selectedUserType) {
+      toast({
+        title: "Invalid input",
+        description: "Please ensure all required fields are filled correctly.",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+    axios
+      .post(`${BASE_URL}/api/transactions/create-transaction`, requestData)
+      .then(async (response) => {
+        console.log("Create transaction response:", response.data);
+        const responseData = validateApiResponse(response.data, "/api/transactions/create-transaction");
+        const transactionId = responseData.transactionId || "Unknown";
+
+        try {
+          const verifyResponse = await axios.get(`${BASE_URL}/api/transactions/${transactionId}`);
+          console.log("Transaction verification response:", verifyResponse.data);
+          const verifiedData = validateApiResponse(verifyResponse.data, `/api/transactions/${transactionId}`);
+          if (!verifiedData._id) {
+            throw new Error("Transaction not found after creation");
+          }
+        } catch (verifyError) {
+          console.error("Error verifying transaction:", verifyError);
+          toast({
+            title: "Transaction created but not found",
+            description: "The transaction was created but could not be retrieved. Please check the transaction list manually.",
+            status: "warning",
+            duration: 5000,
+            isClosable: true,
+          });
+        }
+
         toast({
-          title: "Please fill all required fields",
-          status: "error",
+          title: "Successfully created a transaction",
+          description: `Transaction ID: ${transactionId}`,
+          status: "success",
           duration: 3000,
           isClosable: true,
         });
-        return;
-      }
-      const requestData = {
-        paymentName: userDetails.fullName || "User",
-        email: email || userDetails.email,
-        paymentAmount: parseFloat(paymentAmount),
-        paymentDescription,
-        selectedUserType,
-        paymentBank: selectedUserType === "buyer" ? "Pending" : paymentBank,
-        paymentBankCode: selectedUserType === "buyer" ? "000" : selectedBankCode,
-        paymentAccountNumber: selectedUserType === "buyer" ? "0" : paymentAccountNumber,
-      };
-      const token = localStorage.getItem("auth-token");
-      axios
-        .post(`${BASE_URL}/api/transactions/create-transaction`, requestData, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        .then(async (response) => {
-          console.log("Create transaction response:", response.data);
-          const responseData = validateApiResponse(response.data, "/api/transactions/create-transaction");
-          const transactionId = responseData.transactionId || "Unknown";
-  
-          try {
-            const verifyResponse = await axios.get(`${BASE_URL}/api/transactions/${transactionId}`, {
-              headers: { Authorization: `Bearer ${token}` },
-            });
-            console.log("Transaction verification response:", verifyResponse.data);
-            const verifiedData = validateApiResponse(verifyResponse.data, `/api/transactions/${transactionId}`);
-            if (!verifiedData._id) {
-              throw new Error("Transaction not found after creation");
-            }
-          } catch (verifyError) {
-            console.error("Error verifying transaction:", verifyError);
-            toast({
-              title: "Transaction created but not found",
-              description: "The transaction was created but could not be retrieved. Please check the transaction list manually.",
-              status: "warning",
-              duration: 5000,
-              isClosable: true,
-            });
-          }
-  
-          toast({
-            title: "Successfully created a transaction",
-            description: `Transaction ID: ${transactionId}`,
-            status: "success",
-            duration: 3000,
-            isClosable: true,
-          });
-          navigate("/transactions/tab");
-        })
-        .catch((error) => {
-          console.error("Transaction creation error:", {
-            message: error.message,
-            response: error.response?.data,
-            status: error.response?.status,
-          });
-          const errorMessage = error.response?.data?.error || error.message;
-          toast({
-            title: "Error occurred during transaction",
-            description: errorMessage,
-            status: "error",
-            duration: 3000,
-            isClosable: true,
-          });
+        navigate("/transactions/tab");
+      })
+      .catch((error) => {
+        console.error("Transaction creation error:", {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+          requestData, // Log the request data for debugging
         });
-    },
-    [
-      formValid,
-      userDetails.fullName,
-      userDetails.email,
-      email,
-      paymentAmount,
-      paymentDescription,
-      selectedUserType,
-      paymentBank,
-      selectedBankCode,
-      paymentAccountNumber,
-      navigate,
-      toast,
-    ]
-  );
+        const errorMessage = error.response?.data?.error || error.message || "Unknown error";
+        toast({
+          title: "Error occurred during transaction",
+          description: errorMessage,
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+        });
+      });
+  },
+  [
+    formValid,
+    userDetails.fullName,
+    userDetails.email,
+    email,
+    paymentAmount,
+    paymentDescription,
+    selectedUserType,
+    navigate,
+    toast,
+  ]
+);
 
-  const createNewTransactionForBuyer = useCallback(
-    (e) => {
-      if (e) e.preventDefault();
-      const requestData = {
-        paymentName: userDetails.fullName || "Buyer",
-        email: userDetails.email || email || "",
-        paymentAmount: parseFloat(paymentAmount),
-        paymentDescription,
-        selectedUserType: "buyer",
-        paymentBank: "Pending",
-        paymentBankCode: "000",
-        paymentAccountNumber: "0",
-      };
-      const token = localStorage.getItem("auth-token");
-      axios
-        .post(`${BASE_URL}/api/transactions/create-transaction`, requestData, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        .then(async (response) => {
-          console.log("Create buyer transaction response:", response.data);
-          const responseData = validateApiResponse(response.data, "/api/transactions/create-transaction");
-          const transactionId = responseData.transactionId || "Unknown";
-  
-          try {
-            const verifyResponse = await axios.get(`${BASE_URL}/api/transactions/${transactionId}`, {
-              headers: { Authorization: `Bearer ${token}` },
-            });
-            console.log("Transaction verification response:", verifyResponse.data);
-            const verifiedData = validateApiResponse(verifyResponse.data, `/api/transactions/${transactionId}`);
-            if (!verifiedData._id) {
-              throw new Error("Transaction not found after creation");
-            }
-          } catch (verifyError) {
-            console.error("Error verifying transaction:", verifyError);
-            toast({
-              title: "Transaction created but not found",
-              description: "The transaction was created but could not be retrieved. Please check the transaction list manually.",
-              status: "warning",
-              duration: 5000,
-              isClosable: true,
-            });
+const createNewTransactionForBuyer = useCallback(
+  (e) => {
+    if (e) e.preventDefault();
+    const requestData = {
+      paymentName: userDetails.fullName || "Buyer",
+      email: userDetails.email || email || "",
+      paymentAmount: parseFloat(paymentAmount),
+      paymentDescription,
+      selectedUserType: "buyer",
+      paymentBank: "Pending",
+      paymentBankCode: "000",
+      paymentAccountNumber: "0",
+    };
+    console.log("Sending create buyer transaction request:", requestData); // Add logging
+    if (!requestData.email || !requestData.paymentAmount || !requestData.paymentDescription) {
+      toast({
+        title: "Invalid input",
+        description: "Please ensure all required fields are filled correctly.",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+    axios
+      .post(`${BASE_URL}/api/transactions/create-transaction`, requestData)
+      .then(async (response) => {
+        console.log("Create buyer transaction response:", response.data);
+        const responseData = validateApiResponse(response.data, "/api/transactions/create-transaction");
+        const transactionId = responseData.transactionId || "Unknown";
+
+        try {
+          const verifyResponse = await axios.get(`${BASE_URL}/api/transactions/${transactionId}`);
+          console.log("Transaction verification response:", verifyResponse.data);
+          const verifiedData = validateApiResponse(verifyResponse.data, `/api/transactions/${transactionId}`);
+          if (!verifiedData._id) {
+            throw new Error("Transaction not found after creation");
           }
-  
+        } catch (verifyError) {
+          console.error("Error verifying transaction:", verifyError);
           toast({
-            title: "Successfully created a transaction",
-            description: `Your transaction ID: ${transactionId}. Share this with the seller.`,
-            status: "success",
+            title: "Transaction created but not found",
+            description: "The transaction was created but could not be retrieved. Please check the transaction list manually.",
+            status: "warning",
             duration: 5000,
             isClosable: true,
           });
-          navigate("/transactions/tab");
-        })
-        .catch((error) => {
-          console.error("Transaction creation error:", {
-            message: error.message,
-            response: error.response?.data,
-            status: error.response?.status,
-          });
-          const errorMessages =
-            error.response?.data?.errors?.map((err) => err.msg).join(", ") || error.message;
-          toast({
-            title: "Error occurred during transaction",
-            description: errorMessages,
-            status: "error",
-            duration: 5000,
-            isClosable: true,
-          });
+        }
+
+        toast({
+          title: "Successfully created a transaction",
+          description: `Your transaction ID: ${transactionId}. Share this with the seller.`,
+          status: "success",
+          duration: 5000,
+          isClosable: true,
         });
-    },
-    [userDetails.fullName, userDetails.email, email, paymentAmount, paymentDescription, navigate, toast]
-  );
+        navigate("/transactions/tab");
+      })
+      .catch((error) => {
+        console.error("Transaction creation error:", {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+          requestData, // Log the request data for debugging
+        });
+        const errorMessages =
+          error.response?.data?.errors?.map((err) => err.msg).join(", ") || error.response?.data?.error || error.message || "Unknown error";
+        toast({
+          title: "Error occurred during transaction",
+          description: errorMessages,
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+        });
+      });
+  },
+  [userDetails.fullName, userDetails.email, email, paymentAmount, paymentDescription, navigate, toast]
+);
 
   const handleRadioClick = useCallback((userType) => {
     setSelectedUserType(userType);
@@ -554,7 +449,6 @@ const TransactionCreation = () => {
     }
   }, [step]);
 
-  // Effect Hooks
   useEffect(() => {
     console.log("useEffect: Fetching user details");
     if (userDetailsFetched.current) {
@@ -573,7 +467,7 @@ const TransactionCreation = () => {
           isClosable: true,
         });
       }, 10000);
-      const token = localStorage.getItem("auth-token");
+      const token = localStorage.getItem("access-token");
       if (!token) {
         console.warn("No auth token found, redirecting to login");
         toast({
@@ -620,7 +514,7 @@ const TransactionCreation = () => {
         });
         if (error.response?.status === 401 || error.response?.status === 404) {
           console.log("Unauthorized or not found, redirecting to login");
-          localStorage.removeItem("auth-token");
+          localStorage.removeItem("access-token");
           navigate("/");
         }
       } finally {
@@ -633,115 +527,14 @@ const TransactionCreation = () => {
   }, [toast, navigate]);
 
   useEffect(() => {
-    console.log("useEffect: Fetching banks");
-    if (banksFetched.current) {
-      console.log("Banks already fetched, skipping");
-      return;
-    }
-    const cachedBanks = localStorage.getItem("apiBanks");
-    const cacheTimestamp = localStorage.getItem("apiBanksTimestamp");
-    const cacheAge = cacheTimestamp ? Date.now() - parseInt(cacheTimestamp) : Infinity;
-    if (cachedBanks && cacheAge < 24 * 60 * 60 * 1000) {
-      try {
-        const parsedBanks = JSON.parse(cachedBanks);
-        if (Array.isArray(parsedBanks) && parsedBanks.length > 0) {
-          console.log("Using cached banks:", parsedBanks);
-          setBanks(parsedBanks);
-          banksFetched.current = true;
-          setIsLoading(false);
-          return;
-        }
-      } catch (e) {
-        console.error("Error parsing cached banks:", e);
-      }
-    }
-    const fetchBanks = async () => {
-      setIsLoading(true);
-      console.log("Fetching banks, isLoading set to true");
-      const timeout = setTimeout(() => {
-        toast({
-          title: "Taking too long?",
-          description: "Please check your network connection.",
-          status: "warning",
-          duration: 5000,
-          isClosable: true,
-        });
-      }, 10000);
-      try {
-        const token = localStorage.getItem("auth-token");
-        if (!token) {
-          throw new Error("No authentication token found");
-        }
-        console.log("Making request to /api/transactions/banks");
-        const response = await axios.get(`${BASE_URL}/api/transactions/banks`, {
-          headers: { Authorization: `Bearer ${token}` },
-          timeout: 10000,
-        });
-        console.log("Banks response:", response.data);
-        const responseData = validateApiResponse(response.data, "/api/transactions/banks");
-        const apiBanks = responseData.data?.length > 0 ? responseData.data : nigeriaBanks;
-        setBanks(apiBanks);
-        localStorage.setItem("apiBanks", JSON.stringify(apiBanks));
-        localStorage.setItem("apiBanksTimestamp", Date.now().toString());
-        banksFetched.current = true;
-      } catch (error) {
-        console.error("Error fetching banks:", {
-          message: error.message,
-          response: error.response?.data,
-          status: error.response?.status,
-        });
-        setErrorMessage(error.response?.data?.error || "Failed to fetch banks from server");
-        toast({
-          title: "Using default bank list",
-          description: error.response?.data?.error || "Failed to fetch banks from server",
-          status: "warning",
-          duration: 3000,
-          isClosable: true,
-        });
-        setBanks(nigeriaBanks);
-        localStorage.setItem("apiBanks", JSON.stringify(nigeriaBanks));
-        localStorage.setItem("apiBanksTimestamp", Date.now().toString());
-        if (error.response?.status === 401 || error.response?.status === 404) {
-          console.log("Unauthorized or not found, redirecting to login");
-          localStorage.removeItem("auth-token");
-          navigate("/");
-        }
-      } finally {
-        console.log("Finished fetching banks, setting isLoading to false");
-        setIsLoading(false);
-        clearTimeout(timeout);
-      }
-    };
-    fetchBanks();
-  }, [toast, navigate]);
-
-  useEffect(() => {
-    if (banks.length > 0 && uniqueBanks.length === 0) {
-      console.log("Filtering unique banks");
-      const bankMap = new Map();
-      banks.forEach((bank) => {
-        if (!bankMap.has(bank.code)) bankMap.set(bank.code, bank);
-      });
-      setUniqueBanks(Array.from(bankMap.values()));
-    }
-  }, [banks, uniqueBanks]);
-
-  useEffect(() => {
     console.log("Validating form");
-    if (selectedUserType === "buyer") {
-      setFormValid(paymentDescription.trim() !== "" && paymentAmount.trim() !== "");
-    } else {
-      setFormValid(
-        email.trim() !== "" &&
-        paymentAmount.trim() !== "" &&
-        selectedBankCode.trim() !== "" &&
-        paymentAccountNumber.trim() !== "" &&
-        paymentDescription.trim() !== ""
-      );
-    }
-  }, [email, paymentAmount, selectedBankCode, paymentAccountNumber, paymentDescription, selectedUserType]);
+    setFormValid(
+      email.trim() !== "" &&
+      paymentAmount.trim() !== "" &&
+      paymentDescription.trim() !== ""
+    );
+  }, [email, paymentAmount, paymentDescription]);
 
-  // Render
   console.log("Rendering component, isLoading =", isLoading, "errorMessage =", errorMessage);
   return (
     <Box
@@ -988,97 +781,37 @@ const TransactionCreation = () => {
                         />
                       </FormControl>
                     </Box>
-                    {selectedUserType === "seller" && (
-                      <>
-                        <Box w="full">
-                          <Text fontWeight="bold" fontSize="lg" mb={4} color={textColor}>
-                            Payment Details
-                          </Text>
-                          <FormControl isRequired>
-                            <FormLabel fontWeight="bold" color={textColor}>
-                              Email Address
-                            </FormLabel>
-                            <Input
-                              type="email"
-                              placeholder="Enter Email Address"
-                              value={email}
-                              onChange={(e) => setEmail(e.target.value)}
-                              bg={inputBg}
-                              color={textColor}
-                              borderColor={borderColor}
-                              borderRadius="full"
-                              _hover={{ borderColor: accentColor }}
-                              _focus={{
-                                borderColor: accentColor,
-                                boxShadow: `0 0 0 1px ${accentColor}`,
-                              }}
-                              required
-                            />
-                          </FormControl>
-                          <FormControl isRequired mt={4}>
-                            <FormLabel fontWeight="bold" color={textColor}>
-                              Bank Name
-                            </FormLabel>
-                            <Select
-                              placeholder="Select Bank"
-                              value={selectedBankCode}
-                              onChange={handleBankSelection}
-                              bg={inputBg}
-                              color={textColor}
-                              borderColor={borderColor}
-                              borderRadius="full"
-                              _hover={{ borderColor: accentColor }}
-                              _focus={{
-                                borderColor: accentColor,
-                                boxShadow: `0 0 0 1px ${accentColor}`,
-                              }}
-                              required
-                            >
-                              {uniqueBanks.map((bank) => (
-                                <option key={bank.code} value={bank.code}>
-                                  {bank.name}
-                                </option>
-                              ))}
-                            </Select>
-                          </FormControl>
-                          <FormControl isRequired mt={4}>
-                            <FormLabel fontWeight="bold" color={textColor}>
-                              Account Number
-                            </FormLabel>
-                            <Input
-                              type="text"
-                              placeholder="Enter account number"
-                              value={paymentAccountNumber}
-                              onChange={(e) => setPaymentAccountNumber(e.target.value)}
-                              onBlur={() => {
-                                if (paymentAccountNumber.length === 10 && selectedBankCode) {
-                                  verifyBankAccount();
-                                }
-                              }}
-                              bg={inputBg}
-                              color={textColor}
-                              borderColor={borderColor}
-                              borderRadius="full"
-                              _hover={{ borderColor: accentColor }}
-                              _focus={{
-                                borderColor: accentColor,
-                                boxShadow: `0 0 0 1px ${accentColor}`,
-                              }}
-                              required
-                              pattern="[0-9]+"
-                              title="Please enter a valid 10-digit account number (numbers only)"
-                              minLength={10}
-                              maxLength={10}
-                            />
-                          </FormControl>
-                        </Box>
-                        <Box w="full" mt={2}>
-                          <Text fontWeight="bold" color={textColor}>
-                            Amount: {formatCurrency(paymentAmount)} NGN
-                          </Text>
-                        </Box>
-                      </>
-                    )}
+                    <Box w="full">
+                      <Text fontWeight="bold" fontSize="lg" mb={4} color={textColor}>
+                        Contact Details
+                      </Text>
+                      <FormControl isRequired>
+                        <FormLabel fontWeight="bold" color={textColor}>
+                          Email Address
+                        </FormLabel>
+                        <Input
+                          type="email"
+                          placeholder="Enter Email Address"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          bg={inputBg}
+                          color={textColor}
+                          borderColor={borderColor}
+                          borderRadius="full"
+                          _hover={{ borderColor: accentColor }}
+                          _focus={{
+                            borderColor: accentColor,
+                            boxShadow: `0 0 0 1px ${accentColor}`,
+                          }}
+                          required
+                        />
+                      </FormControl>
+                    </Box>
+                    <Box w="full" mt={2}>
+                      <Text fontWeight="bold" color={textColor}>
+                        Amount: {formatCurrency(paymentAmount)} NGN
+                      </Text>
+                    </Box>
                     <Button
                       type="submit"
                       size="lg"

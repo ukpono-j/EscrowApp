@@ -1,1018 +1,1475 @@
-import React, { useEffect, useState } from "react";
-import Sidebar from "./Sidebar";
-import BottomNav from "./BottomNav";
-import { FiSearch } from "react-icons/fi";
-import axios from "axios";
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { motion } from 'framer-motion';
+import { io } from 'socket.io-client';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { format } from 'date-fns';
+import {
+  Box, Flex, Text, Button, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter,
+  VStack, Input, Select, IconButton, Image, Spinner, useDisclosure
+} from '@chakra-ui/react';
+import { FiSearch, FiEdit } from 'react-icons/fi';
+import { BsChatFill } from 'react-icons/bs';
+import { MdClose, MdContentCopy } from 'react-icons/md';
+import { useSelector, useDispatch } from 'react-redux';
+import {
+  fetchInitialData, updateTransaction, confirmTransaction, fundTransaction,
+  cancelTransaction, submitWaybill
+} from '../../store/slices/thunks';
+import Sidebar from './Sidebar';
+import BottomNav from './BottomNav';
+import MiniNav from './MiniNav';
+import { nigeriaBanks } from '../../data/banksList';
+import { useManagedToast } from '../../utils/toastManager';
+import axios from '../../utils/axiosConfig';
+
 const BASE_URL = import.meta.env.VITE_BASE_URL;
-import { useToast } from "@chakra-ui/react";
-import { Modal } from "@chakra-ui/react";
-import MiniNav from "./MiniNav";
-import { useNavigate } from "react-router-dom"; // Import useNavigate
-import { FaFacebookMessenger } from "react-icons/fa6";
-import { BsChatFill } from "react-icons/bs";
-import { MdClose } from "react-icons/md";
-import ConfirmTransactionModal from './ConfirmTransactionModal';
-// import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+const MotionBox = motion(Box);
+
+const debounce = (func, wait) => {
+  let timeout;
+  return (...args) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  };
+};
+
+const TransactionLoader = () => (
+  <Flex flexDir="column" align="center" justify="center" h={{ base: "50vh", md: "60vh" }}>
+    <Spinner color="#318AE6" size="xl" mb={4} />
+    <Text color="#E4E4E4" fontSize={{ base: "md", md: "lg" }} fontWeight="medium">
+      Loading transactions...
+    </Text>
+  </Flex>
+);
+
+const TransactionCard = ({
+  transaction,
+  currentUser,
+  isConfirming,
+  handleChat,
+  handleWaybill,
+  handleConfirm,
+  handleFund,
+  handleEditPayment,
+  cancelTransaction,
+  copyToClipboard,
+  toggleDescription,
+  expandedDescriptions,
+}) => {
+  // Ensure IDs are strings for comparison
+  const currentUserId = currentUser?._id?.toString();
+  const creatorId = transaction?.userId?._id?.toString();
+
+  // Determine if the current user is the creator
+  const isCreator = currentUserId && creatorId ? creatorId === currentUserId : false;
+
+  // Safely check participants
+  const isParticipant = transaction?.participants?.some((p) => {
+    if (!p) return false;
+    const participantId = p._id ? p._id.toString() : p.toString();
+    return participantId === currentUserId;
+  }) || false;
+
+  // Use userRole from backend if available, otherwise compute locally
+  const userRole = transaction?.userRole || (
+    isCreator
+      ? transaction?.selectedUserType
+      : transaction?.selectedUserType === "buyer"
+        ? "seller"
+        : transaction?.selectedUserType === "seller"
+          ? "buyer"
+          : "unknown"
+  );
+  const isBuyer = userRole === "buyer";
+
+  // Determine display name (opposite party)
+  let displayName = "No participant yet";
+  if (transaction?.participants?.length > 0 && transaction.participants[0]) {
+    if (isCreator) {
+      // Creator sees participant's name
+      const participant = transaction.participants[0];
+      displayName = participant?.firstName
+        ? `${participant.firstName} ${participant.lastName || ""}`.trim()
+        : participant?.email || "Participant";
+    } else if (isParticipant) {
+      // Participant sees creator's name
+      const creator = transaction.userId;
+      displayName = creator?.firstName
+        ? `${creator.firstName} ${creator.lastName || ""}`.trim()
+        : creator?.email || "Creator";
+    }
+  }
+
+  const description = transaction?.productDetails?.description || "No description provided";
+  const isExpanded = expandedDescriptions[transaction._id];
+  const maxLength = 100;
+  const truncatedDescription =
+    description.length > maxLength && !isExpanded
+      ? `${description.substring(0, maxLength)}...`
+      : description;
+
+  // Debug log
+  console.log("TransactionCard render:", {
+    transactionId: transaction?._id,
+    isCreator,
+    isParticipant,
+    displayName,
+    userRole,
+    selectedUserType: transaction?.selectedUserType,
+    currentUserId,
+    creatorId,
+    participants: transaction?.participants?.map((p) => p?._id?.toString() || "invalid"),
+  });
+
+  return (
+    <MotionBox
+      bg="#111518"
+      rounded="lg"
+      border="1px"
+      borderColor="gray.800"
+      p={{ base: 3, sm: 4 }}
+      maxW="100%"
+      overflow="hidden"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      whileHover={{ scale: 1.02, borderColor: "#318AE6" }}
+    >
+      <Flex justify="space-between" align="center" mb={{ base: 2, sm: 3 }}>
+        <Box>
+          <Text
+            fontSize={{ base: "md", sm: "lg" }}
+            fontWeight="bold"
+            color="white"
+            isTruncated
+            maxW="200px"
+          >
+            {displayName}
+          </Text>
+        </Box>
+        <Flex gap={2}>
+          <IconButton
+            aria-label="Edit payment details"
+            icon={<FiEdit />}
+            size="sm"
+            bg="#1d2225"
+            color="white"
+            _hover={{ bg: "#967532" }}
+            onClick={() => handleEditPayment(transaction)}
+          />
+          <IconButton
+            aria-label="Open chat"
+            icon={<BsChatFill />}
+            size="sm"
+            bg="#1d2225"
+            color="white"
+            _hover={{ bg: "#318AE6" }}
+            onClick={() => handleChat(transaction._id)}
+          />
+        </Flex>
+      </Flex>
+      <Box
+        display="grid"
+        gridTemplateColumns={{ base: "1fr", sm: "1fr 1fr" }}
+        gap={2}
+        mb={3}
+        overflow="hidden"
+      >
+        {[
+          {
+            label: "Transaction ID",
+            value: (
+              <Flex align="center" gap={1}>
+                <Text
+                  fontSize="sm"
+                  color="white"
+                  isTruncated
+                  whiteSpace="normal"
+                  overflowWrap="break-word"
+                >
+                  {transaction._id}
+                </Text>
+                <IconButton
+                  aria-label="Copy transaction ID"
+                  icon={<MdContentCopy />}
+                  size="xs"
+                  bg="transparent"
+                  color="gray.400"
+                  _hover={{ color: "#318AE6" }}
+                  onClick={() => copyToClipboard(transaction._id)}
+                />
+              </Flex>
+            ),
+          },
+          { label: "Email", value: transaction.email || "N/A" },
+          {
+            label: "Amount",
+            value: transaction.paymentAmount
+              ? `₦${parseFloat(transaction.paymentAmount).toLocaleString("en-NG", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}`
+              : "N/A",
+            color: "#318AE6",
+          },
+          {
+            label: "User Type",
+            value: userRole.charAt(0).toUpperCase() + userRole.slice(1),
+          },
+          {
+            label: "Status",
+            value: (
+              <Text
+                fontSize="xs"
+                bg={
+                  transaction.status === "completed"
+                    ? "green.900"
+                    : transaction.status === "cancelled"
+                      ? "red.900"
+                      : "yellow.900"
+                }
+                color={
+                  transaction.status === "completed"
+                    ? "green.300"
+                    : transaction.status === "cancelled"
+                      ? "red.300"
+                      : "yellow.300"
+                }
+                px={2}
+                py={1}
+                rounded="full"
+                textAlign="center"
+              >
+                {transaction.status || "Unknown"}
+              </Text>
+            ),
+          },
+          { label: "Bank", value: transaction.paymentBank || "N/A" },
+          { label: "Account Number", value: transaction.paymentAccountNumber || "N/A" },
+          {
+            label: "Waybill Status",
+            value: (
+              <Text
+                fontSize="xs"
+                bg={transaction.proofOfWaybill === "confirmed" ? "green.900" : "yellow.900"}
+                color={transaction.proofOfWaybill === "confirmed" ? "green.300" : "yellow.300"}
+                px={2}
+                py={1}
+                rounded="full"
+                textAlign="center"
+              >
+                {transaction.proofOfWaybill || "Not submitted"}
+              </Text>
+            ),
+          },
+          {
+            label: "Created",
+            value: transaction.createdAt
+              ? format(new Date(transaction.createdAt), "MMM dd, yyyy")
+              : "N/A",
+          },
+          {
+            label: "Escrow Status",
+            value: (
+              <Text
+                fontSize="xs"
+                bg={
+                  transaction.locked && transaction.status !== "completed"
+                    ? "yellow.900"
+                    : transaction.status === "completed"
+                      ? "green.900"
+                      : "gray.900"
+                }
+                color={
+                  transaction.locked && transaction.status !== "completed"
+                    ? "yellow.300"
+                    : transaction.status === "completed"
+                      ? "green.300"
+                      : "gray.300"
+                }
+                px={2}
+                py={1}
+                rounded="full"
+                textAlign="center"
+              >
+                {transaction.locked && transaction.status !== "completed"
+                  ? `Locked: ₦${parseFloat(transaction.lockedAmount || 0).toLocaleString(
+                    "en-NG",
+                    { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+                  )}`
+                  : transaction.status === "completed"
+                    ? `Released: ₦${parseFloat(transaction.paymentAmount || 0).toLocaleString(
+                      "en-NG",
+                      { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+                    )}`
+                    : "Not Locked"}
+              </Text>
+            ),
+          },
+        ].map(({ label, value, color }, idx) => (
+          <Box key={idx} bg="#1d2225" rounded="md" p={2} overflow="hidden">
+            <Text fontSize="xs" color="gray.400" mb={1}>
+              {label}
+            </Text>
+            {typeof value === "string" ? (
+              <Text
+                fontSize="sm"
+                color={color || "white"}
+                isTruncated
+                whiteSpace="normal"
+                overflowWrap="break-word"
+              >
+                {value}
+              </Text>
+            ) : (
+              value
+            )}
+          </Box>
+        ))}
+      </Box>
+      <Box mb={3}>
+        <Text fontSize="xs" color="gray.400" mb={1}>
+          Description
+        </Text>
+        <Text
+          fontSize="sm"
+          color="white"
+          whiteSpace="pre-wrap"
+          cursor={description.length > maxLength ? "pointer" : "default"}
+          onClick={() => toggleDescription(transaction._id)}
+        >
+          {truncatedDescription}
+        </Text>
+      </Box>
+      <Flex flexWrap="wrap" gap={2} justify="space-between">
+        <Button
+          onClick={() => cancelTransaction(transaction._id)}
+          bg="red.700"
+          color="white"
+          _hover={{ bg: "red.600" }}
+          size="sm"
+          flex={1}
+          minW="90px"
+          isLoading={isConfirming[transaction._id]}
+          aria-label="Cancel transaction"
+        >
+          Cancel
+        </Button>
+        <Button
+          onClick={() => handleWaybill(transaction._id, isBuyer)}
+          bg="#318AE6"
+          color="white"
+          _hover={{ bg: "#2279d8" }}
+          size="sm"
+          flex={1}
+          minW="90px"
+          aria-label={isBuyer ? "View waybill" : "Input waybill"}
+        >
+          {isBuyer ? "View Waybill" : "Input Waybill"}
+        </Button>
+        {transaction.status === "pending" && (
+          <Button
+            onClick={() => handleConfirm(transaction._id)}
+            bg="green.700"
+            color="white"
+            _hover={{ bg: "green.600" }}
+            size="sm"
+            flex={1}
+            minW="90px"
+            isLoading={isConfirming[transaction._id]}
+            aria-label="Complete transaction"
+          >
+            Complete
+          </Button>
+        )}
+        {isBuyer && !transaction.locked && transaction.status === "pending" && (
+          <Button
+            onClick={() => handleFund(transaction)}
+            bg="#967532"
+            color="white"
+            _hover={{ bg: "#7a5c28" }}
+            size="sm"
+            flexGrow={1}
+            flexBasis="calc(50% - 4px)"
+            minWidth="80px"
+            isLoading={isConfirming[transaction._id]}
+            aria-label="Fund transaction"
+          >
+            Fund Transaction
+          </Button>
+        )}
+      </Flex>
+    </MotionBox>
+  );
+};
+
+const WaybillModal = ({ isOpen, onClose, transactionId, isBuyer, details, setDetails, errors, handleSubmit, downloadImage }) => (
+  <Modal isOpen={isOpen} onClose={onClose} isCentered size={{ base: "full", sm: "lg" }} scrollBehavior="inside">
+    <ModalOverlay />
+    <ModalContent bg="#1A1E21" color="white" p={{ base: 4, sm: 6 }} rounded="xl">
+      <ModalHeader>
+        <Text fontSize={{ base: "lg", sm: "xl" }} fontWeight="bold" textAlign="center">{isBuyer ? "Waybill Details" : "Seller Waybill Proof"}</Text>
+        {!isBuyer && <Text fontSize="sm" textAlign="center" color="gray.300">I, the seller, confirm that I have shipped the goods.</Text>}
+      </ModalHeader>
+      <ModalBody>
+        {isBuyer ? (
+          <VStack spacing={4} align="start" color="gray.300">
+            {[
+              { label: "Item", value: details.item || "N/A" },
+              { label: "Price", value: details.price || "N/A" },
+              { label: "Shipping Address", value: details.shippingAddress || "N/A" },
+              { label: "Tracking Number", value: details.trackingNumber || "N/A" },
+              { label: "Delivery Date", value: details.deliveryDate ? format(new Date(details.deliveryDate), "MMM dd, yyyy") : "N/A" }
+            ].map(({ label, value }, idx) => (
+              <Box key={idx}>
+                <Text fontSize="xs" mb={2}>{label}:</Text>
+                <Text fontSize="sm">{value}</Text>
+              </Box>
+            ))}
+            <Box>
+              <Text fontSize="xs" mb={2}>Image:</Text>
+              {details.image ? (
+                <Box display="flex" flexDir="column" alignItems="center">
+                  <Image src={details.image} alt="Waybill Proof" maxW="full" h="auto" rounded="lg" />
+                  <Button mt={2} bg="#318AE6" color="white" _hover={{ bg: "#2279d8" }} size="sm" onClick={() => downloadImage(details.image)}>Download Image</Button>
+                </Box>
+              ) : (
+                <Text fontSize="sm">No image provided</Text>
+              )}
+            </Box>
+          </VStack>
+        ) : (
+          <form onSubmit={(e) => { e.preventDefault(); handleSubmit(transactionId); }}>
+            <VStack spacing={4}>
+              {[
+                { label: "Item", key: "item", type: "text" },
+                { label: "Price", key: "price", type: "number" },
+                { label: "Shipping Address", key: "shippingAddress", type: "text" },
+                { label: "Tracking Number", key: "trackingNumber", type: "text" },
+                { label: "Delivery Date", key: "deliveryDate", type: "date" }
+              ].map(({ label, key, type }) => (
+                <Box key={key} w="full">
+                  <Text fontSize="xs" color="gray.300" mb={2}>{label}:</Text>
+                  <Input
+                    type={type}
+                    value={details[key] || ""}
+                    onChange={(e) => setDetails({ ...details, [key]: e.target.value })}
+                    bg="#111518" borderColor="#318AE6" color="white" fontSize="sm"
+                  />
+                  {errors[key] && <Text color="red.500" fontSize="xs" mt={1}>{errors[key]}</Text>}
+                </Box>
+              ))}
+              <Box w="full">
+                <Text fontSize="xs" color="gray.300" mb={2}>Image:</Text>
+                <Box border="2px" borderStyle="dashed" borderColor="#318AE6" rounded="lg" p={4} textAlign="center">
+                  <Input
+                    type="file"
+                    id={`waybill-image-${transactionId}`}
+                    accept="image/*"
+                    onChange={(e) => setDetails({ ...details, image: e.target.files[0] })}
+                    display="none"
+                  />
+                  <label htmlFor={`waybill-image-${transactionId}`} className="cursor-pointer flex flex-col items-center">
+                    <Text fontSize="xl" color="#318AE6" mb={2}>📷</Text>
+                    <Text fontSize="xs" color="gray.300">Click to upload proof of shipment</Text>
+                  </label>
+                  {details.image && <Text fontSize="xs" color="gray.300" mt={2}>Selected: {details.image.name}</Text>}
+                </Box>
+                {errors.image && <Text color="red.500" fontSize="xs" mt={1}>{errors.image}</Text>}
+              </Box>
+            </VStack>
+          </form>
+        )}
+      </ModalBody>
+      <ModalFooter>
+        <Button bg="gray.600" color="white" _hover={{ bg: "gray.700" }} size="sm" onClick={onClose} mr={3}>Close</Button>
+        {!isBuyer && <Button type="submit" bg="#318AE6" color="white" _hover={{ bg: "#2279d8" }} size="sm" onClick={() => handleSubmit(transactionId)}>Submit</Button>}
+      </ModalFooter>
+    </ModalContent>
+  </Modal>
+);
+
+const PaymentDetailsModal = ({ isOpen, onClose, transaction, paymentDetails, setPaymentDetails, paymentErrors, handleSubmit }) => (
+  <Modal isOpen={isOpen} onClose={onClose} isCentered size={{ base: "full", sm: "md" }}>
+    <ModalOverlay />
+    <ModalContent bg="#1A1E21" color="white" p={{ base: 4, sm: 6 }} rounded="xl">
+      <Flex justify="space-between" align="center" mb={4}>
+        <Text fontSize="lg" fontWeight="bold">Edit Payment Details</Text>
+        <IconButton aria-label="Close modal" icon={<MdClose />} color="gray.400" _hover={{ color: "#318AE6" }} onClick={onClose} />
+      </Flex>
+      <form onSubmit={handleSubmit}>
+        <VStack spacing={4}>
+          <Box w="full">
+            <Text fontSize="xs" color="gray.300" mb={2}>Bank</Text>
+            <Select
+              value={paymentDetails.selectedBankCode || ""}
+              onChange={(e) => {
+                const bank = nigeriaBanks.find(b => b.code === e.target.value);
+                setPaymentDetails({ ...paymentDetails, selectedBankCode: e.target.value, paymentBank: bank?.name || "" });
+              }}
+              placeholder="Select a bank"
+              bg="#111518" borderColor="#318AE6" color="white" fontSize="sm"
+            >
+              {nigeriaBanks.map(bank => (
+                <option key={bank.code} value={bank.code} style={{ color: "black" }}>{bank.name}</option>
+              ))}
+            </Select>
+            {paymentErrors.selectedBankCode && <Text color="red.500" fontSize="xs" mt={1}>{paymentErrors.selectedBankCode}</Text>}
+          </Box>
+          <Box w="full">
+            <Text fontSize="xs" color="gray.300" mb={2}>Account Number</Text>
+            <Input
+              type="text"
+              value={paymentDetails.paymentAccountNumber || ""}
+              onChange={(e) => setPaymentDetails({ ...paymentDetails, paymentAccountNumber: e.target.value })}
+              bg="#111518" borderColor="#318AE6" color="white" fontSize="sm"
+            />
+            {paymentErrors.paymentAccountNumber && <Text color="red.500" fontSize="xs" mt={1}>{paymentErrors.paymentAccountNumber}</Text>}
+          </Box>
+          <Box w="full">
+            <Text fontSize="xs" color="gray.300" mb={2}>Amount</Text>
+            <Input
+              type="number"
+              value={paymentDetails.paymentAmount || ""}
+              onChange={(e) => setPaymentDetails({ ...paymentDetails, paymentAmount: e.target.value })}
+              bg="#111518" borderColor="#318AE6" color="white" fontSize="sm"
+              isDisabled={transaction?.locked}
+            />
+            {paymentErrors.paymentAmount && <Text color="red.500" fontSize="xs" mt={1}>{paymentErrors.paymentAmount}</Text>}
+          </Box>
+        </VStack>
+        <Flex justify="end" gap={3} mt={6}>
+          <Button bg="gray.600" color="white" _hover={{ bg: "gray.700" }} size="sm" onClick={onClose}>Cancel</Button>
+          <Button type="submit" bg="#318AE6" color="white" _hover={{ bg: "#2279d8" }} size="sm">Save</Button>
+        </Flex>
+      </form>
+    </ModalContent>
+  </Modal>
+);
 
 const DisplayTransaction = ({ userResponse }) => {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [transactions, setTransactions] = useState([]);
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [walletTransactions, setWalletTransactions] = useState([]);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [activeTab, setActiveTab] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [showToggleContainer, setShowToggleContainer] = useState(true);
   const [showProfile, setShowProfile] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [transactions, setTransactions] = useState([]);
-  const toast = useToast();
-  const navigate = useNavigate(); // Initialize useNavigate
-  const [showWaybillPopup, setShowWaybillPopup] = useState(false);
-  const [buyershowWaybillPopup, setBuyerShowWaybillPopup] = useState(false);
-  const [waybillDetails, setWaybillDetails] = useState({
-    item: "",
-    image: null,
-    price: "",
-    shippingAddress: "",
-    trackingNumber: "",
-    deliveryDate: "",
-  });
+  const [showWaybillPopup, setShowWaybillPopup] = useState({});
+  const [buyerShowWaybillPopup, setBuyerShowWaybillPopup] = useState({});
+  const [waybillDetails, setWaybillDetails] = useState({ item: '', image: null, price: '', shippingAddress: '', trackingNumber: '', deliveryDate: '' });
   const [buyerWaybillDetails, setBuyerWaybillDetails] = useState({});
-  const [imageUrl, setImageUrl] = useState(""); // Add state for imageUrl
-  const [cancelTransactionModel, setCancelTransactionModel] = useState(false)
-  const [confirmPayment, setConfirmPayment] = useState(false)
+  const [errors, setErrors] = useState({});
+  const [showPaymentDetailsModal, setShowPaymentDetailsModal] = useState(false);
+  const [currentTransaction, setCurrentTransaction] = useState(null);
+  const [paymentDetails, setPaymentDetails] = useState({ paymentBank: '', paymentAccountNumber: '', selectedBankCode: '', paymentAmount: '' });
+  const [paymentErrors, setPaymentErrors] = useState({});
+  const [isConfirming, setIsConfirming] = useState({});
+  const [expandedDescriptions, setExpandedDescriptions] = useState({});
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedTransactionId, setSelectedTransactionId] = useState(null);
-  const [currentUser, setCurrentUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const toast = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { isOpen: isFundingModalOpen, onOpen: openFundingModal, onClose: closeFundingModal } = useDisclosure();
 
-
+  // Handle Paystack callback
   useEffect(() => {
-    // Fetch current user info first
-    const fetchCurrentUser = async () => {
-      const token = localStorage.getItem("auth-token");
-      if (!token) {
-        setIsLoading(false);
-        return;
-      }
+    const params = new URLSearchParams(location.search);
+    const success = params.get('success');
+    const transactionId = params.get('transactionId');
+    const error = params.get('error');
 
-      try {
-        const response = await axios.get(`${BASE_URL}/api/users/user-details`, {
-          headers: {
-            "auth-token": token,
-          },
-        });
-        setCurrentUser(response.data);
-        // console.log(response.data)
-      } catch (error) {
-        console.error("Error fetching current user:", error);
-        toast({
-          title: "Error fetching user information",
-          status: "error",
-          duration: 3000,
-          isClosable: true,
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchCurrentUser();
-  }, [toast]);
-
-  useEffect(() => {
-    const fetchTransactions = async () => {
-      const token = localStorage.getItem("auth-token");
-      try {
-        const response = await axios.get(`${BASE_URL}/api/transactions/get-transaction`, {
-          headers: {
-            "auth-token": token,
-          },
-        });
-        setTransactions(response.data);
-        // console.log(response.data)
-      } catch (error) {
-        console.error("Error fetching transactions:", error);
-        toast({
-          title: "Error fetching transactions",
-          status: "error",
-          duration: 3000,
-          isClosable: true,
-        });
-      }
-    };
-    fetchTransactions();
-  }, []);
-
-  useEffect(() => {
-    const interval = setInterval(fetchTransactionData, 10000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const fetchTransactionData = async () => {
-    try {
-      const token = localStorage.getItem("auth-token");
-      const res = await axios.get(`${BASE_URL}/api/transactions/get-transaction`, {
-        headers: { "auth-token": token }
-      });
-      setTransactions(res.data); // Or however you're storing the data
-    } catch (err) {
-      console.error("Fetch error:", err);
-    }
-  };
-
-
-
-  const handleShowProfile = () => {
-    setShowToggleContainer(false);
-    setShowProfile(true);
-  };
-  const handleMyTransaction = () => {
-    setShowToggleContainer(true);
-    setShowProfile(false);
-  };
-  const handleChatButton = async (transactionId) => {
-    const token = localStorage.getItem("auth-token");
-    try {
-      const response = await axios.post(`${BASE_URL}/api/transactions/create-chatroom`,
-        { transactionId },
-        {
-          headers: {
-            "auth-token": token,
-          },
-        });
-      // console.log("Chatroom created with ID:", response.data.chatroomId); // Add logging
-      navigate(`/chat/${response.data.chatroomId}`); // Navigate to MessageBox component with chatroomId
-    } catch (error) {
-      console.error("Error creating chatroom:", error);
+    if (success === 'true' && transactionId) {
       toast({
-        title: "Error creating chatroom",
-        status: "error",
-        duration: 3000,
+        title: 'Funding Successful',
+        description: 'Transaction has been funded.',
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+      });
+      fetchData(false);
+    } else if (success === 'false' && error) {
+      toast({
+        title: 'Funding Failed',
+        description: decodeURIComponent(error),
+        status: 'error',
+        duration: 5000,
         isClosable: true,
       });
     }
+  }, [location]);
+
+  // Check if screen is mobile size
+  useEffect(() => {
+    const checkScreenSize = () => {
+      const isMobileView = window.innerWidth < 768;
+      setIsMobile(isMobileView);
+      if (isMobileView) {
+        setIsSidebarCollapsed(true);
+      }
+    };
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
+
+  const handleSidebarCollapseChange = (isCollapsed) => {
+    setIsSidebarCollapsed(isCollapsed);
   };
 
-  const handleWaybillPopup = (transactionId) => {
-    setShowWaybillPopup({ [transactionId]: true });
-    // console.log("waybillDetails")
+  const fetchData = useCallback(async (showLoader = false) => {
+    const token = localStorage.getItem('access-token');
+    if (!token) {
+      setIsInitialLoading(false);
+      setIsManualRefreshing(false);
+      toast({ title: 'Authentication required', description: 'Please log in.', status: 'error', duration: 3000, isClosable: true });
+      navigate('/');
+      return;
+    }
+    try {
+      if (showLoader) {
+        setIsInitialLoading(true);
+        setIsManualRefreshing(true);
+      }
+      const headers = { 'Authorization': `Bearer ${token}` };
+      const [userRes, txRes, walletRes, walletTxRes] = await Promise.all([
+        axios.get(`${BASE_URL}/api/users/user-details`, { headers }),
+        axios.get(`${BASE_URL}/api/transactions/get-transaction`, { headers }),
+        axios.get(`${BASE_URL}/api/wallet/balance`, { headers }),
+        axios.get(`${BASE_URL}/api/wallet/transactions`, { headers })
+      ]);
+
+      // Handle user response
+      if (!userRes.data?.data?.user) {
+        throw new Error('Failed to fetch user details');
+      }
+      setCurrentUser(userRes.data.data.user);
+
+      // Handle transactions response
+      const transactionsArray = txRes.data?.success && Array.isArray(txRes.data.data) ? txRes.data.data : [];
+      if (!Array.isArray(transactionsArray)) {
+        console.warn('Transactions data is not an array:', txRes.data);
+        setTransactions([]);
+      } else {
+        // Log malformed participants
+        transactionsArray.forEach(t => {
+          if (t.participants?.some(p => !p || !p._id || !p.email)) {
+            console.warn('Malformed participant in transaction:', t._id, t.participants);
+          }
+        });
+        setTransactions(transactionsArray);
+      }
+
+      // Handle wallet responses
+      setWalletBalance(walletRes.data?.success && walletRes.data.balance !== undefined ? walletRes.data.balance : 0);
+      setWalletTransactions(walletTxRes.data?.success && Array.isArray(walletTxRes.data.transactions) ? walletTxRes.data.transactions : []);
+
+    } catch (error) {
+      console.error('Fetch error:', error.response?.data || error);
+      const errorMessage = error.response?.data?.errors?.map(e => e.msg).join(', ') || error.response?.data?.error || error.message;
+      toast({
+        title: 'Error fetching data',
+        description: errorMessage,
+        status: 'error',
+        duration: 3000,
+        isClosable: true
+      });
+      if (error.response?.status === 401) {
+        localStorage.removeItem('access-token');
+        navigate('/');
+      }
+      setTransactions([]);
+      setWalletBalance(0);
+      setWalletTransactions([]);
+    } finally {
+      if (showLoader) {
+        setIsInitialLoading(false);
+        setIsManualRefreshing(false);
+      }
+    }
+  }, [toast, navigate]);
+
+  useEffect(() => {
+    fetchData(true);
+    const interval = setInterval(() => fetchData(false), 30000);
+    return () => clearInterval(interval);
+  }, [fetchData]);
+
+  useEffect(() => {
+    const socket = io(BASE_URL, { auth: { token: localStorage.getItem('access-token') }, reconnection: true, reconnectionAttempts: 5, reconnectionDelay: 1000 });
+    socket.on('connect', () => {
+      if (currentUser?._id) socket.emit('join-room', currentUser._id);
+    });
+    socket.on('transactionCreated', (data) => {
+      toast({
+        title: 'Transaction Created',
+        description: `Transaction ${data.transactionId} created successfully.`,
+        status: 'success',
+        duration: 5000,
+        isClosable: true
+      });
+      fetchData(false);
+    });
+    socket.on('transactionCompleted', (data) => {
+      toast({
+        title: 'Transaction Completed',
+        description: `Transaction ${data.transactionId} completed.`,
+        status: 'success',
+        duration: 5000,
+        isClosable: true
+      });
+      fetchData(false);
+    });
+    socket.on('balanceUpdate', (data) => {
+      setWalletBalance(data.balance ?? 0);
+      toast({
+        title: 'Wallet Updated',
+        description: `Balance updated to ₦${(data.balance ?? 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        status: 'success',
+        duration: 5000,
+        isClosable: true
+      });
+    });
+    socket.on('transactionUpdated', (data) => {
+      toast({
+        title: 'Transaction Update',
+        description: data.message,
+        status: 'info',
+        duration: 5000,
+        isClosable: true
+      });
+      fetchData(false);
+    });
+    socket.on('reconnect', () => currentUser?._id && socket.emit('join-room', currentUser._id));
+    socket.on('connect_error', (error) => {
+      toast({
+        title: 'Socket Connection Error',
+        description: error.message,
+        status: 'error',
+        duration: 3000,
+        isClosable: true
+      });
+    });
+    return () => socket.disconnect();
+  }, [currentUser?._id, toast, fetchData]);
+
+  const debouncedSearch = useCallback(debounce((value) => setSearchQuery(value), 300), []);
+
+  const filteredTransactions = useMemo(() => {
+    if (!Array.isArray(transactions)) {
+      console.warn('Transactions is not an array:', transactions);
+      return [];
+    }
+    const query = searchQuery.toLowerCase();
+    return transactions.filter((t) => {
+      if (activeTab === 'active' && t.status !== 'pending') return false;
+      if (activeTab === 'completed' && t.status !== 'completed') return false;
+      if (activeTab === 'cancelled' && t.status !== 'cancelled') return false;
+      const participantName = t.participants?.length > 0
+        ? `${t.participants[0].firstName || ''} ${t.participants[0].lastName || ''}`.trim().toLowerCase()
+        : '';
+      const description = t.productDetails?.description?.toLowerCase() || '';
+      return (
+        participantName.includes(query) || description.includes(query)
+      );
+    });
+  }, [transactions, activeTab, searchQuery]);
+
+  const handleChat = async (transactionId) => {
+    try {
+      const res = await axios.post(`${BASE_URL}/api/transactions/create-chatroom`, { id: transactionId }, {
+        headers: { "Authorization": `Bearer ${localStorage.getItem("access-token")}` }
+      });
+      if (res.data?.success && res.data.chatroomId) {
+        navigate(`/chat/${res.data.chatroomId}`);
+      } else {
+        throw new Error('Failed to create chatroom');
+      }
+    } catch (error) {
+      const errorMessage = error.response?.data?.errors?.map(e => e.msg).join(', ') || error.response?.data?.error || error.message;
+      toast({
+        title: "Error creating chatroom",
+        description: errorMessage,
+        status: "error",
+        duration: 3000,
+        isClosable: true
+      });
+    }
   };
-  const ClosehandleWaybillPopup = (transactionId) => {
-    setShowWaybillPopup({ [transactionId]: false });
-    // console.log("Close waybillDetails")
-  };
-  const handleBuyerWaybillPopup = async (transactionId) => {
-    setBuyerShowWaybillPopup({ [transactionId]: true });
-    await fetchBuyerWaybillDetails(transactionId);
-    // console.log("waybillDetails")
-  };
-  const ClosehandleBuyerWaybillPopup = (transactionId) => {
-    setBuyerShowWaybillPopup({ [transactionId]: false });
-    // console.log("Close waybillDetails")
+
+  const handleWaybill = (transactionId, isBuyer) => {
+    if (isBuyer) {
+      setBuyerShowWaybillPopup(prev => ({ ...prev, [transactionId]: true }));
+      fetchBuyerWaybillDetails(transactionId);
+    } else {
+      setShowWaybillPopup(prev => ({ ...prev, [transactionId]: true }));
+    }
   };
 
   const fetchBuyerWaybillDetails = async (transactionId) => {
-    const token = localStorage.getItem("auth-token");
     try {
-      const response = await axios.get(`${BASE_URL}/api/transactions/${transactionId}`, {
-        headers: {
-          "auth-token": token,
-        },
+      const res = await axios.get(`${BASE_URL}/api/transactions/waybill-details/${transactionId}`, {
+        headers: { "Authorization": `Bearer ${localStorage.getItem("access-token")}` }
       });
-      const { image, item, price, shippingAddress, trackingNumber, deliveryDate } = response.data.waybillDetails || {};
-      const imagePath = image ? `${BASE_URL}/${image}` : ""; // Ensure imagePath is correctly formed
-      setImageUrl(imagePath);
-      // console.log(imagePath);
-      // console.log(response.data)
-      setBuyerWaybillDetails({
-        [transactionId]: {
-          item,
-          price,
-          shippingAddress,
-          trackingNumber,
-          deliveryDate,
-          image: imagePath,
-        },
-      });
+      if (res.data?.success && res.data.data) {
+        const { image, item, price, shippingAddress, trackingNumber, deliveryDate } = res.data.data;
+        setBuyerWaybillDetails(prev => ({
+          ...prev,
+          [transactionId]: {
+            item: item || "",
+            price: price || "",
+            shippingAddress: shippingAddress || "",
+            trackingNumber: trackingNumber || "",
+            deliveryDate: deliveryDate || "",
+            image: image ? `${BASE_URL}/${image}` : ""
+          }
+        }));
+      } else {
+        throw new Error('Failed to fetch waybill details');
+      }
     } catch (error) {
-      console.error("Error fetching waybill details:", error);
+      const errorMessage = error.response?.data?.errors?.map(e => e.msg).join(', ') || error.response?.data?.error || error.message;
       toast({
         title: "Error fetching waybill details",
+        description: errorMessage,
         status: "error",
         duration: 3000,
-        isClosable: true,
+        isClosable: true
       });
     }
   };
 
-
-
   const handleWaybillSubmit = async (transactionId) => {
-    const token = localStorage.getItem("auth-token");
-    const formData = new FormData();
-
-    formData.append("transactionId", transactionId);
-    formData.append("item", waybillDetails.item);
-    formData.append("price", waybillDetails.price);
-    formData.append("shippingAddress", waybillDetails.shippingAddress);
-    formData.append("trackingNumber", waybillDetails.trackingNumber);
-    formData.append("deliveryDate", waybillDetails.deliveryDate);
-
-    if (waybillDetails.image) {
-      formData.append("image", waybillDetails.image);
+    const newErrors = {};
+    ["item", "price", "shippingAddress", "trackingNumber", "deliveryDate", "image"].forEach(key => {
+      if (!waybillDetails[key]) newErrors[key] = `${key.charAt(0).toUpperCase() + key.slice(1)} is required`;
+    });
+    if (Object.keys(newErrors).length) {
+      setErrors(newErrors);
+      return;
     }
-
+    setErrors({});
+    const formData = new FormData();
+    formData.append("transactionId", transactionId);
+    Object.entries(waybillDetails).forEach(([key, value]) => value && formData.append(key, value));
     try {
-      const response = await axios.post(
-        `${BASE_URL}/api/transactions/submit-waybill`,
-        formData, // Pass the FormData directly
-        {
-          headers: {
-            "auth-token": token,
-            "Content-Type": "multipart/form-data",
-          },
+      await axios.post(`${BASE_URL}/api/transactions/submit-waybill`, formData, {
+        headers: {
+          "Authorization": `Bearer ${localStorage.getItem("access-token")}`,
+          "Content-Type": "multipart/form-data"
         }
-      );
-      // console.log("Waybill details submitted:", response.data);
-      toast({
-        title: "Waybill details submitted successfully",
-        status: "success",
-        duration: 3000,
-        isClosable: true,
       });
-      setShowWaybillPopup(false);
+      toast({ title: "Waybill submitted", status: "success", duration: 3000, isClosable: true });
+      setShowWaybillPopup(prev => ({ ...prev, [transactionId]: false }));
+      setWaybillDetails({ item: "", image: null, price: "", shippingAddress: "", trackingNumber: "", deliveryDate: "" });
+      fetchData(false);
     } catch (error) {
-      console.error("Error submitting waybill details:", error);
+      const errorMessage = error.response?.data?.errors?.map(e => e.msg).join(', ') || error.response?.data?.error || error.message;
       toast({
-        title: "Error submitting waybill details",
+        title: "Error submitting waybill",
+        description: errorMessage,
         status: "error",
         duration: 3000,
-        isClosable: true,
+        isClosable: true
       });
     }
   };
 
   const downloadImage = (url) => {
-    if (!url) {
-      console.error("No image URL provided");
-      return;
-    }
-    const link = document.createElement('a');
+    if (!url) return;
+    const link = document.createElement("a");
     link.href = url;
-    link.download = url.split('/').pop(); // Extract filename from URL
+    link.download = url.split("/").pop() || "waybill-image";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  // =========================================
   const cancelTransaction = async (transactionId) => {
-    const token = localStorage.getItem("auth-token");
+    if (isConfirming[transactionId]) return;
+    setIsConfirming(prev => ({ ...prev, [transactionId]: true }));
     try {
       const response = await axios.put(`${BASE_URL}/api/transactions/cancel/${transactionId}`, {}, {
-        headers: { "auth-token": token },
+        headers: { "Authorization": `Bearer ${localStorage.getItem("access-token")}` }
       });
       toast({
-        title: "Transaction cancelled successfully",
+        title: "Transaction Cancelled",
+        description: response.data.refunded > 0
+          ? `Funds of ₦${response.data.refunded.toLocaleString('en-NG', { minimumFractionDigits: 2 })} refunded to wallet.`
+          : "No funds were locked for this transaction.",
         status: "success",
-        duration: 3000,
-        isClosable: true,
+        duration: 5000,
+        isClosable: true
       });
-
-      // Refresh transactions list after cancellation
-      setTransactions(transactions.filter(transaction => transaction._id !== transactionId));
+      fetchData(false);
     } catch (error) {
-      console.error("Error cancelling transaction", error);
-      toast({
-        title: "Failed to cancel transaction",
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
-    }
-  };
-
-  const completeTransaction = async (transactionId) => {
-    const token = localStorage.getItem("auth-token");
-    try {
-      const response = await axios.put(`${BASE_URL}/api/transactions/complete-transaction/${transactionId}`, {
-        headers: { "auth-token": token },
-      });
-
-      // Handle the response
-      // console.log('Transaction completed:', response.data);
-      toast({
-        title: "Transaction completed successfully",
-        status: "success",
-        duration: 3000,
-        isClosable: true,
-      });
-
-      // Refresh transactions list after cancellation
-      setTransactions(transactions.filter(transaction => transaction._id !== transactionId));
-    } catch (error) {
-      console.error('Error completing transaction:', error);
-      toast({
-        title: "Failed to complete transaction",
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
-    }
-  };
-
-
-  const handleDoneClick = (transactionId) => {
-    setSelectedTransactionId(transactionId);
-    setModalVisible(true);
-  };
-
-  
-
-  // Updated handleConfirm function
-  const handleConfirm = async (transactionId) => {
-    try {
-      const token = localStorage.getItem("auth-token");
-      if (!token) {
-        toast({
-          title: "User not authenticated",
-          status: "error",
-          duration: 3000,
-          isClosable: true,
-        });
-        return;
-      }
-
-
-      // First check if there are participants (if user is creator)
-      const transaction = transactions.find(t => t._id === transactionId);
-
-      // If current user is creator and there are no participants yet
-      if (
-        transaction &&
-        currentUser &&
-        // currentUser._id === transaction.userId._id &&
-        // (!transaction.participants || transaction.participants.length === 0)
-        currentUser._id === (transaction.userId._id ? transaction.userId._id : transaction.userId) &&
-      (!transaction.participants || transaction.participants.length === 0)
-      ) {
-        toast({
-          title: "There is no participant in this transaction",
-          description: "Please wait for someone to join.",
-          status: "error",
-          duration: 5000,
-          isClosable: true,
-        });
-        return;
-      }
-
-      if (!window.confirm("Are you sure you want to complete this transaction? This action cannot be undone.")) {
-        return;
-      }
-
-      // console.log("Confirming transaction:", transactionId);
-
-      const response = await axios.post(
-        `${BASE_URL}/api/transactions/confirm`,
-        { transactionId },
-        { headers: { "auth-token": token } }
-      );
-
-      // console.log("Confirmation response:", response.data);
-
-      if (response.data.buyerConfirmed && response.data.sellerConfirmed) {
-        toast({
-          title: "Transaction completed successfully",
-          description: "Payout has been initiated to the seller.",
-          status: "success",
-          duration: 5000,
-          isClosable: true,
-        });
-      } else {
-        toast({
-          title: "Confirmation recorded",
-          description: "Waiting for the other party to confirm.",
-          status: "info",
-          duration: 5000,
-          isClosable: true,
-        });
-      }
-
-      // Refresh transaction data
-      fetchTransactionData();
-    } catch (error) {
-      console.error("Confirmation error:", error);
-      console.error("Confirmation error details:", {
-        message: error.message,
-        response: error.response ? {
-          status: error.response.status,
-          data: error.response.data
-        } : 'No response',
-        request: error.request ? 'Request sent but no response received' : 'Request setup failed'
-      });
-      let errorMessage = "Could not complete transaction. Please try again.";
-
-      if (error.response && error.response.data && error.response.data.message) {
-        errorMessage = error.response.data.message;
-      }
-
+      const errorMessage = error.response?.data?.errors?.map(e => e.msg).join(', ') || error.response?.data?.error || error.response?.data?.message || error.message;
       toast({
         title: "Error",
         description: errorMessage,
         status: "error",
         duration: 5000,
-        isClosable: true,
+        isClosable: true
       });
+    } finally {
+      setIsConfirming(prev => ({ ...prev, [transactionId]: false }));
+    }
+  };
+
+  const handleConfirm = async (transactionId) => {
+    if (isConfirming[transactionId]) return;
+    setIsConfirming(prev => ({ ...prev, [transactionId]: true }));
+    try {
+      const transaction = transactions.find(t => t._id === transactionId);
+      if (!transaction) throw new Error("Transaction not found");
+      if (!transaction.participants?.length) throw new Error("No participant");
+      if (transaction.status !== "pending") throw new Error("Only pending transactions can be confirmed");
+      setSelectedTransactionId(transactionId);
+      setModalVisible(true);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        status: "error",
+        duration: 5000,
+        isClosable: true
+      });
+    } finally {
+      setIsConfirming(prev => ({ ...prev, [transactionId]: false }));
+    }
+  };
+
+  const completeTransaction = async (transactionId) => {
+    if (isConfirming[transactionId]) return;
+    setIsConfirming(prev => ({ ...prev, [transactionId]: true }));
+    try {
+      const res = await axios.post(`${BASE_URL}/api/transactions/confirm`, { transactionId }, {
+        headers: { "Authorization": `Bearer ${localStorage.getItem("access-token")}` }
+      });
+      if (res.data?.success) {
+        const { status } = res.data.transaction || {};
+        toast({
+          title: status === "completed" ? "Transaction Completed" : "Confirmation Recorded",
+          description: status === "completed" ? "Funds released to seller." : "Waiting for other party.",
+          status: status === "completed" ? "success" : "info",
+          duration: 5000,
+          isClosable: true
+        });
+        fetchData(false);
+      } else {
+        throw new Error(res.data?.error || 'Failed to confirm transaction');
+      }
+    } catch (error) {
+      const errorMessage = error.response?.data?.errors?.map(e => e.msg).join(', ') || error.response?.data?.error || error.response?.data?.message || error.message;
+      toast({
+        title: "Error",
+        description: errorMessage,
+        status: "error",
+        duration: 5000,
+        isClosable: true
+      });
+    } finally {
+      setIsConfirming(prev => ({ ...prev, [transactionId]: false }));
+      setModalVisible(false);
+      setSelectedTransactionId(null);
     }
   };
 
   const handleFund = async (transaction) => {
-    // console.log("Initiating payment with transaction:", transaction);
-
-    // Destructure necessary properties from transaction
-    const {
-      _id,  // This is the MongoDB document ID
-      paymentAmount,
-      email,
-      paymentBank,
-      paymentName,
-      paymentDescription,
-    } = transaction;
-
-    // Prepare request data - using _id as the transactionId
-    const requestData = {
-      amount: paymentAmount,
-      transactionId: _id,  // Use the MongoDB document ID
-      email,
-      paymentBank,
-      paymentName,
-      paymentDescription,
-    };
-
-
-    const token = localStorage.getItem("auth-token");
-
+    if (!transaction || transaction.locked || !transaction._id || transaction.paymentAmount <= 0) {
+      toast({
+        title: 'Error',
+        description: 'Invalid transaction data.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true
+      });
+      return;
+    }
+    setIsConfirming(prev => ({ ...prev, [transaction._id]: true }));
     try {
-      // console.log("Sending payment request with data:", requestData);
-
-      const response = await axios.post(
-        `${BASE_URL}/api/transactions/initiate`,
-        requestData,
-        {
-          headers: {
-            "auth-token": token,
-          },
+      const amount = parseFloat(transaction.paymentAmount);
+      setCurrentTransaction(transaction);
+      if (walletBalance >= amount) {
+        const response = await axios.post(`${BASE_URL}/api/transactions/fund-transaction`, {
+          transactionId: transaction._id,
+          amount: amount,
+        }, {
+          headers: { "Authorization": `Bearer ${localStorage.getItem("access-token")}` }
+        });
+        if (response.data?.success) {
+          toast({
+            title: 'Transaction Funded',
+            description: 'Funded from wallet balance.',
+            status: 'success',
+            duration: 5000,
+            isClosable: true
+          });
+          fetchData(false);
+        } else {
+          throw new Error(response.data?.error || 'Failed to fund transaction');
         }
-      );
-
-      // console.log("Payment initiation response:", response.data);
-
-      if (response.data && response.data.authorization_url) {
-        // Redirect to Paystack payment page
-        window.location.href = response.data.authorization_url;
-
-        // Set up polling to check payment status
-        const interval = setInterval(async () => {
-          try {
-            const statusRes = await axios.get(
-              `${BASE_URL}/api/transactions/check-funded?transactionId=${_id}`,
-              { headers: { "auth-token": token } }
-            );
-
-            // console.log("Payment status check:", statusRes.data);
-
-            if (statusRes.data.funded) {
-              clearInterval(interval);
-              alert("Payment confirmed!");
-
-              // Update the transactions state
-              setTransactions(prev =>
-                prev.map(tx =>
-                  tx._id === _id ? { ...tx, funded: true } : tx
-                )
-              );
-            }
-          } catch (err) {
-            console.error("Polling error:", err);
-            // Continue polling despite errors
-          }
-        }, 3000); // Check every 3 seconds
       } else {
-        console.error("No authorization URL in response:", response.data);
-        alert("Error: Could not find the payment link.");
+        openFundingModal();
       }
     } catch (error) {
-      console.error("Error initiating payment:", error);
-
-      // Provide a helpful error message
-      let errorMessage = "There was an issue processing the payment. Please try again.";
-
-      if (error.response && error.response.data && error.response.data.message) {
-        errorMessage = error.response.data.message;
+      const errorMessage = error.response?.data?.errors?.map(e => e.msg).join(', ') || error.response?.data?.error || error.message;
+      if (error.response?.status === 400 && error.response?.data?.shortfall) {
+        toast({
+          title: 'Insufficient Balance',
+          description: `You need an additional ₦${error.response.data.shortfall.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} to fund this transaction.`,
+          status: 'warning',
+          duration: 5000,
+          isClosable: true
+        });
+        openFundingModal();
+      } else {
+        toast({
+          title: 'Error',
+          description: errorMessage,
+          status: 'error',
+          duration: 5000,
+          isClosable: true
+        });
       }
-
-      alert(errorMessage);
+    } finally {
+      setIsConfirming(prev => ({ ...prev, [transaction._id]: false }));
     }
   };
 
+  const confirmFunding = async (transaction) => {
+    if (!transaction || !transaction.paymentAmount) {
+      toast({
+        title: 'Error',
+        description: 'Invalid transaction data.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true
+      });
+      closeFundingModal();
+      return;
+    }
+    try {
+      const amount = parseFloat(transaction.paymentAmount);
+      const shortfall = Math.max(amount - walletBalance, 0);
+      const fundingAmount = Math.ceil(shortfall * 100) / 100;
+      const response = await axios.post(`${BASE_URL}/api/wallet/fund`, {
+        amount: fundingAmount,
+        email: currentUser?.email || '',
+        phoneNumber: currentUser?.phoneNumber || '',
+        transactionId: transaction._id,
+      }, {
+        headers: { "Authorization": `Bearer ${localStorage.getItem("access-token")}` }
+      });
+      if (response.data?.success && response.data.data?.authorization_url) {
+        window.location.href = response.data.data.authorization_url;
+      } else {
+        throw new Error(response.data?.error || 'Failed to initiate Paystack funding');
+      }
+    } catch (error) {
+      const errorMessage = error.response?.data?.errors?.map(e => e.msg).join(', ') || error.response?.data?.error || error.message;
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        status: 'error',
+        duration: 5000,
+        isClosable: true
+      });
+    } finally {
+      closeFundingModal();
+    }
+  };
 
+  const handleEditPayment = (transaction) => {
+    if (!transaction) return;
+    setCurrentTransaction(transaction);
+    setPaymentDetails({
+      paymentBank: transaction.paymentBank || "",
+      paymentAccountNumber: transaction.paymentAccountNumber || "",
+      selectedBankCode: transaction.paymentBankCode || "",
+      paymentAmount: transaction.paymentAmount || ""
+    });
+    setShowPaymentDetailsModal(true);
+  };
 
+  const handlePaymentSubmit = async (e) => {
+    e.preventDefault();
+    const newErrors = {};
+    if (!paymentDetails.selectedBankCode) newErrors.selectedBankCode = "Select a bank";
+    if (!/^\d{10}$/.test(paymentDetails.paymentAccountNumber)) newErrors.paymentAccountNumber = "Invalid account number";
+    if (parseFloat(paymentDetails.paymentAmount) <= 0) newErrors.paymentAmount = "Invalid amount";
+    if (Object.keys(newErrors).length) {
+      setPaymentErrors(newErrors);
+      return;
+    }
+    try {
+      await axios.put(`${BASE_URL}/api/transactions/update-payment-details/${currentTransaction._id}`, paymentDetails, {
+        headers: { "Authorization": `Bearer ${localStorage.getItem("access-token")}` }
+      });
+      toast({
+        title: "Payment details updated",
+        status: "success",
+        duration: 3000,
+        isClosable: true
+      });
+      setShowPaymentDetailsModal(false);
+      setCurrentTransaction(null);
+      setPaymentDetails({ paymentBank: "", paymentAccountNumber: "", selectedBankCode: "", paymentAmount: "" });
+      setPaymentErrors({});
+      fetchData(false);
+    } catch (error) {
+      const errorMessage = error.response?.data?.errors?.map(e => e.msg).join(', ') || error.response?.data?.error || error.response?.data?.message || error.message;
+      toast({
+        title: "Error",
+        description: errorMessage,
+        status: "error",
+        duration: 5000,
+        isClosable: true
+      });
+    }
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text).then(() => toast({
+      title: "Copied to clipboard",
+      status: "success",
+      duration: 2000,
+      isClosable: true
+    }));
+  };
+
+  const toggleDescription = (transactionId) => {
+    setExpandedDescriptions(prev => ({ ...prev, [transactionId]: !prev[transactionId] }));
+  };
+
+  const handleShowProfile = () => {
+    setShowToggleContainer(false);
+    setShowProfile(true);
+  };
+
+  const handleMyTransaction = () => {
+    setShowToggleContainer(true);
+    setShowProfile(false);
+  };
 
   return (
-    <div className="border flex items-center border-black">
+    <Flex minH="100vh" bg="" direction={{ base: "column", md: "row" }}>
       <Sidebar
         onShowProfile={handleShowProfile}
         onShowToggleComponent={handleMyTransaction}
+        onCollapseChange={handleSidebarCollapseChange}
       />
-
       <div
-        style={{ overflowY: "scroll" }}
-        className="layout bg-[#1A1E21] text-[#E4E4E4]  fixed right-0 top-0 w-[100%]  md:w-[83.2%] h-[100vh]"
+        className={`transition-all pt-1 duration-300 flex-1 h-screen overflow-y-auto ${!isMobile ? (isSidebarCollapsed ? "ml-[80px]" : "ml-[280px]") : "ml-0"} md:block block`}
       >
-        <div
-          className={
-            showToggleContainer ? "h-[auto] toggleContainer" : "hidden"
-          }
-        >
-          <div>
-            <MiniNav />
-          </div>
-          <div className="pt-14 md:pr-14 pr-7 pl-7  mt-10  md:pl-14 pb-20">
-            <h1 className="text-[33px] font-bold">My Transactions</h1>
-            <div className="sm:flex sm:flex-row  flex flex-col-reverse  mt-4 mb-4  text-[14px]  items-center justify-between ">
-              <div className=" sm:max-w-[280px] w-[100%] border-b border-[#318AE6] rounded   h-[auto]">
-              </div>
-              {/* ================= Search Feature ======= */}
-              <div className="sm:w-[200px] w-[100%] sm:mb-0 mb-6  h-[auto] flex items-center ">
-                <input
-                  type="text"
-                  placeholder="Search"
-                  name=""
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)} // Add onChange handler
-                  className="pr-[20px] text-[#fff]  w-[100%] bg-[transparent] border-[#fff]  border-b text-[13px] pb-2  outline-none"
-                />
-                <FiSearch className="text-[23px] ml-[-3px]" />
-              </div>
-            </div>
-            {/* ========== Main Active Container ============= */}
-            <div className="w-[100%] h-[auto]">
-              {transactions.length === 0 ? (
-                <p>No transactions found.</p>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {
-                    transactions
-                      .filter(transaction =>
-                        transaction.paymentName.toLowerCase().includes(searchQuery.toLowerCase())
-                      )
-                      .map((transaction) => (
-                        <div key={transaction._id} className="transaction-card text-[13px] mt-3 px-5 py-4 bg-[#111518] rounded-2xl">
-                          <div className="flex items-center justify-between">
-                            <h3>Name: {transaction.paymentName}</h3>
-                            <button onClick={() => handleChatButton(transaction._id)} className="text-[24px]">
-                              {/* <FaFacebookMessenger /> */}
-                              <BsChatFill />
-                            </button>
-                          </div>
-                          <h3>Email: {transaction.email}</h3>
-                          <p>Payment Amount: {transaction.paymentAmount}</p>
-                          <p>Description: {transaction.paymentDescription}</p>
-                          <p>Created At: {transaction.createdAt}</p>
-                          <p>Proof of way bill: {transaction.proofOfWaybill}</p>
-                          <p>Selected User Type: {transaction.selectedUserType}</p>
-                          <p>Payment Bank: {transaction.paymentBank}</p>
-                          <p>Transaction ID: {transaction.transactionId}</p>
-                          {/* <p>Participants: {transaction.participants[0]}</p> */}
-                          <p>
-                            Participants: {transaction.participants && transaction.participants.length > 0 ?
-                              transaction.participants.map((participant, index) => {
-                                // Check if participant is a populated object with properties
-                                if (participant && typeof participant === 'object') {
-                                  return (
-                                    <span key={index}>
-                                      {participant.firstName || 'user'} ({participant.email || 'No email'})
-                                      {index < transaction.participants.length - 1 ? ', ' : ''}
-                                    </span>
-                                  );
-                                }
-                                // If it's just an ID (not populated)
-                                else {
-                                  return (
-                                    <span key={index}>
-                                      {participant || 'Unknown participant'}
-                                      {index < transaction.participants.length - 1 ? ', ' : ''}
-                                    </span>
-                                  );
-                                }
-                              })
-                              : 'No participants yet'
-                            }
-                          </p>
-                          <div className="">
-                            <p>Status: {transaction.status}</p>
-                            {/* cancel transaction button */}
-
-                          </div>
-                          <div className="">
-                            <p>paymentStatus: {transaction.paymentStatus}</p>
-                          </div>
-                          <div className="flex items-center justify-between mt-4">
-                            {/* <button className="px-4 py-2 rounded-xl m-3 font-bold bg-[#318AE6]" onClick={() => handleBuyerWaybillPopup(transaction._id)}>View Waybill</button>
-                            <button className="px-4 py-2 rounded-xl m-3 font-bold bg-[#318AE6]" onClick={() => handleWaybillPopup(transaction._id)}>Input Waybill</button> */}
-                            <div>
-                              <button className="px-3 py-2 rounded-xl font-bold bg-[#318AE6]" onClick={() => cancelTransaction(transaction._id)}>
-                                Cancel Transaction
-                              </button>
-                            </div>
-
-                            <button
-                              className="px-3 py-2 bg-[#318AE6] rounded-lg font-bold"
-                              onClick={() =>
-                                transaction.selectedUserType === "seller"
-                                  ? handleWaybillPopup(transaction._id)
-                                  : handleBuyerWaybillPopup(transaction._id)
-                              }
+        <Box flex={1} width={{ base: "100%", md: "auto" }}>
+          {showToggleContainer && (
+            <Box width="100%">
+              <MiniNav />
+              <Box
+                px={{ base: 3, sm: 4, md: 6, lg: 8 }}
+                pt={{ base: "100px", sm: "100px", md: "100px", lg: "100px" }}
+                pb={{ base: 8, sm: 10, md: 12, lg: 16 }}
+                maxW="100%"
+                mx="auto"
+                overflow="hidden"
+              >
+                <Flex
+                  justify="space-between"
+                  align={{ base: "flex-start", sm: "center" }}
+                  mb={{ base: 4, sm: 5, md: 6 }}
+                  flexDir={{ base: "column", sm: "row" }}
+                  gap={{ base: 3, sm: 4 }}
+                  width="100%"
+                  flexWrap="wrap"
+                >
+                  <Text fontSize={{ base: "xl", sm: "2xl", md: "3xl" }} fontWeight="bold" color="white">My Transactions</Text>
+                  <Flex
+                    gap={3}
+                    align="center"
+                    width={{ base: "100%", sm: "auto" }}
+                    flexWrap={{ base: "wrap", sm: "nowrap" }}
+                  >
+                    {walletBalance !== null && (
+                      <Text
+                        fontSize={{ base: "sm", md: "md" }}
+                        color="white"
+                        bg="gray.800"
+                        px={3}
+                        py={2}
+                        rounded="md"
+                        whiteSpace="nowrap"
+                        overflow="hidden"
+                        textOverflow="ellipsis"
+                        maxW={{ base: "full", sm: "auto", md: "auto" }}
+                      >
+                        Wallet Balance: ₦{walletBalance.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </Text>
+                    )}
+                    <Button
+                      onClick={() => fetchData(true)}
+                      isLoading={isManualRefreshing}
+                      size={{ base: "xs", sm: "sm" }}
+                      bg="#318AE6"
+                      color="white"
+                      _hover={{ bg: "#2279d8" }}
+                      aria-label="Refresh transactions"
+                      width={{ base: "100%", sm: "auto" }}
+                    >
+                      Refresh
+                    </Button>
+                  </Flex>
+                </Flex>
+                <Flex
+                  flexDir={{ base: "column", md: "row" }}
+                  gap={4}
+                  mb={6}
+                  width="100%"
+                  flexWrap="wrap"
+                >
+                  <Flex
+                    overflowX="auto"
+                    bg="#111518"
+                    rounded="lg"
+                    border="1px"
+                    borderColor="gray.800"
+                    p={1}
+                    width={{ base: "100%" }}
+                    flexGrow={1}
+                    flexShrink={0}
+                    minW={{ base: "auto", md: "350px" }}
+                    maxW={{ base: "100%", md: "60%" }}
+                    css={{
+                      '&::-webkit-scrollbar': { height: '6px' },
+                      '&::-webkit-scrollbar-thumb': { backgroundColor: '#2D3748', borderRadius: '3px' }
+                    }}
+                  >
+                    {["all", "active", "completed", "cancelled", "wallet"].map(tab => (
+                      <Button
+                        key={tab}
+                        onClick={() => setActiveTab(tab)}
+                        flex={{ base: "0 0 auto", sm: 1 }}
+                        minW="80px"
+                        px={{ base: 2, md: 3 }}
+                        py={2}
+                        fontSize={{ base: "xs", sm: "sm" }}
+                        bg={activeTab === tab ? "#967532" : "transparent"}
+                        color={activeTab === tab ? "white" : "gray.400"}
+                        _hover={{ color: "white" }}
+                        whiteSpace="nowrap"
+                      >
+                        {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                        <Text as="span" ml={1} px={1} bg="#1d2225" rounded="full" fontSize="xs">
+                          {tab === "wallet" ? walletTransactions.length : tab === "all" ? transactions.length : transactions.filter(t => tab === "active" ? t.status === "pending" : t.status === tab).length}
+                        </Text>
+                      </Button>
+                    ))}
+                  </Flex>
+                  <Box pos="relative" w={{ base: "100%", md: "220px", lg: "250px" }} flexShrink={0}>
+                    <FiSearch style={{ position: "absolute", top: "50%", left: "12px", transform: "translateY(-50%)", color: "#967532" }} />
+                    <Input
+                      placeholder="Search..."
+                      value={searchQuery}
+                      onChange={(e) => debouncedSearch(e.target.value)}
+                      bg="#111518"
+                      borderColor="#967532"
+                      color="white"
+                      pl={10}
+                      fontSize={{ base: "xs", sm: "sm" }}
+                      aria-label="Search transactions"
+                      width="100%"
+                    />
+                    {searchQuery && (
+                      <IconButton
+                        aria-label="Clear search"
+                        icon={<MdClose />}
+                        pos="absolute"
+                        top="50%"
+                        right="8px"
+                        transform="translateY(-50%)"
+                        color="gray.400"
+                        _hover={{ color: "white" }}
+                        onClick={() => setSearchQuery("")}
+                        bg="transparent"
+                        size="sm"
+                      />
+                    )}
+                  </Box>
+                </Flex>
+                {(isInitialLoading || isManualRefreshing) ? (
+                  <TransactionLoader />
+                ) : activeTab === "wallet" ? (
+                  <Box
+                    mt={6}
+                    p={{ base: 3, sm: 4 }}
+                    bg="#111518"
+                    rounded="lg"
+                    border="1px"
+                    borderColor="gray.800"
+                    width="100%"
+                  >
+                    <Text fontSize={{ base: "lg", sm: "xl" }} fontWeight="bold" color="white" mb={4}>Wallet Transaction History</Text>
+                    {walletTransactions.length === 0 ? (
+                      <Text color="gray.400" fontSize="md">No wallet transactions found.</Text>
+                    ) : (
+                      walletTransactions.map((tx, idx) => (
+                        <Box
+                          key={`${tx.reference}-${tx.createdAt}-${idx}`}
+                          mb={4}
+                          p={{ base: 2, sm: 3 }}
+                          bg="#1d2225"
+                          rounded="md"
+                        >
+                          <Flex justify="space-between" flexWrap="wrap" gap={2}>
+                            <Text
+                              color="white"
+                              fontSize={{ base: "xs", sm: "sm" }}
+                              maxW={{ base: "60%", sm: "70%" }}
+                              isTruncated
                             >
-                              {transaction.selectedUserType === "seller" ? "Input Waybill" : "View Waybill"}
-                            </button>
-
-                            {/* ============================ showWaybillPopup =======================  */}
-                            {showWaybillPopup[transaction._id] && (
-                              // <Modal>
-                              <div style={{ overflowY: "scroll" }} className="modal-container pr-5 pt-5 pb-10 pl-5 fixed z-30 bg-[#111518] left-0 top-0 w-[100%] h-[100vh]">
-                                <div>
-                                  <div className="w-[100%] ">
-                                    <button
-                                      onClick={() => ClosehandleWaybillPopup(transaction._id)} className="absolute top-3 text-[30px]">
-                                      <MdClose />
-                                    </button>
-                                    {/* <h2 className="text-center text-[30px] font-bold">Transaction Details</h2> */}
-                                  </div>
-                                </div>
-                                <form className="h-[auto] mt-10" onSubmit={(e) => { e.preventDefault(); handleWaybillSubmit(transaction._id); }} encType="multipart/form-data">
-                                  <div className="">
-                                    <h1 className="text-[30px] font-bold text-center">Seller Waybill Proof</h1>
-                                    <p className="text-[17px] text-center pt-3">  I' the seller, confirm that I have shipped the goods.</p>
-                                    <div className="mt-3">
-                                      <h3>Item:</h3>
-                                      <div>
-                                        <input type="text" className="text-[white] bg-[transparent] border border-[#318AE6] pl-3 outline-none w-[100%] h-[40px] rounded-xl mt-2" value={waybillDetails.item} onChange={(e) => setWaybillDetails({ ...waybillDetails, item: e.target.value })} />
-                                      </div>
-                                    </div>
-                                    <div className="mt-3">
-                                      <h3>Image:</h3>
-                                      <input
-                                        type="file"
-                                        onChange={(e) => setWaybillDetails({ ...waybillDetails, image: e.target.files[0] })}
-                                      />
-                                      <div>
-                                        {/* Preview Image */}
-                                      </div>
-                                    </div>
-                                    <div className="mt-3">
-                                      <h3>Price:</h3>
-                                      <input type="number" className="text-[white] bg-[transparent] border border-[#318AE6] pl-3 outline-none w-[100%] h-[40px] rounded-xl mt-2" value={waybillDetails.price} onChange={(e) => setWaybillDetails({ ...waybillDetails, price: e.target.value })} />
-                                    </div>
-                                    <div className="mt-3">
-                                      <h3>Shipping Address:</h3>
-                                      <input type="text" className="text-[white] bg-[transparent] border border-[#318AE6] pl-3 outline-none w-[100%] h-[40px] rounded-xl mt-2" value={waybillDetails.shippingAddress} onChange={(e) => setWaybillDetails({ ...waybillDetails, shippingAddress: e.target.value })} />
-                                    </div>
-                                    <div className="mt-3">
-                                      <h3>Tracking Number:</h3>
-                                      <input type="text" className="text-[white] bg-[transparent] border border-[#318AE6] pl-3 outline-none w-[100%] h-[40px] rounded-xl mt-2" value={waybillDetails.trackingNumber} onChange={(e) => setWaybillDetails({ ...waybillDetails, trackingNumber: e.target.value })} />
-                                    </div>
-                                    <div className="mt-3">
-                                      <h3>Delivery Date:</h3>
-                                      <input type="date" className="text-[white] bg-[transparent] border border-[#318AE6] pl-3 outline-none w-[100%] h-[40px] rounded-xl mt-2" value={waybillDetails.deliveryDate} onChange={(e) => setWaybillDetails({ ...waybillDetails, deliveryDate: e.target.value })} />
-                                    </div>
-                                    <button type="submit" className="font-bold bg-[#318AE6] rounded-2xl py-3 w-[30%] mt-7">Submit</button>
-                                  </div>
-                                </form>
-                              </div>
-                              // </Modal>
-                            )}
-
-                            {/* ============================ buyershowWaybillPopup =======================  */}
-
-                            {buyershowWaybillPopup[transaction._id] && (
-                              <div style={{ overflowY: "scroll" }} className="modal-container pr-5 pt-5 pb-10 pl-5 fixed z-30 bg-[#111518] left-0 top-0 w-[100%] h-[100vh]">
-                                <div>
-                                  <div className="w-[100%] ">
-                                    <button
-                                      onClick={() => ClosehandleBuyerWaybillPopup(transaction._id)} className="absolute top-3 text-[30px]">
-                                      <MdClose />
-                                    </button>
-                                  </div>
-                                </div>
-                                <div className="h-[auto] mt-10">
-                                  <h1 className="text-[30px] font-bold text-center">Buyer Waybill Proof</h1>
-                                  {buyerWaybillDetails[transaction._id] ? (
-                                    <div className="mt-4">
-                                      <p><strong>Item:</strong> {buyerWaybillDetails[transaction._id].item}</p>
-                                      {/* <p><strong>Image:</strong> <img src={buyerWaybillDetails[transaction._id].image} alt="Waybill item" /></p> */}
-                                      <div className="h-[270px] relative flex justify-center items-center w-[100%] bg-cover rounded-3xl my-3 bg-[#1A1E21]">
-                                        <img src={imageUrl} alt="Waybill" className="w-[100%] object-cover h-[100%] rounded-3xl absolute" />
-                                        <button
-                                          onClick={() => downloadImage(imageUrl)}
-                                          className="px-4 py-2 bg-[#1A1E21] text-white absolute rounded-md"
-                                        >
-                                          Download Image
-                                        </button>
-                                      </div>
-                                      <p><strong>Price:</strong> {buyerWaybillDetails[transaction._id].price}</p>
-                                      <p><strong>Shipping Address:</strong> {buyerWaybillDetails[transaction._id].shippingAddress}</p>
-                                      <p><strong>Tracking Number:</strong> {buyerWaybillDetails[transaction._id].trackingNumber}</p>
-                                      <p><strong>Delivery Date:</strong> {buyerWaybillDetails[transaction._id].deliveryDate}</p>
-                                    </div>
-                                  ) : (
-                                    <p>No waybill details available for this transaction.</p>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-
-                          </div>
-                          {/* ======================== */}
-                          <div className="flex items-center justify-between">
-                            <button
-                              className={`px-3 mt-3 py-2 rounded-xl font-bold ${transaction.buyerConfirmed && transaction.sellerConfirmed
-                                ? "bg-green-500"
-                                : (transaction.buyerConfirmed || transaction.sellerConfirmed) &&
-                                  ((currentUser && transaction.userId && currentUser._id === transaction.userId._id &&
-                                    ((transaction.selectedUserType === "buyer" && transaction.buyerConfirmed) ||
-                                      (transaction.selectedUserType === "seller" && transaction.sellerConfirmed))) ||
-                                    (currentUser && transaction.userId && currentUser._id !== transaction.userId._id &&
-                                      ((transaction.selectedUserType === "buyer" && transaction.sellerConfirmed) ||
-                                        (transaction.selectedUserType === "seller" && transaction.buyerConfirmed))))
-                                  ? "bg-yellow-500"
-                                  : "bg-[#318AE6]"
-                                }`}
-                              disabled={
-                                // Transaction fully completed
-                                (transaction.buyerConfirmed && transaction.sellerConfirmed) ||
-
-                                // Current user is creator (buyer) and already confirmed
-                                (currentUser && transaction.userId &&
-                                  currentUser._id === transaction.userId._id &&
-                                  transaction.selectedUserType === "buyer" &&
-                                  transaction.buyerConfirmed) ||
-
-                                // Current user is creator (seller) and already confirmed
-                                (currentUser && transaction.userId &&
-                                  currentUser._id === transaction.userId._id &&
-                                  transaction.selectedUserType === "seller" &&
-                                  transaction.sellerConfirmed) ||
-
-                                // Current user is participant (buyer) and already confirmed
-                                (currentUser && transaction.userId &&
-                                  currentUser._id !== transaction.userId._id &&
-                                  transaction.selectedUserType === "seller" &&
-                                  transaction.buyerConfirmed) ||
-
-                                // Current user is participant (seller) and already confirmed
-                                (currentUser && transaction.userId &&
-                                  currentUser._id !== transaction.userId._id &&
-                                  transaction.selectedUserType === "buyer" &&
-                                  transaction.sellerConfirmed)
-                              }
-                              onClick={() => handleConfirm(transaction._id)}
+                              {tx.reference}
+                            </Text>
+                            <Text
+                              color={tx.type === "deposit" ? "green.300" : "red.300"}
+                              fontSize={{ base: "xs", sm: "sm" }}
+                              fontWeight="medium"
                             >
-                              {/* Button text logic */}
-                              {transaction.buyerConfirmed && transaction.sellerConfirmed
-                                ? "Transaction Completed"
-                                : (
-                                  // Check if the current user has confirmed (either as creator or participant)
-                                  (currentUser && transaction.userId &&
-                                    (transaction.userId._id ? currentUser._id === transaction.userId._id : currentUser._id === transaction.userId) &&
-                                    ((transaction.selectedUserType === "buyer" && transaction.buyerConfirmed) ||
-                                      (transaction.selectedUserType === "seller" && transaction.sellerConfirmed))) ||
-                                  (currentUser && transaction.userId &&
-                                    (transaction.userId._id ? currentUser._id !== transaction.userId._id : currentUser._id !== transaction.userId) &&
-                                    ((transaction.selectedUserType === "buyer" && transaction.sellerConfirmed) ||
-                                      (transaction.selectedUserType === "seller" && transaction.buyerConfirmed)))
-                                )
-                                  ? "Pending Completion"
-                                  : "Complete Transaction"
-                              }
-                            </button>
-
-                            <div className=" text-[13px]">
-                              <button
-                                className="px-3 mt-3 py-2 bg-[#318AE6] rounded-xl font-bold"
-                                onClick={() => handleFund(transaction)}
-                                disabled={transaction.funded}
-                              >
-                                {transaction.funded ? "Funded" : "Fund Account"}
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* {
-                            doneModel && (
-                              <>
-                              <h1>are you sure you want to complete this transaction</h1>
-                              <button>No</button>
-                                <button
-                                  onClick={() => completeTransaction(transaction._id)} // Call the completeTransaction function
-                                  className="mt-3 p-2 bg-[#318AE6] rounded-lg font-bold"
-                                >
-                                  Yes
-                                </button>
-
-                              </>
-                            )
-                          } */}
-                        </div>
+                              {tx.type === "deposit" ? "+" : "-"} ₦{(tx.amount || 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </Text>
+                          </Flex>
+                          <Text color="gray.400" fontSize="xs" mt={1}>Purpose: {tx.metadata?.purpose || "N/A"}</Text>
+                          <Text color="gray.400" fontSize="xs" mt={1}>Date: {tx.createdAt ? new Date(tx.createdAt).toLocaleString() : "N/A"}</Text>
+                        </Box>
                       ))
-                  }
-                </div>
-              )}
-            </div>
-            <ConfirmTransactionModal
-              show={modalVisible}
-              onClose={() => setModalVisible(false)}
-              onConfirm={completeTransaction}
-              transactionId={selectedTransactionId}
+                    )}
+                  </Box>
+                ) : transactions.length === 0 ? (
+                  <Flex flexDir="column" align="center" justify="center" h={{ base: "30vh", sm: "40vh", md: "50vh" }}>
+                    <Text fontSize={{ base: "2xl", sm: "3xl" }} mb={4} color="gray.400">📭</Text>
+                    <Text color="#E4E4E4" fontSize={{ base: "md", sm: "lg" }} fontWeight="medium" textAlign="center">No transactions created</Text>
+                    <Text color="gray.400" fontSize={{ base: "sm", md: "md" }} mt={2} textAlign="center">Create a new transaction to get started</Text>
+                  </Flex>
+                ) : (
+                  <Box
+                    display="grid"
+                    gridTemplateColumns={{
+                      base: "1fr",
+                      sm: "repeat(auto-fill, minmax(220px, 1fr))",
+                      md: "repeat(auto-fill, minmax(240px, 1fr))",
+                      lg: "repeat(auto-fill, minmax(300px, 1fr))"
+                    }}
+                    gap={{ base: 4, sm: 5, md: 6 }}
+                  >
+                    {filteredTransactions.map((transaction, idx) => (
+                      <TransactionCard
+                        key={transaction._id}
+                        transaction={transaction}
+                        currentUser={currentUser}
+                        isConfirming={isConfirming}
+                        handleChat={handleChat}
+                        handleWaybill={handleWaybill}
+                        handleConfirm={handleConfirm}
+                        handleFund={handleFund}
+                        handleEditPayment={handleEditPayment}
+                        cancelTransaction={cancelTransaction}
+                        copyToClipboard={copyToClipboard}
+                        toggleDescription={toggleDescription}
+                        expandedDescriptions={expandedDescriptions}
+                        index={idx}
+                        isCompact={isSidebarCollapsed}
+                      />
+                    ))}
+                  </Box>
+                )}
+              </Box>
+            </Box>
+          )}
+          {showProfile && <Box width="100%">{/* Profile content */}</Box>}
+          <Modal isOpen={modalVisible} onClose={() => setModalVisible(false)} isCentered size={{ base: "xs", sm: "sm" }}>
+            <ModalOverlay />
+            <ModalContent bg="#1A1E21" color="white" mx={{ base: 3, sm: "auto" }}>
+              <ModalHeader fontSize={{ base: "md", sm: "lg" }}>Confirm Transaction</ModalHeader>
+              <ModalBody>
+                <Text fontSize={{ base: "sm", sm: "md" }}>Are you sure you want to confirm transaction {selectedTransactionId}?</Text>
+              </ModalBody>
+              <ModalFooter>
+                <Button colorScheme="gray" mr={3} onClick={() => setModalVisible(false)} size={{ base: "xs", sm: "sm" }}>Cancel</Button>
+                <Button colorScheme="blue" onClick={() => completeTransaction(selectedTransactionId)} isLoading={isConfirming[selectedTransactionId]} size={{ base: "xs", sm: "sm" }}>Confirm</Button>
+              </ModalFooter>
+            </ModalContent>
+          </Modal>
+          <Modal isOpen={isFundingModalOpen} onClose={closeFundingModal} isCentered size={{ base: 'full', sm: 'md' }}>
+            <ModalOverlay />
+            <ModalContent bg="#1A1E21" color="white" p={{ base: 4, sm: 6 }} rounded="xl">
+              <ModalHeader>Fund Transaction</ModalHeader>
+              <ModalBody>
+                <Text fontSize="sm" mb={4}>
+                  Your wallet balance (₦{walletBalance.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}) is insufficient to fund this transaction.
+                  You need an additional ₦{currentTransaction ? (currentTransaction.paymentAmount - walletBalance).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}.
+                  Proceed to fund your wallet via Paystack?
+                </Text>
+              </ModalBody>
+              <ModalFooter>
+                <Button bg="gray.600" color="white" _hover={{ bg: 'gray.700' }} size="sm" onClick={closeFundingModal} mr={3}>Cancel</Button>
+                <Button bg="#318AE6" color="white" _hover={{ bg: '#2279d8' }} size="sm" onClick={() => confirmFunding(currentTransaction)}>Proceed to Paystack</Button>
+              </ModalFooter>
+            </ModalContent>
+          </Modal>
+          {Object.keys(showWaybillPopup).map(id => showWaybillPopup[id] && (
+            <WaybillModal
+              key={`seller-${id}`}
+              isOpen={showWaybillPopup[id]}
+              onClose={() => setShowWaybillPopup(prev => ({ ...prev, [id]: false }))}
+              transactionId={id}
+              isBuyer={false}
+              details={waybillDetails}
+              setDetails={setWaybillDetails}
+              errors={errors}
+              handleSubmit={handleWaybillSubmit}
+              downloadImage={downloadImage}
             />
-          </div>
-        </div>
+          ))}
+          {Object.keys(buyerShowWaybillPopup).map(id => buyerShowWaybillPopup[id] && (
+            <WaybillModal
+              key={`buyer-${id}`}
+              isOpen={buyerShowWaybillPopup[id]}
+              onClose={() => setBuyerShowWaybillPopup(prev => ({ ...prev, [id]: false }))}
+              transactionId={id}
+              isBuyer={true}
+              details={buyerWaybillDetails[id] || {}}
+              downloadImage={downloadImage}
+            />
+          ))}
+          {showPaymentDetailsModal && (
+            <PaymentDetailsModal
+              isOpen={showPaymentDetailsModal}
+              onClose={() => {
+                setShowPaymentDetailsModal(false);
+                setCurrentTransaction(null);
+                setPaymentDetails({ paymentBank: "", paymentAccountNumber: "", selectedBankCode: "", paymentAmount: "" });
+                setPaymentErrors({});
+              }}
+              transaction={currentTransaction}
+              paymentDetails={paymentDetails}
+              setPaymentDetails={setPaymentDetails}
+              paymentErrors={paymentErrors}
+              handleSubmit={handlePaymentSubmit}
+            />
+          )}
+          {isMobile && <BottomNav />}
+        </Box>
       </div>
-      <BottomNav
-        onShowProfile={handleShowProfile}
-        onShowToggleComponent={handleMyTransaction}
-      />
-    </div>
+    </Flex>
   );
 };
+
 export default DisplayTransaction;
 
 
 
-
-   <details className="bg-gray-800 rounded-lg p-2 sm:p-3 mt-2">
-                              <summary className="font-medium cursor-pointer flex items-center justify-between">
-                                <span>Participants</span>
-                                <span className="text-xs text-gray-400">Click to expand</span>
-                              </summary>
-                              <div className="mt-2">
-                                {transaction.participants && transaction.participants.length > 0 ? (
-                                  <ul className="space-y-2">
-                                    {/* Display the participants */}
-                                    {transaction.participants.map((participant, index) => (
-                                      <li key={index} className="flex items-center">
-                                        <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-xs mr-2">
-                                          {typeof participant === 'object' && participant.firstName
-                                            ? participant.firstName.charAt(0).toUpperCase()
-                                            : typeof participant === 'object' && participant.email
-                                              ? participant.email.charAt(0).toUpperCase()
-                                              : "P"}
-                                        </div>
-                                        <span className="text-sm">
-                                          {typeof participant === 'object'
-                                            ? participant.firstName && participant.lastName
-                                              ? `${participant.firstName} ${participant.lastName}`
-                                              : participant.email || 'Loading...'
-                                            : 'Loading...'}
-                                          <span className="ml-2 text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">
-                                            {transaction.selectedUserType === "buyer" ? "Seller" : "Buyer"}
-                                          </span>
-                                        </span>
-                                      </li>
-                                    ))}
-
-                                    {/* Display the transaction creator */}
-                                    <li className="flex items-center">
-                                      <div className="w-6 h-6 bg-yellow-600 rounded-full flex items-center justify-center text-xs mr-2">
-                                        {transaction.email ? transaction.email.charAt(0).toUpperCase() : "C"}
-                                      </div>
-                                      <span className="text-sm">
-                                        {transaction.email || 'Creator'}
-                                        <span className="ml-2 text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">
-                                          {transaction.selectedUserType}
-                                        </span>
-                                      </span>
-                                    </li>
-                                  </ul>
-                                ) : (
-                                  <div>
-                                    {/* Only display the creator if there are no participants yet */}
-                                    <ul className="space-y-2">
-                                      <li className="flex items-center">
-                                        <div className="w-6 h-6 bg-yellow-600 rounded-full flex items-center justify-center text-xs mr-2">
-                                          {transaction.email ? transaction.email.charAt(0).toUpperCase() : "C"}
-                                        </div>
-                                        <span className="text-sm">
-                                          {transaction.email || 'Creator'}
-                                          <span className="ml-2 text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">
-                                            {transaction.selectedUserType}
-                                          </span>
-                                        </span>
-                                      </li>
-                                    </ul>
-                                    <p className="text-gray-400 text-sm mt-2">No other participants yet</p>
-                                  </div>
-                                )}
-                              </div>
-                            </details>
-
-
-
-
-
- const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    if (!email || !password) {
-      toast({
-        title: "Missing fields",
-        description: "Please fill in all required fields",
-        status: "warning",
-        duration: 3000,
-        isClosable: true,
-        position: "top",
-      });
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      const response = await axios.post(`${BASE_URL}/api/auth/login`, {
-        email,
-        password,
-      });
-      const { success, message, token, user } = response.data;
-
-      if (success && message === "Login successful") {
-        // Store the token in localStorage
-        localStorage.setItem("auth-token", token);
-
-        // Set the authentication token in Axios headers
-        axios.defaults.headers.common["auth-token"] = token;
-
-        toast({
-          title: "Login Successful",
-          description: "Welcome back!",
-          status: "success",
-          duration: 5000,
-          isClosable: true,
-          position: "top",
-        });
-
-        // Redirect with animation delay
-        setTimeout(() => {
-          navigate("/dashboard");
-        }, 500);
-      } else {
-        throw new Error("Unexpected response from server");
-      }
-    } catch (error) {
-      console.error('Login error:', error.response?.data || error);
-      let errorMessage = "An unexpected error occurred. Please try again.";
-      let errorTitle = "Login Failed";
-
-      if (error.response) {
-        if (error.response.status === 400) {
-          errorTitle = "Invalid Input";
-          errorMessage = "Please provide both email and password.";
-        } else if (error.response.status === 404) {
-          errorTitle = "User Not Found";
-          errorMessage = "No account exists with this email. Would you like to register?";
-          setTimeout(() => {
-            navigate("/register", { state: { email } });
-          }, 3000);
-        } else if (error.response.status === 401) {
-          errorTitle = "Invalid Credentials";
-          errorMessage = "Incorrect email or password. Try resetting your password if you forgot it.";
-        } else if (error.response.status === 500) {
-          errorTitle = "Server Error";
-          errorMessage = "Something went wrong on the server. Please try again later.";
-        } else {
-          errorMessage = error.response.data?.error || errorMessage;
-        }
-      } else if (error.request) {
-        errorTitle = "Connection Error";
-        errorMessage = "Unable to connect to the server. Please check your internet connection.";
-      }
-
-      toast({
-        title: errorTitle,
-        description: (
-          <>
-            {errorMessage}
-            {error.response?.status === 401 && (
-              <>
-                {" "}
-                <Link to="/forgot-password" style={{ color: accentColor, textDecoration: "underline" }}>
-                  Reset Password
-                </Link>
-              </>
-            )}
-          </>
-        ),
-        status: "error",
-        duration: 7000,
-        isClosable: true,
-        position: "top",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };

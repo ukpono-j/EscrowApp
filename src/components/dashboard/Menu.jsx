@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { PiWarningCircleBold } from "react-icons/pi";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 const BASE_URL = import.meta.env.VITE_BASE_URL ;
-import axios from "axios";
+import axios from "../../utils/axiosConfig";
 import { useToast } from "@chakra-ui/react";
 import { MdLogout } from "react-icons/md";
 
@@ -16,16 +16,16 @@ const Menu = () => {
 
 
   useEffect(() => {
-    const token = localStorage.getItem("auth-token");
+    const token = localStorage.getItem("access-token");
     if (token) {
-      axios.defaults.headers.common["auth-token"] = token;
+      axios.defaults.headers.common["access-token"] = token;
     }
 
     // Fetch transaction details from API and update the state
     axios
       .get(`${BASE_URL}/api/users/user-details`, {
         headers: {
-          "auth-token": token,
+          "access-token": token,
         },
       })
       .then((response) => {
@@ -44,7 +44,7 @@ const Menu = () => {
 
   const handleLogout = () => {
     // Clear the authentication token from local storage
-    localStorage.removeItem("auth-token");
+    localStorage.removeItem("access-token");
     toast({
       title: "Logout Successful!",
       status: "success",

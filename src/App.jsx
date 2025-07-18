@@ -19,29 +19,21 @@ import Admin from './components/admin/Admin';
 import PrivateRoute from './components/PrivateRoute';
 import PublicRoute from './components/PublicRoute';
 import ForgotPassword from './pages/ForgotPassword';
-import axios from 'axios';
-
 
 function App() {
   useEffect(() => {
     let deferredPrompt;
     const handleBeforeInstallPrompt = (event) => {
-      // Prevent the default prompt
       event.preventDefault();
       // console.log('beforeinstallprompt event triggered');
-      // Stash the event so it can be triggered later
       deferredPrompt = event;
 
-      // Show custom install button
       const installButton = document.getElementById('install-btn');
       if (installButton) {
         installButton.style.display = 'block';
 
         installButton.addEventListener('click', () => {
-          // Show the prompt
           deferredPrompt.prompt();
-
-          // Wait for the user's response
           deferredPrompt.userChoice.then((choiceResult) => {
             if (choiceResult.outcome === 'accepted') {
               // console.log('User accepted the A2HS prompt');
@@ -57,85 +49,31 @@ function App() {
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
-    // Cleanup the event listener when the component unmounts
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     };
   }, []);
 
-
-  useEffect(() => {
-    // Setup axios interceptor for handling token expiration
-    const responseInterceptor = axios.interceptors.response.use(
-      response => response,
-      error => {
-        // Check if error response exists and has status code 401
-        if (error.response && error.response.status === 401) {
-          // Check if the error is specifically for token expiration
-          if (error.response.data.tokenExpired) {
-            // Clear the token from localStorage
-            localStorage.removeItem('auth-token');
-            
-            // Show notification to user
-            alert('Your session has expired. Please login again.');
-            
-            // Redirect to login page
-            window.location.href = '/login';
-          }
-        }
-        return Promise.reject(error);
-      }
-    );
-    
-    // Cleanup function
-    return () => {
-      // Remove the interceptor when component unmounts
-      axios.interceptors.response.eject(responseInterceptor);
-    };
-  }, []);
-
-
   return (
-    <>
-      <Routes>
-        <Route path="/" element={<PublicRoute element={Home} />} />
-        <Route path="/login" element={<PublicRoute element={LogIn} />} />
-        <Route path="/register" element={<PublicRoute element={Register} />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/dashboard" element={<PrivateRoute element={UserDashboard} />} />
-        <Route path="/create-transaction" element={<PrivateRoute element={CreateTransaction} />} />
-        <Route path="/profile" element={<PrivateRoute element={MainProfile} />} />
-        <Route path="/transactions" element={<PrivateRoute element={Transaction} />} />
-        <Route path="/transactions/tab" element={<PrivateRoute element={DisplayTransaction} />} />
-        <Route path="/join-transaction" element={<PrivateRoute element={JoinTransaction} />} />
-        <Route path="/contact" element={<PrivateRoute element={ContactUs} />} />
-        <Route path="/notifications" element={<PrivateRoute element={Notification} />} />
-        <Route path="/setAvatar" element={<PrivateRoute element={SetAvatar} />} />
-        <Route path="/security-settings/kyc" element={<PrivateRoute element={Kyc} />} />
-        <Route path="/security-settings" element={<PrivateRoute element={Settings} />} />
-        {/* <Route path="/admin" element={<PrivateRoute element={Admin} />} /> */}
-        <Route path="/chat/:chatroomId" element={<PrivateRoute element={MessageBox} />} />
-      </Routes>
-
-      {/* <button
-        id="install-btn"
-        style={{
-          display: 'none',
-          position: 'fixed',
-          bottom: '20px',
-          right: '20px',
-          padding: '10px 20px',
-          fontFamily: 'Bricolage Grotesque", sans-serif',
-          backgroundColor: '#FF5000',
-          color: '#fff',
-          borderRadius: '30px',
-          fontSize: '14px',
-          cursor: 'pointer',
-        }}
-      >
-        Install App
-      </button> */}
-    </>
+    <Routes>
+      <Route path="/" element={<PublicRoute element={Home} />} />
+      <Route path="/login" element={<PublicRoute element={LogIn} />} />
+      <Route path="/register" element={<PublicRoute element={Register} />} />
+      <Route path="/forgot-password" element={<PublicRoute element={ForgotPassword} />} />
+      <Route path="/dashboard" element={<PrivateRoute element={UserDashboard} />} />
+      <Route path="/create-transaction" element={<PrivateRoute element={CreateTransaction} />} />
+      <Route path="/profile" element={<PrivateRoute element={MainProfile} />} />
+      <Route path="/transactions" element={<PrivateRoute element={Transaction} />} />
+      <Route path="/transactions/tab" element={<PrivateRoute element={DisplayTransaction} />} />
+      <Route path="/join-transaction" element={<PrivateRoute element={JoinTransaction} />} />
+      <Route path="/contact" element={<PrivateRoute element={ContactUs} />} />
+      <Route path="/notifications" element={<PrivateRoute element={Notification} />} />
+      <Route path="/setAvatar" element={<PrivateRoute element={SetAvatar} />} />
+      <Route path="/security-settings/kyc" element={<PrivateRoute element={Kyc} />} />
+      <Route path="/security-settings" element={<PrivateRoute element={Settings} />} />
+      {/* <Route path="/admin" element={<PrivateRoute element={Admin} />} /> */}
+      <Route path="/chat/:chatroomId" element={<PrivateRoute element={MessageBox} />} />
+    </Routes>
   );
 }
 

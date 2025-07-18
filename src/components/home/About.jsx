@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
-import "./About.css";
-import AboutImage from "../../assets/PhoneMockup (1).png";
 import { Link } from "react-router-dom";
-import { Box, Image } from "@chakra-ui/react";
+import { Box, Image, Text, Flex, Heading, VStack, useColorMode } from "@chakra-ui/react";
+import AboutImage from "../../assets/PhoneMockup (1).png";
+import "./About.css";
 
 const About = () => {
+  const { colorMode } = useColorMode();
+  const isDark = colorMode === "dark";
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
@@ -12,90 +14,137 @@ const About = () => {
       const aboutSection = document.getElementById("about");
       if (aboutSection) {
         const rect = aboutSection.getBoundingClientRect();
-        if (rect.top < window.innerHeight * 0.75 && rect.bottom > 0) {
+        if (rect.top < window.innerHeight * 0.8 && rect.bottom > 0) {
           setIsVisible(true);
         }
       }
     };
 
-    // Initial check
     handleScroll();
-
     window.addEventListener("scroll", handleScroll);
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-    };
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   return (
-    <section id="about" className="about-section">
-      <div className="about-container">
-        <div className="about-grid">
+    <Box
+      as="section"
+      id="about"
+      className="about-section"
+      py={{ base: 12, md: 20, lg: 24 }}
+      bg={isDark ? "linear-gradient(to bottom, #1a202c, #2d3748)" : "linear-gradient(to bottom, #f8f9fa, #e9ecef)"}
+      color={isDark ? "white" : "gray.800"}
+    >
+      <Box className="about-container" maxW="7xl" mx="auto" px={{ base: 4, sm: 6, md: 8 }}>
+        <Flex
+          className="about-grid"
+          direction={{ base: "column", lg: "row" }}
+          align="center"
+          gap={{ base: 8, lg: 12 }}
+        >
           {/* Image Column */}
-          <div className={`about-image-column ${isVisible ? "animate-in" : ""}`}>
-            <div className="image-wrapper">
-              <div className="image-border">
-                {/* <img src={AboutImage} alt="About Sylo" className="main-image" /> */}
-                <Box p={4} height="calc(100% - 40px)" className="moving-content" position="relative">
+          <Box
+            className={`about-image-column ${isVisible ? "animate-in" : ""}`}
+            w={{ base: "100%", lg: "50%" }}
+            order={{ base: 1, lg: 0 }}
+          >
+            <Box className="image-wrapper" position="relative" maxW={{ base: "400px", md: "500px" }} mx="auto">
+              <Box
+                className="image-border"
+                borderRadius="xl"
+                overflow="hidden"
+                boxShadow={{ base: "lg", md: "xl" }}
+                bg={isDark ? "gray.800" : "white"}
+                border={isDark ? "1px solid #2D3748" : "1px solid #E2E8F0"}
+              >
+                <Box p={{ base: 3, md: 4 }} className="moving-content">
                   <Image
                     src={AboutImage}
-                    alt="About Us Image"
-                    width="100%"
-                    height="640px"
+                    alt="About Sylo Platform"
+                    w="100%"
+                    h={{ base: "300px", sm: "400px", md: "500px" }}
                     objectFit="contain"
-                    objectPosition="center"
                     borderRadius="md"
-                    // transform="scale(1.1)"
-                    transformOrigin="center"
                   />
                 </Box>
-                <div className="accent-shape top-left"></div>
-                <div className="accent-shape bottom-right"></div>
-                <div className="glow-effect"></div>
-              </div>
-              <div className="floating-element gold-circle"></div>
-              <div className="floating-element blue-square"></div>
-            </div>
-          </div>
+              </Box>
+              <Box className="accent-shape top-left" borderColor="#B38939" />
+              <Box className="accent-shape bottom-right" borderColor="#B38939" />
+              <Box className="glow-effect" bg={isDark ? "radial-gradient(circle at 50% 50%, rgba(179, 137, 57, 0.3), transparent 70%)" : "radial-gradient(circle at 50% 50%, rgba(179, 137, 57, 0.2), transparent 70%)"} />
+              <Box className="floating-element gold-circle" />
+              <Box className="floating-element blue-square" />
+            </Box>
+          </Box>
 
           {/* Content Column */}
-          <div className={`about-content-column ${isVisible ? "animate-in" : ""}`}>
-            <div className="content-wrapper">
-              <div className="heading-container">
-                <span className="subheading font-bold">About our Tech Lead, Mbuodile Obiosio:</span>
-                <h2 className="main-heading">Built for Trust, Powered by Security</h2>
-                <div className="heading-accent"></div>
-              </div>
+          <Box
+            className={`about-content-column ${isVisible ? "animate-in" : ""}`}
+            w={{ base: "100%", lg: "50%" }}
+            textAlign={{ base: "center", lg: "left" }}
+          >
+            <VStack className="content-wrapper" spacing={6} align={{ base: "center", lg: "start" }} maxW="600px" mx="auto">
+              <Box className="heading-container">
+                <Text
+                  className="subheading"
+                  fontSize={{ base: "sm", md: "md" }}
+                  color="#B38939"
+                  textTransform="uppercase"
+                  letterSpacing="wide"
+                  fontWeight="bold"
+                >
+                  About Sylo:
+                </Text>
+                <Heading
+                  as="h2"
+                  className="main-heading"
+                  fontSize={{ base: "2xl", sm: "3xl", md: "4xl" }}
+                  fontWeight="extrabold"
+                  lineHeight="1.2"
+                  color={isDark ? "white" : "gray.800"}
+                >
+                  Built for Trust, Powered by Security
+                </Heading>
+                <Box
+                  className="heading-accent"
+                  bg={isDark ? "linear-gradient(to right, #B38939, #D5AF6D)" : "linear-gradient(to right, #B38939, #F2D794)"}
+                />
+              </Box>
 
-              <div className="text-content">
-                {/* <p>
-                  At Sylo, we believe that trust is the currency of every successful transaction. 
-                  Whether you're dealing with digital goods, services, or high-stake purchases, 
-                  uncertainty shouldn't be part of the deal. That's where we come in.
-                </p> */}
-
-                <p>
+              <VStack className="text-content" spacing={4} fontSize={{ base: "md", md: "lg" }} color={isDark ? "gray.300" : "gray.600"} lineHeight="1.8">
+                <Text>
                   Sylo bridges the gap between buyers and sellers in Nigeria. Our escrow process holds funds safely until delivery is confirmed, eliminating fraud and fear. From freelancers to small businesses, Sylo gives everyone a fair chance in digital trade.
-                </p>
+                </Text>
+                <Box className="highlight-box" borderLeft="3px solid #B38939" pl={4} py={4} my={6}>
+                  <Text fontSize={{ base: "lg", md: "xl" }} fontWeight="semibold" color={isDark ? "gray.200" : "gray.700"}>
+                    With Sylo, no one gets paid until the job is done right.
+                  </Text>
+                </Box>
+              </VStack>
 
-                <div className="highlight-box">
-                  <span>With Sylo, no one gets paid until the job is done right.</span>
-                </div>
-
-                <div className="flex w-full">
-                  <Link
-                    to="/register"
-                    className="mt-5 flex w-full rounded-full items-center font-bold justify-center px-8 py-3 text-[#fff] text-[17px] bg-[#B38939] border-2 border-[#B38939]"
-                  >
-                    Get Started now
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
+              <Link to="/register">
+                <Box
+                  as="button"
+                  className="gold-button"
+                  bg={isDark ? "linear-gradient(to right, #B38939, #D5AF6D)" : "#B38939"}
+                  color="white"
+                  px={{ base: 6, md: 8 }}
+                  py={{ base: 3, md: 4 }}
+                  borderRadius="full"
+                  fontWeight="bold"
+                  fontSize={{ base: "md", md: "lg" }}
+                  boxShadow={isDark ? "0 0 15px rgba(179, 137, 57, 0.3)" : "md"}
+                  transition="all 0.3s ease"
+                  _hover={{ bg: isDark ? "#a17732" : "#a17732", transform: "translateY(-2px)", boxShadow: "lg" }}
+                  _focus={{ outline: "3px solid #B38939", outlineOffset: "4px" }}
+                  w={{ base: "100%", sm: "auto" }}
+                >
+                  Get Started now
+                </Box>
+              </Link>
+            </VStack>
+          </Box>
+        </Flex>
+      </Box>
+    </Box>
   );
 };
 

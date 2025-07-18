@@ -40,7 +40,7 @@ export const nigeriaBanks = [
   { name: "ALAT by Wema", code: "035A" },
   { name: "Eyowo", code: "50126" },
   { name: "Kuda Bank", code: "90267" },
-  { name: "OPay", code: "100004" },
+  { name: "OPay", code: "999992" },
   { name: "PalmPay", code: "999" },
   { name: "Rubies Microfinance Bank", code: "125" },
   { name: "VFD Microfinance Bank", code: "566" },
