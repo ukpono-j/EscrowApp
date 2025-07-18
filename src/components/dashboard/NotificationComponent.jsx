@@ -12,10 +12,11 @@ import {
   MenuItem,
   Spinner,
   useToast,
-  Badge,
+  Button,
   Avatar,
   Flex,
   Tooltip,
+  Grid,
 } from "@chakra-ui/react";
 import { BsThreeDots, BsClock, BsBell } from "react-icons/bs";
 import { 
@@ -41,19 +42,17 @@ const NotificationComponent = () => {
   const [filter, setFilter] = useState("all");
   const toast = useToast();
 
-  // Softer, professional color palette
-  const bgCard = useColorModeValue("gray.50", "gray.700");
-  const borderColor = useColorModeValue("gray.200", "gray.600");
+  // Professional color palette
+  const bgCard = useColorModeValue("white", "gray.800");
+  const borderColor = useColorModeValue("gray.200", "gray.700");
   const textColor = useColorModeValue("gray.800", "gray.100");
-  const subText = useColorModeValue("gray.600", "gray.400");
-  const hoverBg = useColorModeValue("gray.100", "gray.600");
-  const highlightColor = useColorModeValue("gray.100", "gray.600");
-  const menuBg = useColorModeValue("gray.50", "gray.700");
-  const monoBg = useColorModeValue("gray.100", "gray.600");
-  const debugBg = useColorModeValue("gray.100", "gray.600");
+  const subText = useColorModeValue("gray.500", "gray.400");
+  const hoverBg = useColorModeValue("gray.50", "gray.700");
+  const highlightColor = useColorModeValue("blue.50", "blue.900");
+  const menuBg = useColorModeValue("white", "gray.800");
   const titleColor = "#9F7B34";
 
-  // Badge colors, including "all"
+  // Badge colors
   const badgeColors = {
     all: "blue",
     pending: "orange",
@@ -122,12 +121,11 @@ const NotificationComponent = () => {
       console.warn('Notifications is not an array:', notifications);
       return [];
     }
-    const filtered = filter === "all" 
+    return filter === "all" 
       ? notifications 
       : notifications.filter(n => 
           n.status && n.status.toLowerCase() === filter.toLowerCase()
         );
-    return filtered;
   };
 
   const handleRemoveNotification = async (id) => {
@@ -228,294 +226,391 @@ const NotificationComponent = () => {
   const getNotificationIcon = (type) => {
     switch (type) {
       case "transaction":
-        return <MdOutlinePayment size={16} />; // Smaller icon
+        return <MdOutlinePayment size={14} />;
       case "funding":
-        return <MdOutlinePayment size={16} />;
+        return <MdOutlinePayment size={14} />;
       case "confirmation":
-        return <MdCheck size={16} />;
+        return <MdCheck size={14} />;
       case "payment":
-        return <MdOutlinePayment size={16} />;
+        return <MdOutlinePayment size={14} />;
       case "waybill":
-        return <BsBell size={16} />;
+        return <BsBell size={14} />;
       case "registration":
-        return <MdNotifications size={16} />;
+        return <MdNotifications size={14} />;
       default:
-        return <BsBell size={16} />;
+        return <BsBell size={14} />;
     }
   };
 
   return (
-    <Box 
-      mt={32} // Reduced from 24
-      mb={10} // Reduced from 20
-      px={{ base: 1, md: 4 }} // Reduced padding
-      minH="100vh" 
-      // bg="gray.900" 
+    <Box
+      mt={6}
+      mb={6}
+      px={{ base: 2, md: 4 }}
+      maxW="100%"
+      overflow="hidden"
+      minH="100vh"
+      // bg="gray.900"
       color="white"
-      overflow="auto"
+      fontFamily="'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
     >
-      <Flex 
-        direction={{ base: "column", sm: "row" }} 
-        justify="space-between" 
-        align={{ base: "start", sm: "center" }}
-        mb={4} // Reduced from 6
-        flexWrap="wrap"
+      <Flex
+        direction={{ base: "column", sm: "row" }}
+        justify="space-between"
+        align="center"
+        mb={3}
+        bg={bgCard}
+        p={2}
+        borderRadius="lg"
+        shadow="sm"
+        maxW="100%"
+        overflow="hidden"
       >
         <Text
-          fontSize={{ base: "lg", md: "2xl" }} // Smaller font sizes
-          fontWeight="bold"
+          fontSize={{ base: "md", md: "lg" }}
+          fontWeight="semibold"
           color={titleColor}
-          mb={{ base: 2, sm: 0 }} // Reduced margin
+          mb={{ base: 2, sm: 0 }}
           display="flex"
           alignItems="center"
         >
-          <MdNotifications size={20} style={{ marginRight: '6px' }} /> {/* Smaller icon */}
+          <MdNotifications size={18} style={{ marginRight: '6px' }} />
           Notifications
         </Text>
-
-        <HStack spacing={1} flexWrap="wrap"> {/* Reduced spacing */}
+        <HStack
+          spacing={1}
+          maxW={{ base: "100%", sm: "70%" }}
+          overflowX={{ base: "auto", sm: "visible" }}
+          css={{
+            '&::-webkit-scrollbar': { display: 'none' },
+            '-ms-overflow-style': 'none',
+            'scrollbar-width': 'none',
+          }}
+          flexWrap={{ base: "nowrap", md: "wrap" }}
+        >
           {filterOptions.map((status) => (
-            <Badge 
+            <Button
               key={status}
-              as="button" 
-              px={1.5} // Reduced from 2
-              py={0.5} // Reduced from 1
-              borderRadius="full" 
+              variant={filter === status ? "solid" : "ghost"}
               colorScheme={filter === status ? badgeColors[status] : "gray"}
-              onClick={() => setFilter(status)}
-              cursor="pointer"
+              size="sm"
+              fontSize={{ base: "xs", md: "sm" }}
+              fontWeight="medium"
               textTransform="capitalize"
-              fontSize={{ base: "2xs", md: "xs" }} // Smaller font
+              borderRadius="md"
+              px={2}
+              py={1}
+              borderBottom={filter === status ? `2px solid ${badgeColors[status]}.500` : "none"}
+              _hover={{ bg: hoverBg }}
+              onClick={() => setFilter(status)}
+              whiteSpace="nowrap"
             >
               {status}
-            </Badge>
+            </Button>
           ))}
         </HStack>
       </Flex>
 
       {loading ? (
-        <Box
-          display="flex"
-          justifyContent="center"
-          alignItems="center"
-          minHeight="200px" // Reduced from 300px
+        <Flex
+          justify="center"
+          align="center"
+          minHeight="150px"
           width="100%"
         >
-          <VStack spacing={2}> {/* Reduced spacing */}
+          <VStack spacing={2}>
             <Spinner
-              thickness="3px" // Thinner spinner
+              thickness="2px"
               speed="0.65s"
               emptyColor="gray.600"
               color={titleColor}
-              size="lg" // Smaller spinner
+              size="md"
             />
-            <Text color={subText} fontWeight="medium" fontSize="sm"> {/* Smaller font */}
+            <Text color={subText} fontWeight="medium" fontSize="sm">
               Loading notifications...
             </Text>
           </VStack>
-        </Box>
+        </Flex>
       ) : (
-        <VStack spacing={3} align="stretch" w="100%" maxW="100%"> {/* Reduced spacing */}
+        <VStack spacing={2} align="stretch" w="100%" maxW="100%" overflow="hidden">
           {notifications.length === 0 ? (
-            <Box 
-              textAlign="center" 
-              mt={6} // Reduced from 10
-              p={3} // Reduced from 5
-              borderRadius="lg" // Smaller radius
-              bg={bgCard} 
-              border="1px dashed" 
-              borderColor={borderColor}
+            <Box
+              textAlign="center"
+              mt={4}
+              p={2}
+              borderRadius="lg"
+              bg={bgCard}
+              shadow="sm"
               w="100%"
+              maxW="100%"
+              overflow="hidden"
             >
               <Avatar
-                bg={monoBg}
-                icon={<BsBell size={16} color={subText} />} // Smaller icon
-                size="sm" // Smaller avatar
-                mb={2} // Reduced margin
+                bg={useColorModeValue("gray.100", "gray.600")}
+                icon={<BsBell size={14} color={subText} />}
+                size="xs"
+                mb={1}
               />
               <Text fontSize={{ base: "sm", md: "md" }} fontWeight="medium" color={textColor}>
                 No notifications available
               </Text>
-              <Text fontSize={{ base: "xs", md: "sm" }} color={subText} mt={1}> {/* Smaller font */}
+              <Text fontSize={{ base: "xs", md: "sm" }} color={subText} mt={1}>
                 You're all caught up ✨
               </Text>
             </Box>
           ) : getFilteredNotifications().length > 0 ? (
-            getFilteredNotifications().map((notification, index) => (
+            getFilteredNotifications().map((notification) => (
               <MotionBox
                 key={notification._id}
                 bg={notification.isRead ? bgCard : highlightColor}
-                borderRadius="lg" // Smaller radius
-                p={{ base: 2, md: 3 }} // Reduced padding
-                shadow="sm" // Lighter shadow
-                border="1px solid"
-                borderColor={borderColor}
-                position="relative"
+                borderRadius="lg"
+                p={2}
+                shadow="sm"
                 w="100%"
-                initial={{ opacity: 0, y: 10 }} // Smaller animation
+                maxW="100%"
+                overflow="hidden"
+                _hover={{ bg: hoverBg, transform: "translateY(-2px)" }}
+                transition="all 0.2s"
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2 }} // Faster animation
+                whileHover={{ scale: 1.01 }}
               >
-                <Flex direction={{ base: "column", sm: "row" }} justify="space-between">
-                  <HStack spacing={2} mb={{ base: 2, sm: 0 }} align="start" flex={1}> {/* Reduced spacing */}
-                    <Avatar 
-                      bg={`${badgeColors[notification.type || 'default']}.200`}
-                      color={`${badgeColors[notification.type || 'default']}.600`}
-                      icon={getNotificationIcon(notification.type || 'default')}
-                      size="xs" // Smaller avatar
-                    />
-                    
-                    <Box flex={1}>
-                      <HStack mb={0.5} justify="space-between"> {/* Reduced margin */}
-                        <Text fontSize={{ base: "xs", md: "md" }} fontWeight="bold" color={textColor}>
-                          {notification.title || 'Untitled'}
-                        </Text>
-                        <Badge 
-                          colorScheme={badgeColors[notification.status?.toLowerCase() || 'default'] || "gray"} 
-                          borderRadius="full" 
-                          px={1.5} // Reduced padding
-                          fontSize="xs" // Smaller font
+                <Grid
+                  templateColumns={{ base: "auto 1fr auto", md: "auto 1fr auto" }}
+                  alignItems="start"
+                  gap={2}
+                >
+                  <Avatar
+                    bg={`${badgeColors[notification.type || 'default']}.100`}
+                    color={`${badgeColors[notification.type || 'default']}.600`}
+                    icon={getNotificationIcon(notification.type || 'default')}
+                    size="xs"
+                  />
+                  <Box flex={1} minW={0}>
+                    <Text
+                      fontSize={{ base: "sm", md: "md" }}
+                      fontWeight="medium"
+                      color={textColor}
+                      isTruncated
+                      maxW={{ base: "150px", md: "300px" }}
+                      wordBreak="break-word"
+                    >
+                      {notification.title || 'Untitled'}
+                    </Text>
+                    <Text
+                      fontSize={{ base: "xs", md: "sm" }}
+                      color={subText}
+                      mt={1}
+                      isTruncated
+                      maxW={{ base: "150px", md: "300px" }}
+                      wordBreak="break-word"
+                    >
+                      {notification.message || 'No message'}
+                    </Text>
+                    {notification.transactionId && (
+                      <Tooltip label="Transaction ID">
+                        <Text
+                          as="span"
+                          fontSize="xs"
+                          bg={useColorModeValue("gray.100", "gray.600")}
+                          p={0.5}
+                          borderRadius="sm"
+                          mt={1}
+                          display="inline-block"
+                          isTruncated
+                          maxW={{ base: "100px", md: "200px" }}
                         >
-                          {notification.status || 'Unknown'}
-                        </Badge>
-                      </HStack>
-                      
-                      <Text fontSize={{ base: "2xs", md: "xs" }} mb={1} color={textColor}> {/* Smaller font */}
-                        {notification.message || 'No message'}
-                      </Text>
-                      
-                      <HStack fontSize={{ base: "2xs", md: "xs" }} color={subText} spacing={1} mt={0.5}> {/* Reduced spacing */}
-                        <Flex align="center">
-                          <BsClock style={{ marginRight: '2px' }} />
-                          {formatCreatedAt(notification.timestamp) || 'Unknown time'}
-                        </Flex>
-                        
-                        {notification.transactionId && (
-                          <Tooltip label="Transaction ID">
-                            <Text 
-                              as="span" 
-                              fontSize="2xs" // Smaller font
-                              bg={monoBg} 
-                              p={0.5} // Reduced padding
-                              borderRadius="sm"
-                            >
-                              {notification.transactionId.substring(0, 8)}...
-                            </Text>
-                          </Tooltip>
-                        )}
-                      </HStack>
-                    </Box>
-                  </HStack>
-
-                  <HStack spacing={0.5} alignSelf={{ base: "flex-end", sm: "center" }}> {/* Reduced spacing */}
-                    {!notification.isRead && (
-                      <Tooltip label="Mark as Read">
-                        <IconButton
-                          size="2xs" // Smaller button
-                          colorScheme="blue"
-                          icon={<MdCheck />}
-                          onClick={() => handleMarkAsRead(notification._id)}
-                          borderRadius="full"
-                        />
+                          {notification.transactionId.substring(0, 8)}...
+                        </Text>
                       </Tooltip>
                     )}
-                    {notification.status?.toLowerCase() === "pending" && (
-                      <>
-                        <Tooltip label="Accept">
-                          <IconButton
-                            size="2xs" // Smaller button
-                            colorScheme="green"
-                            icon={<MdCheck />}
-                            onClick={() => handleUpdateStatus(notification._id, "accepted")}
-                            borderRadius="full"
-                          />
-                        </Tooltip>
-                        <Tooltip label="Decline">
-                          <IconButton
-                            size="2xs" // Smaller button
-                            colorScheme="red"
-                            icon={<MdClose />}
-                            onClick={() => handleUpdateStatus(notification._id, "declined")}
-                            borderRadius="full"
-                          />
-                        </Tooltip>
-                      </>
-                    )}
-                    
-                    <Menu placement="left-start">
-                      <MenuButton
-                        as={IconButton}
-                        icon={<BsThreeDots />}
-                        variant="ghost"
-                        size="2xs" // Smaller button
-                        colorScheme="gray"
-                        _hover={{ bg: hoverBg }}
-                        borderRadius="full"
-                      />
-                      <MenuList
-                        bg={menuBg}
-                        borderRadius="lg" // Smaller radius
-                        shadow="sm" // Lighter shadow
-                        minW="120px" // Smaller menu
+                  </Box>
+                  <VStack align="flex-end" spacing={1}>
+                    <Flex align="center" justify="flex-end">
+                      <Text
+                        fontSize={{ base: "xs", md: "sm" }}
+                        fontWeight="medium"
+                        color={`${badgeColors[notification.status?.toLowerCase() || 'default']}.500`}
+                        textTransform="capitalize"
+                        whiteSpace="nowrap"
+                        mr={2}
                       >
-                        <MenuItem
-                          icon={<MdDelete size={14} />} // Smaller icon
-                          onClick={() => handleRemoveNotification(notification._id)}
-                          fontSize="xs" // Smaller font
-                        >
-                          Remove
-                        </MenuItem>
-                        <MenuItem
-                          icon={<MdOutlineReportGmailerrorred size={14} />} // Smaller icon
-                          onClick={() => handleReportNotification(notification._id)}
-                          fontSize="xs"
-                        >
-                          Report issue
-                        </MenuItem>
-                      </MenuList>
-                    </Menu>
-                  </HStack>
-                </Flex>
+                        {notification.status || 'Unknown'}
+                      </Text>
+                      <HStack spacing={1} display={{ base: "none", md: "flex" }}>
+                        {!notification.isRead && (
+                          <Tooltip label="Mark as Read">
+                            <IconButton
+                              size="xs"
+                              colorScheme="blue"
+                              icon={<MdCheck size={12} />}
+                              onClick={() => handleMarkAsRead(notification._id)}
+                              borderRadius="full"
+                              variant="ghost"
+                              _hover={{ transform: "scale(1.1)" }}
+                            />
+                          </Tooltip>
+                        )}
+                        {notification.status?.toLowerCase() === "pending" && (
+                          <>
+                            <Tooltip label="Accept">
+                              <IconButton
+                                size="xs"
+                                colorScheme="green"
+                                icon={<MdCheck size={12} />}
+                                onClick={() => handleUpdateStatus(notification._id, "accepted")}
+                                borderRadius="full"
+                                variant="ghost"
+                                _hover={{ transform: "scale(1.1)" }}
+                              />
+                            </Tooltip>
+                            <Tooltip label="Decline">
+                              <IconButton
+                                size="xs"
+                                colorScheme="red"
+                                icon={<MdClose size={12} />}
+                                onClick={() => handleUpdateStatus(notification._id, "declined")}
+                                borderRadius="full"
+                                variant="ghost"
+                                _hover={{ transform: "scale(1.1)" }}
+                              />
+                            </Tooltip>
+                          </>
+                        )}
+                        <Menu placement="bottom-end">
+                          <MenuButton
+                            as={IconButton}
+                            icon={<BsThreeDots size={12} />}
+                            variant="ghost"
+                            size="xs"
+                            colorScheme="gray"
+                            _hover={{ bg: hoverBg, transform: "scale(1.1)" }}
+                            borderRadius="full"
+                          />
+                          <MenuList
+                            bg={menuBg}
+                            borderRadius="md"
+                            shadow="sm"
+                            minW="120px"
+                          >
+                            <MenuItem
+                              icon={<MdDelete size={12} />}
+                              onClick={() => handleRemoveNotification(notification._id)}
+                              fontSize="xs"
+                            >
+                              Remove
+                            </MenuItem>
+                            <MenuItem
+                              icon={<MdOutlineReportGmailerrorred size={12} />}
+                              onClick={() => handleReportNotification(notification._id)}
+                              fontSize="xs"
+                            >
+                              Report issue
+                            </MenuItem>
+                          </MenuList>
+                        </Menu>
+                      </HStack>
+                      <Box display={{ base: "flex", md: "none" }}>
+                        <Menu placement="bottom-end">
+                          <MenuButton
+                            as={IconButton}
+                            icon={<BsThreeDots size={12} />}
+                            variant="ghost"
+                            size="xs"
+                            colorScheme="gray"
+                            _hover={{ bg: hoverBg, transform: "scale(1.1)" }}
+                            borderRadius="full"
+                          />
+                          <MenuList
+                            bg={menuBg}
+                            borderRadius="md"
+                            shadow="sm"
+                            minW="120px"
+                          >
+                            {!notification.isRead && (
+                              <MenuItem
+                                icon={<MdCheck size={12} />}
+                                onClick={() => handleMarkAsRead(notification._id)}
+                                fontSize="xs"
+                              >
+                                Mark as Read
+                              </MenuItem>
+                            )}
+                            {notification.status?.toLowerCase() === "pending" && (
+                              <>
+                                <MenuItem
+                                  icon={<MdCheck size={12} />}
+                                  onClick={() => handleUpdateStatus(notification._id, "accepted")}
+                                  fontSize="xs"
+                                >
+                                  Accept
+                                </MenuItem>
+                                <MenuItem
+                                  icon={<MdClose size={12} />}
+                                  onClick={() => handleUpdateStatus(notification._id, "declined")}
+                                  fontSize="xs"
+                                >
+                                  Decline
+                                </MenuItem>
+                              </>
+                            )}
+                            <MenuItem
+                              icon={<MdDelete size={12} />}
+                              onClick={() => handleRemoveNotification(notification._id)}
+                              fontSize="xs"
+                            >
+                              Remove
+                            </MenuItem>
+                            <MenuItem
+                              icon={<MdOutlineReportGmailerrorred size={12} />}
+                              onClick={() => handleReportNotification(notification._id)}
+                              fontSize="xs"
+                            >
+                              Report issue
+                            </MenuItem>
+                          </MenuList>
+                        </Menu>
+                      </Box>
+                    </Flex>
+                    <Text
+                      fontSize={{ base: "xs", md: "sm" }}
+                      color={subText}
+                      display="flex"
+                      alignItems="center"
+                      whiteSpace="nowrap"
+                    >
+                      <BsClock size={12} style={{ marginRight: '4px' }} />
+                      {formatCreatedAt(notification.timestamp) || 'Unknown'}
+                    </Text>
+                  </VStack>
+                </Grid>
               </MotionBox>
             ))
           ) : (
-            <>
-              <Box 
-                textAlign="center" 
-                mt={6} // Reduced from 10
-                p={3} // Reduced from 5
-                borderRadius="lg" // Smaller radius
-                bg={bgCard} 
-                border="1px dashed" 
-                borderColor={borderColor}
-                w="100%"
-              >
-                <Avatar
-                  bg={monoBg}
-                  icon={<BsBell size={16} color={subText} />} // Smaller icon
-                  size="sm" // Smaller avatar
-                  mb={2} // Reduced margin
-                />
-                <Text fontSize={{ base: "sm", md: "md" }} fontWeight="medium" color={textColor}>
-                  No notifications with status "{filter}"
-                </Text>
-                <Text fontSize={{ base: "xs", md: "sm" }} color={subText} mt={1}> {/* Smaller font */}
-                  Try a different filter or check back later ✨
-                </Text>
-              </Box>
-              <Box mt={3} p={3} bg={debugBg} color={textColor} borderRadius="lg"> {/* Reduced padding/margin */}
-                <Text fontSize="sm" fontWeight="bold">Debug: Raw Notifications</Text> {/* Smaller font */}
-                {notifications.map((notification) => (
-                  <Box key={notification._id} mt={1}> {/* Reduced margin */}
-                    <Text fontSize="xs">Title: {notification.title || 'Untitled'}</Text> {/* Smaller font */}
-                    <Text fontSize="xs">Message: {notification.message || 'No message'}</Text>
-                    <Text fontSize="xs">Status: {notification.status || 'undefined'}</Text>
-                    <Text fontSize="xs">Type: {notification.type || 'undefined'}</Text>
-                    <Text fontSize="xs">Timestamp: {notification.timestamp || 'Unknown'}</Text>
-                  </Box>
-                ))}
-              </Box>
-            </>
+            <Box
+              textAlign="center"
+              mt={4}
+              p={2}
+              borderRadius="lg"
+              bg={bgCard}
+              shadow="sm"
+              w="100%"
+              maxW="100%"
+              overflow="hidden"
+            >
+              <Avatar
+                bg={useColorModeValue("gray.100", "gray.600")}
+                icon={<BsBell size={14} color={subText} />}
+                size="xs"
+                mb={1}
+              />
+              <Text fontSize={{ base: "sm", md: "md" }} fontWeight="medium" color={textColor}>
+                No notifications with status "{filter}"
+              </Text>
+              <Text fontSize={{ base: "xs", md: "sm" }} color={subText} mt={1}>
+                Try a different filter or check back later ✨
+              </Text>
+            </Box>
           )}
         </VStack>
       )}
