@@ -66,7 +66,80 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, userName }) => {
+const FundAmountModal = ({ isOpen, onClose, onSubmit }) => {
+  const [amount, setAmount] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const toast = useToast();
+  const textColor = useColorModeValue('gray.800', 'white');
+
+  const handleSubmit = async () => {
+    const amountNum = parseFloat(amount);
+    if (!amountNum || amountNum < 100) {
+      toast({
+        title: 'Error',
+        description: 'Please enter an amount of at least ₦100.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await onSubmit(amountNum);
+      onClose();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to initiate funding.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} isCentered size={{ base: 'full', sm: 'md' }}>
+      <ModalOverlay />
+      <ModalContent>
+        <ModalHeader color={textColor}>Enter Funding Amount</ModalHeader>
+        <ModalCloseButton />
+        <ModalBody px={{ base: 4, sm: 6 }} py={4}>
+          <FormControl>
+            <FormLabel color={textColor}>Amount (₦)</FormLabel>
+            <NumberInput min={100} precision={2} value={amount} onChange={(value) => setAmount(value)}>
+              <NumberInputField placeholder="Enter amount (minimum ₦100)" />
+              <NumberInputStepper>
+                <NumberIncrementStepper />
+                <NumberDecrementStepper />
+              </NumberInputStepper>
+            </NumberInput>
+          </FormControl>
+        </ModalBody>
+        <ModalFooter flexDir={{ base: 'column', sm: 'row' }} gap={2}>
+          <Button
+            colorScheme="blue"
+            onClick={handleSubmit}
+            isLoading={isSubmitting}
+            size={{ base: 'sm', sm: 'md' }}
+            mr={{ sm: 3 }}
+            mb={{ base: 2, sm: 0 }}
+          >
+            Proceed to Fund
+          </Button>
+          <Button variant="ghost" onClick={onClose} size={{ base: 'sm', sm: 'md' }}>
+            Cancel
+          </Button>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
+  );
+};
+
+const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, userName, amount }) => {
   const toast = useToast();
   const dispatch = useDispatch();
   const textColor = useColorModeValue('gray.800', 'white');
@@ -106,7 +179,7 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
         <ModalBody px={{ base: 4, sm: 6 }} py={4}>
           {paymentDetails?.virtualAccount ? (
             <>
-              <Text color={textColor} mb={2}>Transfer to the account below:</Text>
+              <Text color={textColor} mb={2}>Transfer ₦{amount?.toFixed(2)} to the account below:</Text>
               <Box p={4} bg={boxBg} borderRadius="md">
                 <Flex align="center" justify="space-between" mb={2}>
                   <Text fontWeight="bold" color={textColor}>Account Name: {paymentDetails.virtualAccount.account_name}</Text>
@@ -341,12 +414,14 @@ const Profile = () => {
   const toast = useToast();
   const { isOpen: isFundOpen, onOpen: onFundOpen, onClose: onFundClose } = useDisclosure();
   const { isOpen: isWithdrawOpen, onOpen: onWithdrawOpen, onClose: onWithdrawClose } = useDisclosure();
+  const { isOpen: isAmountOpen, onOpen: onAmountOpen, onClose: onAmountClose } = useDisclosure();
   const { user, wallet, transactions, paymentDetails, loading, error } = useSelector((state) => state.wallet);
   const [isEditing, setIsEditing] = React.useState(false);
   const [formData, setFormData] = React.useState({ firstName: '', lastName: '', phoneNumber: '' });
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [authError, setAuthError] = useState(null);
+  const [fundingAmount, setFundingAmount] = useState(null);
   const socketRef = useRef(null);
   const textColor = useColorModeValue('gray.800', 'white');
   const subtleTextColor = useColorModeValue('gray.600', 'gray.300');
@@ -372,10 +447,7 @@ const Profile = () => {
           return;
         }
 
-        // Set axios headers
         axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-
-        // Fetch initial data
         const result = await dispatch(fetchInitialData()).unwrap();
         if (!result.success) {
           setAuthError('Failed to authenticate. Please log in again.');
@@ -383,7 +455,6 @@ const Profile = () => {
           return;
         }
 
-        // Initialize socket
         socketRef.current = io(BASE_URL, {
           auth: { token },
           reconnection: true,
@@ -446,15 +517,16 @@ const Profile = () => {
     }
   }, [user]);
 
-  const handleFundWallet = async () => {
+  const handleFundWallet = async (amount) => {
     try {
       const response = await dispatch(fundWallet({
-        amount: 1000,
+        amount,
         email: user.email,
         phoneNumber: user.phoneNumber,
         userId: user._id,
       })).unwrap();
       if (response.success) {
+        setFundingAmount(amount);
         onFundOpen();
       } else {
         toast({
@@ -493,6 +565,7 @@ const Profile = () => {
           isClosable: true,
         });
         dispatch(clearPaymentDetails());
+        setFundingAmount(null);
         onFundClose();
       } else {
         toast({
@@ -694,7 +767,7 @@ const Profile = () => {
                 <Button
                   leftIcon={<FaCreditCard />}
                   colorScheme="blue"
-                  onClick={handleFundWallet}
+                  onClick={onAmountOpen}
                   isLoading={loading}
                   size={{ base: 'sm', sm: 'md' }}
                 >
@@ -745,12 +818,18 @@ const Profile = () => {
           </Box>
         </motion.div>
 
+        <FundAmountModal
+          isOpen={isAmountOpen}
+          onClose={onAmountClose}
+          onSubmit={handleFundWallet}
+        />
         <PaymentInfoModal
           isOpen={isFundOpen}
           onClose={onFundClose}
           paymentDetails={paymentDetails}
           onStatusCheck={handleCheckStatus}
           userName={`${user.firstName} ${user.lastName}`}
+          amount={fundingAmount}
         />
         <WithdrawalModal
           isOpen={isWithdrawOpen}
