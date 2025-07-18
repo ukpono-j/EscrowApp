@@ -195,7 +195,9 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
                 <Text color={subtleTextColor}>Account Number: {paymentDetails.virtualAccount.account_number}</Text>
                 <Text color={subtleTextColor}>Bank: {paymentDetails.virtualAccount.bank_name}</Text>
               </Box>
-              <Text color={subtleTextColor} mt={4} fontSize="sm">Click below to verify payment after transfer.</Text>
+              <Text color={subtleTextColor} mt={4} fontSize="sm">
+                Your payment will be credited within 5 minutes. If delayed, it may be processing and will be updated soon.
+              </Text>
             </>
           ) : (
             <Box>
@@ -631,6 +633,7 @@ const Profile = () => {
     );
   }
 
+  
   if (authError) {
     return (
       <Flex justify="center" align="center" minH="50vh" flexDir="column">
@@ -677,7 +680,7 @@ const Profile = () => {
               />
               <Box>
                 <Heading size="lg" color={textColor}>
-                 <span> {user.firstName} {user.lastName}</span>
+                  <span> {user.firstName} {user.lastName}</span>
                 </Heading>
                 <Text color={subtleTextColor}>{user.email}</Text>
               </Box>
