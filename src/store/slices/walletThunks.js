@@ -42,6 +42,12 @@ export const fundWallet = createAsyncThunk(
         { amount, email, phoneNumber, userId },
         { headers: { Authorization: `Bearer ${localStorage.getItem('access-token')}` } }
       );
+      if (!response.data.success) {
+        return rejectWithValue({
+          message: response.data.error || 'Failed to initiate funding',
+          status: response.status,
+        });
+      }
       return response.data;
     } catch (error) {
       console.error('Fund wallet error:', {
@@ -50,7 +56,7 @@ export const fundWallet = createAsyncThunk(
       });
       return rejectWithValue({
         message: error.response?.data?.error || 'Failed to initiate funding',
-        status: error.response?.status,
+        status: error.response?.status || 500,
       });
     }
   }

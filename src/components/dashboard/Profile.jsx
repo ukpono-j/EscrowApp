@@ -410,6 +410,7 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
   );
 };
 
+
 const Profile = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -429,6 +430,70 @@ const Profile = () => {
   const subtleTextColor = useColorModeValue('gray.600', 'gray.300');
   const boxBg = useColorModeValue('gray.50', 'gray.700');
   const avatarSvg = user?.email ? multiavatar(user.email) : multiavatar('default');
+
+  // New function to check funding readiness
+  const handleCheckFundingReadiness = async () => {
+    try {
+      const token = localStorage.getItem('access-token');
+      if (!token) {
+        toast({
+          title: 'Authentication Error',
+          description: 'No authentication token found. Please log in again.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+          action: {
+            label: 'Log In',
+            onClick: () => navigate('/login'),
+          },
+        });
+        return;
+      }
+
+      const response = await axios.post(
+        `${BASE_URL}/api/wallet/check-funding-readiness`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.data.success) {
+        onAmountOpen();
+      } else {
+        toast({
+          title: 'Funding Unavailable',
+          description: response.data.error || 'Funding is not available at the moment.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+          action: {
+            label: 'Retry',
+            onClick: () => handleCheckFundingReadiness(),
+          },
+        });
+      }
+    } catch (error) {
+      const status = error.response?.status;
+      let errorMessage = 'Failed to check funding readiness. Please try again later.';
+      let action = { label: 'Retry', onClick: () => handleCheckFundingReadiness() };
+
+      if (status === 404) {
+        errorMessage = 'User account not found. Please log in again or contact support.';
+        action = { label: 'Log In', onClick: () => navigate('/login') };
+      } else if (status === 401) {
+        errorMessage = 'Session expired or invalid. Please log in again.';
+        action = { label: 'Log In', onClick: () => navigate('/login') };
+      }
+
+      toast({
+        title: 'Funding Unavailable',
+        description: errorMessage,
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+        action,
+      });
+    }
+  };
 
   useEffect(() => {
     const initialize = async () => {
@@ -540,9 +605,12 @@ const Profile = () => {
         });
       }
     } catch (error) {
+      const errorMessage = error.status === 502 && error.message.includes('Payment provider authentication failed')
+        ? 'Payment provider configuration issue. Please contact support.'
+        : error.message || 'Failed to initiate funding.';
       toast({
         title: 'Error',
-        description: error.message || 'Failed to initiate funding.',
+        description: errorMessage,
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -633,7 +701,6 @@ const Profile = () => {
     );
   }
 
-  
   if (authError) {
     return (
       <Flex justify="center" align="center" minH="50vh" flexDir="column">
@@ -680,7 +747,7 @@ const Profile = () => {
               />
               <Box>
                 <Heading size="lg" color={textColor}>
-                  <span> {user.firstName} {user.lastName}</span>
+                  <span>{user.firstName} {user.lastName}</span>
                 </Heading>
                 <Text color={subtleTextColor}>{user.email}</Text>
               </Box>
@@ -758,9 +825,7 @@ const Profile = () => {
               <Flex align="center" mb={4}>
                 <Icon as={FaWallet} color="blue.500" mr={2} />
                 <Heading size="md" color={textColor}>
-                  <span>
-                    Wallet
-                  </span>
+                  <span>Wallet</span>
                 </Heading>
               </Flex>
               <Text color={textColor} fontSize="2xl" fontWeight="bold">
@@ -770,7 +835,7 @@ const Profile = () => {
                 <Button
                   leftIcon={<FaCreditCard />}
                   colorScheme="blue"
-                  onClick={onAmountOpen}
+                  onClick={handleCheckFundingReadiness} // Updated to check readiness
                   isLoading={loading}
                   size={{ base: 'sm', sm: 'md' }}
                 >
