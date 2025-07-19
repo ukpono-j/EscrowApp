@@ -31,7 +31,6 @@ import { motion } from "framer-motion";
 import axios from "../../utils/axiosConfig";
 import { formatCreatedAt } from "../../utils/DateTimeStramp";
 
-// Use MotionBox with framer-motion
 const MotionBox = motion(Box);
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
@@ -42,7 +41,6 @@ const NotificationComponent = () => {
   const [filter, setFilter] = useState("all");
   const toast = useToast();
 
-  // Professional color palette
   const bgCard = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.700");
   const textColor = useColorModeValue("gray.800", "gray.100");
@@ -52,7 +50,6 @@ const NotificationComponent = () => {
   const menuBg = useColorModeValue("white", "gray.800");
   const titleColor = "#9F7B34";
 
-  // Badge colors
   const badgeColors = {
     all: "blue",
     pending: "orange",
@@ -71,46 +68,104 @@ const NotificationComponent = () => {
 
   const filterOptions = ["all", "pending", "accepted", "declined", "completed", "cancelled", "failed"];
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await axios.get(`${BASE_URL}/api/notifications/notifications`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('access-token')}`,
-          },
-        });
-        const notificationsArray = res.data.data || [];
-        if (!Array.isArray(notificationsArray)) {
-          console.warn('Notifications data is not an array:', notificationsArray);
-          setNotifications([]);
-          return;
-        }
-        const sortedNotifications = notificationsArray.sort((a, b) => 
-          new Date(b.timestamp) - new Date(a.timestamp)
-        );
-        setNotifications(sortedNotifications);
-      } catch (err) {
-        console.error('Fetch error:', err.response || err);
-        const status = err.response?.status;
-        let description = "Please try again later";
-        if (status === 401) {
-          description = "Please log in to view notifications";
-        } else if (status === 403) {
-          description = "You are not authorized to view notifications";
-        }
-        toast({
-          title: "Error fetching notifications",
-          description,
-          status: "error",
-          duration: 3000,
-          isClosable: true,
-        });
-        setNotifications([]);
-      } finally {
-        setLoading(false);
+  const refreshToken = async () => {
+    try {
+      const refreshToken = localStorage.getItem('refresh-token');
+      if (!refreshToken) {
+        throw new Error('No refresh token available');
       }
-    };
+      const res = await axios.post(`${BASE_URL}/api/auth/refresh-token`, { refreshToken });
+      const newToken = res.data.token;
+      localStorage.setItem('access-token', newToken);
+      console.log('Token refreshed successfully');
+      return newToken;
+    } catch (err) {
+      console.error('Token refresh failed:', err.response || err);
+      localStorage.removeItem('access-token');
+      localStorage.removeItem('refresh-token');
+      toast({
+        title: "Session expired",
+        description: "Please log in again",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+      window.location.href = '/login'; // Redirect to login page
+      throw err;
+    }
+  };
 
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      let token = localStorage.getItem('access-token');
+      if (!token) {
+        console.warn('No access token found, attempting to refresh');
+        token = await refreshToken();
+      }
+
+      const res = await axios.get(`${BASE_URL}/api/notifications/notifications`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const notificationsArray = res.data.data || [];
+      if (!Array.isArray(notificationsArray)) {
+        console.warn('Notifications data is not an array:', notificationsArray);
+        setNotifications([]);
+        return;
+      }
+      const sortedNotifications = notificationsArray.sort((a, b) => 
+        new Date(b.timestamp) - new Date(a.timestamp)
+      );
+      setNotifications(sortedNotifications);
+    } catch (err) {
+      console.error('Fetch error:', err.response || err);
+      const status = err.response?.status;
+      let description = "Please try again later";
+      if (status === 401) {
+        if (err.response?.data?.tokenExpired) {
+          try {
+            const newToken = await refreshToken();
+            const res = await axios.get(`${BASE_URL}/api/notifications/notifications`, {
+              headers: {
+                Authorization: `Bearer ${newToken}`,
+              },
+            });
+            const notificationsArray = res.data.data || [];
+            if (!Array.isArray(notificationsArray)) {
+              console.warn('Notifications data is not an array:', notificationsArray);
+              setNotifications([]);
+              return;
+            }
+            const sortedNotifications = notificationsArray.sort((a, b) => 
+              new Date(b.timestamp) - new Date(a.timestamp)
+            );
+            setNotifications(sortedNotifications);
+            return;
+          } catch (refreshErr) {
+            description = "Please log in again";
+          }
+        } else {
+          description = "Please log in to view notifications";
+        }
+      } else if (status === 403) {
+        description = "You are not authorized to view notifications";
+      }
+      toast({
+        title: "Error fetching notifications",
+        description,
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+      setNotifications([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchData();
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
@@ -130,9 +185,10 @@ const NotificationComponent = () => {
 
   const handleRemoveNotification = async (id) => {
     try {
+      const token = localStorage.getItem('access-token');
       await axios.delete(`${BASE_URL}/api/notifications/notifications/${id}`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('access-token')}`,
+          Authorization: `Bearer ${token}`,
         },
       });
       setNotifications((prev) => prev.filter((n) => n._id !== id));
@@ -143,23 +199,52 @@ const NotificationComponent = () => {
         isClosable: true,
       });
     } catch (err) {
-      toast({
-        title: "Error removing notification",
-        status: "error",
-        duration: 2000,
-        isClosable: true,
-      });
+      console.error('Remove notification error:', err.response || err);
+      if (err.response?.status === 401) {
+        try {
+          const newToken = await refreshToken();
+          await axios.delete(`${BASE_URL}/api/notifications/notifications/${id}`, {
+            headers: {
+              Authorization: `Bearer ${newToken}`,
+            },
+          });
+          setNotifications((prev) => prev.filter((n) => n._id !== id));
+          toast({
+            title: "Notification removed",
+            status: "success",
+            duration: 2000,
+            isClosable: true,
+          });
+        } catch (refreshErr) {
+          toast({
+            title: "Session expired",
+            description: "Please log in again",
+            status: "error",
+            duration: 3000,
+            isClosable: true,
+          });
+          window.location.href = '/login';
+        }
+      } else {
+        toast({
+          title: "Error removing notification",
+          status: "error",
+          duration: 2000,
+          isClosable: true,
+        });
+      }
     }
   };
 
   const handleUpdateStatus = async (id, newStatus) => {
     try {
+      const token = localStorage.getItem('access-token');
       await axios.patch(
         `${BASE_URL}/api/notifications/notifications/${id}`,
         { status: newStatus },
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('access-token')}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
@@ -174,12 +259,47 @@ const NotificationComponent = () => {
         isClosable: true,
       });
     } catch (err) {
-      toast({
-        title: "Error updating status",
-        status: "error",
-        duration: 2000,
-        isClosable: true,
-      });
+      console.error('Update status error:', err.response || err);
+      if (err.response?.status === 401) {
+        try {
+          const newToken = await refreshToken();
+          await axios.patch(
+            `${BASE_URL}/api/notifications/notifications/${id}`,
+            { status: newStatus },
+            {
+              headers: {
+                Authorization: `Bearer ${newToken}`,
+              },
+            }
+          );
+          setNotifications((prev) => {
+            const updated = prev.map((n) => (n._id === id ? { ...n, status: newStatus } : n));
+            return updated.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+          });
+          toast({
+            title: `Status updated to ${newStatus}`,
+            status: "success",
+            duration: 2000,
+            isClosable: true,
+          });
+        } catch (refreshErr) {
+          toast({
+            title: "Session expired",
+            description: "Please log in again",
+            status: "error",
+            duration: 3000,
+            isClosable: true,
+          });
+          window.location.href = '/login';
+        }
+      } else {
+        toast({
+          title: "Error updating status",
+          status: "error",
+          duration: 2000,
+          isClosable: true,
+        });
+      }
     }
   };
 
@@ -194,12 +314,13 @@ const NotificationComponent = () => {
 
   const handleMarkAsRead = async (id) => {
     try {
+      const token = localStorage.getItem('access-token');
       await axios.patch(
         `${BASE_URL}/api/notifications/notifications/${id}`,
         { isRead: true },
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('access-token')}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
@@ -214,12 +335,47 @@ const NotificationComponent = () => {
         isClosable: true,
       });
     } catch (err) {
-      toast({
-        title: "Error marking notification as read",
-        status: "error",
-        duration: 2000,
-        isClosable: true,
-      });
+      console.error('Mark as read error:', err.response || err);
+      if (err.response?.status === 401) {
+        try {
+          const newToken = await refreshToken();
+          await axios.patch(
+            `${BASE_URL}/api/notifications/notifications/${id}`,
+            { isRead: true },
+            {
+              headers: {
+                Authorization: `Bearer ${newToken}`,
+              },
+            }
+          );
+          setNotifications((prev) => {
+            const updated = prev.map((n) => (n._id === id ? { ...n, isRead: true } : n));
+            return updated.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+          });
+          toast({
+            title: "Notification marked as read",
+            status: "success",
+            duration: 2000,
+            isClosable: true,
+          });
+        } catch (refreshErr) {
+          toast({
+            title: "Session expired",
+            description: "Please log in again",
+            status: "error",
+            duration: 3000,
+            isClosable: true,
+          });
+          window.location.href = '/login';
+        }
+      } else {
+        toast({
+          title: "Error marking notification as read",
+          status: "error",
+          duration: 2000,
+          isClosable: true,
+        });
+      }
     }
   };
 
@@ -250,7 +406,6 @@ const NotificationComponent = () => {
       maxW="100%"
       overflow="hidden"
       minH="100vh"
-      // bg="gray.900"
       color="white"
       fontFamily="'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
     >
