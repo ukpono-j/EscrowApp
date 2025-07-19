@@ -452,7 +452,7 @@ const WaybillModal = React.memo(({ isOpen, onClose, transactionId, isBuyer, deta
           <VStack spacing={4} align="stretch" color="gray.300">
             {[
               { label: "Item", value: details.item || "N/A" },
-              { label: "Price", value: details.price || "N/A" },
+              { label: "Price", value: details.price ? `₦${parseFloat(details.price).toLocaleString("en-NG", { minimumFractionDigits: 2 })}` : "N/A" },
               { label: "Shipping Address", value: details.shippingAddress || "N/A" },
               { label: "Tracking Number", value: details.trackingNumber || "N/A" },
               { label: "Delivery Date", value: details.deliveryDate ? format(new Date(details.deliveryDate), "MMM dd, yyyy") : "N/A" },
@@ -473,20 +473,21 @@ const WaybillModal = React.memo(({ isOpen, onClose, transactionId, isBuyer, deta
               {details.image ? (
                 <Flex direction="column" align="center" gap={3}>
                   <Image
-                    src={details.image}
+                    src={`${BASE_URL}/${details.image}`} // Ensure correct image URL
                     alt="Waybill Proof"
                     maxW="100%"
                     maxH="300px"
                     h="auto"
                     rounded="lg"
                     objectFit="contain"
+                    onError={(e) => console.error("Image load error:", e)}
                   />
                   <Button
                     bg="#318AE6"
                     color="white"
                     _hover={{ bg: "#2279d8" }}
                     size={{ base: "sm", sm: "md" }}
-                    onClick={() => downloadImage(details.image)}
+                    onClick={() => downloadImage(`${BASE_URL}/${details.image}`)}
                   >
                     Download Image
                   </Button>
@@ -1024,10 +1025,10 @@ const DisplayTransaction = () => {
     }
   };
 
-  const fetchBuyerWaybillDetails = async (transactionId) => {
+const fetchBuyerWaybillDetails = async (transactionId) => {
     try {
       const res = await axios.get(`${BASE_URL}/api/transactions/waybill-details/${transactionId}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('access-token')}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("access-token")}` },
       });
       if (res.data?.success && res.data.data) {
         setBuyerWaybillDetails(prev => ({
@@ -1038,16 +1039,25 @@ const DisplayTransaction = () => {
             shippingAddress: res.data.data.shippingAddress || "",
             trackingNumber: res.data.data.trackingNumber || "",
             deliveryDate: res.data.data.deliveryDate || "",
-            image: res.data.data.image ? `${BASE_URL}/${res.data.data.image}` : "",
+            image: res.data.data.image ? `${BASE_URL}/${res.data.data.image}` : "", // Ensure correct image URL
           },
         }));
+      } else {
+        throw new Error(res.data.error || "No waybill details found");
       }
     } catch (error) {
-      // Silent error handling
+      managedToast({
+        id: `waybill-fetch-error-${transactionId}`,
+        title: "Error",
+        description: error.response?.data?.error || error.message || "Failed to fetch waybill details",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
     }
   };
 
-  const handleWaybillSubmit = async (transactionId) => {
+const handleWaybillSubmit = async (transactionId) => {
     const newErrors = {};
     ["item", "price", "shippingAddress", "trackingNumber", "deliveryDate", "image"].forEach(key => {
       if (!waybillDetails[key]) newErrors[key] = `${key.charAt(0).toUpperCase() + key.slice(1)} is required`;
@@ -1059,31 +1069,48 @@ const DisplayTransaction = () => {
     setErrors({});
     const formData = new FormData();
     formData.append("transactionId", transactionId);
-    Object.entries(waybillDetails).forEach(([key, value]) => value && formData.append(key, value));
-    dispatch(submitWaybill({ transactionId, formData }))
-      .unwrap()
-      .then(() => {
+    Object.entries(waybillDetails).forEach(([key, value]) => {
+      if (value) {
+        if (key === "image") {
+          formData.append("image", value); // Append file object
+        } else {
+          formData.append(key, value);
+        }
+      }
+    });
+    try {
+      const response = await axios.post(`${BASE_URL}/api/transactions/submit-waybill`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${localStorage.getItem("access-token")}`,
+        },
+      });
+      if (response.data.success) {
         managedToast({
           id: `waybill-success-${transactionId}`,
-          title: 'Waybill Submitted',
-          status: 'success',
+          title: "Waybill Submitted",
+          status: "success",
           duration: 3000,
           isClosable: true,
         });
         setShowWaybillPopup(prev => ({ ...prev, [transactionId]: false }));
         setWaybillDetails({ item: "", image: null, price: "", shippingAddress: "", trackingNumber: "", deliveryDate: "" });
-      })
-      .catch(error => {
-        const errorMessage = typeof error === 'string' ? error : error.message || 'Failed to submit waybill';
-        managedToast({
-          id: `waybill-error-${transactionId}`,
-          title: 'Error',
-          description: errorMessage,
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
+        // Refresh transactions
+        dispatch(fetchInitialData());
+      } else {
+        throw new Error(response.data.error || "Failed to submit waybill");
+      }
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || error.message || "Failed to submit waybill";
+      managedToast({
+        id: `waybill-error-${transactionId}`,
+        title: "Error",
+        description: errorMessage,
+        status: "error",
+        duration: 5000,
+        isClosable: true,
       });
+    }
   };
 
   const downloadImage = (url) => {

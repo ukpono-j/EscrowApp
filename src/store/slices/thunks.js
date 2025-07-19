@@ -124,20 +124,16 @@ export const cancelTransaction = createAsyncThunk(
 );
 
 export const submitWaybill = createAsyncThunk(
-  'transactions/submitWaybill',
+  "transactions/submitWaybill",
   async ({ transactionId, formData }, { rejectWithValue }) => {
     try {
-      const response = await axios.post(
-        `${BASE_URL}/api/transactions/submit-waybill`,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('access-token')}`,
-            'Content-Type': 'multipart/form-data',
-          },
-        }
-      );
-      return response.data;
+      const response = await axios.post("/api/transactions/submit-waybill", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      if (response.data.success) {
+        return response.data.data;
+      }
+      return rejectWithValue(response.data.error || "Failed to submit waybill");
     } catch (error) {
       return rejectWithValue(error.response?.data?.error || error.message);
     }
