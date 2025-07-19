@@ -1,83 +1,78 @@
-import React, { useEffect, useState } from "react";
-import { PiWarningCircleBold } from "react-icons/pi";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-const BASE_URL = import.meta.env.VITE_BASE_URL ;
+import React, { useState, useEffect } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
+import { Box, Flex, Icon, Text, useColorModeValue, useToast } from "@chakra-ui/react";
+import { FaHome, FaUser, FaExchangeAlt, FaWallet } from "react-icons/fa";
 import axios from "../../utils/axiosConfig";
-import { useToast } from "@chakra-ui/react";
-import { MdLogout } from "react-icons/md";
 
-
-
-const BottomNav = () => {
-  const location = useLocation();
-  const [userName, setUserName] = useState("");
-  const toast = useToast(); // Initialize useToast hook
-  const navigate = useNavigate()
-
+const BottomNav = ({ onShowProfile, onShowToggleComponent }) => {
+  const navigate = useNavigate();
+  const toast = useToast();
+  const [user, setUser] = useState(null);
+  const activeColor = useColorModeValue("blue.500", "blue.200");
+  const inactiveColor = useColorModeValue("gray.500", "gray.400");
 
   useEffect(() => {
-    const token = localStorage.getItem("access-token");
-    if (token) {
-      axios.defaults.headers.common["access-token"] = token;
-    }
-
-    // Fetch transaction details from API and update the state
-    axios
-      .get(`${BASE_URL}/api/users/user-details`, {
-        headers: {
-          "access-token": token,
-        },
-      })
-      .then((response) => {
-        setUserName(response.data.firstName);
-      })
-      .catch((error) => {
-        // Check if the error is due to token expiration
-        if (error.response && error.response.status === 401) {
-          handleLogout(); // Logout the user if the token has expired
+    const fetchUserDetails = async () => {
+      try {
+        const response = await axios.get("/api/users/user-details");
+        setUser(response.data.user);
+      } catch (error) {
+        console.error("Error fetching user details:", error);
+        if (error.response?.status === 401) {
+          // Axios interceptor handles token refresh and redirect
         } else {
-          // Handle other errors as needed
-          console.error("Error fetching user details:", error);
+          toast({
+            title: "Error",
+            description: "Failed to fetch user details. Please try again.",
+            status: "error",
+            duration: 5000,
+            isClosable: true,
+          });
         }
-      });
-  }, []);
+      }
+    };
+    fetchUserDetails();
+  }, [toast]);
 
-  const handleLogout = () => {
-    // Clear the authentication token from local storage
-    localStorage.removeItem("access-token");
-    toast({
-      title: "Logout Successful!",
-      status: "success",
-      duration: 2000, 
-      isClosable: true,
-    });
-    // Redirect the user to the homepage or login page
-    navigate("/");
-  };
-  
-  const links = [
-    { to: "/create-transaction", label: "Create Transaction" },
-    { to: "/join-transaction", label: "Join Transaction" },
-    { to: "/transactions/tab", label: "My Transaction" },
-    { to: "/profile", label: "My Profile", icon: <PiWarningCircleBold className="text-[20px] text-[red]" /> },
-    // { to: "#", label: "LogOut", onClick: handleLogout },
+  const navItems = [
+    { path: "/dashboard", icon: FaHome, label: "Home", onClick: onShowToggleComponent },
+    { path: "/transactions", icon: FaExchangeAlt, label: "Transactions", onClick: onShowToggleComponent },
+    { path: "/wallet", icon: FaWallet, label: "Wallet", onClick: onShowToggleComponent },
+    { path: "/profile", icon: FaUser, label: "Profile", onClick: onShowProfile },
   ];
 
   return (
-    <div className="w-[100%] sm:text-[14px] text-[12px] text-[#fff] flex items-center justify-center h-[0px] md:hidden bg-[#031420] fixed bottom-0">
-      {/* {links.map((link) => (
-        <Link
-          key={link.to}
-          to={link.to}
-          className={`h-[40px] flex items-center ml-2 mr-2 ${location.pathname === link.to ? "text-[red]" : ""}`}
-        >
-          {link.icon}
-          <span className={link.icon ? "pl-1" : ""}>{link.label}</span>
-          
-        </Link>
-      ))}
-      <span onClick={handleLogout} className="flex items-center pl-2"><MdLogout className="pr-1  text-[18px]" /> Log Out</span> */}
-    </div>
+    <Box
+      position="fixed"
+      bottom="0"
+      left="0"
+      right="0"
+      bg={useColorModeValue("gray.800", "gray.900")}
+      boxShadow="0 -2px 10px rgba(0, 0, 0, 0.2)"
+      zIndex="10"
+      display={{ base: "block", md: "none" }}
+    >
+      <Flex justify="space-around" align="center" py={2}>
+        {navItems.map((item) => (
+          <NavLink key={item.path} to={item.path} onClick={item.onClick} style={{ textDecoration: "none" }}>
+            {({ isActive }) => (
+              <Flex
+                direction="column"
+                align="center"
+                color={isActive ? activeColor : inactiveColor}
+                p={2}
+                transition="all 0.3s"
+              >
+                <Icon as={item.icon} boxSize={6} />
+                <Text fontSize="xs" mt={1}>
+                  {item.label}
+                </Text>
+              </Flex>
+            )}
+          </NavLink>
+        ))}
+      </Flex>
+    </Box>
   );
 };
 
