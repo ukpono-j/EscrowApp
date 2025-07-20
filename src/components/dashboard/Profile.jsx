@@ -73,7 +73,7 @@ const FundAmountModal = ({ isOpen, onClose, onSubmit }) => {
   const textColor = useColorModeValue('gray.800', 'white');
 
   const handleSubmit = async () => {
-    if (isSubmitting) return; // Prevent multiple submissions
+    if (isSubmitting) return;
     const amountNum = parseFloat(amount);
     if (!amountNum || amountNum < 100) {
       toast({
@@ -147,6 +147,37 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
   const textColor = useColorModeValue('gray.800', 'white');
   const subtleTextColor = useColorModeValue('gray.600', 'gray.300');
   const boxBg = useColorModeValue('gray.100', 'gray.700');
+
+  useEffect(() => {
+    if (!isOpen || !paymentDetails?.reference) return;
+    const interval = setInterval(async () => {
+      try {
+        const response = await dispatch(checkFundingStatus(paymentDetails.reference)).unwrap();
+        if (response.success && response.data.transaction?.status === 'completed') {
+          toast({
+            title: 'Success',
+            description: `Successfully funded ₦${response.data.transaction.amount.toFixed(2)}.`,
+            status: 'success',
+            duration: 5000,
+            isClosable: true,
+          });
+          dispatch(clearPaymentDetails());
+          onClose();
+        } else if (response.data.transaction?.status === 'failed') {
+          toast({
+            title: 'Failed',
+            description: `Funding of ₦${response.data.transaction.amount.toFixed(2)} failed.`,
+            status: 'error',
+            duration: 5000,
+            isClosable: true,
+          });
+        }
+      } catch (error) {
+        logger.error('Auto-check funding status error:', error);
+      }
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [isOpen, paymentDetails, dispatch, toast, onClose]);
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
@@ -577,44 +608,82 @@ const Profile = () => {
         socketRef.current = io(BASE_URL, {
           auth: { token },
           reconnection: true,
-          reconnectionAttempts: 3,
+          reconnectionAttempts: 10,
           reconnectionDelay: 1000,
+          reconnectionDelayMax: 5000,
+          randomizationFactor: 0.5,
+          transports: ['websocket', 'polling'],
         });
 
         socketRef.current.on('connect', () => {
-          logger.info('Socket connected');
+          logger.info('Socket connected', { socketId: socketRef.current.id });
           socketRef.current.emit('join', decoded.id);
         });
 
         socketRef.current.on('balanceUpdate', (data) => {
-          dispatch(setWallet(data));
+          logger.info('Received balance update', data);
+          dispatch(setWallet({
+            balance: data.balance,
+            totalDeposits: data.totalDeposits,
+            transaction: data.transaction,
+            transactions: [
+              data.transaction,
+              ...state.transactions.filter(t => t.reference !== data.transaction.reference),
+            ],
+          }));
           toast({
-            title: 'Balance Updated',
-            description: `New balance: ₦${data.balance.toFixed(2)}`,
-            status: 'info',
+            title: data.transaction.status === 'completed' ? 'Wallet Funded' : 'Funding Failed',
+            description: data.transaction.status === 'completed'
+              ? `Successfully funded ₦${data.transaction.amount.toFixed(2)}. New balance: ₦${data.balance.toFixed(2)}`
+              : `Funding of ₦${data.transaction.amount.toFixed(2)} failed.`,
+            status: data.transaction.status === 'completed' ? 'success' : 'error',
             duration: 5000,
             isClosable: true,
           });
-        });
-
-        socketRef.current.on('fundingInitiated', (data) => {
-          dispatch(setPaymentDetails(data));
-          setFundingAmount(data.amount);
-          onFundOpen();
+          // Fetch fresh balance to ensure consistency
+          dispatch(fetchInitialData());
         });
 
         socketRef.current.on('connect_error', (err) => {
           logger.error({ message: 'Socket connection error', error: err.message });
           toast({
             title: 'Connection Error',
-            description: 'Failed to connect to real-time updates.',
-            status: 'error',
+            description: 'Failed to connect to real-time updates. Fetching latest balance...',
+            status: 'warning',
             duration: 5000,
             isClosable: true,
           });
+          dispatch(fetchInitialData());
+        });
+
+        socketRef.current.on('reconnect', (attempt) => {
+          logger.info('Socket reconnected', { attempt });
+          socketRef.current.emit('join', decoded.id);
+          dispatch(fetchInitialData());
+        });
+
+        socketRef.current.on('reconnect_error', (err) => {
+          logger.error('Socket reconnection error', { error: err.message });
+          dispatch(fetchInitialData());
         });
 
         setIsAuthLoading(false);
+
+        // Polling fallback
+        const pollingInterval = setInterval(async () => {
+          if (!socketRef.current.connected) {
+            logger.info('Socket not connected, polling for balance');
+            await dispatch(fetchInitialData());
+          }
+        }, 15000); // Poll every 15 seconds if disconnected
+
+        return () => {
+          clearInterval(pollingInterval);
+          if (socketRef.current) {
+            socketRef.current.disconnect();
+            logger.info('Socket disconnected');
+          }
+        };
       } catch (err) {
         logger.error({ message: 'Authentication error', error: err.message });
         setAuthError('Authentication failed. Please log in again.');
@@ -623,14 +692,7 @@ const Profile = () => {
     };
 
     initialize();
-
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-        logger.info('Socket disconnected');
-      }
-    };
-  }, [dispatch, toast]);
+  }, [dispatch, toast, navigate]);
 
   useEffect(() => {
     if (user && !formData.firstName) {
@@ -665,10 +727,12 @@ const Profile = () => {
         setFundingAmount(amount);
         dispatch(setPaymentDetails(response.data));
         if (response.data.authorization_url) {
-          window.location.href = response.data.authorization_url; // Redirect to Paystack payment page
+          window.location.href = response.data.authorization_url;
         } else {
-          onFundOpen(); // Open modal for virtual account details
+          onFundOpen();
         }
+        // Immediately fetch balance to ensure consistency
+        setTimeout(() => dispatch(fetchInitialData()), 2000);
       } else {
         toast({
           title: 'Error',
@@ -713,7 +777,7 @@ const Profile = () => {
       if (response.success && response.data.transaction?.status === 'completed') {
         toast({
           title: 'Success',
-          description: `Successfully funded ₦${response.data.transaction.amount.toFixed(2)}. Your wallet has been updated.`,
+          description: `Successfully funded ₦${response.data.transaction.amount.toFixed(2)}.`,
           status: 'success',
           duration: 5000,
           isClosable: true,
@@ -721,6 +785,8 @@ const Profile = () => {
         dispatch(clearPaymentDetails());
         setFundingAmount(null);
         onFundClose();
+        // Fetch fresh balance to ensure consistency
+        dispatch(fetchInitialData());
       } else {
         toast({
           title: response.data.transaction?.status === 'failed' ? 'Failed' : 'Pending',

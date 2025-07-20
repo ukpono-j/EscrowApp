@@ -1,6 +1,7 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import axios from '../../utils/axiosConfig';
 import axiosRetry from 'axios-retry';
+import { setWallet } from './walletSlice';
 
 const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:3001';
 
@@ -35,7 +36,7 @@ export const fetchInitialData = createAsyncThunk(
 
 export const fundWallet = createAsyncThunk(
   'wallet/fundWallet',
-  async ({ amount, email, phoneNumber, userId }, { rejectWithValue }) => {
+  async ({ amount, email, phoneNumber, userId }, { dispatch, rejectWithValue }) => {
     try {
       const response = await axios.post(
         `${BASE_URL}/api/wallet/fund`,
@@ -48,6 +49,28 @@ export const fundWallet = createAsyncThunk(
           status: response.status,
         });
       }
+
+      // Fetch updated wallet data as a fallback
+      try {
+        const walletResponse = await axios.get(`${BASE_URL}/api/wallet/balance`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('access-token')}` },
+        });
+        if (walletResponse.data.success) {
+          dispatch(setWallet({
+            balance: walletResponse.data.data.wallet.balance,
+            totalDeposits: walletResponse.data.data.wallet.totalDeposits,
+            transactions: walletResponse.data.data.wallet.transactions,
+            user: walletResponse.data.data.user,
+          }));
+        }
+      } catch (walletError) {
+        console.error('Fallback wallet fetch error:', {
+          status: walletError.response?.status,
+          message: walletError.response?.data?.error || walletError.message,
+        });
+        // Log the error but don't reject, as funding initiation was successful
+      }
+
       return response.data;
     } catch (error) {
       console.error('Fund wallet error:', {
