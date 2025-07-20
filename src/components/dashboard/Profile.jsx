@@ -163,6 +163,7 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
           });
           dispatch(clearPaymentDetails());
           onClose();
+          dispatch(fetchInitialData()); // Fetch balance after funding
         } else if (response.data.transaction?.status === 'failed') {
           toast({
             title: 'Failed',
@@ -201,6 +202,7 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
         });
         dispatch(clearPaymentDetails());
         onClose();
+        dispatch(fetchInitialData()); // Fetch balance after reconciliation
       } else {
         toast({
           title: 'Reconciliation Failed',
@@ -608,7 +610,7 @@ const Profile = () => {
         socketRef.current = io(BASE_URL, {
           auth: { token },
           reconnection: true,
-          reconnectionAttempts: 10,
+          reconnectionAttempts: 15,
           reconnectionDelay: 1000,
           reconnectionDelayMax: 5000,
           randomizationFactor: 0.5,
@@ -640,8 +642,7 @@ const Profile = () => {
             duration: 5000,
             isClosable: true,
           });
-          // Fetch fresh balance to ensure consistency
-          dispatch(fetchInitialData());
+          dispatch(fetchInitialData()); // Fetch fresh balance to confirm
         });
 
         socketRef.current.on('connect_error', (err) => {
@@ -675,7 +676,7 @@ const Profile = () => {
             logger.info('Socket not connected, polling for balance');
             await dispatch(fetchInitialData());
           }
-        }, 15000); // Poll every 15 seconds if disconnected
+        }, 10000); // Poll every 10 seconds if disconnected
 
         return () => {
           clearInterval(pollingInterval);
@@ -785,8 +786,7 @@ const Profile = () => {
         dispatch(clearPaymentDetails());
         setFundingAmount(null);
         onFundClose();
-        // Fetch fresh balance to ensure consistency
-        dispatch(fetchInitialData());
+        dispatch(fetchInitialData()); // Fetch fresh balance
       } else {
         toast({
           title: response.data.transaction?.status === 'failed' ? 'Failed' : 'Pending',

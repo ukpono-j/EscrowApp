@@ -1,14 +1,16 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import axios from '../../utils/axiosConfig';
 import axiosRetry from 'axios-retry';
-import { setWallet } from './walletSlice';
+import pino from 'pino';
+import { setWallet, setPaymentDetails } from './walletSlice';
 
 const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:3001';
+const logger = pino({ level: 'info', browser: { asObject: true } });
 
 axiosRetry(axios, {
   retries: 3,
   retryDelay: (retryCount) => retryCount * 1000,
-  retryCondition: (error) => error.response?.status >= 500,
+  retryCondition: (error) => error.response?.status >= 500 || error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK',
 });
 
 export const fetchInitialData = createAsyncThunk(
@@ -18,9 +20,13 @@ export const fetchInitialData = createAsyncThunk(
       const response = await axios.get(`${BASE_URL}/api/wallet/balance`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('access-token')}` },
       });
+      logger.info('Fetched initial wallet data:', {
+        userId: response.data.data?.user?._id,
+        balance: response.data.data?.wallet?.balance,
+      });
       return response.data;
     } catch (error) {
-      console.error('Fetch wallet data error:', {
+      logger.error('Fetch wallet data error:', {
         status: error.response?.status,
         message: error.response?.data?.error || error.message,
         url: `${BASE_URL}/api/wallet/balance`,
@@ -44,11 +50,24 @@ export const fundWallet = createAsyncThunk(
         { headers: { Authorization: `Bearer ${localStorage.getItem('access-token')}` } }
       );
       if (!response.data.success) {
+        logger.error('Fund wallet failed:', {
+          status: response.status,
+          message: response.data.error,
+        });
         return rejectWithValue({
           message: response.data.error || 'Failed to initiate funding',
           status: response.status,
         });
       }
+
+      logger.info('Fund wallet initiated:', {
+        userId,
+        amount,
+        reference: response.data.data?.reference,
+      });
+
+      // Store payment details
+      dispatch(setPaymentDetails(response.data.data));
 
       // Fetch updated wallet data as a fallback
       try {
@@ -62,9 +81,13 @@ export const fundWallet = createAsyncThunk(
             transactions: walletResponse.data.data.wallet.transactions,
             user: walletResponse.data.data.user,
           }));
+          logger.info('Fallback wallet fetch successful:', {
+            userId,
+            balance: walletResponse.data.data.wallet.balance,
+          });
         }
       } catch (walletError) {
-        console.error('Fallback wallet fetch error:', {
+        logger.error('Fallback wallet fetch error:', {
           status: walletError.response?.status,
           message: walletError.response?.data?.error || walletError.message,
         });
@@ -73,7 +96,7 @@ export const fundWallet = createAsyncThunk(
 
       return response.data;
     } catch (error) {
-      console.error('Fund wallet error:', {
+      logger.error('Fund wallet error:', {
         status: error.response?.status,
         message: error.response?.data?.error || error.message,
       });
@@ -94,9 +117,14 @@ export const withdrawFunds = createAsyncThunk(
         { amount, bankCode, accountNumber, accountName },
         { headers: { Authorization: `Bearer ${localStorage.getItem('access-token')}` } }
       );
+      logger.info('Withdraw funds initiated:', {
+        amount,
+        bankCode,
+        accountNumber,
+      });
       return response.data;
     } catch (error) {
-      console.error('Withdraw funds error:', {
+      logger.error('Withdraw funds error:', {
         status: error.response?.status,
         message: error.response?.data?.error || error.message,
       });
@@ -110,14 +138,25 @@ export const withdrawFunds = createAsyncThunk(
 
 export const checkFundingStatus = createAsyncThunk(
   'wallet/checkFundingStatus',
-  async (reference, { rejectWithValue }) => {
+  async (reference, { dispatch, rejectWithValue }) => {
     try {
       const response = await axios.get(`${BASE_URL}/api/wallet/funding-status/${reference}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('access-token')}` },
       });
+      logger.info('Checked funding status:', {
+        reference,
+        status: response.data.data?.transaction?.status,
+      });
+
+      if (response.data.success && response.data.data.transaction?.status === 'completed') {
+        // Fetch updated wallet data to ensure balance is updated
+        await dispatch(fetchInitialData());
+      }
+
       return response.data;
     } catch (error) {
-      console.error('Check funding status error:', {
+      logger.error('Check funding status error:', {
+        reference,
         status: error.response?.status,
         message: error.response?.data?.error || error.message,
       });
@@ -131,16 +170,27 @@ export const checkFundingStatus = createAsyncThunk(
 
 export const manualReconcileTransaction = createAsyncThunk(
   'wallet/manualReconcileTransaction',
-  async (reference, { rejectWithValue }) => {
+  async (reference, { dispatch, rejectWithValue }) => {
     try {
       const response = await axios.post(
         `${BASE_URL}/api/wallet/reconcile`,
         { reference },
         { headers: { Authorization: `Bearer ${localStorage.getItem('access-token')}` } }
       );
+      logger.info('Manual reconciliation response:', {
+        reference,
+        status: response.data.data?.transaction?.status,
+      });
+
+      if (response.data.success) {
+        // Fetch updated wallet data to ensure balance is updated
+        await dispatch(fetchInitialData());
+      }
+
       return response.data;
     } catch (error) {
-      console.error('Manual reconcile transaction error:', {
+      logger.error('Manual reconcile transaction error:', {
+        reference,
         status: error.response?.status,
         message: error.response?.data?.error || error.message,
       });
