@@ -73,6 +73,7 @@ const FundAmountModal = ({ isOpen, onClose, onSubmit }) => {
   const textColor = useColorModeValue('gray.800', 'white');
 
   const handleSubmit = async () => {
+    if (isSubmitting) return; // Prevent multiple submissions
     const amountNum = parseFloat(amount);
     if (!amountNum || amountNum < 100) {
       toast({
@@ -124,6 +125,7 @@ const FundAmountModal = ({ isOpen, onClose, onSubmit }) => {
             colorScheme="blue"
             onClick={handleSubmit}
             isLoading={isSubmitting}
+            isDisabled={isSubmitting}
             size={{ base: 'sm', sm: 'md' }}
             mr={{ sm: 3 }}
             mb={{ base: 2, sm: 0 }}
@@ -159,14 +161,32 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
     try {
       const { success, data } = await dispatch(manualReconcileTransaction(ref)).unwrap();
       if (success) {
-        toast({ title: 'Success', description: `Funded ₦${data.transaction.amount.toFixed(2)}.`, status: 'success', duration: 5000, isClosable: true });
+        toast({
+          title: 'Success',
+          description: `Successfully funded ₦${data.transaction.amount.toFixed(2)}. Your wallet has been updated.`,
+          status: 'success',
+          duration: 5000,
+          isClosable: true,
+        });
         dispatch(clearPaymentDetails());
         onClose();
       } else {
-        toast({ title: 'Reconciliation Failed', description: data.message || 'Try again.', status: 'error', duration: 5000, isClosable: true });
+        toast({
+          title: 'Reconciliation Failed',
+          description: data.message || 'Try again.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
       }
     } catch (error) {
-      toast({ title: 'Error', description: error.message || 'Reconciliation failed.', status: 'error', duration: 5000, isClosable: true });
+      toast({
+        title: 'Error',
+        description: error.message || 'Reconciliation failed.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
     }
   };
 
@@ -177,7 +197,25 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
         <ModalHeader color={textColor}>Fund Wallet</ModalHeader>
         <ModalCloseButton />
         <ModalBody px={{ base: 4, sm: 6 }} py={4}>
-          {paymentDetails?.virtualAccount ? (
+          {paymentDetails?.authorization_url ? (
+            <>
+              <Text color={textColor} mb={4}>
+                Click the button below to proceed with payment of ₦{amount?.toFixed(2)}:
+              </Text>
+              <Button
+                as="a"
+                href={paymentDetails.authorization_url}
+                colorScheme="blue"
+                size={{ base: 'sm', sm: 'md' }}
+                mb={4}
+              >
+                Pay Now
+              </Button>
+              <Text color={subtleTextColor} fontSize="sm">
+                You will be redirected to Paystack to complete the payment.
+              </Text>
+            </>
+          ) : paymentDetails?.virtualAccount ? (
             <>
               <Text color={textColor} mb={2}>Transfer ₦{amount?.toFixed(2)} to the account below:</Text>
               <Box p={4} bg={boxBg} borderRadius="md">
@@ -410,7 +448,6 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
   );
 };
 
-
 const Profile = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -431,9 +468,19 @@ const Profile = () => {
   const boxBg = useColorModeValue('gray.50', 'gray.700');
   const avatarSvg = user?.email ? multiavatar(user.email) : multiavatar('default');
 
-  // New function to check funding readiness
   const handleCheckFundingReadiness = async () => {
+    if (isSubmitting) {
+      toast({
+        title: 'Please Wait',
+        description: 'A funding request is already in progress. Please wait.',
+        status: 'warning',
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
     try {
+      setIsSubmitting(true);
       const token = localStorage.getItem('access-token');
       if (!token) {
         toast({
@@ -482,6 +529,9 @@ const Profile = () => {
       } else if (status === 401) {
         errorMessage = 'Session expired or invalid. Please log in again.';
         action = { label: 'Log In', onClick: () => navigate('/login') };
+      } else if (status === 429) {
+        errorMessage = 'Too many requests. Please wait a moment and try again.';
+        action = { label: 'Retry', onClick: () => handleCheckFundingReadiness() };
       }
 
       toast({
@@ -492,6 +542,8 @@ const Profile = () => {
         isClosable: true,
         action,
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -545,6 +597,12 @@ const Profile = () => {
           });
         });
 
+        socketRef.current.on('fundingInitiated', (data) => {
+          dispatch(setPaymentDetails(data));
+          setFundingAmount(data.amount);
+          onFundOpen();
+        });
+
         socketRef.current.on('connect_error', (err) => {
           logger.error({ message: 'Socket connection error', error: err.message });
           toast({
@@ -585,7 +643,18 @@ const Profile = () => {
   }, [user]);
 
   const handleFundWallet = async (amount) => {
+    if (isSubmitting || loading) {
+      toast({
+        title: 'Please Wait',
+        description: 'A funding request is already in progress. Please wait.',
+        status: 'warning',
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
     try {
+      setIsSubmitting(true);
       const response = await dispatch(fundWallet({
         amount,
         email: user.email,
@@ -594,7 +663,12 @@ const Profile = () => {
       })).unwrap();
       if (response.success) {
         setFundingAmount(amount);
-        onFundOpen();
+        dispatch(setPaymentDetails(response.data));
+        if (response.data.authorization_url) {
+          window.location.href = response.data.authorization_url; // Redirect to Paystack payment page
+        } else {
+          onFundOpen(); // Open modal for virtual account details
+        }
       } else {
         toast({
           title: 'Error',
@@ -605,9 +679,17 @@ const Profile = () => {
         });
       }
     } catch (error) {
-      const errorMessage = error.status === 502 && error.message.includes('Payment provider authentication failed')
-        ? 'Payment provider configuration issue. Please contact support.'
-        : error.message || 'Failed to initiate funding.';
+      let errorMessage = error.message || 'Failed to initiate funding.';
+      if (error.status === 502 && error.message.includes('Payment provider authentication failed')) {
+        errorMessage = 'Payment provider configuration issue. Please contact support.';
+      } else if (error.status === 400 && error.message.includes('Duplicate transaction detected')) {
+        errorMessage = 'A transaction is already in progress. Please wait a moment and try again.';
+      } else if (error.status === 429) {
+        errorMessage = 'Too many requests. Please wait a moment and try again.';
+      } else if (error.status === 401) {
+        errorMessage = 'Authentication failed. Please log in again.';
+        navigate('/login');
+      }
       toast({
         title: 'Error',
         description: errorMessage,
@@ -615,6 +697,8 @@ const Profile = () => {
         duration: 5000,
         isClosable: true,
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -629,7 +713,7 @@ const Profile = () => {
       if (response.success && response.data.transaction?.status === 'completed') {
         toast({
           title: 'Success',
-          description: `Funded ₦${response.data.transaction.amount.toFixed(2)}.`,
+          description: `Successfully funded ₦${response.data.transaction.amount.toFixed(2)}. Your wallet has been updated.`,
           status: 'success',
           duration: 5000,
           isClosable: true,
@@ -835,8 +919,9 @@ const Profile = () => {
                 <Button
                   leftIcon={<FaCreditCard />}
                   colorScheme="blue"
-                  onClick={handleCheckFundingReadiness} // Updated to check readiness
-                  isLoading={loading}
+                  onClick={handleCheckFundingReadiness}
+                  isLoading={isSubmitting || loading}
+                  isDisabled={isSubmitting || loading}
                   size={{ base: 'sm', sm: 'md' }}
                 >
                   Fund Wallet
@@ -893,7 +978,11 @@ const Profile = () => {
         />
         <PaymentInfoModal
           isOpen={isFundOpen}
-          onClose={onFundClose}
+          onClose={() => {
+            dispatch(clearPaymentDetails());
+            setFundingAmount(null);
+            onFundClose();
+          }}
           paymentDetails={paymentDetails}
           onStatusCheck={handleCheckStatus}
           userName={`${user.firstName} ${user.lastName}`}
