@@ -5,7 +5,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { format } from 'date-fns';
 import {
   Box, Flex, Text, Button, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter,
-  VStack, Input, Select, IconButton, Image, Spinner, useDisclosure
+  Grid, Stack, HStack, VStack, Input, Select, IconButton, Image, Spinner, useDisclosure
 } from '@chakra-ui/react';
 import { FiSearch, FiEdit } from 'react-icons/fi';
 import { BsChatFill } from 'react-icons/bs';
@@ -13,13 +13,13 @@ import { MdClose, MdContentCopy } from 'react-icons/md';
 import { useSelector, useDispatch } from 'react-redux';
 import {
   fetchInitialData, updateTransaction, confirmTransaction, fundTransaction,
-  cancelTransaction, submitWaybill
+  cancelTransaction
 } from '../../store/slices/thunks';
+import { useManagedToast } from '../../utils/toastManager';
 import Sidebar from './Sidebar';
 import BottomNav from './BottomNav';
 import MiniNav from './MiniNav';
 import { nigeriaBanks } from '../../data/banksList';
-import { useManagedToast } from '../../utils/toastManager';
 import axios from '../../utils/axiosConfig';
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
@@ -34,407 +34,459 @@ const debounce = (func, wait) => {
 };
 
 const TransactionLoader = () => (
-  <Flex flexDir="column" align="center" justify="center" h={{ base: "50vh", md: "60vh" }}>
+  <Flex
+    flexDir="column"
+    align="center"
+    justify="center"
+    h={{ base: "40vh", sm: "50vh", md: "60vh" }}
+    py={8}
+  >
     <Spinner color="#318AE6" size="xl" mb={4} />
-    <Text color="#E4E4E4" fontSize={{ base: "md", md: "lg" }} fontWeight="medium">
+    <Text
+      color="#E4E4E4"
+      fontSize={{ base: "sm", sm: "md", md: "lg" }}
+      fontWeight="medium"
+      textAlign="center"
+      px={4}
+    >
       Loading transactions...
     </Text>
   </Flex>
 );
 
-const TransactionCard = ({
-  transaction,
-  currentUser,
-  isConfirming,
-  handleChat,
-  handleWaybill,
-  handleConfirm,
-  handleFund,
-  handleEditPayment,
-  cancelTransaction,
-  copyToClipboard,
-  toggleDescription,
-  expandedDescriptions,
+const TransactionCard = React.memo(({
+  transaction, currentUser, isConfirming, handleChat, handleWaybill,
+  handleConfirm, handleFund, handleEditPayment, cancelTransaction,
+  copyToClipboard, toggleDescription, expandedDescriptions
 }) => {
-  // Ensure IDs are strings for comparison
-  const currentUserId = currentUser?._id?.toString();
-  const creatorId = transaction?.userId?._id?.toString();
-
-  // Determine if the current user is the creator
-  const isCreator = currentUserId && creatorId ? creatorId === currentUserId : false;
-
-  // Safely check participants
-  const isParticipant = transaction?.participants?.some((p) => {
-    if (!p) return false;
-    const participantId = p._id ? p._id.toString() : p.toString();
-    return participantId === currentUserId;
-  }) || false;
-
-  // Use userRole from backend if available, otherwise compute locally
+  const currentUserId = currentUser?._id?.toString() || '';
+  const creatorId = transaction?.userId?._id?.toString() || '';
+  const isCreator = currentUserId && creatorId === currentUserId;
+  const isParticipant = currentUserId && transaction?.participants?.some(p => p?._id?.toString() === currentUserId) || false;
   const userRole = transaction?.userRole || (
     isCreator
       ? transaction?.selectedUserType
-      : transaction?.selectedUserType === "buyer"
-        ? "seller"
-        : transaction?.selectedUserType === "seller"
-          ? "buyer"
-          : "unknown"
+      : transaction?.selectedUserType === "buyer" ? "seller" : "buyer"
   );
   const isBuyer = userRole === "buyer";
-
-  // Determine display name (opposite party)
-  let displayName = "No participant yet";
-  if (transaction?.participants?.length > 0 && transaction.participants[0]) {
-    if (isCreator) {
-      // Creator sees participant's name
-      const participant = transaction.participants[0];
-      displayName = participant?.firstName
-        ? `${participant.firstName} ${participant.lastName || ""}`.trim()
-        : participant?.email || "Participant";
-    } else if (isParticipant) {
-      // Participant sees creator's name
-      const creator = transaction.userId;
-      displayName = creator?.firstName
-        ? `${creator.firstName} ${creator.lastName || ""}`.trim()
-        : creator?.email || "Creator";
-    }
-  }
-
+  const displayName = transaction?.participants?.length > 0 && transaction.participants[0]
+    ? (isCreator
+      ? `${transaction.participants[0].firstName || ""} ${transaction.participants[0].lastName || ""}`.trim() || transaction.participants[0].email || "Unknown participant"
+      : `${transaction.userId.firstName || ""} ${transaction.userId.lastName || ""}`.trim() || transaction.userId.email || "Unknown creator")
+    : "No participant yet";
   const description = transaction?.productDetails?.description || "No description provided";
   const isExpanded = expandedDescriptions[transaction._id];
-  const maxLength = 100;
-  const truncatedDescription =
-    description.length > maxLength && !isExpanded
-      ? `${description.substring(0, maxLength)}...`
-      : description;
-
-  // Debug log
-  console.log("TransactionCard render:", {
-    transactionId: transaction?._id,
-    isCreator,
-    isParticipant,
-    displayName,
-    userRole,
-    selectedUserType: transaction?.selectedUserType,
-    currentUserId,
-    creatorId,
-    participants: transaction?.participants?.map((p) => p?._id?.toString() || "invalid"),
-  });
+  const truncatedDescription = description.length > 100 && !isExpanded ? `${description.substring(0, 100)}...` : description;
 
   return (
     <MotionBox
       bg="#111518"
       rounded="lg"
       border="1px"
-      borderColor="gray.800"
-      p={{ base: 3, sm: 4 }}
+      borderColor="rgba(255, 255, 255, 0.08)"
+      p={0}
+      w="100%"
       maxW="100%"
-      overflow="hidden"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      whileHover={{ scale: 1.02, borderColor: "#318AE6" }}
+      whileHover={{ borderColor: "rgba(49, 138, 230, 0.3)" }}
+      _hover={{ borderColor: "rgba(49, 138, 230, 0.3)", transition: "all 0.2s ease" }}
+      overflow="hidden"
+      position="relative"
     >
-      <Flex justify="space-between" align="center" mb={{ base: 2, sm: 3 }}>
-        <Box>
+      <Box
+        borderBottom="1px"
+        borderBottomColor="rgba(255, 255, 255, 0.06)"
+        p={4}
+      >
+        <Flex justify="space-between" align="center">
+          <Box flex="1" minW="0">
+            <Text
+              fontSize="md"
+              fontWeight="600"
+              color="white"
+              lineHeight="1.2"
+              wordBreak="break-word"
+              mb={1}
+            >
+              {displayName}
+            </Text>
+            <Text
+              fontSize="xs"
+              color="gray.500"
+              fontWeight="500"
+              textTransform="uppercase"
+              letterSpacing="0.5px"
+            >
+              {userRole} Transaction
+            </Text>
+          </Box>
+          <Flex gap={2} flexShrink={0}>
+            <IconButton
+              aria-label="Edit payment"
+              icon={<FiEdit />}
+              size="xs"
+              bg="transparent"
+              color="gray.400"
+              _hover={{ color: "#967532", bg: "rgba(150, 117, 50, 0.1)" }}
+              onClick={() => handleEditPayment(transaction)}
+            />
+            <IconButton
+              aria-label="Open chat"
+              icon={<BsChatFill />}
+              size="xs"
+              bg="transparent"
+              color="gray.400"
+              _hover={{ color: "#318AE6", bg: "rgba(49, 138, 230, 0.1)" }}
+              onClick={() => handleChat(transaction._id)}
+            />
+          </Flex>
+        </Flex>
+      </Box>
+
+      <Box p={4}>
+        <Flex justify="space-between" align="center" mb={4}>
+          <Box>
+            <Text
+              fontSize="xs"
+              color="gray.500"
+              mb={1}
+              fontWeight="500"
+              textTransform="uppercase"
+              letterSpacing="0.5px"
+            >
+              Amount
+            </Text>
+            <Text
+              fontSize="xl"
+              color="#318AE6"
+              fontWeight="700"
+              lineHeight="1"
+            >
+              {transaction.paymentAmount
+                ? `₦${parseFloat(transaction.paymentAmount).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`
+                : "N/A"}
+            </Text>
+          </Box>
+          <VStack spacing={2} align="flex-end">
+            <Box
+              bg={transaction.status === "completed" ? "rgba(34, 197, 94, 0.15)" : transaction.status === "cancelled" ? "rgba(239, 68, 68, 0.15)" : "rgba(234, 179, 8, 0.15)"}
+              color={transaction.status === "completed" ? "#22c55e" : transaction.status === "cancelled" ? "#ef4444" : "#eab308"}
+              px={2}
+              py={1}
+              rounded="md"
+              fontSize="xs"
+              fontWeight="600"
+              textTransform="uppercase"
+              letterSpacing="0.5px"
+            >
+              {transaction.status}
+            </Box>
+            <Box
+              bg={transaction.proofOfWaybill === "confirmed" ? "rgba(34, 197, 94, 0.15)" : "rgba(234, 179, 8, 0.15)"}
+              color={transaction.proofOfWaybill === "confirmed" ? "#22c55e" : "#eab308"}
+              px={2}
+              py={1}
+              rounded="md"
+              fontSize="xs"
+              fontWeight="600"
+              textTransform="uppercase"
+              letterSpacing="0.5px"
+            >
+              {transaction.proofOfWaybill || "Pending"}
+            </Box>
+          </VStack>
+        </Flex>
+
+        <Box
+          bg="rgba(29, 34, 37, 0.5)"
+          rounded="md"
+          p={3}
+          mb={4}
+          border="1px"
+          borderColor="rgba(255, 255, 255, 0.05)"
+        >
           <Text
-            fontSize={{ base: "md", sm: "lg" }}
-            fontWeight="bold"
-            color="white"
-            isTruncated
-            maxW="200px"
+            fontSize="xs"
+            color="gray.500"
+            mb={1}
+            fontWeight="500"
+            textTransform="uppercase"
+            letterSpacing="0.5px"
           >
-            {displayName}
+            Escrow Status
+          </Text>
+          <Text
+            fontSize="sm"
+            color={
+              transaction.locked && transaction.status !== "completed" ? "#eab308"
+              : transaction.status === "completed" ? "#22c55e" : "gray.400"
+            }
+            fontWeight="600"
+          >
+            {transaction.locked && transaction.status !== "completed"
+              ? `Locked: ₦${parseFloat(transaction.lockedAmount || 0).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`
+              : transaction.status === "completed"
+                ? `Released: ₦${parseFloat(transaction.paymentAmount || 0).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`
+                : "Not Locked"}
           </Text>
         </Box>
-        <Flex gap={2}>
-          <IconButton
-            aria-label="Edit payment details"
-            icon={<FiEdit />}
-            size="sm"
-            bg="#1d2225"
-            color="white"
-            _hover={{ bg: "#967532" }}
-            onClick={() => handleEditPayment(transaction)}
-          />
-          <IconButton
-            aria-label="Open chat"
-            icon={<BsChatFill />}
-            size="sm"
-            bg="#1d2225"
-            color="white"
-            _hover={{ bg: "#318AE6" }}
-            onClick={() => handleChat(transaction._id)}
-          />
-        </Flex>
-      </Flex>
-      <Box
-        display="grid"
-        gridTemplateColumns={{ base: "1fr", sm: "1fr 1fr" }}
-        gap={2}
-        mb={3}
-        overflow="hidden"
-      >
-        {[
-          {
-            label: "Transaction ID",
-            value: (
-              <Flex align="center" gap={1}>
-                <Text
-                  fontSize="sm"
-                  color="white"
-                  isTruncated
-                  whiteSpace="normal"
-                  overflowWrap="break-word"
-                >
-                  {transaction._id}
-                </Text>
-                <IconButton
-                  aria-label="Copy transaction ID"
-                  icon={<MdContentCopy />}
-                  size="xs"
-                  bg="transparent"
-                  color="gray.400"
-                  _hover={{ color: "#318AE6" }}
-                  onClick={() => copyToClipboard(transaction._id)}
-                />
-              </Flex>
-            ),
-          },
-          { label: "Email", value: transaction.email || "N/A" },
-          {
-            label: "Amount",
-            value: transaction.paymentAmount
-              ? `₦${parseFloat(transaction.paymentAmount).toLocaleString("en-NG", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}`
-              : "N/A",
-            color: "#318AE6",
-          },
-          {
-            label: "User Type",
-            value: userRole.charAt(0).toUpperCase() + userRole.slice(1),
-          },
-          {
-            label: "Status",
-            value: (
-              <Text
-                fontSize="xs"
-                bg={
-                  transaction.status === "completed"
-                    ? "green.900"
-                    : transaction.status === "cancelled"
-                      ? "red.900"
-                      : "yellow.900"
-                }
-                color={
-                  transaction.status === "completed"
-                    ? "green.300"
-                    : transaction.status === "cancelled"
-                      ? "red.300"
-                      : "yellow.300"
-                }
-                px={2}
-                py={1}
-                rounded="full"
-                textAlign="center"
-              >
-                {transaction.status || "Unknown"}
-              </Text>
-            ),
-          },
-          { label: "Bank", value: transaction.paymentBank || "N/A" },
-          { label: "Account Number", value: transaction.paymentAccountNumber || "N/A" },
-          {
-            label: "Waybill Status",
-            value: (
-              <Text
-                fontSize="xs"
-                bg={transaction.proofOfWaybill === "confirmed" ? "green.900" : "yellow.900"}
-                color={transaction.proofOfWaybill === "confirmed" ? "green.300" : "yellow.300"}
-                px={2}
-                py={1}
-                rounded="full"
-                textAlign="center"
-              >
-                {transaction.proofOfWaybill || "Not submitted"}
-              </Text>
-            ),
-          },
-          {
-            label: "Created",
-            value: transaction.createdAt
-              ? format(new Date(transaction.createdAt), "MMM dd, yyyy")
-              : "N/A",
-          },
-          {
-            label: "Escrow Status",
-            value: (
-              <Text
-                fontSize="xs"
-                bg={
-                  transaction.locked && transaction.status !== "completed"
-                    ? "yellow.900"
-                    : transaction.status === "completed"
-                      ? "green.900"
-                      : "gray.900"
-                }
-                color={
-                  transaction.locked && transaction.status !== "completed"
-                    ? "yellow.300"
-                    : transaction.status === "completed"
-                      ? "green.300"
-                      : "gray.300"
-                }
-                px={2}
-                py={1}
-                rounded="full"
-                textAlign="center"
-              >
-                {transaction.locked && transaction.status !== "completed"
-                  ? `Locked: ₦${parseFloat(transaction.lockedAmount || 0).toLocaleString(
-                    "en-NG",
-                    { minimumFractionDigits: 2, maximumFractionDigits: 2 }
-                  )}`
-                  : transaction.status === "completed"
-                    ? `Released: ₦${parseFloat(transaction.paymentAmount || 0).toLocaleString(
-                      "en-NG",
-                      { minimumFractionDigits: 2, maximumFractionDigits: 2 }
-                    )}`
-                    : "Not Locked"}
-              </Text>
-            ),
-          },
-        ].map(({ label, value, color }, idx) => (
-          <Box key={idx} bg="#1d2225" rounded="md" p={2} overflow="hidden">
-            <Text fontSize="xs" color="gray.400" mb={1}>
-              {label}
+
+        <Grid templateColumns="1fr 1fr" gap={4} mb={4}>
+          <Box>
+            <Text fontSize="xs" color="gray.500" mb={1} fontWeight="500">Contact</Text>
+            <Text fontSize="sm" color="white" fontWeight="500" wordBreak="break-word">
+              {transaction.email || "N/A"}
             </Text>
-            {typeof value === "string" ? (
+          </Box>
+          <Box>
+            <Text fontSize="xs" color="gray.500" mb={1} fontWeight="500">Created</Text>
+            <Text fontSize="sm" color="white" fontWeight="500">
+              {transaction.createdAt ? format(new Date(transaction.createdAt), "MMM dd, yyyy") : "N/A"}
+            </Text>
+          </Box>
+          <Box>
+            <Text fontSize="xs" color="gray.500" mb={1} fontWeight="500">Bank</Text>
+            <Text fontSize="sm" color="white" fontWeight="500">
+              {transaction.paymentBank || "N/A"}
+            </Text>
+          </Box>
+          <Box>
+            <Text fontSize="xs" color="gray.500" mb={1} fontWeight="500">Account</Text>
+            <Text fontSize="sm" color="white" fontWeight="500" fontFamily="mono">
+              {transaction.paymentAccountNumber || "N/A"}
+            </Text>
+          </Box>
+        </Grid>
+
+        <Box
+          bg="rgba(29, 34, 37, 0.5)"
+          rounded="md"
+          p={3}
+          mb={4}
+          border="1px"
+          borderColor="rgba(255, 255, 255, 0.05)"
+        >
+          <Text fontSize="xs" color="gray.500" mb={1} fontWeight="500">Transaction ID</Text>
+          <Flex align="center" gap={2}>
+            <Text
+              fontSize="xs"
+              color="gray.300"
+              fontFamily="mono"
+              fontWeight="500"
+              flex="1"
+              wordBreak="break-all"
+            >
+              {transaction._id}
+            </Text>
+            <IconButton
+              aria-label="Copy ID"
+              icon={<MdContentCopy />}
+              size="xs"
+              bg="transparent"
+              color="gray.500"
+              _hover={{ color: "#318AE6" }}
+              onClick={() => copyToClipboard(transaction._id)}
+            />
+          </Flex>
+        </Box>
+
+        <Box mb={4}>
+          <Text fontSize="xs" color="gray.500" mb={2} fontWeight="500">Description</Text>
+          <Box
+            bg="rgba(29, 34, 37, 0.5)"
+            rounded="md"
+            p={3}
+            border="1px"
+            borderColor="rgba(255, 255, 255, 0.05)"
+          >
+            <Text
+              fontSize="sm"
+              color="white"
+              whiteSpace="pre-wrap"
+              cursor={description.length > 100 ? "pointer" : "default"}
+              onClick={() => toggleDescription(transaction._id)}
+              lineHeight="1.5"
+              wordBreak="break-word"
+            >
+              {truncatedDescription}
+            </Text>
+            {description.length > 100 && (
               <Text
-                fontSize="sm"
-                color={color || "white"}
-                isTruncated
-                whiteSpace="normal"
-                overflowWrap="break-word"
+                fontSize="xs"
+                color="#318AE6"
+                mt={2}
+                cursor="pointer"
+                onClick={() => toggleDescription(transaction._id)}
+                _hover={{ textDecoration: "underline" }}
+                fontWeight="500"
               >
-                {value}
+                {isExpanded ? "Show less" : "Read more"}
               </Text>
-            ) : (
-              value
             )}
           </Box>
-        ))}
-      </Box>
-      <Box mb={3}>
-        <Text fontSize="xs" color="gray.400" mb={1}>
-          Description
-        </Text>
-        <Text
-          fontSize="sm"
-          color="white"
-          whiteSpace="pre-wrap"
-          cursor={description.length > maxLength ? "pointer" : "default"}
-          onClick={() => toggleDescription(transaction._id)}
-        >
-          {truncatedDescription}
-        </Text>
-      </Box>
-      <Flex flexWrap="wrap" gap={2} justify="space-between">
-        <Button
-          onClick={() => cancelTransaction(transaction._id)}
-          bg="red.700"
-          color="white"
-          _hover={{ bg: "red.600" }}
-          size="sm"
-          flex={1}
-          minW="90px"
-          isLoading={isConfirming[transaction._id]}
-          aria-label="Cancel transaction"
-        >
-          Cancel
-        </Button>
-        <Button
-          onClick={() => handleWaybill(transaction._id, isBuyer)}
-          bg="#318AE6"
-          color="white"
-          _hover={{ bg: "#2279d8" }}
-          size="sm"
-          flex={1}
-          minW="90px"
-          aria-label={isBuyer ? "View waybill" : "Input waybill"}
-        >
-          {isBuyer ? "View Waybill" : "Input Waybill"}
-        </Button>
-        {transaction.status === "pending" && (
+        </Box>
+
+        <VStack spacing={2} align="stretch">
           <Button
-            onClick={() => handleConfirm(transaction._id)}
-            bg="green.700"
+            onClick={() => handleWaybill(transaction._id, isBuyer)}
+            bg="#318AE6"
             color="white"
-            _hover={{ bg: "green.600" }}
+            _hover={{ bg: "#2279d8" }}
             size="sm"
-            flex={1}
-            minW="90px"
-            isLoading={isConfirming[transaction._id]}
-            aria-label="Complete transaction"
+            h="40px"
+            fontSize="sm"
+            fontWeight="600"
+            rounded="md"
+            leftIcon={<BsChatFill size="14" />}
           >
-            Complete
+            {isBuyer ? "View Waybill" : "Submit Waybill"}
           </Button>
-        )}
-        {isBuyer && !transaction.locked && transaction.status === "pending" && (
+
+          {transaction.status === "pending" && (
+            <Button
+              onClick={() => handleConfirm(transaction._id)}
+              bg="rgba(34, 197, 94, 0.9)"
+              color="white"
+              _hover={{ bg: "#22c55e" }}
+              size="sm"
+              h="40px"
+              fontSize="sm"
+              fontWeight="600"
+              rounded="md"
+              isLoading={isConfirming[transaction._id]}
+              loadingText="Completing..."
+            >
+              Complete Transaction
+            </Button>
+          )}
+
+          {isBuyer && !transaction.locked && transaction.status === "pending" && (
+            <Button
+              onClick={() => handleFund(transaction)}
+              bg="#967532"
+              color="white"
+              _hover={{ bg: "#7a5c28" }}
+              size="sm"
+              h="40px"
+              fontSize="sm"
+              fontWeight="600"
+              rounded="md"
+              isLoading={isConfirming[transaction._id]}
+              loadingText="Processing..."
+            >
+              Fund Transaction
+            </Button>
+          )}
+
           <Button
-            onClick={() => handleFund(transaction)}
-            bg="#967532"
-            color="white"
-            _hover={{ bg: "#7a5c28" }}
+            onClick={() => cancelTransaction(transaction._id)}
+            variant="outline"
+            borderColor="rgba(239, 68, 68, 0.3)"
+            color="#ef4444"
+            _hover={{ bg: "rgba(239, 68, 68, 0.1)", borderColor: "#ef4444" }}
             size="sm"
-            flexGrow={1}
-            flexBasis="calc(50% - 4px)"
-            minWidth="80px"
+            h="40px"
+            fontSize="sm"
+            fontWeight="600"
+            rounded="md"
             isLoading={isConfirming[transaction._id]}
-            aria-label="Fund transaction"
+            loadingText="Cancelling..."
           >
-            Fund Transaction
+            Cancel Transaction
           </Button>
-        )}
-      </Flex>
+        </VStack>
+      </Box>
     </MotionBox>
   );
-};
+});
 
-const WaybillModal = ({ isOpen, onClose, transactionId, isBuyer, details, setDetails, errors, handleSubmit, downloadImage }) => (
-  <Modal isOpen={isOpen} onClose={onClose} isCentered size={{ base: "full", sm: "lg" }} scrollBehavior="inside">
+const WaybillModal = React.memo(({ isOpen, onClose, transactionId, isBuyer, details, setDetails, errors, handleSubmit, downloadImage }) => (
+  <Modal
+    isOpen={isOpen}
+    onClose={onClose}
+    isCentered
+    size={{ base: "full", sm: "lg", md: "xl" }}
+    scrollBehavior="inside"
+  >
     <ModalOverlay />
-    <ModalContent bg="#1A1E21" color="white" p={{ base: 4, sm: 6 }} rounded="xl">
-      <ModalHeader>
-        <Text fontSize={{ base: "lg", sm: "xl" }} fontWeight="bold" textAlign="center">{isBuyer ? "Waybill Details" : "Seller Waybill Proof"}</Text>
-        {!isBuyer && <Text fontSize="sm" textAlign="center" color="gray.300">I, the seller, confirm that I have shipped the goods.</Text>}
+    <ModalContent
+      bg="#1A1E21"
+      color="white"
+      p={{ base: 4, sm: 6, md: 8 }}
+      rounded="xl"
+      mx={{ base: 4, sm: 6 }}
+      maxH="90vh"
+    >
+      <ModalHeader p={0} mb={4}>
+        <Text
+          fontSize={{ base: "lg", sm: "xl", md: "2xl" }}
+          fontWeight="bold"
+          textAlign="center"
+        >
+          {isBuyer ? "Waybill Details" : "Seller Waybill Proof"}
+        </Text>
+        {!isBuyer && (
+          <Text
+            fontSize={{ base: "sm", sm: "md" }}
+            textAlign="center"
+            color="gray.300"
+            mt={2}
+          >
+            I, the seller, confirm that I have shipped the goods.
+          </Text>
+        )}
       </ModalHeader>
-      <ModalBody>
+      <ModalBody p={0}>
         {isBuyer ? (
-          <VStack spacing={4} align="start" color="gray.300">
+          <VStack spacing={4} align="stretch" color="gray.300">
             {[
               { label: "Item", value: details.item || "N/A" },
-              { label: "Price", value: details.price || "N/A" },
+              { label: "Price", value: details.price ? `₦${parseFloat(details.price).toLocaleString("en-NG", { minimumFractionDigits: 2 })}` : "N/A" },
               { label: "Shipping Address", value: details.shippingAddress || "N/A" },
               { label: "Tracking Number", value: details.trackingNumber || "N/A" },
-              { label: "Delivery Date", value: details.deliveryDate ? format(new Date(details.deliveryDate), "MMM dd, yyyy") : "N/A" }
+              { label: "Delivery Date", value: details.deliveryDate ? format(new Date(details.deliveryDate), "MMM dd, yyyy") : "N/A" },
             ].map(({ label, value }, idx) => (
-              <Box key={idx}>
-                <Text fontSize="xs" mb={2}>{label}:</Text>
-                <Text fontSize="sm">{value}</Text>
+              <Box key={idx} bg="#111518" p={4} rounded="md">
+                <Text fontSize={{ base: "xs", sm: "sm" }} mb={2} color="gray.400" fontWeight="medium">
+                  {label}:
+                </Text>
+                <Text fontSize={{ base: "sm", sm: "md" }} color="white">
+                  {value}
+                </Text>
               </Box>
             ))}
-            <Box>
-              <Text fontSize="xs" mb={2}>Image:</Text>
+            <Box bg="#111518" p={4} rounded="md">
+              <Text fontSize={{ base: "xs", sm: "sm" }} mb={2} color="gray.400" fontWeight="medium">
+                Image:
+              </Text>
               {details.image ? (
-                <Box display="flex" flexDir="column" alignItems="center">
-                  <Image src={details.image} alt="Waybill Proof" maxW="full" h="auto" rounded="lg" />
-                  <Button mt={2} bg="#318AE6" color="white" _hover={{ bg: "#2279d8" }} size="sm" onClick={() => downloadImage(details.image)}>Download Image</Button>
-                </Box>
+                <Flex direction="column" align="center" gap={3}>
+                  <Image
+                    src={details.image}
+                    alt="Waybill Proof"
+                    maxW="100%"
+                    maxH="300px"
+                    h="auto"
+                    rounded="lg"
+                    objectFit="contain"
+                    onError={(e) => console.error("Image load error:", e)}
+                  />
+                  <Button
+                    bg="#318AE6"
+                    color="white"
+                    _hover={{ bg: "#2279d8" }}
+                    size={{ base: "sm", sm: "md" }}
+                    onClick={() => downloadImage(details.image)}
+                  >
+                    Download Image
+                  </Button>
+                </Flex>
               ) : (
-                <Text fontSize="sm">No image provided</Text>
+                <Text fontSize={{ base: "sm", sm: "md" }} color="gray.400">
+                  No image provided
+                </Text>
               )}
             </Box>
           </VStack>
@@ -446,22 +498,45 @@ const WaybillModal = ({ isOpen, onClose, transactionId, isBuyer, details, setDet
                 { label: "Price", key: "price", type: "number" },
                 { label: "Shipping Address", key: "shippingAddress", type: "text" },
                 { label: "Tracking Number", key: "trackingNumber", type: "text" },
-                { label: "Delivery Date", key: "deliveryDate", type: "date" }
+                { label: "Delivery Date", key: "deliveryDate", type: "date" },
               ].map(({ label, key, type }) => (
                 <Box key={key} w="full">
-                  <Text fontSize="xs" color="gray.300" mb={2}>{label}:</Text>
+                  <Text fontSize={{ base: "xs", sm: "sm" }} color="gray.300" mb={2} fontWeight="medium">
+                    {label}:
+                  </Text>
                   <Input
                     type={type}
                     value={details[key] || ""}
                     onChange={(e) => setDetails({ ...details, [key]: e.target.value })}
-                    bg="#111518" borderColor="#318AE6" color="white" fontSize="sm"
+                    bg="#111518"
+                    borderColor="#318AE6"
+                    color="white"
+                    fontSize={{ base: "sm", sm: "md" }}
+                    p={3}
+                    _focus={{ borderColor: "#318AE6", boxShadow: "0 0 0 1px #318AE6" }}
                   />
-                  {errors[key] && <Text color="red.500" fontSize="xs" mt={1}>{errors[key]}</Text>}
+                  {errors[key] && (
+                    <Text color="red.500" fontSize={{ base: "xs", sm: "sm" }} mt={1}>
+                      {errors[key]}
+                    </Text>
+                  )}
                 </Box>
               ))}
               <Box w="full">
-                <Text fontSize="xs" color="gray.300" mb={2}>Image:</Text>
-                <Box border="2px" borderStyle="dashed" borderColor="#318AE6" rounded="lg" p={4} textAlign="center">
+                <Text fontSize={{ base: "xs", sm: "sm" }} color="gray.300" mb={2} fontWeight="medium">
+                  Image:
+                </Text>
+                <Box
+                  border="2px"
+                  borderStyle="dashed"
+                  borderColor="#318AE6"
+                  rounded="lg"
+                  p={6}
+                  textAlign="center"
+                  bg="#111518"
+                  _hover={{ bg: "#1a1f23" }}
+                  transition="all 0.2s"
+                >
                   <Input
                     type="file"
                     id={`waybill-image-${transactionId}`}
@@ -469,95 +544,196 @@ const WaybillModal = ({ isOpen, onClose, transactionId, isBuyer, details, setDet
                     onChange={(e) => setDetails({ ...details, image: e.target.files[0] })}
                     display="none"
                   />
-                  <label htmlFor={`waybill-image-${transactionId}`} className="cursor-pointer flex flex-col items-center">
-                    <Text fontSize="xl" color="#318AE6" mb={2}>📷</Text>
-                    <Text fontSize="xs" color="gray.300">Click to upload proof of shipment</Text>
+                  <label htmlFor={`waybill-image-${transactionId}`} style={{ cursor: 'pointer' }}>
+                    <VStack spacing={3}>
+                      <Text fontSize="3xl" color="#318AE6">📷</Text>
+                      <Text fontSize={{ base: "sm", sm: "md" }} color="gray.300">
+                        Click to upload proof of shipment
+                      </Text>
+                    </VStack>
                   </label>
-                  {details.image && <Text fontSize="xs" color="gray.300" mt={2}>Selected: {details.image.name}</Text>}
+                  {details.image && (
+                    <Text fontSize={{ base: "xs", sm: "sm" }} color="gray.300" mt={2}>
+                      Selected: {details.image.name}
+                    </Text>
+                  )}
                 </Box>
-                {errors.image && <Text color="red.500" fontSize="xs" mt={1}>{errors.image}</Text>}
+                {errors.image && (
+                  <Text color="red.500" fontSize={{ base: "xs", sm: "sm" }} mt={1}>
+                    {errors.image}
+                  </Text>
+                )}
               </Box>
             </VStack>
           </form>
         )}
       </ModalBody>
-      <ModalFooter>
-        <Button bg="gray.600" color="white" _hover={{ bg: "gray.700" }} size="sm" onClick={onClose} mr={3}>Close</Button>
-        {!isBuyer && <Button type="submit" bg="#318AE6" color="white" _hover={{ bg: "#2279d8" }} size="sm" onClick={() => handleSubmit(transactionId)}>Submit</Button>}
+      <ModalFooter p={0} pt={6}>
+        <Stack direction={{ base: "column", sm: "row" }} spacing={3} w="full" justify="flex-end">
+          <Button
+            bg="gray.600"
+            color="white"
+            _hover={{ bg: "gray.700" }}
+            size={{ base: "sm", sm: "md" }}
+            onClick={onClose}
+            flex={{ base: 1, sm: "none" }}
+          >
+            Close
+          </Button>
+          {!isBuyer && (
+            <Button
+              type="submit"
+              bg="#318AE6"
+              color="white"
+              _hover={{ bg: "#2279d8" }}
+              size={{ base: "sm", sm: "md" }}
+              onClick={() => handleSubmit(transactionId)}
+              flex={{ base: 1, sm: "none" }}
+            >
+              Submit
+            </Button>
+          )}
+        </Stack>
       </ModalFooter>
     </ModalContent>
   </Modal>
-);
+));
 
 const PaymentDetailsModal = ({ isOpen, onClose, transaction, paymentDetails, setPaymentDetails, paymentErrors, handleSubmit }) => (
   <Modal isOpen={isOpen} onClose={onClose} isCentered size={{ base: "full", sm: "md" }}>
     <ModalOverlay />
-    <ModalContent bg="#1A1E21" color="white" p={{ base: 4, sm: 6 }} rounded="xl">
+    <ModalContent
+      bg="#1A1E21"
+      color="white"
+      p={{ base: 4, sm: 6 }}
+      rounded="xl"
+      mx={{ base: 4, sm: 6 }}
+    >
       <Flex justify="space-between" align="center" mb={4}>
-        <Text fontSize="lg" fontWeight="bold">Edit Payment Details</Text>
-        <IconButton aria-label="Close modal" icon={<MdClose />} color="gray.400" _hover={{ color: "#318AE6" }} onClick={onClose} />
+        <Text fontSize={{ base: "lg", sm: "xl" }} fontWeight="bold">
+          Edit Payment Details
+        </Text>
+        <IconButton
+          aria-label="Close modal"
+          icon={<MdClose />}
+          color="gray.400"
+          _hover={{ color: "#318AE6" }}
+          onClick={onClose}
+          bg="transparent"
+        />
       </Flex>
       <form onSubmit={handleSubmit}>
         <VStack spacing={4}>
           <Box w="full">
-            <Text fontSize="xs" color="gray.300" mb={2}>Bank</Text>
-            <Select
-              value={paymentDetails.selectedBankCode || ""}
-              onChange={(e) => {
-                const bank = nigeriaBanks.find(b => b.code === e.target.value);
-                setPaymentDetails({ ...paymentDetails, selectedBankCode: e.target.value, paymentBank: bank?.name || "" });
-              }}
-              placeholder="Select a bank"
-              bg="#111518" borderColor="#318AE6" color="white" fontSize="sm"
-            >
-              {nigeriaBanks.map(bank => (
-                <option key={bank.code} value={bank.code} style={{ color: "black" }}>{bank.name}</option>
-              ))}
-            </Select>
-            {paymentErrors.selectedBankCode && <Text color="red.500" fontSize="xs" mt={1}>{paymentErrors.selectedBankCode}</Text>}
-          </Box>
-          <Box w="full">
-            <Text fontSize="xs" color="gray.300" mb={2}>Account Number</Text>
-            <Input
-              type="text"
-              value={paymentDetails.paymentAccountNumber || ""}
-              onChange={(e) => setPaymentDetails({ ...paymentDetails, paymentAccountNumber: e.target.value })}
-              bg="#111518" borderColor="#318AE6" color="white" fontSize="sm"
-            />
-            {paymentErrors.paymentAccountNumber && <Text color="red.500" fontSize="xs" mt={1}>{paymentErrors.paymentAccountNumber}</Text>}
-          </Box>
-          <Box w="full">
-            <Text fontSize="xs" color="gray.300" mb={2}>Amount</Text>
+            <Text fontSize={{ base: "xs", sm: "sm" }} color="gray.300" mb={2} fontWeight="medium">
+              Amount
+            </Text>
             <Input
               type="number"
               value={paymentDetails.paymentAmount || ""}
               onChange={(e) => setPaymentDetails({ ...paymentDetails, paymentAmount: e.target.value })}
-              bg="#111518" borderColor="#318AE6" color="white" fontSize="sm"
+              bg="#111518"
+              borderColor="#318AE6"
+              color="white"
+              fontSize={{ base: "sm", sm: "md" }}
+              _focus={{ borderColor: "#318AE6", boxShadow: "0 0 0 1px #318AE6" }}
               isDisabled={transaction?.locked}
             />
-            {paymentErrors.paymentAmount && <Text color="red.500" fontSize="xs" mt={1}>{paymentErrors.paymentAmount}</Text>}
+            {paymentErrors.paymentAmount && (
+              <Text color="red.500" fontSize={{ base: "xs", sm: "sm" }} mt={1}>
+                {paymentErrors.paymentAmount}
+              </Text>
+            )}
           </Box>
         </VStack>
-        <Flex justify="end" gap={3} mt={6}>
-          <Button bg="gray.600" color="white" _hover={{ bg: "gray.700" }} size="sm" onClick={onClose}>Cancel</Button>
-          <Button type="submit" bg="#318AE6" color="white" _hover={{ bg: "#2279d8" }} size="sm">Save</Button>
-        </Flex>
+        <Stack direction={{ base: "column", sm: "row" }} spacing={3} mt={6} justify="flex-end">
+          <Button
+            bg="gray.600"
+            color="white"
+            _hover={{ bg: "gray.700" }}
+            size={{ base: "sm", sm: "md" }}
+            onClick={onClose}
+            flex={{ base: 1, sm: "none" }}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            bg="#318AE6"
+            color="white"
+            _hover={{ bg: "#2279d8" }}
+            size={{ base: "sm", sm: "md" }}
+            flex={{ base: 1, sm: "none" }}
+          >
+            Save
+          </Button>
+        </Stack>
       </form>
     </ModalContent>
   </Modal>
 );
 
-const DisplayTransaction = ({ userResponse }) => {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [transactions, setTransactions] = useState([]);
-  const [walletBalance, setWalletBalance] = useState(0);
-  const [walletTransactions, setWalletTransactions] = useState([]);
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
-  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
+const FundingModal = ({ isOpen, onClose, transaction, walletBalance, confirmFunding }) => (
+  <Modal isOpen={isOpen} onClose={onClose} isCentered size={{ base: "full", sm: "md" }}>
+    <ModalOverlay />
+    <ModalContent
+      bg="#1A1E21"
+      color="white"
+      p={{ base: 4, sm: 6 }}
+      rounded="xl"
+      mx={{ base: 4, sm: 6 }}
+    >
+      <ModalHeader p={0} mb={4}>
+        <Text fontSize={{ base: "lg", sm: "xl" }} fontWeight="bold">
+          Fund Transaction
+        </Text>
+      </ModalHeader>
+      <ModalBody p={0}>
+        <Text fontSize={{ base: "sm", sm: "md" }} color="gray.300" mb={4} lineHeight="1.6">
+          Your wallet balance (₦{(walletBalance ?? 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}) is insufficient.
+          You need an additional ₦{transaction ? (parseFloat(transaction.paymentAmount || 0) - (walletBalance ?? 0)).toLocaleString('en-NG', { minimumFractionDigits: 2 }) : '0.00'}.
+          Proceed to fund via Paystack?
+        </Text>
+      </ModalBody>
+      <ModalFooter p={0} pt={4}>
+        <Stack direction={{ base: "column", sm: "row" }} spacing={3} w="full" justify="flex-end">
+          <Button
+            bg="gray.600"
+            color="white"
+            _hover={{ bg: "gray.700" }}
+            size={{ base: "sm", sm: "md" }}
+            onClick={onClose}
+            flex={{ base: 1, sm: "none" }}
+          >
+            Cancel
+          </Button>
+          <Button
+            bg="#318AE6"
+            color="white"
+            _hover={{ bg: "#2279d8" }}
+            size={{ base: "sm", sm: "md" }}
+            onClick={() => confirmFunding(transaction)}
+            flex={{ base: 1, sm: "none" }}
+          >
+            Proceed to Paystack
+          </Button>
+        </Stack>
+      </ModalFooter>
+    </ModalContent>
+  </Modal>
+);
+
+const DisplayTransaction = () => {
+  const dispatch = useDispatch();
+  const { userDetails, loading: userLoading, error: userError } = useSelector(state => state.user);
+  const { transactions, loading: transactionsLoading } = useSelector(state => state.transactions);
+  const { wallet, transactions: walletTransactions, loading: walletLoading } = useSelector(state => state.wallet);
+  const walletBalance = wallet?.balance ?? 0;
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [hasFetchedInitially, setHasFetchedInitially] = useState(false);
   const [showToggleContainer, setShowToggleContainer] = useState(true);
   const [showProfile, setShowProfile] = useState(false);
   const [showWaybillPopup, setShowWaybillPopup] = useState({});
@@ -573,232 +749,225 @@ const DisplayTransaction = ({ userResponse }) => {
   const [expandedDescriptions, setExpandedDescriptions] = useState({});
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedTransactionId, setSelectedTransactionId] = useState(null);
-  const toast = useToast();
+  const managedToast = useManagedToast();
   const navigate = useNavigate();
-  const location = useLocation();
   const { isOpen: isFundingModalOpen, onOpen: openFundingModal, onClose: closeFundingModal } = useDisclosure();
 
-  // Handle Paystack callback
+  const debouncedFetchInitialData = useCallback(
+    debounce(() => {
+      console.log('fetchInitialData called by socket at:', new Date().toISOString());
+      dispatch(fetchInitialData()).unwrap().catch((err) => {
+        console.error('fetchInitialData error:', err);
+        managedToast({
+          id: 'fetch-error',
+          title: 'Data Fetch Error',
+          description: err.message || 'Unable to fetch transactions or wallet data. Please try again.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+      });
+    }, 1000), // Reduced from 5000ms to 1000ms
+    [dispatch, managedToast]
+  );
+
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const success = params.get('success');
-    const transactionId = params.get('transactionId');
-    const error = params.get('error');
-
-    if (success === 'true' && transactionId) {
-      toast({
-        title: 'Funding Successful',
-        description: 'Transaction has been funded.',
-        status: 'success',
-        duration: 5000,
-        isClosable: true,
-      });
-      fetchData(false);
-    } else if (success === 'false' && error) {
-      toast({
-        title: 'Funding Failed',
-        description: decodeURIComponent(error),
+    const token = localStorage.getItem('access-token');
+    if (!token) {
+      managedToast({
+        id: 'auth-error',
+        title: 'Authentication Required',
+        description: 'Please log in to view transactions.',
         status: 'error',
-        duration: 5000,
+        duration: 3000,
         isClosable: true,
       });
+      navigate('/');
+      return;
     }
-  }, [location]);
 
-  // Check if screen is mobile size
+    if (!hasFetchedInitially) {
+      console.log('Initial fetchInitialData called at:', new Date().toISOString());
+      dispatch(fetchInitialData()).unwrap()
+        .then(() => setHasFetchedInitially(true))
+        .catch((err) => {
+          console.error('Initial fetchInitialData error:', err);
+          managedToast({
+            id: 'fetch-error',
+            title: 'Data Fetch Error',
+            description: err.message || 'Unable to fetch transactions or wallet data. Please try again.',
+            status: 'error',
+            duration: 5000,
+            isClosable: true,
+          });
+        });
+    }
+  }, [dispatch, managedToast, navigate, hasFetchedInitially]);
+
   useEffect(() => {
     const checkScreenSize = () => {
-      const isMobileView = window.innerWidth < 768;
-      setIsMobile(isMobileView);
-      if (isMobileView) {
-        setIsSidebarCollapsed(true);
-      }
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile) setIsSidebarCollapsed(true);
     };
     checkScreenSize();
     window.addEventListener('resize', checkScreenSize);
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
 
-  const handleSidebarCollapseChange = (isCollapsed) => {
-    setIsSidebarCollapsed(isCollapsed);
-  };
-
-  const fetchData = useCallback(async (showLoader = false) => {
+  useEffect(() => {
     const token = localStorage.getItem('access-token');
     if (!token) {
-      setIsInitialLoading(false);
-      setIsManualRefreshing(false);
-      toast({ title: 'Authentication required', description: 'Please log in.', status: 'error', duration: 3000, isClosable: true });
-      navigate('/');
+      console.error('No access token found for socket connection');
       return;
     }
-    try {
-      if (showLoader) {
-        setIsInitialLoading(true);
-        setIsManualRefreshing(true);
-      }
-      const headers = { 'Authorization': `Bearer ${token}` };
-      const [userRes, txRes, walletRes, walletTxRes] = await Promise.all([
-        axios.get(`${BASE_URL}/api/users/user-details`, { headers }),
-        axios.get(`${BASE_URL}/api/transactions/get-transaction`, { headers }),
-        axios.get(`${BASE_URL}/api/wallet/balance`, { headers }),
-        axios.get(`${BASE_URL}/api/wallet/transactions`, { headers })
-      ]);
 
-      // Handle user response
-      if (!userRes.data?.data?.user) {
-        throw new Error('Failed to fetch user details');
-      }
-      setCurrentUser(userRes.data.data.user);
+    const socket = io(BASE_URL, {
+      auth: { token },
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+    });
 
-      // Handle transactions response
-      const transactionsArray = txRes.data?.success && Array.isArray(txRes.data.data) ? txRes.data.data : [];
-      if (!Array.isArray(transactionsArray)) {
-        console.warn('Transactions data is not an array:', txRes.data);
-        setTransactions([]);
-      } else {
-        // Log malformed participants
-        transactionsArray.forEach(t => {
-          if (t.participants?.some(p => !p || !p._id || !p.email)) {
-            console.warn('Malformed participant in transaction:', t._id, t.participants);
+    const joinedRooms = new Set();
+
+    socket.on('connect', () => {
+      if (hasFetchedInitially && userDetails?._id && !joinedRooms.has(userDetails._id)) {
+        socket.emit('join-room', userDetails._id);
+        joinedRooms.add(userDetails._id);
+      }
+      if (hasFetchedInitially && Array.isArray(transactions)) {
+        transactions.forEach(t => {
+          const room = `transaction_${t._id}`;
+          if (!joinedRooms.has(room)) {
+            socket.emit('join-room', room);
+            joinedRooms.add(room);
           }
         });
-        setTransactions(transactionsArray);
       }
-
-      // Handle wallet responses
-      setWalletBalance(walletRes.data?.success && walletRes.data.balance !== undefined ? walletRes.data.balance : 0);
-      setWalletTransactions(walletTxRes.data?.success && Array.isArray(walletTxRes.data.transactions) ? walletTxRes.data.transactions : []);
-
-    } catch (error) {
-      console.error('Fetch error:', error.response?.data || error);
-      const errorMessage = error.response?.data?.errors?.map(e => e.msg).join(', ') || error.response?.data?.error || error.message;
-      toast({
-        title: 'Error fetching data',
-        description: errorMessage,
-        status: 'error',
-        duration: 3000,
-        isClosable: true
-      });
-      if (error.response?.status === 401) {
-        localStorage.removeItem('access-token');
-        navigate('/');
-      }
-      setTransactions([]);
-      setWalletBalance(0);
-      setWalletTransactions([]);
-    } finally {
-      if (showLoader) {
-        setIsInitialLoading(false);
-        setIsManualRefreshing(false);
-      }
-    }
-  }, [toast, navigate]);
-
-  useEffect(() => {
-    fetchData(true);
-    const interval = setInterval(() => fetchData(false), 30000);
-    return () => clearInterval(interval);
-  }, [fetchData]);
-
-  useEffect(() => {
-    const socket = io(BASE_URL, { auth: { token: localStorage.getItem('access-token') }, reconnection: true, reconnectionAttempts: 5, reconnectionDelay: 1000 });
-    socket.on('connect', () => {
-      if (currentUser?._id) socket.emit('join-room', currentUser._id);
+      console.log('Socket connected, joined rooms:', [...joinedRooms]);
     });
+
     socket.on('transactionCreated', (data) => {
-      toast({
-        title: 'Transaction Created',
-        description: `Transaction ${data.transactionId} created successfully.`,
-        status: 'success',
-        duration: 5000,
-        isClosable: true
-      });
-      fetchData(false);
+      if (data?.userId === userDetails?._id || data?.participants?.includes(userDetails?._id)) {
+        managedToast({
+          id: 'transaction-created',
+          title: 'New Transaction',
+          description: 'A new transaction has been created.',
+          status: 'success',
+          duration: 5000,
+          isClosable: true,
+        });
+        debouncedFetchInitialData();
+      }
     });
+
     socket.on('transactionCompleted', (data) => {
-      toast({
-        title: 'Transaction Completed',
-        description: `Transaction ${data.transactionId} completed.`,
-        status: 'success',
-        duration: 5000,
-        isClosable: true
-      });
-      fetchData(false);
+      console.log('transactionCompleted received:', data);
+      if (Array.isArray(transactions) && transactions.some(t => t._id === data?.transactionId)) {
+        managedToast({
+          id: `transaction-completed-${data.transactionId}`,
+          title: 'Transaction Completed',
+          description: 'A transaction has been completed.',
+          status: 'success',
+          duration: 5000,
+          isClosable: true,
+        });
+        debouncedFetchInitialData();
+      }
     });
+
     socket.on('balanceUpdate', (data) => {
-      setWalletBalance(data.balance ?? 0);
-      toast({
-        title: 'Wallet Updated',
-        description: `Balance updated to ₦${(data.balance ?? 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-        status: 'success',
-        duration: 5000,
-        isClosable: true
-      });
+      console.log('balanceUpdate received:', data);
+      if (data?.userId === userDetails?._id) {
+        managedToast({
+          id: 'balance-update',
+          title: 'Balance Updated',
+          description: 'Your wallet balance has been updated.',
+          status: 'info',
+          duration: 5000,
+          isClosable: true,
+        });
+        debouncedFetchInitialData();
+      }
     });
+
     socket.on('transactionUpdated', (data) => {
-      toast({
-        title: 'Transaction Update',
-        description: data.message,
-        status: 'info',
-        duration: 5000,
-        isClosable: true
-      });
-      fetchData(false);
+      console.log('transactionUpdated received:', data);
+      if (Array.isArray(transactions) && transactions.some(t => t._id === data?.transactionId)) {
+        managedToast({
+          id: `transaction-updated-${data.transactionId}`,
+          title: 'Transaction Updated',
+          description: data.message || 'Transaction details updated.',
+          status: 'info',
+          duration: 5000,
+          isClosable: true,
+        });
+        debouncedFetchInitialData();
+      }
     });
-    socket.on('reconnect', () => currentUser?._id && socket.emit('join-room', currentUser._id));
-    socket.on('connect_error', (error) => {
-      toast({
-        title: 'Socket Connection Error',
-        description: error.message,
-        status: 'error',
-        duration: 3000,
-        isClosable: true
-      });
+
+    socket.on('connect_error', (err) => {
+      console.error('Socket connection error:', err.message);
     });
-    return () => socket.disconnect();
-  }, [currentUser?._id, toast, fetchData]);
+
+    return () => {
+      socket.off('transactionCreated');
+      socket.off('transactionCompleted');
+      socket.off('balanceUpdate');
+      socket.off('transactionUpdated');
+      socket.off('connect_error');
+      socket.disconnect();
+      console.log('Socket disconnected');
+    };
+  }, [userDetails?._id, transactions, debouncedFetchInitialData, managedToast, hasFetchedInitially]);
 
   const debouncedSearch = useCallback(debounce((value) => setSearchQuery(value), 300), []);
 
   const filteredTransactions = useMemo(() => {
-    if (!Array.isArray(transactions)) {
-      console.warn('Transactions is not an array:', transactions);
-      return [];
-    }
-    const query = searchQuery.toLowerCase();
-    return transactions.filter((t) => {
+    if (!Array.isArray(transactions) || transactions.length === 0) return [];
+    const query = searchQuery.toLowerCase().trim();
+    return transactions.filter(t => {
       if (activeTab === 'active' && t.status !== 'pending') return false;
       if (activeTab === 'completed' && t.status !== 'completed') return false;
       if (activeTab === 'cancelled' && t.status !== 'cancelled') return false;
       const participantName = t.participants?.length > 0
-        ? `${t.participants[0].firstName || ''} ${t.participants[0].lastName || ''}`.trim().toLowerCase()
-        : '';
+        ? `${t.participants[0]?.firstName || ''} ${t.participants[0]?.lastName || ''}`.trim().toLowerCase() || t.participants[0]?.email?.toLowerCase() || ''
+        : t.userId?.email?.toLowerCase() || '';
       const description = t.productDetails?.description?.toLowerCase() || '';
+      const paymentName = t.paymentName?.toLowerCase() || '';
       return (
-        participantName.includes(query) || description.includes(query)
+        participantName.includes(query) ||
+        description.includes(query) ||
+        paymentName.includes(query) ||
+        t._id.toLowerCase().includes(query) ||
+        t.email?.toLowerCase().includes(query)
       );
     });
   }, [transactions, activeTab, searchQuery]);
 
   const handleChat = async (transactionId) => {
     try {
-      const res = await axios.post(`${BASE_URL}/api/transactions/create-chatroom`, { id: transactionId }, {
-        headers: { "Authorization": `Bearer ${localStorage.getItem("access-token")}` }
-      });
+      const res = await axios.post(
+        `${BASE_URL}/api/transactions/create-chatroom`,
+        { transactionId },
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem('access-token')}` },
+        }
+      );
       if (res.data?.success && res.data.chatroomId) {
         navigate(`/chat/${res.data.chatroomId}`);
       } else {
         throw new Error('Failed to create chatroom');
       }
     } catch (error) {
-      const errorMessage = error.response?.data?.errors?.map(e => e.msg).join(', ') || error.response?.data?.error || error.message;
-      toast({
-        title: "Error creating chatroom",
-        description: errorMessage,
-        status: "error",
-        duration: 3000,
-        isClosable: true
+      managedToast({
+        id: `chat-error-${transactionId}`,
+        title: 'Error',
+        description: error.response?.data?.error || error.message,
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
       });
     }
   };
@@ -815,32 +984,31 @@ const DisplayTransaction = ({ userResponse }) => {
   const fetchBuyerWaybillDetails = async (transactionId) => {
     try {
       const res = await axios.get(`${BASE_URL}/api/transactions/waybill-details/${transactionId}`, {
-        headers: { "Authorization": `Bearer ${localStorage.getItem("access-token")}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem("access-token")}` },
       });
       if (res.data?.success && res.data.data) {
-        const { image, item, price, shippingAddress, trackingNumber, deliveryDate } = res.data.data;
         setBuyerWaybillDetails(prev => ({
           ...prev,
           [transactionId]: {
-            item: item || "",
-            price: price || "",
-            shippingAddress: shippingAddress || "",
-            trackingNumber: trackingNumber || "",
-            deliveryDate: deliveryDate || "",
-            image: image ? `${BASE_URL}/${image}` : ""
-          }
+            item: res.data.data.item || "",
+            price: res.data.data.price || "",
+            shippingAddress: res.data.data.shippingAddress || "",
+            trackingNumber: res.data.data.trackingNumber || "",
+            deliveryDate: res.data.data.deliveryDate || "",
+            image: res.data.data.image ? res.data.data.image : "",
+          },
         }));
       } else {
-        throw new Error('Failed to fetch waybill details');
+        throw new Error(res.data.error || "No waybill details found");
       }
     } catch (error) {
-      const errorMessage = error.response?.data?.errors?.map(e => e.msg).join(', ') || error.response?.data?.error || error.message;
-      toast({
-        title: "Error fetching waybill details",
-        description: errorMessage,
+      managedToast({
+        id: `waybill-fetch-error-${transactionId}`,
+        title: "Error",
+        description: error.response?.data?.error || error.message || "Failed to fetch waybill details",
         status: "error",
-        duration: 3000,
-        isClosable: true
+        duration: 5000,
+        isClosable: true,
       });
     }
   };
@@ -857,26 +1025,40 @@ const DisplayTransaction = ({ userResponse }) => {
     setErrors({});
     const formData = new FormData();
     formData.append("transactionId", transactionId);
-    Object.entries(waybillDetails).forEach(([key, value]) => value && formData.append(key, value));
+    Object.entries(waybillDetails).forEach(([key, value]) => {
+      if (value) {
+        formData.append(key, value);
+      }
+    });
     try {
-      await axios.post(`${BASE_URL}/api/transactions/submit-waybill`, formData, {
+      const response = await axios.post(`${BASE_URL}/api/transactions/submit-waybill`, formData, {
         headers: {
-          "Authorization": `Bearer ${localStorage.getItem("access-token")}`,
-          "Content-Type": "multipart/form-data"
-        }
+          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${localStorage.getItem("access-token")}`,
+        },
       });
-      toast({ title: "Waybill submitted", status: "success", duration: 3000, isClosable: true });
-      setShowWaybillPopup(prev => ({ ...prev, [transactionId]: false }));
-      setWaybillDetails({ item: "", image: null, price: "", shippingAddress: "", trackingNumber: "", deliveryDate: "" });
-      fetchData(false);
+      if (response.data.success) {
+        managedToast({
+          id: `waybill-success-${transactionId}`,
+          title: "Waybill Submitted",
+          status: "success",
+          duration: 3000,
+          isClosable: true,
+        });
+        setShowWaybillPopup(prev => ({ ...prev, [transactionId]: false }));
+        setWaybillDetails({ item: "", image: null, price: "", shippingAddress: "", trackingNumber: "", deliveryDate: "" });
+        dispatch(fetchInitialData());
+      } else {
+        throw new Error(response.data.error || "Failed to submit waybill");
+      }
     } catch (error) {
-      const errorMessage = error.response?.data?.errors?.map(e => e.msg).join(', ') || error.response?.data?.error || error.message;
-      toast({
-        title: "Error submitting waybill",
-        description: errorMessage,
+      managedToast({
+        id: `waybill-error-${transactionId}`,
+        title: "Error",
+        description: error.response?.data?.error || error.message || "Failed to submit waybill",
         status: "error",
-        duration: 3000,
-        isClosable: true
+        duration: 5000,
+        isClosable: true,
       });
     }
   };
@@ -891,153 +1073,153 @@ const DisplayTransaction = ({ userResponse }) => {
     document.body.removeChild(link);
   };
 
-  const cancelTransaction = async (transactionId) => {
+  const cancelTransactionAction = async (transactionId) => {
     if (isConfirming[transactionId]) return;
-    setIsConfirming(prev => ({ ...prev, [transactionId]: true }));
     try {
-      const response = await axios.put(`${BASE_URL}/api/transactions/cancel/${transactionId}`, {}, {
-        headers: { "Authorization": `Bearer ${localStorage.getItem("access-token")}` }
-      });
-      toast({
-        title: "Transaction Cancelled",
-        description: response.data.refunded > 0
-          ? `Funds of ₦${response.data.refunded.toLocaleString('en-NG', { minimumFractionDigits: 2 })} refunded to wallet.`
-          : "No funds were locked for this transaction.",
-        status: "success",
+      setIsConfirming(prev => ({ ...prev, [transactionId]: true }));
+      const response = await dispatch(cancelTransaction(transactionId)).unwrap();
+      managedToast({
+        id: `cancel-success-${transactionId}`,
+        title: 'Transaction Cancelled',
+        description: response.refunded > 0
+          ? `Funds of ₦${response.refunded.toLocaleString('en-NG', { minimumFractionDigits: 2 })} refunded to wallet.`
+          : 'No funds were locked for this transaction.',
+        status: 'success',
         duration: 5000,
-        isClosable: true
+        isClosable: true,
       });
-      fetchData(false);
     } catch (error) {
-      const errorMessage = error.response?.data?.errors?.map(e => e.msg).join(', ') || error.response?.data?.error || error.response?.data?.message || error.message;
-      toast({
-        title: "Error",
-        description: errorMessage,
-        status: "error",
+      managedToast({
+        id: `cancel-error-${transactionId}`,
+        title: 'Error',
+        description: error.message || 'Failed to cancel transaction',
+        status: 'error',
         duration: 5000,
-        isClosable: true
+        isClosable: true,
       });
     } finally {
       setIsConfirming(prev => ({ ...prev, [transactionId]: false }));
     }
   };
 
-  const handleConfirm = async (transactionId) => {
+  const handleConfirm = (transactionId) => {
     if (isConfirming[transactionId]) return;
     setIsConfirming(prev => ({ ...prev, [transactionId]: true }));
-    try {
-      const transaction = transactions.find(t => t._id === transactionId);
-      if (!transaction) throw new Error("Transaction not found");
-      if (!transaction.participants?.length) throw new Error("No participant");
-      if (transaction.status !== "pending") throw new Error("Only pending transactions can be confirmed");
-      setSelectedTransactionId(transactionId);
-      setModalVisible(true);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: error.message,
-        status: "error",
+    const transaction = transactions.find(t => t._id === transactionId);
+    if (!transaction) {
+      managedToast({
+        id: `confirm-error-${transactionId}`,
+        title: 'Error',
+        description: 'Transaction not found',
+        status: 'error',
         duration: 5000,
-        isClosable: true
+        isClosable: true,
       });
-    } finally {
       setIsConfirming(prev => ({ ...prev, [transactionId]: false }));
+      return;
     }
+    if (!transaction.participants?.length) {
+      managedToast({
+        id: `confirm-error-${transactionId}`,
+        title: 'Error',
+        description: 'No participant',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      setIsConfirming(prev => ({ ...prev, [transactionId]: false }));
+      return;
+    }
+    if (transaction.status !== 'pending') {
+      managedToast({
+        id: `confirm-error-${transactionId}`,
+        title: 'Error',
+        description: 'Only pending transactions can be confirmed',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      setIsConfirming(prev => ({ ...prev, [transactionId]: false }));
+      return;
+    }
+    setSelectedTransactionId(transactionId);
+    setModalVisible(true);
+    setIsConfirming(prev => ({ ...prev, [transactionId]: false }));
   };
 
-  const completeTransaction = async (transactionId) => {
+  const completeTransaction = (transactionId) => {
     if (isConfirming[transactionId]) return;
     setIsConfirming(prev => ({ ...prev, [transactionId]: true }));
-    try {
-      const res = await axios.post(`${BASE_URL}/api/transactions/confirm`, { transactionId }, {
-        headers: { "Authorization": `Bearer ${localStorage.getItem("access-token")}` }
-      });
-      if (res.data?.success) {
-        const { status } = res.data.transaction || {};
-        toast({
-          title: status === "completed" ? "Transaction Completed" : "Confirmation Recorded",
-          description: status === "completed" ? "Funds released to seller." : "Waiting for other party.",
-          status: status === "completed" ? "success" : "info",
+    dispatch(confirmTransaction(transactionId))
+      .unwrap()
+      .then(transaction => {
+        managedToast({
+          id: `confirm-success-${transactionId}`,
+          title: transaction.status === 'completed' ? 'Transaction Completed' : 'Confirmation Recorded',
+          description: transaction.status === 'completed' ? 'Funds released to seller.' : 'Waiting for other party.',
+          status: transaction.status === 'completed' ? 'success' : 'info',
           duration: 5000,
-          isClosable: true
+          isClosable: true,
         });
-        fetchData(false);
-      } else {
-        throw new Error(res.data?.error || 'Failed to confirm transaction');
-      }
-    } catch (error) {
-      const errorMessage = error.response?.data?.errors?.map(e => e.msg).join(', ') || error.response?.data?.error || error.response?.data?.message || error.message;
-      toast({
-        title: "Error",
-        description: errorMessage,
-        status: "error",
-        duration: 5000,
-        isClosable: true
+      })
+      .catch(error => {
+        managedToast({
+          id: `confirm-error-${transactionId}`,
+          title: 'Error',
+          description: error.message || 'Failed to confirm transaction',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+      })
+      .finally(() => {
+        setIsConfirming(prev => ({ ...prev, [transactionId]: false }));
+        setModalVisible(false);
+        setSelectedTransactionId(null);
       });
-    } finally {
-      setIsConfirming(prev => ({ ...prev, [transactionId]: false }));
-      setModalVisible(false);
-      setSelectedTransactionId(null);
-    }
   };
 
   const handleFund = async (transaction) => {
-    if (!transaction || transaction.locked || !transaction._id || transaction.paymentAmount <= 0) {
-      toast({
+    if (!transaction || !transaction._id || transaction.locked || !transaction.paymentAmount || parseFloat(transaction.paymentAmount) <= 0) {
+      managedToast({
+        id: `fund-error-${transaction?._id || 'unknown'}`,
         title: 'Error',
         description: 'Invalid transaction data.',
         status: 'error',
         duration: 5000,
-        isClosable: true
+        isClosable: true,
       });
       return;
     }
-    setIsConfirming(prev => ({ ...prev, [transaction._id]: true }));
     try {
+      setIsConfirming(prev => ({ ...prev, [transaction._id]: true }));
       const amount = parseFloat(transaction.paymentAmount);
-      setCurrentTransaction(transaction);
-      if (walletBalance >= amount) {
-        const response = await axios.post(`${BASE_URL}/api/transactions/fund-transaction`, {
-          transactionId: transaction._id,
-          amount: amount,
-        }, {
-          headers: { "Authorization": `Bearer ${localStorage.getItem("access-token")}` }
+      if (isNaN(amount)) {
+        throw new Error('Invalid payment amount');
+      }
+      if ((walletBalance ?? 0) >= amount) {
+        await dispatch(fundTransaction({ transactionId: transaction._id, amount })).unwrap();
+        managedToast({
+          id: `fund-success-${transaction._id}`,
+          title: 'Transaction Funded',
+          description: 'Funded from wallet balance.',
+          status: 'success',
+          duration: 5000,
+          isClosable: true,
         });
-        if (response.data?.success) {
-          toast({
-            title: 'Transaction Funded',
-            description: 'Funded from wallet balance.',
-            status: 'success',
-            duration: 5000,
-            isClosable: true
-          });
-          fetchData(false);
-        } else {
-          throw new Error(response.data?.error || 'Failed to fund transaction');
-        }
       } else {
+        setCurrentTransaction(transaction);
         openFundingModal();
       }
     } catch (error) {
-      const errorMessage = error.response?.data?.errors?.map(e => e.msg).join(', ') || error.response?.data?.error || error.message;
-      if (error.response?.status === 400 && error.response?.data?.shortfall) {
-        toast({
-          title: 'Insufficient Balance',
-          description: `You need an additional ₦${error.response.data.shortfall.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} to fund this transaction.`,
-          status: 'warning',
-          duration: 5000,
-          isClosable: true
-        });
-        openFundingModal();
-      } else {
-        toast({
-          title: 'Error',
-          description: errorMessage,
-          status: 'error',
-          duration: 5000,
-          isClosable: true
-        });
-      }
+      managedToast({
+        id: `fund-error-${transaction._id}`,
+        title: 'Error',
+        description: error.message || 'Failed to fund transaction',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
     } finally {
       setIsConfirming(prev => ({ ...prev, [transaction._id]: false }));
     }
@@ -1045,41 +1227,44 @@ const DisplayTransaction = ({ userResponse }) => {
 
   const confirmFunding = async (transaction) => {
     if (!transaction || !transaction.paymentAmount) {
-      toast({
+      managedToast({
+        id: `fund-error-${transaction?._id || 'unknown'}`,
         title: 'Error',
         description: 'Invalid transaction data.',
         status: 'error',
         duration: 5000,
-        isClosable: true
+        isClosable: true,
       });
       closeFundingModal();
       return;
     }
     try {
       const amount = parseFloat(transaction.paymentAmount);
-      const shortfall = Math.max(amount - walletBalance, 0);
+      const shortfall = Math.max(amount - (walletBalance ?? 0), 0);
       const fundingAmount = Math.ceil(shortfall * 100) / 100;
-      const response = await axios.post(`${BASE_URL}/api/wallet/fund`, {
-        amount: fundingAmount,
-        email: currentUser?.email || '',
-        phoneNumber: currentUser?.phoneNumber || '',
-        transactionId: transaction._id,
-      }, {
-        headers: { "Authorization": `Bearer ${localStorage.getItem("access-token")}` }
-      });
+      const response = await axios.post(
+        `${BASE_URL}/api/wallet/fund`,
+        {
+          amount: fundingAmount,
+          email: userDetails?.email || '',
+          phoneNumber: userDetails?.phoneNumber || '',
+          transactionId: transaction._id,
+        },
+        { headers: { Authorization: `Bearer ${localStorage.getItem('access-token')}` } }
+      );
       if (response.data?.success && response.data.data?.authorization_url) {
         window.location.href = response.data.data.authorization_url;
       } else {
-        throw new Error(response.data?.error || 'Failed to initiate Paystack funding');
+        throw new Error('Failed to initiate Paystack funding');
       }
     } catch (error) {
-      const errorMessage = error.response?.data?.errors?.map(e => e.msg).join(', ') || error.response?.data?.error || error.message;
-      toast({
+      managedToast({
+        id: `fund-error-${transaction._id}`,
         title: 'Error',
-        description: errorMessage,
+        description: error.response?.data?.error || error.message,
         status: 'error',
         duration: 5000,
-        isClosable: true
+        isClosable: true,
       });
     } finally {
       closeFundingModal();
@@ -1093,55 +1278,59 @@ const DisplayTransaction = ({ userResponse }) => {
       paymentBank: transaction.paymentBank || "",
       paymentAccountNumber: transaction.paymentAccountNumber || "",
       selectedBankCode: transaction.paymentBankCode || "",
-      paymentAmount: transaction.paymentAmount || ""
+      paymentAmount: transaction.paymentAmount || "",
     });
     setShowPaymentDetailsModal(true);
   };
 
-  const handlePaymentSubmit = async (e) => {
+  const handlePaymentSubmit = (e) => {
     e.preventDefault();
     const newErrors = {};
-    if (!paymentDetails.selectedBankCode) newErrors.selectedBankCode = "Select a bank";
-    if (!/^\d{10}$/.test(paymentDetails.paymentAccountNumber)) newErrors.paymentAccountNumber = "Invalid account number";
-    if (parseFloat(paymentDetails.paymentAmount) <= 0) newErrors.paymentAmount = "Invalid amount";
+    if (!paymentDetails.paymentAmount || parseFloat(paymentDetails.paymentAmount) <= 0) {
+      newErrors.paymentAmount = "Amount must be greater than zero";
+    }
     if (Object.keys(newErrors).length) {
       setPaymentErrors(newErrors);
       return;
     }
-    try {
-      await axios.put(`${BASE_URL}/api/transactions/update-payment-details/${currentTransaction._id}`, paymentDetails, {
-        headers: { "Authorization": `Bearer ${localStorage.getItem("access-token")}` }
+    dispatch(updateTransaction({ transactionId: currentTransaction._id, data: { paymentAmount: parseFloat(paymentDetails.paymentAmount) } }))
+      .unwrap()
+      .then((response) => {
+        managedToast({
+          id: `payment-success-${currentTransaction._id}`,
+          title: 'Payment Details Updated',
+          description: `Amount updated to ₦${parseFloat(paymentDetails.paymentAmount).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`,
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
+        setShowPaymentDetailsModal(false);
+        setCurrentTransaction(null);
+        setPaymentDetails({ paymentBank: "", paymentAccountNumber: "", selectedBankCode: "", paymentAmount: "" });
+        setPaymentErrors({});
+      })
+      .catch(error => {
+        managedToast({
+          id: `payment-error-${currentTransaction._id}`,
+          title: 'Error',
+          description: error.message || 'Failed to update payment details',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
       });
-      toast({
-        title: "Payment details updated",
-        status: "success",
-        duration: 3000,
-        isClosable: true
-      });
-      setShowPaymentDetailsModal(false);
-      setCurrentTransaction(null);
-      setPaymentDetails({ paymentBank: "", paymentAccountNumber: "", selectedBankCode: "", paymentAmount: "" });
-      setPaymentErrors({});
-      fetchData(false);
-    } catch (error) {
-      const errorMessage = error.response?.data?.errors?.map(e => e.msg).join(', ') || error.response?.data?.error || error.response?.data?.message || error.message;
-      toast({
-        title: "Error",
-        description: errorMessage,
-        status: "error",
-        duration: 5000,
-        isClosable: true
-      });
-    }
   };
 
   const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text).then(() => toast({
-      title: "Copied to clipboard",
-      status: "success",
-      duration: 2000,
-      isClosable: true
-    }));
+    navigator.clipboard.writeText(text).then(() =>
+      managedToast({
+        id: `copy-${text}`,
+        title: 'Copied to Clipboard',
+        status: 'success',
+        duration: 2000,
+        isClosable: true,
+      })
+    );
   };
 
   const toggleDescription = (transactionId) => {
@@ -1159,274 +1348,456 @@ const DisplayTransaction = ({ userResponse }) => {
   };
 
   return (
-    <Flex minH="100vh" bg="" direction={{ base: "column", md: "row" }}>
-      <Sidebar
-        onShowProfile={handleShowProfile}
-        onShowToggleComponent={handleMyTransaction}
-        onCollapseChange={handleSidebarCollapseChange}
-      />
-      <div
-        className={`transition-all pt-1 duration-300 flex-1 h-screen overflow-y-auto ${!isMobile ? (isSidebarCollapsed ? "ml-[80px]" : "ml-[280px]") : "ml-0"} md:block block`}
+    <Flex minH="100vh" bg="#0A0E10" direction={{ base: "column", md: "row" }}>
+      <Sidebar onShowProfile={handleShowProfile} onShowToggleComponent={handleMyTransaction} onCollapseChange={setIsSidebarCollapsed} />
+      <Box
+        flex={1}
+        className={`transition-all duration-300 h-screen overflow-y-auto ${isMobile ? "ml-0" : isSidebarCollapsed ? "ml-[80px]" : "ml-[280px]"}`}
+        maxW="100%"
+        overflowX="hidden"
       >
-        <Box flex={1} width={{ base: "100%", md: "auto" }}>
-          {showToggleContainer && (
-            <Box width="100%">
-              <MiniNav />
+        {showToggleContainer && (
+          <Box
+            px={{ base: 4, sm: 5, md: 6, lg: 8 }}
+            pt={{ base: "85px", sm: "90px", md: "95px" }}
+            pb={{ base: 4, sm: 5, md: 6 }}
+            maxW="100%"
+            mx="auto"
+            overflowX="hidden"
+          >
+            <MiniNav />
+
+            <Flex
+              justify="space-between"
+              align={{ base: "flex-start", md: "center" }}
+              mb={{ base: 4, sm: 5, md: 6 }}
+              flexDir={{ base: "column", md: "row" }}
+              gap={{ base: 3, sm: 4 }}
+              w="100%"
+            >
+              <Text
+                fontSize={{ base: "xl", sm: "2xl", md: "3xl" }}
+                fontWeight="600"
+                color="white"
+                lineHeight="1.3"
+              >
+                My Transactions
+              </Text>
+
+              <Flex
+                gap={{ base: 2, sm: 3 }}
+                align={{ base: "stretch", sm: "center" }}
+                flexDir={{ base: "column", sm: "row" }}
+                flexWrap="wrap"
+                w={{ base: "100%", sm: "auto" }}
+              >
+                <Text
+                  fontSize={{ base: "xs", sm: "sm" }}
+                  color="gray.200"
+                  bg="gray.800"
+                  px={{ base: 2.5, sm: 3 }}
+                  py={{ base: 1.5, sm: 2 }}
+                  rounded="md"
+                  textAlign="center"
+                  whiteSpace="nowrap"
+                  w={{ base: "100%", sm: "180px" }}
+                  fontWeight="500"
+                >
+                  Balance: {walletLoading ? 'Loading...' : `₦${(walletBalance ?? 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`}
+                </Text>
+
+                <Flex gap={{ base: 2, sm: 3 }} w={{ base: "100%", sm: "auto" }}>
+                  <Button
+                    onClick={() => {
+                      console.log('Refresh button clicked by user at:', new Date().toISOString());
+                      dispatch(fetchInitialData());
+                    }}
+                    isLoading={transactionsLoading || walletLoading || userLoading}
+                    size="sm"
+                    bg="#318AE6"
+                    color="white"
+                    _hover={{ bg: "#2279d8" }}
+                    flex={{ base: 1, sm: "0 0 90px" }}
+                    fontSize="sm"
+                    py={2}
+                    px={4}
+                    h="36px"
+                    fontWeight="500"
+                    rounded="md"
+                  >
+                    Refresh
+                  </Button>
+
+                  <Button
+                    onClick={() => console.log("Current transactions:", transactions, "Wallet transactions:", walletTransactions)}
+                    size="sm"
+                    bg="gray.600"
+                    color="white"
+                    _hover={{ bg: "gray.700" }}
+                    flex={{ base: 1, sm: "0 0 90px" }}
+                    fontSize="sm"
+                    py={2}
+                    px={4}
+                    h="36px"
+                    fontWeight="500"
+                    rounded="md"
+                  >
+                    Debug
+                  </Button>
+                </Flex>
+              </Flex>
+            </Flex>
+
+            <Flex
+              flexDir={{ base: "column", lg: "row" }}
+              gap={{ base: 3, sm: 4 }}
+              mb={{ base: 4, sm: 5, md: 6 }}
+              alignItems={{ base: "stretch", lg: "center" }}
+              w="100%"
+            >
               <Box
-                px={{ base: 3, sm: 4, md: 6, lg: 8 }}
-                pt={{ base: "100px", sm: "100px", md: "100px", lg: "100px" }}
-                pb={{ base: 8, sm: 10, md: 12, lg: 16 }}
-                maxW="100%"
-                mx="auto"
-                overflow="hidden"
+                bg="#111518"
+                rounded="lg"
+                border="1px"
+                borderColor="gray.700"
+                p={{ base: 1.5, sm: 2 }}
+                w={{ base: "100%", lg: "auto" }}
+                flexGrow={{ base: 0, lg: 1 }}
+                maxW={{ base: "100%", lg: "70%" }}
               >
                 <Flex
-                  justify="space-between"
-                  align={{ base: "flex-start", sm: "center" }}
-                  mb={{ base: 4, sm: 5, md: 6 }}
-                  flexDir={{ base: "column", sm: "row" }}
-                  gap={{ base: 3, sm: 4 }}
-                  width="100%"
-                  flexWrap="wrap"
+                  gap={1}
+                  overflowX="auto"
+                  css={{
+                    '&::-webkit-scrollbar': {
+                      height: '4px',
+                    },
+                    '&::-webkit-scrollbar-track': {
+                      background: '#1d2225',
+                      borderRadius: '2px',
+                    },
+                    '&::-webkit-scrollbar-thumb': {
+                      background: '#967532',
+                      borderRadius: '2px',
+                    },
+                  }}
                 >
-                  <Text fontSize={{ base: "xl", sm: "2xl", md: "3xl" }} fontWeight="bold" color="white">My Transactions</Text>
-                  <Flex
-                    gap={3}
-                    align="center"
-                    width={{ base: "100%", sm: "auto" }}
-                    flexWrap={{ base: "wrap", sm: "nowrap" }}
-                  >
-                    {walletBalance !== null && (
-                      <Text
-                        fontSize={{ base: "sm", md: "md" }}
-                        color="white"
-                        bg="gray.800"
-                        px={3}
-                        py={2}
-                        rounded="md"
-                        whiteSpace="nowrap"
-                        overflow="hidden"
-                        textOverflow="ellipsis"
-                        maxW={{ base: "full", sm: "auto", md: "auto" }}
-                      >
-                        Wallet Balance: ₦{walletBalance.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </Text>
-                    )}
+                  {["all", "active", "completed", "cancelled", "wallet"].map(tab => (
                     <Button
-                      onClick={() => fetchData(true)}
-                      isLoading={isManualRefreshing}
-                      size={{ base: "xs", sm: "sm" }}
-                      bg="#318AE6"
-                      color="white"
-                      _hover={{ bg: "#2279d8" }}
-                      aria-label="Refresh transactions"
-                      width={{ base: "100%", sm: "auto" }}
+                      key={tab}
+                      onClick={() => setActiveTab(tab)}
+                      flex="0 0 auto"
+                      minW={{ base: "75px", sm: "90px", md: "100px" }}
+                      px={{ base: 2, sm: 3 }}
+                      py={1.5}
+                      fontSize="sm"
+                      fontWeight="500"
+                      h="32px"
+                      bg={activeTab === tab ? "#967532" : "transparent"}
+                      color={activeTab === tab ? "white" : "gray.400"}
+                      _hover={{ color: "white", bg: activeTab === tab ? "#967532" : "#1d2225" }}
+                      rounded="md"
+                      transition="all 0.2s"
                     >
-                      Refresh
-                    </Button>
-                  </Flex>
-                </Flex>
-                <Flex
-                  flexDir={{ base: "column", md: "row" }}
-                  gap={4}
-                  mb={6}
-                  width="100%"
-                  flexWrap="wrap"
-                >
-                  <Flex
-                    overflowX="auto"
-                    bg="#111518"
-                    rounded="lg"
-                    border="1px"
-                    borderColor="gray.800"
-                    p={1}
-                    width={{ base: "100%" }}
-                    flexGrow={1}
-                    flexShrink={0}
-                    minW={{ base: "auto", md: "350px" }}
-                    maxW={{ base: "100%", md: "60%" }}
-                    css={{
-                      '&::-webkit-scrollbar': { height: '6px' },
-                      '&::-webkit-scrollbar-thumb': { backgroundColor: '#2D3748', borderRadius: '3px' }
-                    }}
-                  >
-                    {["all", "active", "completed", "cancelled", "wallet"].map(tab => (
-                      <Button
-                        key={tab}
-                        onClick={() => setActiveTab(tab)}
-                        flex={{ base: "0 0 auto", sm: 1 }}
-                        minW="80px"
-                        px={{ base: 2, md: 3 }}
-                        py={2}
-                        fontSize={{ base: "xs", sm: "sm" }}
-                        bg={activeTab === tab ? "#967532" : "transparent"}
-                        color={activeTab === tab ? "white" : "gray.400"}
-                        _hover={{ color: "white" }}
-                        whiteSpace="nowrap"
-                      >
+                      <Flex align="center" gap={1.5}>
                         {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                        <Text as="span" ml={1} px={1} bg="#1d2225" rounded="full" fontSize="xs">
-                          {tab === "wallet" ? walletTransactions.length : tab === "all" ? transactions.length : transactions.filter(t => tab === "active" ? t.status === "pending" : t.status === tab).length}
-                        </Text>
-                      </Button>
-                    ))}
-                  </Flex>
-                  <Box pos="relative" w={{ base: "100%", md: "220px", lg: "250px" }} flexShrink={0}>
-                    <FiSearch style={{ position: "absolute", top: "50%", left: "12px", transform: "translateY(-50%)", color: "#967532" }} />
-                    <Input
-                      placeholder="Search..."
-                      value={searchQuery}
-                      onChange={(e) => debouncedSearch(e.target.value)}
-                      bg="#111518"
-                      borderColor="#967532"
-                      color="white"
-                      pl={10}
-                      fontSize={{ base: "xs", sm: "sm" }}
-                      aria-label="Search transactions"
-                      width="100%"
-                    />
-                    {searchQuery && (
-                      <IconButton
-                        aria-label="Clear search"
-                        icon={<MdClose />}
-                        pos="absolute"
-                        top="50%"
-                        right="8px"
-                        transform="translateY(-50%)"
-                        color="gray.400"
-                        _hover={{ color: "white" }}
-                        onClick={() => setSearchQuery("")}
-                        bg="transparent"
-                        size="sm"
-                      />
-                    )}
-                  </Box>
-                </Flex>
-                {(isInitialLoading || isManualRefreshing) ? (
-                  <TransactionLoader />
-                ) : activeTab === "wallet" ? (
-                  <Box
-                    mt={6}
-                    p={{ base: 3, sm: 4 }}
-                    bg="#111518"
-                    rounded="lg"
-                    border="1px"
-                    borderColor="gray.800"
-                    width="100%"
-                  >
-                    <Text fontSize={{ base: "lg", sm: "xl" }} fontWeight="bold" color="white" mb={4}>Wallet Transaction History</Text>
-                    {walletTransactions.length === 0 ? (
-                      <Text color="gray.400" fontSize="md">No wallet transactions found.</Text>
-                    ) : (
-                      walletTransactions.map((tx, idx) => (
-                        <Box
-                          key={`${tx.reference}-${tx.createdAt}-${idx}`}
-                          mb={4}
-                          p={{ base: 2, sm: 3 }}
+                        <Text
+                          as="span"
+                          px={1.5}
                           bg="#1d2225"
-                          rounded="md"
+                          rounded="full"
+                          fontSize="xs"
+                          minW="18px"
+                          h="18px"
+                          display="flex"
+                          alignItems="center"
+                          justifyContent="center"
+                          fontWeight="500"
                         >
-                          <Flex justify="space-between" flexWrap="wrap" gap={2}>
-                            <Text
-                              color="white"
-                              fontSize={{ base: "xs", sm: "sm" }}
-                              maxW={{ base: "60%", sm: "70%" }}
-                              isTruncated
-                            >
-                              {tx.reference}
-                            </Text>
-                            <Text
-                              color={tx.type === "deposit" ? "green.300" : "red.300"}
-                              fontSize={{ base: "xs", sm: "sm" }}
-                              fontWeight="medium"
-                            >
-                              {tx.type === "deposit" ? "+" : "-"} ₦{(tx.amount || 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </Text>
-                          </Flex>
-                          <Text color="gray.400" fontSize="xs" mt={1}>Purpose: {tx.metadata?.purpose || "N/A"}</Text>
-                          <Text color="gray.400" fontSize="xs" mt={1}>Date: {tx.createdAt ? new Date(tx.createdAt).toLocaleString() : "N/A"}</Text>
-                        </Box>
-                      ))
-                    )}
-                  </Box>
-                ) : transactions.length === 0 ? (
-                  <Flex flexDir="column" align="center" justify="center" h={{ base: "30vh", sm: "40vh", md: "50vh" }}>
-                    <Text fontSize={{ base: "2xl", sm: "3xl" }} mb={4} color="gray.400">📭</Text>
-                    <Text color="#E4E4E4" fontSize={{ base: "md", sm: "lg" }} fontWeight="medium" textAlign="center">No transactions created</Text>
-                    <Text color="gray.400" fontSize={{ base: "sm", md: "md" }} mt={2} textAlign="center">Create a new transaction to get started</Text>
+                          {tab === "wallet"
+                            ? Array.isArray(walletTransactions) ? walletTransactions.length : 0
+                            : tab === "all"
+                              ? Array.isArray(transactions) ? transactions.length : 0
+                              : Array.isArray(transactions)
+                                ? transactions.filter(t => tab === "active" ? t.status === "pending" : t.status === tab).length
+                                : 0}
+                        </Text>
+                      </Flex>
+                    </Button>
+                  ))}
+                </Flex>
+              </Box>
+
+              <Box
+                pos="relative"
+                w={{ base: "100%", lg: "280px" }}
+                flexShrink={0}
+              >
+                <FiSearch
+                  style={{
+                    position: "absolute",
+                    top: "50%",
+                    left: "12px",
+                    transform: "translateY(-50%)",
+                    color: "#967532",
+                    fontSize: "16px"
+                  }}
+                />
+                <Input
+                  placeholder="Search transactions..."
+                  value={searchQuery}
+                  onChange={(e) => debouncedSearch(e.target.value)}
+                  bg="#111518"
+                  borderColor="#967532"
+                  color="white"
+                  pl={10}
+                  pr={10}
+                  py={2}
+                  fontSize="sm"
+                  h="36px"
+                  rounded="md"
+                  w="100%"
+                  _focus={{ borderColor: "#318AE6", boxShadow: "0 0 0 2px rgba(49, 138, 230, 0.3)" }}
+                  _hover={{ borderColor: "#318AE6" }}
+                />
+                {searchQuery && (
+                  <IconButton
+                    aria-label="Clear search"
+                    icon={<MdClose />}
+                    pos="absolute"
+                    top="50%"
+                    right="8px"
+                    transform="translateY(-50%)"
+                    color="gray.400"
+                    _hover={{ color: "white" }}
+                    onClick={() => setSearchQuery("")}
+                    bg="transparent"
+                    size="sm"
+                  />
+                )}
+              </Box>
+            </Flex>
+
+            {(transactionsLoading || walletLoading || userLoading) ? (
+              <TransactionLoader />
+            ) : activeTab === "wallet" ? (
+              <Box
+                mt={{ base: 4, sm: 5, md: 6 }}
+                p={{ base: 4, sm: 5, md: 6 }}
+                bg="#111518"
+                rounded="lg"
+                border="1px"
+                borderColor="gray.700"
+                w="100%"
+              >
+                <Text
+                  fontSize={{ base: "lg", sm: "xl", md: "2xl" }}
+                  fontWeight="600"
+                  color="white"
+                  mb={{ base: 3, sm: 4 }}
+                >
+                  Wallet Transaction History
+                </Text>
+
+                {!Array.isArray(walletTransactions) || walletTransactions.length === 0 ? (
+                  <Flex
+                    flexDir="column"
+                    align="center"
+                    justify="center"
+                    py={{ base: 8, sm: 12, md: 16 }}
+                  >
+                    <Text fontSize={{ base: "3xl", sm: "4xl", md: "5xl" }} mb={3} color="gray.400">💳</Text>
+                    <Text color="gray.400" fontSize={{ base: "md", sm: "lg" }} textAlign="center">
+                      No wallet transactions found.
+                    </Text>
                   </Flex>
                 ) : (
                   <Box
                     display="grid"
                     gridTemplateColumns={{
                       base: "1fr",
-                      sm: "repeat(auto-fill, minmax(220px, 1fr))",
-                      md: "repeat(auto-fill, minmax(240px, 1fr))",
-                      lg: "repeat(auto-fill, minmax(300px, 1fr))"
+                      sm: "repeat(2, 1fr)",
+                      lg: "repeat(3, 1fr)"
                     }}
-                    gap={{ base: 4, sm: 5, md: 6 }}
+                    gap={{ base: 3, sm: 4 }}
+                    w="100%"
+                    css={{
+                      '&::-webkit-scrollbar': {
+                        width: '6px',
+                      },
+                      '&::-webkit-scrollbar-track': {
+                        background: '#1d2225',
+                        borderRadius: '3px',
+                      },
+                      '&::-webkit-scrollbar-thumb': {
+                        background: '#967532',
+                        borderRadius: '3px',
+                      },
+                    }}
                   >
-                    {filteredTransactions.map((transaction, idx) => (
-                      <TransactionCard
-                        key={transaction._id}
-                        transaction={transaction}
-                        currentUser={currentUser}
-                        isConfirming={isConfirming}
-                        handleChat={handleChat}
-                        handleWaybill={handleWaybill}
-                        handleConfirm={handleConfirm}
-                        handleFund={handleFund}
-                        handleEditPayment={handleEditPayment}
-                        cancelTransaction={cancelTransaction}
-                        copyToClipboard={copyToClipboard}
-                        toggleDescription={toggleDescription}
-                        expandedDescriptions={expandedDescriptions}
-                        index={idx}
-                        isCompact={isSidebarCollapsed}
-                      />
+                    {walletTransactions.map((tx, idx) => (
+                      <Box
+                        key={`${tx.reference}-${tx.createdAt}-${idx}`}
+                        p={{ base: 3, sm: 4 }}
+                        bg="#1d2225"
+                        rounded="md"
+                        border="1px"
+                        borderColor="gray.700"
+                        _hover={{ borderColor: "#318AE6", transform: "translateY(-1px)", boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)" }}
+                        transition="all 0.2s"
+                        w="100%"
+                        maxW="100%"
+                        overflow="hidden"
+                      >
+                        <Flex direction="column" gap={2} w="100%">
+                          <Text
+                            color="white"
+                            fontSize={{ base: "sm", sm: "md" }}
+                            fontWeight="500"
+                            isTruncated
+                            maxW="100%"
+                          >
+                            {tx.reference || "N/A"}
+                          </Text>
+                          <Text
+                            color={tx.type === "deposit" ? "green.300" : "red.300"}
+                            fontSize={{ base: "sm", sm: "md" }}
+                            fontWeight="600"
+                            isTruncated
+                            maxW="100%"
+                          >
+                            {tx.type === "deposit" ? "+" : "-"} ₦{(tx.amount || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+                          </Text>
+                          <Text
+                            color="gray.400"
+                            fontSize="xs"
+                            isTruncated
+                            maxW="100%"
+                          >
+                            Purpose: {tx.metadata?.purpose || "N/A"}
+                          </Text>
+                          <Text
+                            color="gray.400"
+                            fontSize="xs"
+                            isTruncated
+                            maxW="100%"
+                          >
+                            {tx.createdAt ? new Date(tx.createdAt).toLocaleDateString() : "N/A"}
+                          </Text>
+                        </Flex>
+                      </Box>
                     ))}
                   </Box>
                 )}
               </Box>
-            </Box>
-          )}
-          {showProfile && <Box width="100%">{/* Profile content */}</Box>}
-          <Modal isOpen={modalVisible} onClose={() => setModalVisible(false)} isCentered size={{ base: "xs", sm: "sm" }}>
-            <ModalOverlay />
-            <ModalContent bg="#1A1E21" color="white" mx={{ base: 3, sm: "auto" }}>
-              <ModalHeader fontSize={{ base: "md", sm: "lg" }}>Confirm Transaction</ModalHeader>
-              <ModalBody>
-                <Text fontSize={{ base: "sm", sm: "md" }}>Are you sure you want to confirm transaction {selectedTransactionId}?</Text>
-              </ModalBody>
-              <ModalFooter>
-                <Button colorScheme="gray" mr={3} onClick={() => setModalVisible(false)} size={{ base: "xs", sm: "sm" }}>Cancel</Button>
-                <Button colorScheme="blue" onClick={() => completeTransaction(selectedTransactionId)} isLoading={isConfirming[selectedTransactionId]} size={{ base: "xs", sm: "sm" }}>Confirm</Button>
-              </ModalFooter>
-            </ModalContent>
-          </Modal>
-          <Modal isOpen={isFundingModalOpen} onClose={closeFundingModal} isCentered size={{ base: 'full', sm: 'md' }}>
-            <ModalOverlay />
-            <ModalContent bg="#1A1E21" color="white" p={{ base: 4, sm: 6 }} rounded="xl">
-              <ModalHeader>Fund Transaction</ModalHeader>
-              <ModalBody>
-                <Text fontSize="sm" mb={4}>
-                  Your wallet balance (₦{walletBalance.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}) is insufficient to fund this transaction.
-                  You need an additional ₦{currentTransaction ? (currentTransaction.paymentAmount - walletBalance).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}.
-                  Proceed to fund your wallet via Paystack?
+            ) : filteredTransactions.length === 0 ? (
+              <Flex
+                flexDir="column"
+                align="center"
+                justify="center"
+                py={{ base: 8, sm: 12, md: 16 }}
+                px={{ base: 4, sm: 6 }}
+                w="100%"
+              >
+                <Text fontSize={{ base: "3xl", sm: "4xl", md: "5xl" }} mb={3} color="gray.400">
+                  📭
                 </Text>
-              </ModalBody>
-              <ModalFooter>
-                <Button bg="gray.600" color="white" _hover={{ bg: 'gray.700' }} size="sm" onClick={closeFundingModal} mr={3}>Cancel</Button>
-                <Button bg="#318AE6" color="white" _hover={{ bg: '#2279d8' }} size="sm" onClick={() => confirmFunding(currentTransaction)}>Proceed to Paystack</Button>
-              </ModalFooter>
-            </ModalContent>
-          </Modal>
-          {Object.keys(showWaybillPopup).map(id => showWaybillPopup[id] && (
+                <Text
+                  color="#E4E4E4"
+                  fontSize={{ base: "md", sm: "lg", md: "xl" }}
+                  fontWeight="500"
+                  textAlign="center"
+                  maxW="400px"
+                  lineHeight="1.5"
+                >
+                  {userError
+                    ? `Failed to load transactions: ${userError}`
+                    : searchQuery
+                      ? "No transactions match your search criteria."
+                      : activeTab === "all"
+                        ? "No transactions found. Create your first transaction to get started."
+                        : `No ${activeTab} transactions found.`}
+                </Text>
+                {(userError || !Array.isArray(transactions)) && (
+                  <Button
+                    mt={{ base: 4, sm: 6 }}
+                    bg="#318AE6"
+                    color="white"
+                    _hover={{ bg: "#2279d8" }}
+                    size="sm"
+                    onClick={() => dispatch(fetchInitialData())}
+                    px={6}
+                    py={2}
+                    h="36px"
+                    fontWeight="500"
+                    rounded="md"
+                    w={{ base: "100%", sm: "auto" }}
+                  >
+                    Try Again
+                  </Button>
+                )}
+              </Flex>
+            ) : (
+              <Box
+                display="grid"
+                gridTemplateColumns={{
+                  base: "1fr",
+                  sm: "repeat(2, 1fr)",
+                  lg: "repeat(3, 1fr)"
+                }}
+                gap={{ base: 3, sm: 4, md: 5 }}
+                w="100%"
+                alignItems="start"
+              >
+                {filteredTransactions.map(transaction => (
+                  <TransactionCard
+                    key={transaction._id}
+                    transaction={transaction}
+                    currentUser={userDetails}
+                    isConfirming={isConfirming}
+                    handleChat={handleChat}
+                    handleWaybill={handleWaybill}
+                    handleConfirm={handleConfirm}
+                    handleFund={handleFund}
+                    handleEditPayment={handleEditPayment}
+                    cancelTransaction={cancelTransactionAction}
+                    copyToClipboard={copyToClipboard}
+                    toggleDescription={toggleDescription}
+                    expandedDescriptions={expandedDescriptions}
+                  />
+                ))}
+              </Box>
+            )}
+          </Box>
+        )}
+
+        {showProfile && (
+          <Box
+            px={{ base: 4, sm: 5, md: 6, lg: 8 }}
+            pt={{ base: "85px", sm: "90px", md: "95px" }}
+            pb={{ base: 4, sm: 5, md: 6 }}
+            maxW="100%"
+            mx="auto"
+            overflowX="hidden"
+          >
+            <Text
+              fontSize={{ base: "xl", sm: "2xl", md: "3xl" }}
+              fontWeight="600"
+              color="white"
+              mb={{ base: 4, sm: 5 }}
+            >
+              Profile
+            </Text>
+          </Box>
+        )}
+
+        {Object.keys(showWaybillPopup).map(transactionId => (
+          showWaybillPopup[transactionId] && (
             <WaybillModal
-              key={`seller-${id}`}
-              isOpen={showWaybillPopup[id]}
-              onClose={() => setShowWaybillPopup(prev => ({ ...prev, [id]: false }))}
-              transactionId={id}
+              key={`seller-${transactionId}`}
+              isOpen={showWaybillPopup[transactionId]}
+              onClose={() => setShowWaybillPopup(prev => ({ ...prev, [transactionId]: false }))}
+              transactionId={transactionId}
               isBuyer={false}
               details={waybillDetails}
               setDetails={setWaybillDetails}
@@ -1434,42 +1805,119 @@ const DisplayTransaction = ({ userResponse }) => {
               handleSubmit={handleWaybillSubmit}
               downloadImage={downloadImage}
             />
-          ))}
-          {Object.keys(buyerShowWaybillPopup).map(id => buyerShowWaybillPopup[id] && (
+          )
+        ))}
+
+        {Object.keys(buyerShowWaybillPopup).map(transactionId => (
+          buyerShowWaybillPopup[transactionId] && (
             <WaybillModal
-              key={`buyer-${id}`}
-              isOpen={buyerShowWaybillPopup[id]}
-              onClose={() => setBuyerShowWaybillPopup(prev => ({ ...prev, [id]: false }))}
-              transactionId={id}
+              key={`buyer-${transactionId}`}
+              isOpen={buyerShowWaybillPopup[transactionId]}
+              onClose={() => setBuyerShowWaybillPopup(prev => ({ ...prev, [transactionId]: false }))}
+              transactionId={transactionId}
               isBuyer={true}
-              details={buyerWaybillDetails[id] || {}}
+              details={buyerWaybillDetails[transactionId] || {}}
+              setDetails={setBuyerWaybillDetails}
+              errors={{}}
+              handleSubmit={() => {}}
               downloadImage={downloadImage}
             />
-          ))}
-          {showPaymentDetailsModal && (
-            <PaymentDetailsModal
-              isOpen={showPaymentDetailsModal}
-              onClose={() => {
-                setShowPaymentDetailsModal(false);
-                setCurrentTransaction(null);
-                setPaymentDetails({ paymentBank: "", paymentAccountNumber: "", selectedBankCode: "", paymentAmount: "" });
-                setPaymentErrors({});
-              }}
-              transaction={currentTransaction}
-              paymentDetails={paymentDetails}
-              setPaymentDetails={setPaymentDetails}
-              paymentErrors={paymentErrors}
-              handleSubmit={handlePaymentSubmit}
-            />
-          )}
-          {isMobile && <BottomNav />}
-        </Box>
-      </div>
+          )
+        ))}
+
+        {showPaymentDetailsModal && currentTransaction && (
+          <PaymentDetailsModal
+            isOpen={showPaymentDetailsModal}
+            onClose={() => {
+              setShowPaymentDetailsModal(false);
+              setCurrentTransaction(null);
+              setPaymentDetails({ paymentBank: "", paymentAccountNumber: "", selectedBankCode: "", paymentAmount: "" });
+              setPaymentErrors({});
+            }}
+            transaction={currentTransaction}
+            paymentDetails={paymentDetails}
+            setPaymentDetails={setPaymentDetails}
+            paymentErrors={paymentErrors}
+            handleSubmit={handlePaymentSubmit}
+          />
+        )}
+
+        {isFundingModalOpen && currentTransaction && (
+          <FundingModal
+            isOpen={isFundingModalOpen}
+            onClose={() => {
+              closeFundingModal();
+              setCurrentTransaction(null);
+            }}
+            transaction={currentTransaction}
+            walletBalance={walletBalance}
+            confirmFunding={confirmFunding}
+          />
+        )}
+
+        <Modal
+          isOpen={modalVisible}
+          onClose={() => setModalVisible(false)}
+          isCentered
+          size={{ base: "xs", sm: "md" }}
+        >
+          <ModalOverlay />
+          <ModalContent
+            bg="#1A1E21"
+            color="white"
+            p={{ base: 4, sm: 5 }}
+            rounded="lg"
+            mx={{ base: 4, sm: 0 }}
+            w={{ base: "100%", sm: "auto" }}
+          >
+            <ModalHeader>
+              <Text fontSize={{ base: "md", sm: "lg" }} fontWeight="600">
+                Confirm Transaction
+              </Text>
+            </ModalHeader>
+            <ModalBody>
+              <Text fontSize="sm" color="gray.300" lineHeight="1.5">
+                Are you sure you want to confirm this transaction? This action cannot be undone.
+              </Text>
+            </ModalBody>
+            <ModalFooter>
+              <Flex gap={3} w="100%" flexDir={{ base: "column", sm: "row" }}>
+                <Button
+                  bg="gray.600"
+                  color="white"
+                  _hover={{ bg: "gray.700" }}
+                  size="sm"
+                  onClick={() => setModalVisible(false)}
+                  flex={{ base: 1, sm: "0 0 100px" }}
+                  h="36px"
+                  fontWeight="500"
+                  rounded="md"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  bg="#318AE6"
+                  color="white"
+                  _hover={{ bg: "#2279d8" }}
+                  size="sm"
+                  onClick={() => completeTransaction(selectedTransactionId)}
+                  isLoading={isConfirming[selectedTransactionId]}
+                  flex={{ base: 1, sm: "0 0 100px" }}
+                  h="36px"
+                  fontWeight="500"
+                  rounded="md"
+                >
+                  Confirm
+                </Button>
+              </Flex>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+      </Box>
+
+      <BottomNav />
     </Flex>
   );
 };
 
 export default DisplayTransaction;
-
-
-

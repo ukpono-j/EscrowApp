@@ -1,5 +1,5 @@
 import { createSlice } from '@reduxjs/toolkit';
-import { fetchInitialData, updateTransaction } from './thunks';
+import { fetchInitialData, updateTransaction, confirmTransaction, fundTransaction, cancelTransaction } from './thunks';
 
 const initialState = {
   transactions: [],
@@ -19,9 +19,11 @@ const transactionSlice = createSlice({
     addTransaction(state, action) {
       state.transactions.push(action.payload);
       state.loading = false;
+      state.error = null;
     },
     setLoading(state) {
       state.loading = true;
+      state.error = null;
     },
     setError(state, action) {
       state.error = action.payload;
@@ -30,6 +32,7 @@ const transactionSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      // fetchInitialData
       .addCase(fetchInitialData.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -44,16 +47,72 @@ const transactionSlice = createSlice({
         state.loading = false;
         state.transactions = [];
       })
+      // updateTransaction
+      .addCase(updateTransaction.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(updateTransaction.fulfilled, (state, action) => {
         const updatedTransaction = action.payload;
         state.transactions = state.transactions.map(t =>
-          t._id === updatedTransaction._id ? { ...t, paymentAmount: updatedTransaction.paymentAmount } : t
+          t._id === updatedTransaction._id ? { ...t, ...updatedTransaction } : t
         );
         state.loading = false;
         state.error = null;
       })
       .addCase(updateTransaction.rejected, (state, action) => {
-        state.error = action.payload || 'Failed to update transaction';
+        state.error = action.payload?.message || 'Failed to update transaction';
+        state.loading = false;
+      })
+      // confirmTransaction
+      .addCase(confirmTransaction.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(confirmTransaction.fulfilled, (state, action) => {
+        const updatedTransaction = action.payload;
+        state.transactions = state.transactions.map(t =>
+          t._id === updatedTransaction._id ? { ...t, ...updatedTransaction } : t
+        );
+        state.loading = false;
+        state.error = null;
+      })
+      .addCase(confirmTransaction.rejected, (state, action) => {
+        state.error = action.payload?.message || 'Failed to confirm transaction';
+        state.loading = false;
+      })
+      // fundTransaction
+      .addCase(fundTransaction.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fundTransaction.fulfilled, (state, action) => {
+        const updatedTransaction = action.payload;
+        state.transactions = state.transactions.map(t =>
+          t._id === updatedTransaction._id ? { ...t, ...updatedTransaction } : t
+        );
+        state.loading = false;
+        state.error = null;
+      })
+      .addCase(fundTransaction.rejected, (state, action) => {
+        state.error = action.payload?.message || 'Failed to fund transaction';
+        state.loading = false;
+      })
+      // cancelTransaction
+      .addCase(cancelTransaction.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(cancelTransaction.fulfilled, (state, action) => {
+        const updatedTransaction = action.payload;
+        state.transactions = state.transactions.map(t =>
+          t._id === updatedTransaction._id ? { ...t, ...updatedTransaction } : t
+        );
+        state.loading = false;
+        state.error = null;
+      })
+      .addCase(cancelTransaction.rejected, (state, action) => {
+        state.error = action.payload?.message || 'Failed to cancel transaction';
         state.loading = false;
       });
   },

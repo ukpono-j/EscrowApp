@@ -1,7 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+
+import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { io } from 'socket.io-client';
 import jwtDecode from 'jwt-decode';
 import pino from 'pino';
 import { motion } from 'framer-motion';
@@ -10,6 +10,7 @@ import {
   Container, useToast, Modal, ModalOverlay, ModalContent, ModalHeader, ModalFooter, ModalBody,
   ModalCloseButton, useDisclosure, NumberInput, NumberInputField, NumberInputStepper,
   NumberIncrementStepper, NumberDecrementStepper, Divider, IconButton, Select, useColorModeValue,
+  Tabs, TabList, Tab, TabPanels, TabPanel, Badge, VStack, SimpleGrid,
 } from '@chakra-ui/react';
 import { FaEdit, FaWallet, FaTimes, FaCreditCard, FaSync, FaMoneyBillWave, FaSave } from 'react-icons/fa';
 import { MdContentCopy } from 'react-icons/md';
@@ -471,17 +472,16 @@ const Profile = () => {
   const { isOpen: isAmountOpen, onOpen: onAmountOpen, onClose: onAmountClose } = useDisclosure();
   const { user, wallet, paymentDetails, loading, error } = useSelector((state) => state.wallet);
   const transactions = wallet?.transactions || [];
-  const [isEditing, setIsEditing] = React.useState(false);
-  const [formData, setFormData] = React.useState({ firstName: '', lastName: '', phoneNumber: '' });
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({ firstName: '', lastName: '', phoneNumber: '' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [authError, setAuthError] = useState(null);
   const [fundingAmount, setFundingAmount] = useState(null);
-  const [isSocketConnected, setIsSocketConnected] = useState(false);
-  const socketRef = useRef(null);
   const textColor = useColorModeValue('gray.800', 'white');
   const subtleTextColor = useColorModeValue('gray.600', 'gray.300');
-  const boxBg = useColorModeValue('gray.50', 'gray.700');
+  const boxBg = useColorModeValue('white', 'gray.800');
+  const cardBg = useColorModeValue('gray.50', 'gray.700');
   const avatarSvg = user?.email ? multiavatar(user.email) : multiavatar('default');
 
   const handleCheckFundingReadiness = async () => {
@@ -566,27 +566,6 @@ const Profile = () => {
   };
 
   useEffect(() => {
-    let intervalId;
-    if (!isSocketConnected && user?._id) {
-      intervalId = setInterval(async () => {
-        try {
-          await retryAsync(() => dispatch(fetchInitialData()).unwrap());
-        } catch (error) {
-          logger.error({ message: 'Periodic balance fetch failed', error: error.message });
-          toast({
-            title: 'Error',
-            description: 'Failed to sync balance. Please check your network or refresh manually.',
-            status: 'error',
-            duration: 5000,
-            isClosable: true,
-          });
-        }
-      }, 15000);
-    }
-    return () => clearInterval(intervalId);
-  }, [isSocketConnected, user?._id, dispatch, toast]);
-
-  useEffect(() => {
     const initialize = async () => {
       const token = localStorage.getItem('access-token');
       if (!token) {
@@ -613,63 +592,6 @@ const Profile = () => {
           return;
         }
 
-        socketRef.current = io(BASE_URL, {
-          auth: { token },
-          reconnection: true,
-          reconnectionAttempts: 10,
-          reconnectionDelay: 2000,
-        });
-
-        socketRef.current.on('connect', () => {
-          logger.info('Socket connected');
-          setIsSocketConnected(true);
-          socketRef.current.emit('join', decoded.id);
-        });
-
-        socketRef.current.on('balanceUpdate', (data) => {
-          dispatch(setWallet({
-            balance: data.balance,
-            totalDeposits: data.totalDeposits,
-            transaction: data.transaction ? { ...data.transaction, amount: data.transaction.amount } : null,
-          }));
-          toast({
-            title: 'Balance Updated',
-            description: `New balance: ₦${data.balance.toFixed(2)}`,
-            status: 'success',
-            duration: 5000,
-            isClosable: true,
-          });
-        });
-
-        socketRef.current.on('fundingInitiated', (data) => {
-          dispatch(setPaymentDetails({ ...data, amount: data.amount }));
-          setFundingAmount(data.amount);
-          onFundOpen();
-        });
-
-        socketRef.current.on('connect_error', (err) => {
-          logger.error({ message: 'Socket connection error', error: err.message });
-          setIsSocketConnected(false);
-          toast({
-            title: 'Connection Error',
-            description: 'Real-time updates unavailable. Balance will sync periodically.',
-            status: 'warning',
-            duration: 5000,
-            isClosable: true,
-          });
-          retryAsync(() => dispatch(fetchInitialData()).unwrap()).catch(error => {
-            logger.error({ message: 'Immediate fetch on socket error failed', error: error.message });
-          });
-        });
-
-        socketRef.current.on('disconnect', () => {
-          setIsSocketConnected(false);
-          logger.info('Socket disconnected');
-          retryAsync(() => dispatch(fetchInitialData()).unwrap()).catch(error => {
-            logger.error({ message: 'Immediate fetch on socket disconnect failed', error: error.message });
-          });
-        });
-
         setIsAuthLoading(false);
       } catch (err) {
         logger.error({ message: 'Authentication error', error: err.message });
@@ -679,13 +601,6 @@ const Profile = () => {
     };
 
     initialize();
-
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-        logger.info('Socket disconnected');
-      }
-    };
   }, [dispatch, toast]);
 
   useEffect(() => {
@@ -836,6 +751,37 @@ const Profile = () => {
     }
   };
 
+  const handleRefresh = async () => {
+    try {
+      const result = await retryAsync(() => dispatch(fetchInitialData()).unwrap());
+      if (result.success) {
+        toast({
+          title: 'Success',
+          description: `Wallet balance refreshed. New balance: ₦${result.data.balance.toFixed(2)}`,
+          status: 'success',
+          duration: 5000,
+          isClosable: true,
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: result.error || 'Failed to refresh wallet balance.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to refresh wallet balance. Please check your network and try again.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+  };
+
   if (isAuthLoading) {
     return (
       <Flex justify="center" align="center" minH="50vh">
@@ -873,31 +819,66 @@ const Profile = () => {
     );
   }
 
+  const renderTransaction = (tx) => (
+    <Box
+      key={tx.reference}
+      p={4}
+      bg={cardBg}
+      borderRadius="md"
+      boxShadow="sm"
+      _hover={{ boxShadow: 'md' }}
+      transition="all 0.2s"
+    >
+      <Flex justify="space-between" align="center">
+        <VStack align="start" spacing={1}>
+          <Flex align="center">
+            <Text fontWeight="bold" color={textColor}>
+              {tx.type.charAt(0).toUpperCase() + tx.type.slice(1)}: ₦{tx.amount.toFixed(2)}
+            </Text>
+            <Badge
+              ml={2}
+              colorScheme={tx.status === 'completed' ? 'green' : tx.status === 'pending' ? 'yellow' : 'red'}
+            >
+              {tx.status.charAt(0).toUpperCase() + tx.status.slice(1)}
+            </Badge>
+          </Flex>
+          <Text fontSize="sm" color={subtleTextColor}>
+            Ref: {tx.reference}
+          </Text>
+        </VStack>
+        <Text fontSize="sm" color={subtleTextColor}>
+          {new Date(tx.createdAt).toLocaleString()}
+        </Text>
+      </Flex>
+    </Box>
+  );
+
   return (
     <ErrorBoundary>
-      <Container maxW="container.lg" py={8}>
+      <Container maxW="container.xl" py={8}>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <Box bg={boxBg} p={6} borderRadius="lg" boxShadow="md">
-            <Flex align="center" mb={6}>
+          <Box bg={boxBg} p={6} borderRadius="lg" boxShadow="lg">
+            <Flex align="center" mb={6} flexDir={{ base: 'column', md: 'row' }} textAlign={{ base: 'center', md: 'left' }}>
               <Avatar
                 size="xl"
                 src={`data:image/svg+xml;utf8,${encodeURIComponent(avatarSvg)}`}
-                mr={4}
+                mr={{ md: 4 }}
+                mb={{ base: 4, md: 0 }}
               />
               <Box>
                 <Heading size="lg" color={textColor}>
-                  <span>{user.firstName} {user.lastName}</span>
+                  {user.firstName} {user.lastName}
                 </Heading>
                 <Text color={subtleTextColor}>{user.email}</Text>
               </Box>
             </Flex>
 
             {isEditing ? (
-              <Box>
+              <Box mb={6}>
                 <Grid templateColumns={{ base: '1fr', md: '1fr 1fr' }} gap={4} mb={4}>
                   <FormControl>
                     <FormLabel color={textColor}>First Name</FormLabel>
@@ -928,7 +909,7 @@ const Profile = () => {
                     />
                   </FormControl>
                 </Grid>
-                <Flex gap={2}>
+                <Flex gap={2} justify={{ base: 'center', md: 'flex-start' }}>
                   <Button
                     leftIcon={<FaSave />}
                     colorScheme="blue"
@@ -949,7 +930,7 @@ const Profile = () => {
                 </Flex>
               </Box>
             ) : (
-              <Box>
+              <Box mb={6}>
                 <Text color={subtleTextColor} mb={2}>Phone: {user.phoneNumber || 'Not set'}</Text>
                 <Button
                   leftIcon={<FaEdit />}
@@ -964,27 +945,25 @@ const Profile = () => {
 
             <Divider my={6} />
 
-            <Box>
+            <Box mb={6}>
               <Flex align="center" mb={4}>
                 <Icon as={FaWallet} color="blue.500" mr={2} />
                 <Heading size="md" color={textColor}>
-                  <span>Wallet</span>
+                  Wallet
                 </Heading>
               </Flex>
               <Text color={textColor} fontSize="2xl" fontWeight="bold">
                 ₦{(wallet?.balance || 0).toFixed(2)}
               </Text>
-              {!isSocketConnected && (
-                <Text color={subtleTextColor} fontSize="sm" mt={2}>
-                  Real-time updates unavailable. Balance syncing every 15 seconds. Click "Refresh" if balance seems incorrect.
-                </Text>
-              )}
               {error && (
                 <Text color="red.500" fontSize="sm" mt={2}>
                   {error} Click "Refresh" to sync.
                 </Text>
               )}
-              <Flex gap={2} mt={4}>
+              <Text color={subtleTextColor} fontSize="sm" mt={2}>
+                Click "Refresh" to update your balance after funding.
+              </Text>
+              <Flex gap={2} mt={4} flexWrap="wrap" justify={{ base: 'center', md: 'flex-start' }}>
                 <Button
                   leftIcon={<FaCreditCard />}
                   colorScheme="blue"
@@ -1006,8 +985,8 @@ const Profile = () => {
                 </Button>
                 <Button
                   leftIcon={<FaSync />}
-                  variant="outline"
-                  onClick={() => retryAsync(() => dispatch(fetchInitialData()).unwrap())}
+                  colorScheme="teal"
+                  onClick={handleRefresh}
                   isLoading={loading}
                   size={{ base: 'sm', sm: 'md' }}
                 >
@@ -1020,27 +999,54 @@ const Profile = () => {
 
             <Box>
               <Heading size="md" color={textColor} mb={4}>
-                <span>Recent Transactions</span>
+                Transactions
               </Heading>
-              {Array.isArray(transactions) && transactions.length > 0 ? (
-                <Box>
-                  {transactions.slice(0, 5).map((tx) => (
-                    <Flex key={tx.reference} justify="space-between" p={2} borderBottom="1px" borderColor={subtleTextColor}>
-                      <Text color={textColor}>
-                        {tx.type.charAt(0).toUpperCase() + tx.type.slice(1)}: ₦{tx.amount.toFixed(2)}
-                        {tx.status === 'pending' && (
-                          <Text as="span" color="yellow.500" ml={2} fontSize="sm">
-                            (Pending)
-                          </Text>
-                        )}
-                      </Text>
-                      <Text color={subtleTextColor}>{new Date(tx.createdAt).toLocaleDateString()}</Text>
-                    </Flex>
-                  ))}
-                </Box>
-              ) : (
-                <Text color={subtleTextColor}>No transactions yet.</Text>
-              )}
+              <Tabs variant="enclosed" colorScheme="blue">
+                <TabList>
+                  <Tab>All</Tab>
+                  <Tab>Pending</Tab>
+                  <Tab>Completed</Tab>
+                  <Tab>Failed</Tab>
+                </TabList>
+                <TabPanels>
+                  <TabPanel>
+                    {Array.isArray(transactions) && transactions.length > 0 ? (
+                      <VStack spacing={3}>
+                        {transactions.map(renderTransaction)}
+                      </VStack>
+                    ) : (
+                      <Text color={subtleTextColor}>No transactions available.</Text>
+                    )}
+                  </TabPanel>
+                  <TabPanel>
+                    {Array.isArray(transactions) && transactions.some(tx => tx.status === 'pending') ? (
+                      <VStack spacing={3}>
+                        {transactions.filter(tx => tx.status === 'pending').map(renderTransaction)}
+                      </VStack>
+                    ) : (
+                      <Text color={subtleTextColor}>No pending transactions.</Text>
+                    )}
+                  </TabPanel>
+                  <TabPanel>
+                    {Array.isArray(transactions) && transactions.some(tx => tx.status === 'completed') ? (
+                      <VStack spacing={3}>
+                        {transactions.filter(tx => tx.status === 'completed').map(renderTransaction)}
+                      </VStack>
+                    ) : (
+                      <Text color={subtleTextColor}>No completed transactions.</Text>
+                    )}
+                  </TabPanel>
+                  <TabPanel>
+                    {Array.isArray(transactions) && transactions.some(tx => tx.status === 'failed') ? (
+                      <VStack spacing={3}>
+                        {transactions.filter(tx => tx.status === 'failed').map(renderTransaction)}
+                      </VStack>
+                    ) : (
+                      <Text color={subtleTextColor}>No failed transactions.</Text>
+                    )}
+                  </TabPanel>
+                </TabPanels>
+              </Tabs>
             </Box>
           </Box>
         </motion.div>

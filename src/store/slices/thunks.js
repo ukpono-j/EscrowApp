@@ -5,16 +5,24 @@ const BASE_URL = import.meta.env.VITE_BASE_URL;
 
 export const fetchInitialData = createAsyncThunk(
   'app/fetchInitialData',
-  async (_, { rejectWithValue, dispatch }) => {
+  async (_, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem('access-token');
       if (!token) throw new Error('No access token found');
 
       const results = await Promise.allSettled([
-        axios.get(`${BASE_URL}/api/users/user-details`),
-        axios.get(`${BASE_URL}/api/transactions/get-transaction`),
-        axios.get(`${BASE_URL}/api/wallet/balance`),
-        axios.get(`${BASE_URL}/api/wallet/transactions`),
+        axios.get(`${BASE_URL}/api/users/user-details`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        axios.get(`${BASE_URL}/api/transactions/get-transaction`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        axios.get(`${BASE_URL}/api/wallet/balance`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        axios.get(`${BASE_URL}/api/wallet/transactions`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
       ]);
 
       const [userRes, txRes, walletRes, walletTxRes] = results.map((result) => {
@@ -29,48 +37,55 @@ export const fetchInitialData = createAsyncThunk(
       const walletTransactions = walletTxRes.data?.success && Array.isArray(walletTxRes.data.data?.transactions)
         ? walletTxRes.data.data.transactions
         : [];
+      const walletBalance = walletRes.data?.success && typeof walletRes.data.data.balance === 'number'
+        ? walletRes.data.data.balance
+        : 0;
+      const totalDeposits = walletRes.data?.success && typeof walletRes.data.data.totalDeposits === 'number'
+        ? walletRes.data.data.totalDeposits
+        : 0;
 
       if (!userRes.data?.success && userRes.data?.error?.includes('Database not connected')) {
         throw new Error('Server database connection failed');
       }
 
       return {
-        user: userRes.data?.success ? userRes.data.data.user : null,
+        userDetails: userRes.data?.success ? userRes.data.data : null,
         transactions,
         wallet: {
-          balance: walletRes.data?.success ? walletRes.data.data.balance : 0,
+          balance: walletBalance,
+          totalDeposits,
           transactions: walletTransactions,
         },
       };
     } catch (error) {
       console.error('fetchInitialData error:', error);
       return rejectWithValue({
-        message: error.response?.data?.error || error.message,
-        status: error.response?.status,
+        message: error.message || 'Failed to fetch initial data',
       });
     }
   }
 );
 
-
 export const updateTransaction = createAsyncThunk(
   'transactions/updateTransaction',
   async ({ transactionId, data }, { rejectWithValue }) => {
     try {
-      const token = localStorage.getItem('access-token');
-      console.log('Token used for updateTransaction:', token);
-      if (!token) {
-        return rejectWithValue('No access token found');
-      }
       const response = await axios.put(
-        `${BASE_URL}/api/transactions/update-payment-details/${transactionId}`,
-        { paymentAmount: parseFloat(data.paymentAmount) },
-        { headers: { Authorization: `Bearer ${token}` } }
+        `${BASE_URL}/api/transactions/update-transaction/${transactionId}`,
+        data,
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem('access-token')}` },
+        }
       );
-      return response.data.transaction;
+      if (response.data?.success) {
+        return response.data.data;
+      }
+      throw new Error(response.data?.error || 'Failed to update transaction');
     } catch (error) {
-      console.error('updateTransaction error:', error.response?.data || error.message);
-      return rejectWithValue(error.response?.data?.message || error.message);
+      console.error('updateTransaction error:', error);
+      return rejectWithValue({
+        message: error.message || 'Failed to update transaction',
+      });
     }
   }
 );
@@ -80,13 +95,21 @@ export const confirmTransaction = createAsyncThunk(
   async (transactionId, { rejectWithValue }) => {
     try {
       const response = await axios.post(
-        `${BASE_URL}/api/transactions/confirm`,
-        { transactionId },
-        { headers: { Authorization: `Bearer ${localStorage.getItem('access-token')}` } }
+        `${BASE_URL}/api/transactions/confirm-transaction/${transactionId}`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem('access-token')}` },
+        }
       );
-      return response.data.transaction;
+      if (response.data?.success) {
+        return response.data.data;
+      }
+      throw new Error(response.data?.error || 'Failed to confirm transaction');
     } catch (error) {
-      return rejectWithValue(error.response?.data?.error || error.message);
+      console.error('confirmTransaction error:', error);
+      return rejectWithValue({
+        message: error.message || 'Failed to confirm transaction',
+      });
     }
   }
 );
@@ -98,11 +121,19 @@ export const fundTransaction = createAsyncThunk(
       const response = await axios.post(
         `${BASE_URL}/api/transactions/fund-transaction`,
         { transactionId, amount },
-        { headers: { Authorization: `Bearer ${localStorage.getItem('access-token')}` } }
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem('access-token')}` },
+        }
       );
-      return response.data;
+      if (response.data?.success) {
+        return response.data.data;
+      }
+      throw new Error(response.data?.error || 'Failed to fund transaction');
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      console.error('fundTransaction error:', error);
+      return rejectWithValue({
+        message: error.message || 'Failed to fund transaction',
+      });
     }
   }
 );
@@ -111,31 +142,22 @@ export const cancelTransaction = createAsyncThunk(
   'transactions/cancelTransaction',
   async (transactionId, { rejectWithValue }) => {
     try {
-      const response = await axios.put(
-        `${BASE_URL}/api/transactions/cancel/${transactionId}`,
+      const response = await axios.post(
+        `${BASE_URL}/api/transactions/cancel-transaction/${transactionId}`,
         {},
-        { headers: { Authorization: `Bearer ${localStorage.getItem('access-token')}` } }
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem('access-token')}` },
+        }
       );
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.error || error.message);
-    }
-  }
-);
-
-export const submitWaybill = createAsyncThunk(
-  "transactions/submitWaybill",
-  async ({ transactionId, formData }, { rejectWithValue }) => {
-    try {
-      const response = await axios.post("/api/transactions/submit-waybill", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      if (response.data.success) {
+      if (response.data?.success) {
         return response.data.data;
       }
-      return rejectWithValue(response.data.error || "Failed to submit waybill");
+      throw new Error(response.data?.error || 'Failed to cancel transaction');
     } catch (error) {
-      return rejectWithValue(error.response?.data?.error || error.message);
+      console.error('cancelTransaction error:', error);
+      return rejectWithValue({
+        message: error.message || 'Failed to cancel transaction',
+      });
     }
   }
 );
