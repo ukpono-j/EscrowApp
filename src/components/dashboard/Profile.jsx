@@ -35,7 +35,6 @@ const PAYSTACK_BANKS = [
 const BASE_URL = (import.meta.env.VITE_BASE_URL || 'http://localhost:3001').replace(/\/$/, '');
 const logger = pino({ level: 'info', browser: { asObject: true } });
 
-// Utility for retrying API calls with exponential backoff
 const retryAsync = async (fn, maxRetries = 3, initialDelay = 1000) => {
   let lastError = null;
   for (let i = 0; i < maxRetries; i++) {
@@ -215,7 +214,7 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
           {paymentDetails?.authorization_url ? (
             <>
               <Text color={textColor} mb={4}>
-                Click the button below to proceed with payment of ₦{amount?.toFixed(2)}:
+                Click the button below to proceed with payment of ₦{amount ? amount.toFixed(2) : '0.00'}:
               </Text>
               <Button
                 as="a"
@@ -232,7 +231,7 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
             </>
           ) : paymentDetails?.virtualAccount ? (
             <>
-              <Text color={textColor} mb={2}>Transfer ₦{amount?.toFixed(2)} to the account below:</Text>
+              <Text color={textColor} mb={2}>Transfer ₦{amount ? amount.toFixed(2) : '0.00'} to the account below:</Text>
               <Box p={4} bg={boxBg} borderRadius="md">
                 <Flex align="center" justify="space-between" mb={2}>
                   <Text fontWeight="bold" color={textColor}>Account Name: {paymentDetails.virtualAccount.account_name}</Text>
@@ -470,7 +469,8 @@ const Profile = () => {
   const { isOpen: isFundOpen, onOpen: onFundOpen, onClose: onFundClose } = useDisclosure();
   const { isOpen: isWithdrawOpen, onOpen: onWithdrawOpen, onClose: onWithdrawClose } = useDisclosure();
   const { isOpen: isAmountOpen, onOpen: onAmountOpen, onClose: onAmountClose } = useDisclosure();
-  const { user, wallet, transactions, paymentDetails, loading, error } = useSelector((state) => state.wallet);
+  const { user, wallet, paymentDetails, loading, error } = useSelector((state) => state.wallet);
+  const transactions = wallet?.transactions || [];
   const [isEditing, setIsEditing] = React.useState(false);
   const [formData, setFormData] = React.useState({ firstName: '', lastName: '', phoneNumber: '' });
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -517,7 +517,7 @@ const Profile = () => {
         axios.post(
           `${BASE_URL}/api/wallet/check-funding-readiness`,
           {},
-          { headers: { Authorization: `Bearer ${token}` } }
+          { headers: { Authorization: `Bearer ${token}` }, params: { noCache: Date.now() } }
         )
       );
 
@@ -565,7 +565,6 @@ const Profile = () => {
     }
   };
 
-  // Periodic polling for balance when socket is disconnected
   useEffect(() => {
     let intervalId;
     if (!isSocketConnected && user?._id) {
@@ -574,11 +573,18 @@ const Profile = () => {
           await retryAsync(() => dispatch(fetchInitialData()).unwrap());
         } catch (error) {
           logger.error({ message: 'Periodic balance fetch failed', error: error.message });
+          toast({
+            title: 'Error',
+            description: 'Failed to sync balance. Please check your network or refresh manually.',
+            status: 'error',
+            duration: 5000,
+            isClosable: true,
+          });
         }
-      }, 30000); // Poll every 30 seconds
+      }, 15000);
     }
     return () => clearInterval(intervalId);
-  }, [isSocketConnected, user?._id, dispatch]);
+  }, [isSocketConnected, user?._id, dispatch, toast]);
 
   useEffect(() => {
     const initialize = async () => {
@@ -610,8 +616,8 @@ const Profile = () => {
         socketRef.current = io(BASE_URL, {
           auth: { token },
           reconnection: true,
-          reconnectionAttempts: 5, // Increased for better reliability
-          reconnectionDelay: 2000, // Increased delay for unstable networks
+          reconnectionAttempts: 10,
+          reconnectionDelay: 2000,
         });
 
         socketRef.current.on('connect', () => {
@@ -624,7 +630,7 @@ const Profile = () => {
           dispatch(setWallet({
             balance: data.balance,
             totalDeposits: data.totalDeposits,
-            transactions: data.transaction ? [...(wallet.transactions || []), data.transaction] : wallet.transactions,
+            transaction: data.transaction ? { ...data.transaction, amount: data.transaction.amount } : null,
           }));
           toast({
             title: 'Balance Updated',
@@ -636,7 +642,7 @@ const Profile = () => {
         });
 
         socketRef.current.on('fundingInitiated', (data) => {
-          dispatch(setPaymentDetails(data));
+          dispatch(setPaymentDetails({ ...data, amount: data.amount }));
           setFundingAmount(data.amount);
           onFundOpen();
         });
@@ -651,11 +657,17 @@ const Profile = () => {
             duration: 5000,
             isClosable: true,
           });
+          retryAsync(() => dispatch(fetchInitialData()).unwrap()).catch(error => {
+            logger.error({ message: 'Immediate fetch on socket error failed', error: error.message });
+          });
         });
 
         socketRef.current.on('disconnect', () => {
           setIsSocketConnected(false);
           logger.info('Socket disconnected');
+          retryAsync(() => dispatch(fetchInitialData()).unwrap()).catch(error => {
+            logger.error({ message: 'Immediate fetch on socket disconnect failed', error: error.message });
+          });
         });
 
         setIsAuthLoading(false);
@@ -709,7 +721,7 @@ const Profile = () => {
       );
       if (response.success) {
         setFundingAmount(amount);
-        dispatch(setPaymentDetails(response.data));
+        dispatch(setPaymentDetails({ ...response.data, amount }));
         if (response.data.authorization_url) {
           window.location.href = response.data.authorization_url;
         } else {
@@ -767,6 +779,7 @@ const Profile = () => {
         dispatch(clearPaymentDetails());
         setFundingAmount(null);
         onFundClose();
+        await retryAsync(() => dispatch(fetchInitialData()).unwrap());
       } else {
         toast({
           title: response.data.transaction?.status === 'failed' ? 'Failed' : 'Pending',
@@ -851,7 +864,7 @@ const Profile = () => {
         <Text color={textColor} fontSize="xl" mb={4}>Unable to load profile data. Please try again.</Text>
         <Button
           colorScheme="blue"
-          onClick={() => retryAsync(() => dispatch(fetchInitialData()))}
+          onClick={() => retryAsync(() => dispatch(fetchInitialData()).unwrap())}
           isLoading={loading}
         >
           Retry
@@ -959,11 +972,16 @@ const Profile = () => {
                 </Heading>
               </Flex>
               <Text color={textColor} fontSize="2xl" fontWeight="bold">
-                ₦{wallet?.balance ? wallet.balance.toFixed(2) : '0.00'}
+                ₦{(wallet?.balance || 0).toFixed(2)}
               </Text>
               {!isSocketConnected && (
                 <Text color={subtleTextColor} fontSize="sm" mt={2}>
-                  Real-time updates unavailable. Balance syncing every 30 seconds.
+                  Real-time updates unavailable. Balance syncing every 15 seconds. Click "Refresh" if balance seems incorrect.
+                </Text>
+              )}
+              {error && (
+                <Text color="red.500" fontSize="sm" mt={2}>
+                  {error} Click "Refresh" to sync.
                 </Text>
               )}
               <Flex gap={2} mt={4}>
@@ -981,7 +999,7 @@ const Profile = () => {
                   leftIcon={<FaMoneyBillWave />}
                   colorScheme="green"
                   onClick={onWithdrawOpen}
-                  isDisabled={wallet?.balance <= 0}
+                  isDisabled={(wallet?.balance || 0) <= 0}
                   size={{ base: 'sm', sm: 'md' }}
                 >
                   Withdraw
@@ -989,7 +1007,7 @@ const Profile = () => {
                 <Button
                   leftIcon={<FaSync />}
                   variant="outline"
-                  onClick={() => retryAsync(() => dispatch(fetchInitialData()))}
+                  onClick={() => retryAsync(() => dispatch(fetchInitialData()).unwrap())}
                   isLoading={loading}
                   size={{ base: 'sm', sm: 'md' }}
                 >
@@ -1004,7 +1022,7 @@ const Profile = () => {
               <Heading size="md" color={textColor} mb={4}>
                 <span>Recent Transactions</span>
               </Heading>
-              {transactions.length > 0 ? (
+              {Array.isArray(transactions) && transactions.length > 0 ? (
                 <Box>
                   {transactions.slice(0, 5).map((tx) => (
                     <Flex key={tx.reference} justify="space-between" p={2} borderBottom="1px" borderColor={subtleTextColor}>

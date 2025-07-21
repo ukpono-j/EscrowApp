@@ -3,9 +3,7 @@ import { fetchInitialData, fundWallet, checkFundingStatus, manualReconcileTransa
 
 const initialState = {
   user: null,
-  wallet: null,
-  totalDeposits: 0,
-  transactions: [],
+  wallet: { balance: 0, totalDeposits: 0, transactions: [] },
   paymentDetails: null,
   loading: false,
   fundingLoading: false,
@@ -18,36 +16,19 @@ const walletSlice = createSlice({
   reducers: {
     setWallet(state, action) {
       state.user = action.payload.user || state.user;
-      state.wallet = action.payload.balance ?? state.wallet;
-      state.totalDeposits = action.payload.totalDeposits ?? state.totalDeposits;
+      state.wallet.balance = action.payload.balance ?? state.wallet.balance;
+      state.wallet.totalDeposits = action.payload.totalDeposits ?? state.wallet.totalDeposits;
       if (action.payload.transaction) {
-        state.transactions = [
-          action.payload.transaction,
-          ...state.transactions.filter(t => t.reference !== action.payload.transaction.reference),
+        state.wallet.transactions = [
+          { ...action.payload.transaction, amount: action.payload.transaction.amount },
+          ...state.wallet.transactions.filter(t => t.reference !== action.payload.transaction.reference),
         ];
       } else if (action.payload.transactions) {
-        state.transactions = action.payload.transactions || state.transactions;
-      }
-      // Validate balance only if transactions are provided
-      if (action.payload.transactions || action.payload.transaction) {
-        const completedDeposits = state.transactions
-          .filter(t => t.status === 'completed' && t.type === 'deposit')
-          .reduce((sum, t) => sum + t.amount, 0);
-        const completedWithdrawals = state.transactions
-          .filter(t => t.status === 'completed' && t.type === 'withdrawal')
-          .reduce((sum, t) => sum + t.amount, 0);
-        const calculatedBalance = completedDeposits - completedWithdrawals;
-        if (state.wallet !== calculatedBalance) {
-          console.warn('Balance mismatch detected:', {
-            serverBalance: state.wallet,
-            calculatedBalance,
-          });
-          state.error = 'Balance mismatch detected. Please refresh or contact support.';
-        }
+        state.wallet.transactions = action.payload.transactions || state.wallet.transactions;
       }
     },
     setPaymentDetails(state, action) {
-      state.paymentDetails = action.payload;
+      state.paymentDetails = { ...action.payload, amount: action.payload.amount };
     },
     clearPaymentDetails(state) {
       state.paymentDetails = null;
@@ -62,17 +43,16 @@ const walletSlice = createSlice({
       .addCase(fetchInitialData.fulfilled, (state, action) => {
         state.loading = false;
         state.user = action.payload.data.user || null;
-        state.wallet = action.payload.data.wallet?.balance || 0;
-        state.totalDeposits = action.payload.data.wallet?.totalDeposits || 0;
-        state.transactions = action.payload.data.wallet?.transactions || [];
-        state.paymentDetails = action.payload.data.wallet?.paymentDetails || null;
-        if (action.payload.warning) {
-          state.error = action.payload.warning;
-        }
+        state.wallet.balance = action.payload.data.wallet?.balance || 0;
+        state.wallet.totalDeposits = action.payload.data.wallet?.totalDeposits || 0;
+        state.wallet.transactions = action.payload.data.wallet?.transactions || [];
+        state.paymentDetails = action.payload.data.wallet?.paymentDetails
+          ? { ...action.payload.data.wallet.paymentDetails, amount: action.payload.data.wallet.paymentDetails.amount }
+          : null;
       })
       .addCase(fetchInitialData.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to fetch wallet data. Please check your network and try again.';
+        state.error = action.payload?.message || 'Failed to fetch wallet data. Please check your network and try again.';
       })
       .addCase(fundWallet.pending, (state) => {
         state.fundingLoading = true;
@@ -80,11 +60,11 @@ const walletSlice = createSlice({
       })
       .addCase(fundWallet.fulfilled, (state, action) => {
         state.fundingLoading = false;
-        state.paymentDetails = action.payload.data;
+        state.paymentDetails = { ...action.payload.data, amount: action.payload.data.amount };
       })
       .addCase(fundWallet.rejected, (state, action) => {
         state.fundingLoading = false;
-        state.error = action.error.message || 'Failed to initiate funding. Please check your network and try again.';
+        state.error = action.payload?.message || 'Failed to initiate funding. Please check your network and try again.';
       })
       .addCase(checkFundingStatus.pending, (state) => {
         state.loading = true;
@@ -93,21 +73,21 @@ const walletSlice = createSlice({
       .addCase(checkFundingStatus.fulfilled, (state, action) => {
         state.loading = false;
         if (action.payload.success && action.payload.data.transaction) {
-          const transaction = action.payload.data.transaction;
-          state.transactions = [
+          const transaction = { ...action.payload.data.transaction, amount: action.payload.data.transaction.amount };
+          state.wallet.transactions = [
             transaction,
-            ...state.transactions.filter(t => t.reference !== transaction.reference),
+            ...state.wallet.transactions.filter(t => t.reference !== transaction.reference),
           ];
           if (transaction.status === 'completed') {
-            state.wallet = (state.wallet || 0) + transaction.amount;
-            state.totalDeposits = (state.totalDeposits || 0) + transaction.amount;
+            state.wallet.balance = action.payload.data.wallet?.balance || 0;
+            state.wallet.totalDeposits = action.payload.data.wallet?.totalDeposits || 0;
             state.paymentDetails = null;
           }
         }
       })
       .addCase(checkFundingStatus.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to check funding status. Please check your network and try again.';
+        state.error = action.payload?.message || 'Failed to check funding status. Please check your network and try again.';
       })
       .addCase(manualReconcileTransaction.pending, (state) => {
         state.loading = true;
@@ -116,21 +96,21 @@ const walletSlice = createSlice({
       .addCase(manualReconcileTransaction.fulfilled, (state, action) => {
         state.loading = false;
         if (action.payload.success && action.payload.data.transaction) {
-          const transaction = action.payload.data.transaction;
-          state.transactions = [
+          const transaction = { ...action.payload.data.transaction, amount: action.payload.data.transaction.amount };
+          state.wallet.transactions = [
             transaction,
-            ...state.transactions.filter(t => t.reference !== transaction.reference),
+            ...state.wallet.transactions.filter(t => t.reference !== transaction.reference),
           ];
           if (transaction.status === 'completed') {
-            state.wallet = (state.wallet || 0) + transaction.amount;
-            state.totalDeposits = (state.totalDeposits || 0) + transaction.amount;
+            state.wallet.balance = action.payload.data.wallet?.balance || 0;
+            state.wallet.totalDeposits = action.payload.data.wallet?.totalDeposits || 0;
             state.paymentDetails = null;
           }
         }
       })
       .addCase(manualReconcileTransaction.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to reconcile transaction. Please check your network and try again.';
+        state.error = action.payload?.message || 'Failed to reconcile transaction. Please check your network and try again.';
       })
       .addCase(withdrawFunds.pending, (state) => {
         state.loading = true;
@@ -139,19 +119,19 @@ const walletSlice = createSlice({
       .addCase(withdrawFunds.fulfilled, (state, action) => {
         state.loading = false;
         if (action.payload.success && action.payload.data.transaction) {
-          const transaction = action.payload.data.transaction;
-          state.transactions = [
+          const transaction = { ...action.payload.data.transaction, amount: action.payload.data.transaction.amount };
+          state.wallet.transactions = [
             transaction,
-            ...state.transactions.filter(t => t.reference !== transaction.reference),
+            ...state.wallet.transactions.filter(t => t.reference !== transaction.reference),
           ];
           if (transaction.status === 'completed') {
-            state.wallet = (state.wallet || 0) - transaction.amount;
+            state.wallet.balance = action.payload.data.wallet?.balance || 0;
           }
         }
       })
       .addCase(withdrawFunds.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to withdraw funds. Please check your network and try again.';
+        state.error = action.payload?.message || 'Failed to withdraw funds. Please check your network and try again.';
       });
   },
 });

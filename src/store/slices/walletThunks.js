@@ -8,8 +8,8 @@ const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:3001';
 const logger = pino({ level: 'info', browser: { asObject: true } });
 
 axiosRetry(axios, {
-  retries: 3,
-  retryDelay: (retryCount) => Math.pow(2, retryCount) * 1000, // Exponential backoff: 1s, 2s, 4s
+  retries: 5,
+  retryDelay: (retryCount) => Math.pow(2, retryCount) * 1000,
   retryCondition: (error) => error.response?.status >= 500 || error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK',
 });
 
@@ -19,6 +19,7 @@ export const fetchInitialData = createAsyncThunk(
     try {
       const response = await axios.get(`${BASE_URL}/api/wallet/balance`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('access-token')}` },
+        params: { noCache: Date.now() },
       });
       logger.info('Fetched initial wallet data:', {
         userId: response.data.data?.user?._id,
@@ -115,6 +116,7 @@ export const checkFundingStatus = createAsyncThunk(
     try {
       const response = await axios.get(`${BASE_URL}/api/wallet/funding-status/${reference}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('access-token')}` },
+        params: { noCache: Date.now() },
       });
       logger.info('Checked funding status:', {
         reference,
@@ -123,8 +125,8 @@ export const checkFundingStatus = createAsyncThunk(
 
       if (response.data.success && response.data.data.transaction?.status === 'completed') {
         dispatch(setWallet({
-          balance: (response.data.data.wallet?.balance || 0),
-          totalDeposits: (response.data.data.wallet?.totalDeposits || 0),
+          balance: response.data.data.wallet?.balance || 0,
+          totalDeposits: response.data.data.wallet?.totalDeposits || 0,
           transaction: response.data.data.transaction,
         }));
       }
@@ -160,8 +162,8 @@ export const manualReconcileTransaction = createAsyncThunk(
 
       if (response.data.success && response.data.data.transaction?.status === 'completed') {
         dispatch(setWallet({
-          balance: (response.data.data.wallet?.balance || 0),
-          totalDeposits: (response.data.data.wallet?.totalDeposits || 0),
+          balance: response.data.data.wallet?.balance || 0,
+          totalDeposits: response.data.data.wallet?.totalDeposits || 0,
           transaction: response.data.data.transaction,
         }));
       }
