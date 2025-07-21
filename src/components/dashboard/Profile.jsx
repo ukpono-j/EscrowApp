@@ -35,6 +35,21 @@ const PAYSTACK_BANKS = [
 const BASE_URL = (import.meta.env.VITE_BASE_URL || 'http://localhost:3001').replace(/\/$/, '');
 const logger = pino({ level: 'info', browser: { asObject: true } });
 
+// Utility for retrying API calls with exponential backoff
+const retryAsync = async (fn, maxRetries = 3, initialDelay = 1000) => {
+  let lastError = null;
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      const delay = initialDelay * Math.pow(2, i);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  throw lastError;
+};
+
 class ErrorBoundary extends React.Component {
   state = { hasError: false, error: null };
 
@@ -73,7 +88,7 @@ const FundAmountModal = ({ isOpen, onClose, onSubmit }) => {
   const textColor = useColorModeValue('gray.800', 'white');
 
   const handleSubmit = async () => {
-    if (isSubmitting) return; // Prevent multiple submissions
+    if (isSubmitting) return;
     const amountNum = parseFloat(amount);
     if (!amountNum || amountNum < 100) {
       toast({
@@ -87,12 +102,12 @@ const FundAmountModal = ({ isOpen, onClose, onSubmit }) => {
     }
     setIsSubmitting(true);
     try {
-      await onSubmit(amountNum);
+      await retryAsync(() => onSubmit(amountNum));
       onClose();
     } catch (error) {
       toast({
         title: 'Error',
-        description: error.message || 'Failed to initiate funding.',
+        description: error.message || 'Failed to initiate funding. Please check your network and try again.',
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -159,7 +174,7 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
       return toast({ title: 'Error', description: 'No reference available.', status: 'error', duration: 5000, isClosable: true });
     }
     try {
-      const { success, data } = await dispatch(manualReconcileTransaction(ref)).unwrap();
+      const { success, data } = await retryAsync(() => dispatch(manualReconcileTransaction(ref)).unwrap());
       if (success) {
         toast({
           title: 'Success',
@@ -182,7 +197,7 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
     } catch (error) {
       toast({
         title: 'Error',
-        description: error.message || 'Reconciliation failed.',
+        description: error.message || 'Reconciliation failed. Please check your network and try again.',
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -234,7 +249,7 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
                 <Text color={subtleTextColor}>Bank: {paymentDetails.virtualAccount.bank_name}</Text>
               </Box>
               <Text color={subtleTextColor} mt={4} fontSize="sm">
-                Your payment will be credited within 5 minutes. If delayed, it may be processing and will be updated soon.
+                Your payment will be credited within 5 minutes. If delayed, click "Check Status" or "Reconcile" to update.
               </Text>
             </>
           ) : (
@@ -284,14 +299,14 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
 
   const fetchBanks = async () => {
     try {
-      const response = await axios.get('/api/wallet/paystack/banks');
+      const response = await retryAsync(() => axios.get('/api/wallet/paystack/banks'));
       if (response.data.success && response.data.data.length > 0) {
         setBanks(response.data.data);
       } else {
         setBanks(PAYSTACK_BANKS);
         toast({
           title: 'Warning',
-          description: 'Using fallback bank list.',
+          description: 'Using fallback bank list due to network issues.',
           status: 'warning',
           duration: 5000,
           isClosable: true,
@@ -321,7 +336,7 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
     }
     setIsVerifying(true);
     try {
-      const response = await axios.post('/api/wallet/verify-account', { bankCode, accountNumber });
+      const response = await retryAsync(() => axios.post('/api/wallet/verify-account', { bankCode, accountNumber }));
       if (response.data.success) {
         setVerifiedAccountName(response.data.accountName);
         setAccountName(response.data.accountName);
@@ -346,7 +361,7 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
     }
     setIsSubmitting(true);
     try {
-      const response = await dispatch(withdrawFunds({ amount, bankCode, accountNumber, accountName })).unwrap();
+      const response = await retryAsync(() => dispatch(withdrawFunds({ amount, bankCode, accountNumber, accountName })).unwrap());
       if (response.success) {
         toast({ title: 'Success', description: `Withdrawal of ₦${amount.toFixed(2)} initiated.`, status: 'success', duration: 5000, isClosable: true });
         onClose();
@@ -354,7 +369,7 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
         toast({ title: 'Error', description: response.error || 'Withdrawal failed.', status: 'error', duration: 5000, isClosable: true });
       }
     } catch (error) {
-      toast({ title: 'Error', description: error.message || 'Withdrawal failed.', status: 'error', duration: 5000, isClosable: true });
+      toast({ title: 'Error', description: error.message || 'Withdrawal failed. Please check your network and try again.', status: 'error', duration: 5000, isClosable: true });
     } finally {
       setIsSubmitting(false);
     }
@@ -462,6 +477,7 @@ const Profile = () => {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [authError, setAuthError] = useState(null);
   const [fundingAmount, setFundingAmount] = useState(null);
+  const [isSocketConnected, setIsSocketConnected] = useState(false);
   const socketRef = useRef(null);
   const textColor = useColorModeValue('gray.800', 'white');
   const subtleTextColor = useColorModeValue('gray.600', 'gray.300');
@@ -497,10 +513,12 @@ const Profile = () => {
         return;
       }
 
-      const response = await axios.post(
-        `${BASE_URL}/api/wallet/check-funding-readiness`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
+      const response = await retryAsync(() =>
+        axios.post(
+          `${BASE_URL}/api/wallet/check-funding-readiness`,
+          {},
+          { headers: { Authorization: `Bearer ${token}` } }
+        )
       );
 
       if (response.data.success) {
@@ -520,7 +538,7 @@ const Profile = () => {
       }
     } catch (error) {
       const status = error.response?.status;
-      let errorMessage = 'Failed to check funding readiness. Please try again later.';
+      let errorMessage = 'Failed to check funding readiness. Please check your network and try again.';
       let action = { label: 'Retry', onClick: () => handleCheckFundingReadiness() };
 
       if (status === 404) {
@@ -547,6 +565,21 @@ const Profile = () => {
     }
   };
 
+  // Periodic polling for balance when socket is disconnected
+  useEffect(() => {
+    let intervalId;
+    if (!isSocketConnected && user?._id) {
+      intervalId = setInterval(async () => {
+        try {
+          await retryAsync(() => dispatch(fetchInitialData()).unwrap());
+        } catch (error) {
+          logger.error({ message: 'Periodic balance fetch failed', error: error.message });
+        }
+      }, 30000); // Poll every 30 seconds
+    }
+    return () => clearInterval(intervalId);
+  }, [isSocketConnected, user?._id, dispatch]);
+
   useEffect(() => {
     const initialize = async () => {
       const token = localStorage.getItem('access-token');
@@ -567,7 +600,7 @@ const Profile = () => {
         }
 
         axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        const result = await dispatch(fetchInitialData()).unwrap();
+        const result = await retryAsync(() => dispatch(fetchInitialData()).unwrap());
         if (!result.success) {
           setAuthError('Failed to authenticate. Please log in again.');
           setIsAuthLoading(false);
@@ -577,21 +610,26 @@ const Profile = () => {
         socketRef.current = io(BASE_URL, {
           auth: { token },
           reconnection: true,
-          reconnectionAttempts: 3,
-          reconnectionDelay: 1000,
+          reconnectionAttempts: 5, // Increased for better reliability
+          reconnectionDelay: 2000, // Increased delay for unstable networks
         });
 
         socketRef.current.on('connect', () => {
           logger.info('Socket connected');
+          setIsSocketConnected(true);
           socketRef.current.emit('join', decoded.id);
         });
 
         socketRef.current.on('balanceUpdate', (data) => {
-          dispatch(setWallet(data));
+          dispatch(setWallet({
+            balance: data.balance,
+            totalDeposits: data.totalDeposits,
+            transactions: data.transaction ? [...(wallet.transactions || []), data.transaction] : wallet.transactions,
+          }));
           toast({
             title: 'Balance Updated',
             description: `New balance: ₦${data.balance.toFixed(2)}`,
-            status: 'info',
+            status: 'success',
             duration: 5000,
             isClosable: true,
           });
@@ -605,13 +643,19 @@ const Profile = () => {
 
         socketRef.current.on('connect_error', (err) => {
           logger.error({ message: 'Socket connection error', error: err.message });
+          setIsSocketConnected(false);
           toast({
             title: 'Connection Error',
-            description: 'Failed to connect to real-time updates.',
-            status: 'error',
+            description: 'Real-time updates unavailable. Balance will sync periodically.',
+            status: 'warning',
             duration: 5000,
             isClosable: true,
           });
+        });
+
+        socketRef.current.on('disconnect', () => {
+          setIsSocketConnected(false);
+          logger.info('Socket disconnected');
         });
 
         setIsAuthLoading(false);
@@ -655,19 +699,21 @@ const Profile = () => {
     }
     try {
       setIsSubmitting(true);
-      const response = await dispatch(fundWallet({
-        amount,
-        email: user.email,
-        phoneNumber: user.phoneNumber,
-        userId: user._id,
-      })).unwrap();
+      const response = await retryAsync(() =>
+        dispatch(fundWallet({
+          amount,
+          email: user.email,
+          phoneNumber: user.phoneNumber,
+          userId: user._id,
+        })).unwrap()
+      );
       if (response.success) {
         setFundingAmount(amount);
         dispatch(setPaymentDetails(response.data));
         if (response.data.authorization_url) {
-          window.location.href = response.data.authorization_url; // Redirect to Paystack payment page
+          window.location.href = response.data.authorization_url;
         } else {
-          onFundOpen(); // Open modal for virtual account details
+          onFundOpen();
         }
       } else {
         toast({
@@ -679,7 +725,7 @@ const Profile = () => {
         });
       }
     } catch (error) {
-      let errorMessage = error.message || 'Failed to initiate funding.';
+      let errorMessage = error.message || 'Failed to initiate funding. Please check your network and try again.';
       if (error.status === 502 && error.message.includes('Payment provider authentication failed')) {
         errorMessage = 'Payment provider configuration issue. Please contact support.';
       } else if (error.status === 400 && error.message.includes('Duplicate transaction detected')) {
@@ -709,7 +755,7 @@ const Profile = () => {
       return;
     }
     try {
-      const response = await dispatch(checkFundingStatus(ref)).unwrap();
+      const response = await retryAsync(() => dispatch(checkFundingStatus(ref)).unwrap());
       if (response.success && response.data.transaction?.status === 'completed') {
         toast({
           title: 'Success',
@@ -724,7 +770,7 @@ const Profile = () => {
       } else {
         toast({
           title: response.data.transaction?.status === 'failed' ? 'Failed' : 'Pending',
-          description: response.message,
+          description: response.message || 'Transaction is still processing. Please check again later.',
           status: response.data.transaction?.status === 'failed' ? 'error' : 'info',
           duration: 5000,
           isClosable: true,
@@ -733,7 +779,7 @@ const Profile = () => {
     } catch (error) {
       toast({
         title: 'Error',
-        description: error.message || 'Failed to check funding status.',
+        description: error.message || 'Failed to check funding status. Please check your network and try again.',
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -744,7 +790,7 @@ const Profile = () => {
   const handleUpdateProfile = async () => {
     setIsSubmitting(true);
     try {
-      const response = await axios.put('/api/users/update', formData);
+      const response = await retryAsync(() => axios.put('/api/users/update', formData));
       if (response.data.success) {
         dispatch(setWallet({ ...user, ...formData }));
         setIsEditing(false);
@@ -767,7 +813,7 @@ const Profile = () => {
     } catch (error) {
       toast({
         title: 'Error',
-        description: error.response?.data?.error || 'Failed to update profile.',
+        description: error.response?.data?.error || 'Failed to update profile. Please check your network and try again.',
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -805,7 +851,7 @@ const Profile = () => {
         <Text color={textColor} fontSize="xl" mb={4}>Unable to load profile data. Please try again.</Text>
         <Button
           colorScheme="blue"
-          onClick={() => dispatch(fetchInitialData())}
+          onClick={() => retryAsync(() => dispatch(fetchInitialData()))}
           isLoading={loading}
         >
           Retry
@@ -913,8 +959,13 @@ const Profile = () => {
                 </Heading>
               </Flex>
               <Text color={textColor} fontSize="2xl" fontWeight="bold">
-                ₦{wallet ? wallet.toFixed(2) : '0.00'}
+                ₦{wallet?.balance ? wallet.balance.toFixed(2) : '0.00'}
               </Text>
+              {!isSocketConnected && (
+                <Text color={subtleTextColor} fontSize="sm" mt={2}>
+                  Real-time updates unavailable. Balance syncing every 30 seconds.
+                </Text>
+              )}
               <Flex gap={2} mt={4}>
                 <Button
                   leftIcon={<FaCreditCard />}
@@ -930,7 +981,7 @@ const Profile = () => {
                   leftIcon={<FaMoneyBillWave />}
                   colorScheme="green"
                   onClick={onWithdrawOpen}
-                  isDisabled={wallet <= 0}
+                  isDisabled={wallet?.balance <= 0}
                   size={{ base: 'sm', sm: 'md' }}
                 >
                   Withdraw
@@ -938,7 +989,7 @@ const Profile = () => {
                 <Button
                   leftIcon={<FaSync />}
                   variant="outline"
-                  onClick={() => dispatch(fetchInitialData())}
+                  onClick={() => retryAsync(() => dispatch(fetchInitialData()))}
                   isLoading={loading}
                   size={{ base: 'sm', sm: 'md' }}
                 >
@@ -959,6 +1010,11 @@ const Profile = () => {
                     <Flex key={tx.reference} justify="space-between" p={2} borderBottom="1px" borderColor={subtleTextColor}>
                       <Text color={textColor}>
                         {tx.type.charAt(0).toUpperCase() + tx.type.slice(1)}: ₦{tx.amount.toFixed(2)}
+                        {tx.status === 'pending' && (
+                          <Text as="span" color="yellow.500" ml={2} fontSize="sm">
+                            (Pending)
+                          </Text>
+                        )}
                       </Text>
                       <Text color={subtleTextColor}>{new Date(tx.createdAt).toLocaleDateString()}</Text>
                     </Flex>
@@ -991,7 +1047,7 @@ const Profile = () => {
         <WithdrawalModal
           isOpen={isWithdrawOpen}
           onClose={onWithdrawClose}
-          walletBalance={wallet || 0}
+          walletBalance={wallet?.balance || 0}
         />
       </Container>
     </ErrorBoundary>

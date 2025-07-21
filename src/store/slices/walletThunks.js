@@ -9,7 +9,7 @@ const logger = pino({ level: 'info', browser: { asObject: true } });
 
 axiosRetry(axios, {
   retries: 3,
-  retryDelay: (retryCount) => retryCount * 1000,
+  retryDelay: (retryCount) => Math.pow(2, retryCount) * 1000, // Exponential backoff: 1s, 2s, 4s
   retryCondition: (error) => error.response?.status >= 500 || error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK',
 });
 
@@ -32,7 +32,7 @@ export const fetchInitialData = createAsyncThunk(
         url: `${BASE_URL}/api/wallet/balance`,
       });
       return rejectWithValue({
-        message: error.response?.data?.error || 'Failed to fetch wallet data',
+        message: error.response?.data?.error || 'Failed to fetch wallet data. Please check your network and try again.',
         status: error.response?.status || 500,
         details: error.response?.data?.details,
       });
@@ -55,7 +55,7 @@ export const fundWallet = createAsyncThunk(
           message: response.data.error,
         });
         return rejectWithValue({
-          message: response.data.error || 'Failed to initiate funding',
+          message: response.data.error || 'Failed to initiate funding. Please check your network and try again.',
           status: response.status,
         });
       }
@@ -66,34 +66,7 @@ export const fundWallet = createAsyncThunk(
         reference: response.data.data?.reference,
       });
 
-      // Store payment details
       dispatch(setPaymentDetails(response.data.data));
-
-      // Fetch updated wallet data as a fallback
-      try {
-        const walletResponse = await axios.get(`${BASE_URL}/api/wallet/balance`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('access-token')}` },
-        });
-        if (walletResponse.data.success) {
-          dispatch(setWallet({
-            balance: walletResponse.data.data.wallet.balance,
-            totalDeposits: walletResponse.data.data.wallet.totalDeposits,
-            transactions: walletResponse.data.data.wallet.transactions,
-            user: walletResponse.data.data.user,
-          }));
-          logger.info('Fallback wallet fetch successful:', {
-            userId,
-            balance: walletResponse.data.data.wallet.balance,
-          });
-        }
-      } catch (walletError) {
-        logger.error('Fallback wallet fetch error:', {
-          status: walletError.response?.status,
-          message: walletError.response?.data?.error || walletError.message,
-        });
-        // Log the error but don't reject, as funding initiation was successful
-      }
-
       return response.data;
     } catch (error) {
       logger.error('Fund wallet error:', {
@@ -101,7 +74,7 @@ export const fundWallet = createAsyncThunk(
         message: error.response?.data?.error || error.message,
       });
       return rejectWithValue({
-        message: error.response?.data?.error || 'Failed to initiate funding',
+        message: error.response?.data?.error || 'Failed to initiate funding. Please check your network and try again.',
         status: error.response?.status || 500,
       });
     }
@@ -129,7 +102,7 @@ export const withdrawFunds = createAsyncThunk(
         message: error.response?.data?.error || error.message,
       });
       return rejectWithValue({
-        message: error.response?.data?.error || 'Failed to process withdrawal',
+        message: error.response?.data?.error || 'Failed to process withdrawal. Please check your network and try again.',
         status: error.response?.status,
       });
     }
@@ -149,8 +122,11 @@ export const checkFundingStatus = createAsyncThunk(
       });
 
       if (response.data.success && response.data.data.transaction?.status === 'completed') {
-        // Fetch updated wallet data to ensure balance is updated
-        await dispatch(fetchInitialData());
+        dispatch(setWallet({
+          balance: (response.data.data.wallet?.balance || 0),
+          totalDeposits: (response.data.data.wallet?.totalDeposits || 0),
+          transaction: response.data.data.transaction,
+        }));
       }
 
       return response.data;
@@ -161,7 +137,7 @@ export const checkFundingStatus = createAsyncThunk(
         message: error.response?.data?.error || error.message,
       });
       return rejectWithValue({
-        message: error.response?.data?.error || 'Failed to check funding status',
+        message: error.response?.data?.error || 'Failed to check funding status. Please check your network and try again.',
         status: error.response?.status,
       });
     }
@@ -182,9 +158,12 @@ export const manualReconcileTransaction = createAsyncThunk(
         status: response.data.data?.transaction?.status,
       });
 
-      if (response.data.success) {
-        // Fetch updated wallet data to ensure balance is updated
-        await dispatch(fetchInitialData());
+      if (response.data.success && response.data.data.transaction?.status === 'completed') {
+        dispatch(setWallet({
+          balance: (response.data.data.wallet?.balance || 0),
+          totalDeposits: (response.data.data.wallet?.totalDeposits || 0),
+          transaction: response.data.data.transaction,
+        }));
       }
 
       return response.data;
@@ -195,7 +174,7 @@ export const manualReconcileTransaction = createAsyncThunk(
         message: error.response?.data?.error || error.message,
       });
       return rejectWithValue({
-        message: error.response?.data?.error || 'Failed to reconcile transaction',
+        message: error.response?.data?.error || 'Failed to reconcile transaction. Please check your network and try again.',
         status: error.response?.status,
       });
     }

@@ -28,16 +28,22 @@ const walletSlice = createSlice({
       } else if (action.payload.transactions) {
         state.transactions = action.payload.transactions || state.transactions;
       }
-      // Recalculate balance from completed deposits to ensure accuracy
-      const calculatedBalance = state.transactions
-        .filter(t => t.status === 'completed' && t.type === 'deposit')
-        .reduce((sum, t) => sum + t.amount, 0);
-      if (state.wallet !== calculatedBalance) {
-        console.warn('Balance mismatch detected, correcting:', {
-          serverBalance: state.wallet,
-          calculatedBalance,
-        });
-        state.wallet = calculatedBalance;
+      // Validate balance only if transactions are provided
+      if (action.payload.transactions || action.payload.transaction) {
+        const completedDeposits = state.transactions
+          .filter(t => t.status === 'completed' && t.type === 'deposit')
+          .reduce((sum, t) => sum + t.amount, 0);
+        const completedWithdrawals = state.transactions
+          .filter(t => t.status === 'completed' && t.type === 'withdrawal')
+          .reduce((sum, t) => sum + t.amount, 0);
+        const calculatedBalance = completedDeposits - completedWithdrawals;
+        if (state.wallet !== calculatedBalance) {
+          console.warn('Balance mismatch detected:', {
+            serverBalance: state.wallet,
+            calculatedBalance,
+          });
+          state.error = 'Balance mismatch detected. Please refresh or contact support.';
+        }
       }
     },
     setPaymentDetails(state, action) {
@@ -66,7 +72,7 @@ const walletSlice = createSlice({
       })
       .addCase(fetchInitialData.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to fetch wallet data';
+        state.error = action.error.message || 'Failed to fetch wallet data. Please check your network and try again.';
       })
       .addCase(fundWallet.pending, (state) => {
         state.fundingLoading = true;
@@ -78,7 +84,7 @@ const walletSlice = createSlice({
       })
       .addCase(fundWallet.rejected, (state, action) => {
         state.fundingLoading = false;
-        state.error = action.error.message || 'Failed to initiate funding';
+        state.error = action.error.message || 'Failed to initiate funding. Please check your network and try again.';
       })
       .addCase(checkFundingStatus.pending, (state) => {
         state.loading = true;
@@ -101,7 +107,7 @@ const walletSlice = createSlice({
       })
       .addCase(checkFundingStatus.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to check funding status';
+        state.error = action.error.message || 'Failed to check funding status. Please check your network and try again.';
       })
       .addCase(manualReconcileTransaction.pending, (state) => {
         state.loading = true;
@@ -124,7 +130,7 @@ const walletSlice = createSlice({
       })
       .addCase(manualReconcileTransaction.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to reconcile transaction';
+        state.error = action.error.message || 'Failed to reconcile transaction. Please check your network and try again.';
       })
       .addCase(withdrawFunds.pending, (state) => {
         state.loading = true;
@@ -145,7 +151,7 @@ const walletSlice = createSlice({
       })
       .addCase(withdrawFunds.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to withdraw funds';
+        state.error = action.error.message || 'Failed to withdraw funds. Please check your network and try again.';
       });
   },
 });
