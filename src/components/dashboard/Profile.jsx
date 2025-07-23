@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -10,7 +9,7 @@ import {
   Container, useToast, Modal, ModalOverlay, ModalContent, ModalHeader, ModalFooter, ModalBody,
   ModalCloseButton, useDisclosure, NumberInput, NumberInputField, NumberInputStepper,
   NumberIncrementStepper, NumberDecrementStepper, Divider, IconButton, Select, useColorModeValue,
-  Tabs, TabList, Tab, TabPanels, TabPanel, Badge, VStack, SimpleGrid,
+  Tabs, TabList, Tab, TabPanels, TabPanel, Badge, VStack,
 } from '@chakra-ui/react';
 import { FaEdit, FaWallet, FaTimes, FaCreditCard, FaSync, FaMoneyBillWave, FaSave } from 'react-icons/fa';
 import { MdContentCopy } from 'react-icons/md';
@@ -156,7 +155,7 @@ const FundAmountModal = ({ isOpen, onClose, onSubmit }) => {
   );
 };
 
-const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, userName, amount }) => {
+const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, userName, amount, pendingTransactions }) => {
   const toast = useToast();
   const dispatch = useDispatch();
   const textColor = useColorModeValue('gray.800', 'white');
@@ -248,6 +247,11 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
                 <Text color={subtleTextColor}>Account Number: {paymentDetails.virtualAccount.account_number}</Text>
                 <Text color={subtleTextColor}>Bank: {paymentDetails.virtualAccount.bank_name}</Text>
               </Box>
+              {pendingTransactions?.length > 0 && (
+                <Text color="yellow.500" mt={4} fontSize="sm">
+                  Note: You have {pendingTransactions.length} pending transaction(s). Check the Transactions tab for details.
+                </Text>
+              )}
               <Text color={subtleTextColor} mt={4} fontSize="sm">
                 Your payment will be credited within 5 minutes. If delayed, click "Check Status" or "Reconcile" to update.
               </Text>
@@ -569,8 +573,9 @@ const Profile = () => {
     const initialize = async () => {
       const token = localStorage.getItem('access-token');
       if (!token) {
-        setAuthError('No authentication token found. Please log in.');
+        setAuthError('No authentication token found. Please log in again.');
         setIsAuthLoading(false);
+        navigate('/login');
         return;
       }
 
@@ -581,27 +586,47 @@ const Profile = () => {
           setAuthError('Your session has expired. Please log in again.');
           localStorage.removeItem('access-token');
           setIsAuthLoading(false);
+          navigate('/login');
           return;
         }
 
         axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         const result = await retryAsync(() => dispatch(fetchInitialData()).unwrap());
         if (!result.success) {
-          setAuthError('Failed to authenticate. Please log in again.');
+          let errorMessage = result.error || 'Failed to authenticate. Please log in again.';
+          if (result.status === 401) {
+            errorMessage = 'Session invalid or expired. Please log in again.';
+            localStorage.removeItem('access-token');
+            navigate('/login');
+          } else if (result.status === 404) {
+            errorMessage = 'User account not found. Please contact support.';
+          } else if (result.status === 503) {
+            errorMessage = 'Database unavailable. Please try again later.';
+          }
+          setAuthError(errorMessage);
           setIsAuthLoading(false);
           return;
         }
 
         setIsAuthLoading(false);
       } catch (err) {
-        logger.error({ message: 'Authentication error', error: err.message });
-        setAuthError('Authentication failed. Please log in again.');
+        logger.error({ message: 'Authentication error', error: err.message, stack: err.stack });
+        let errorMessage = 'Authentication failed. Please log in again.';
+        if (err.response?.status === 401) {
+          localStorage.removeItem('access-token');
+          navigate('/login');
+        } else if (err.response?.status === 404) {
+          errorMessage = 'User account not found. Please contact support.';
+        } else if (err.response?.status === 503) {
+          errorMessage = 'Database unavailable. Please try again later.';
+        }
+        setAuthError(errorMessage);
         setIsAuthLoading(false);
       }
     };
 
     initialize();
-  }, [dispatch, toast]);
+  }, [dispatch, navigate, toast]);
 
   useEffect(() => {
     if (user && !formData.firstName) {
@@ -637,6 +662,15 @@ const Profile = () => {
       if (response.success) {
         setFundingAmount(amount);
         dispatch(setPaymentDetails({ ...response.data, amount }));
+        if (response.data.pendingTransactions?.length > 0) {
+          toast({
+            title: 'Pending Transactions',
+            description: `You have ${response.data.pendingTransactions.length} pending transaction(s). Check the Transactions tab.`,
+            status: 'info',
+            duration: 5000,
+            isClosable: true,
+          });
+        }
         if (response.data.authorization_url) {
           window.location.href = response.data.authorization_url;
         } else {
@@ -653,13 +687,11 @@ const Profile = () => {
       }
     } catch (error) {
       let errorMessage = error.message || 'Failed to initiate funding. Please check your network and try again.';
-      if (error.status === 502 && error.message.includes('Payment provider authentication failed')) {
+      if (error.response?.status === 502 && error.message.includes('Payment provider authentication failed')) {
         errorMessage = 'Payment provider configuration issue. Please contact support.';
-      } else if (error.status === 400 && error.message.includes('Duplicate transaction detected')) {
-        errorMessage = 'A transaction is already in progress. Please wait a moment and try again.';
-      } else if (error.status === 429) {
+      } else if (error.response?.status === 429) {
         errorMessage = 'Too many requests. Please wait a moment and try again.';
-      } else if (error.status === 401) {
+      } else if (error.response?.status === 401) {
         errorMessage = 'Authentication failed. Please log in again.';
         navigate('/login');
       }
@@ -757,7 +789,7 @@ const Profile = () => {
       if (result.success) {
         toast({
           title: 'Success',
-          description: `Wallet balance refreshed. New balance: ₦${result.data.balance.toFixed(2)}`,
+          description: `Wallet balance refreshed. New balance: ₦${result.data.wallet.balance.toFixed(2)}`,
           status: 'success',
           duration: 5000,
           isClosable: true,
@@ -778,8 +810,19 @@ const Profile = () => {
         status: 'error',
         duration: 5000,
         isClosable: true,
+        action: error.response?.status === 401 ? {
+          label: 'Log In',
+          onClick: () => navigate('/login'),
+        } : null,
       });
     }
+  };
+
+  const handleRetryAuth = async () => {
+    setIsAuthLoading(true);
+    setAuthError(null);
+    await handleRefresh();
+    setIsAuthLoading(false);
   };
 
   if (isAuthLoading) {
@@ -796,9 +839,20 @@ const Profile = () => {
         <Text color={textColor} fontSize="xl" mb={4}>{authError}</Text>
         <Button
           colorScheme="blue"
-          onClick={() => navigate('/login')}
+          onClick={handleRetryAuth}
+          isLoading={isAuthLoading}
+          mb={2}
         >
-          Log In
+          Retry
+        </Button>
+        <Button
+          colorScheme="red"
+          onClick={() => {
+            localStorage.removeItem('access-token');
+            navigate('/login');
+          }}
+        >
+          Log In Again
         </Button>
       </Flex>
     );
@@ -810,7 +864,7 @@ const Profile = () => {
         <Text color={textColor} fontSize="xl" mb={4}>Unable to load profile data. Please try again.</Text>
         <Button
           colorScheme="blue"
-          onClick={() => retryAsync(() => dispatch(fetchInitialData()).unwrap())}
+          onClick={handleRetryAuth}
           isLoading={loading}
         >
           Retry
@@ -1067,6 +1121,7 @@ const Profile = () => {
           onStatusCheck={handleCheckStatus}
           userName={`${user.firstName} ${user.lastName}`}
           amount={fundingAmount}
+          pendingTransactions={transactions.filter(tx => tx.status === 'pending')}
         />
         <WithdrawalModal
           isOpen={isWithdrawOpen}

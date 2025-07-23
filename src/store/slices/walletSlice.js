@@ -1,5 +1,5 @@
 import { createSlice } from '@reduxjs/toolkit';
-import { fetchInitialData, fundWallet, checkFundingStatus, manualReconcileTransaction, withdrawFunds } from './walletThunks';
+import { fetchInitialData, fundWallet, checkFundingStatus, manualReconcileTransaction } from './walletThunks';
 
 const initialState = {
   user: null,
@@ -10,6 +10,16 @@ const initialState = {
   error: null,
 };
 
+// Helper function to convert Date objects to ISO strings in transactions
+const serializeTransaction = (transaction) => ({
+  ...transaction,
+  createdAt: transaction.createdAt instanceof Date ? transaction.createdAt.toISOString() : transaction.createdAt,
+  metadata: {
+    ...transaction.metadata,
+    reconciledAt: transaction.metadata?.reconciledAt instanceof Date ? transaction.metadata.reconciledAt.toISOString() : transaction.metadata?.reconciledAt,
+  },
+});
+
 const walletSlice = createSlice({
   name: 'wallet',
   initialState,
@@ -19,12 +29,22 @@ const walletSlice = createSlice({
       state.wallet.balance = action.payload.balance ?? state.wallet.balance;
       state.wallet.totalDeposits = action.payload.totalDeposits ?? state.wallet.totalDeposits;
       if (action.payload.transaction) {
-        state.wallet.transactions = [
-          { ...action.payload.transaction, amount: action.payload.transaction.amount },
-          ...state.wallet.transactions.filter(t => t.reference !== action.payload.transaction.reference),
-        ];
-      } else if (action.payload.transactions) {
-        state.wallet.transactions = action.payload.transactions || state.wallet.transactions;
+        const serializedTransaction = serializeTransaction(action.payload.transaction);
+        const existingIndex = state.wallet.transactions.findIndex(
+          (t) => t.reference === serializedTransaction.reference
+        );
+        if (existingIndex >= 0) {
+          state.wallet.transactions[existingIndex] = {
+            ...state.wallet.transactions[existingIndex],
+            ...serializedTransaction,
+            amount: serializedTransaction.amount,
+          };
+        } else {
+          state.wallet.transactions.unshift({
+            ...serializedTransaction,
+            amount: serializedTransaction.amount,
+          });
+        }
       }
     },
     setPaymentDetails(state, action) {
@@ -36,102 +56,104 @@ const walletSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchInitialData.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
       .addCase(fetchInitialData.fulfilled, (state, action) => {
         state.loading = false;
         state.user = action.payload.data.user || null;
         state.wallet.balance = action.payload.data.wallet?.balance || 0;
         state.wallet.totalDeposits = action.payload.data.wallet?.totalDeposits || 0;
-        state.wallet.transactions = action.payload.data.wallet?.transactions || [];
-        state.paymentDetails = action.payload.data.wallet?.paymentDetails
-          ? { ...action.payload.data.wallet.paymentDetails, amount: action.payload.data.wallet.paymentDetails.amount }
-          : null;
+        // Serialize all transactions' createdAt fields
+        state.wallet.transactions = action.payload.data.wallet?.transactions.map(serializeTransaction) || [];
+      })
+      .addCase(fundWallet.fulfilled, (state, action) => {
+        state.fundingLoading = false;
+        state.paymentDetails = { ...action.payload.data, amount: action.payload.data.amount };
+        // Optimistic update with serialized transaction
+        state.wallet.transactions.unshift(
+          serializeTransaction({
+            type: 'deposit',
+            amount: action.payload.data.amount,
+            reference: action.payload.data.reference,
+            status: 'pending',
+            createdAt: new Date(),
+          })
+        );
+      })
+      .addCase(checkFundingStatus.fulfilled, (state, action) => {
+        state.loading = false;
+        if (action.payload.success && action.payload.data.transaction) {
+          const transaction = serializeTransaction({
+            ...action.payload.data.transaction,
+            amount: action.payload.data.transaction.amount,
+          });
+          const existingIndex = state.wallet.transactions.findIndex(
+            (t) => t.reference === transaction.reference
+          );
+          if (existingIndex >= 0) {
+            state.wallet.transactions[existingIndex] = transaction;
+          } else {
+            state.wallet.transactions.unshift(transaction);
+          }
+          if (transaction.status === 'completed') {
+            state.wallet.balance = action.payload.data.newBalance;
+            state.wallet.totalDeposits = action.payload.data.totalDeposits || 0;
+            state.paymentDetails = null;
+          }
+        }
+      })
+      .addCase(manualReconcileTransaction.fulfilled, (state, action) => {
+        state.loading = false;
+        if (action.payload.success && action.payload.data.transaction) {
+          const transaction = serializeTransaction({
+            ...action.payload.data.transaction,
+            amount: action.payload.data.transaction.amount,
+          });
+          const existingIndex = state.wallet.transactions.findIndex(
+            (t) => t.reference === transaction.reference
+          );
+          if (existingIndex >= 0) {
+            state.wallet.transactions[existingIndex] = transaction;
+          } else {
+            state.wallet.transactions.unshift(transaction);
+          }
+          if (transaction.status === 'completed') {
+            state.wallet.balance = action.payload.data.newBalance;
+            state.wallet.totalDeposits = action.payload.data.totalDeposits || 0;
+            state.paymentDetails = null;
+          }
+        }
+      })
+      // Handle pending and rejected cases as before
+      .addCase(fetchInitialData.pending, (state) => {
+        state.loading = true;
+        state.error = null;
       })
       .addCase(fetchInitialData.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload?.message || 'Failed to fetch wallet data. Please check your network and try again.';
+        state.error = action.payload?.message || 'Failed to fetch wallet data';
       })
       .addCase(fundWallet.pending, (state) => {
         state.fundingLoading = true;
         state.error = null;
       })
-      .addCase(fundWallet.fulfilled, (state, action) => {
-        state.fundingLoading = false;
-        state.paymentDetails = { ...action.payload.data, amount: action.payload.data.amount };
-      })
       .addCase(fundWallet.rejected, (state, action) => {
         state.fundingLoading = false;
-        state.error = action.payload?.message || 'Failed to initiate funding. Please check your network and try again.';
+        state.error = action.payload?.message || 'Failed to initiate funding';
       })
       .addCase(checkFundingStatus.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(checkFundingStatus.fulfilled, (state, action) => {
-        state.loading = false;
-        if (action.payload.success && action.payload.data.transaction) {
-          const transaction = { ...action.payload.data.transaction, amount: action.payload.data.transaction.amount };
-          state.wallet.transactions = [
-            transaction,
-            ...state.wallet.transactions.filter(t => t.reference !== transaction.reference),
-          ];
-          if (transaction.status === 'completed') {
-            state.wallet.balance = action.payload.data.wallet?.balance || 0;
-            state.wallet.totalDeposits = action.payload.data.wallet?.totalDeposits || 0;
-            state.paymentDetails = null;
-          }
-        }
-      })
       .addCase(checkFundingStatus.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload?.message || 'Failed to check funding status. Please check your network and try again.';
+        state.error = action.payload?.message || 'Failed to check funding status';
       })
       .addCase(manualReconcileTransaction.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(manualReconcileTransaction.fulfilled, (state, action) => {
-        state.loading = false;
-        if (action.payload.success && action.payload.data.transaction) {
-          const transaction = { ...action.payload.data.transaction, amount: action.payload.data.transaction.amount };
-          state.wallet.transactions = [
-            transaction,
-            ...state.wallet.transactions.filter(t => t.reference !== transaction.reference),
-          ];
-          if (transaction.status === 'completed') {
-            state.wallet.balance = action.payload.data.wallet?.balance || 0;
-            state.wallet.totalDeposits = action.payload.data.wallet?.totalDeposits || 0;
-            state.paymentDetails = null;
-          }
-        }
-      })
       .addCase(manualReconcileTransaction.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload?.message || 'Failed to reconcile transaction. Please check your network and try again.';
-      })
-      .addCase(withdrawFunds.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(withdrawFunds.fulfilled, (state, action) => {
-        state.loading = false;
-        if (action.payload.success && action.payload.data.transaction) {
-          const transaction = { ...action.payload.data.transaction, amount: action.payload.data.transaction.amount };
-          state.wallet.transactions = [
-            transaction,
-            ...state.wallet.transactions.filter(t => t.reference !== transaction.reference),
-          ];
-          if (transaction.status === 'completed') {
-            state.wallet.balance = action.payload.data.wallet?.balance || 0;
-          }
-        }
-      })
-      .addCase(withdrawFunds.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload?.message || 'Failed to withdraw funds. Please check your network and try again.';
+        state.error = action.payload?.message || 'Failed to reconcile transaction';
       });
   },
 });
