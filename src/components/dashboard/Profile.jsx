@@ -13,6 +13,7 @@ import {
 } from '@chakra-ui/react';
 import { FaEdit, FaWallet, FaTimes, FaCreditCard, FaSync, FaMoneyBillWave, FaSave } from 'react-icons/fa';
 import { MdContentCopy } from 'react-icons/md';
+import io from 'socket.io-client';
 import multiavatar from '@multiavatar/multiavatar/esm';
 import axios from '../../utils/axiosConfig';
 import { fetchInitialData, fundWallet, checkFundingStatus, manualReconcileTransaction, withdrawFunds } from '../../store/slices/walletThunks';
@@ -182,6 +183,7 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
           duration: 5000,
           isClosable: true,
         });
+        localStorage.removeItem(`pendingFunding_${ref}`);
         dispatch(clearPaymentDetails());
         onClose();
       } else {
@@ -488,6 +490,151 @@ const Profile = () => {
   const cardBg = useColorModeValue('gray.50', 'gray.700');
   const avatarSvg = user?.email ? multiavatar(user.email) : multiavatar('default');
 
+  // Initialize WebSocket
+  const [socket, setSocket] = useState(null);
+  useEffect(() => {
+    const token = localStorage.getItem('access-token');
+    if (!token) return;
+
+    const socketInstance = io(BASE_URL, {
+      auth: { token },
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+    });
+
+    socketInstance.on('connect', () => {
+      logger.info('WebSocket connected', { socketId: socketInstance.id });
+    });
+
+    socketInstance.on('balanceUpdate', (data) => {
+      if (data.status === 'completed') {
+        toast({
+          title: 'Success',
+          description: data.message || `Successfully funded ₦${data.amount.toFixed(2)}. Your wallet has been updated.`,
+          status: 'success',
+          duration: 5000,
+          isClosable: true,
+        });
+        localStorage.removeItem(`pendingFunding_${data.reference}`);
+        dispatch(clearPaymentDetails());
+        dispatch(fetchInitialData());
+      }
+    });
+
+    socketInstance.on('connect_error', (error) => {
+      logger.error('WebSocket connection error', { message: error.message });
+    });
+
+    setSocket(socketInstance);
+
+    return () => {
+      socketInstance.disconnect();
+      logger.info('WebSocket disconnected');
+    };
+  }, [dispatch, toast]);
+
+  // Check for pending transactions in localStorage on mount
+  useEffect(() => {
+    const checkPendingTransactions = async () => {
+      const pendingKeys = Object.keys(localStorage).filter(key => key.startsWith('pendingFunding_'));
+      for (const key of pendingKeys) {
+        const ref = key.replace('pendingFunding_', '');
+        try {
+          const response = await retryAsync(() => dispatch(checkFundingStatus(ref)).unwrap());
+          if (response.success && response.data.transaction?.status === 'completed') {
+            toast({
+              title: 'Success',
+              description: `Successfully funded ₦${response.data.transaction.amount.toFixed(2)}. Your wallet has been updated.`,
+              status: 'success',
+              duration: 5000,
+              isClosable: true,
+            });
+            localStorage.removeItem(key);
+            dispatch(clearPaymentDetails());
+            await retryAsync(() => dispatch(fetchInitialData()).unwrap());
+          }
+        } catch (error) {
+          logger.error('Failed to check pending transaction', {
+            reference: ref,
+            message: error.message,
+          });
+        }
+      }
+    };
+    checkPendingTransactions();
+  }, [dispatch, toast]);
+
+  useEffect(() => {
+    const initialize = async () => {
+      const token = localStorage.getItem('access-token');
+      if (!token) {
+        setAuthError('No authentication token found. Please log in again.');
+        setIsAuthLoading(false);
+        navigate('/login');
+        return;
+      }
+
+      try {
+        const decoded = jwtDecode(token);
+        const isExpired = decoded.exp * 1000 < Date.now();
+        if (isExpired) {
+          setAuthError('Your session has expired. Please log in again.');
+          localStorage.removeItem('access-token');
+          setIsAuthLoading(false);
+          navigate('/login');
+          return;
+        }
+
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        const result = await retryAsync(() => dispatch(fetchInitialData()).unwrap());
+        if (!result.success) {
+          let errorMessage = result.error || 'Failed to authenticate. Please log in again.';
+          if (result.status === 401) {
+            errorMessage = 'Session invalid or expired. Please log in again.';
+            localStorage.removeItem('access-token');
+            navigate('/login');
+          } else if (result.status === 404) {
+            errorMessage = 'User account not found. Please contact support.';
+          } else if (result.status === 503) {
+            errorMessage = 'Database unavailable. Please try again later.';
+          }
+          setAuthError(errorMessage);
+          setIsAuthLoading(false);
+          return;
+        }
+
+        setIsAuthLoading(false);
+      } catch (err) {
+        logger.error({ message: 'Authentication error', error: err.message, stack: err.stack });
+        let errorMessage = 'Authentication failed. Please log in again.';
+        if (err.response?.status === 401) {
+          localStorage.removeItem('access-token');
+          navigate('/login');
+        } else if (err.response?.status === 404) {
+          errorMessage = 'User account not found. Please contact support.';
+        } else if (err.response?.status === 503) {
+          errorMessage = 'Database unavailable. Please try again later.';
+        }
+        setAuthError(errorMessage);
+        setIsAuthLoading(false);
+      }
+    };
+
+    initialize();
+  }, [dispatch, navigate, toast]);
+
+  useEffect(() => {
+    if (user && !formData.firstName) {
+      setFormData({
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        phoneNumber: user.phoneNumber || '',
+      });
+    }
+  }, [user]);
+
   const handleCheckFundingReadiness = async () => {
     if (isSubmitting) {
       toast({
@@ -569,75 +716,6 @@ const Profile = () => {
     }
   };
 
-  useEffect(() => {
-    const initialize = async () => {
-      const token = localStorage.getItem('access-token');
-      if (!token) {
-        setAuthError('No authentication token found. Please log in again.');
-        setIsAuthLoading(false);
-        navigate('/login');
-        return;
-      }
-
-      try {
-        const decoded = jwtDecode(token);
-        const isExpired = decoded.exp * 1000 < Date.now();
-        if (isExpired) {
-          setAuthError('Your session has expired. Please log in again.');
-          localStorage.removeItem('access-token');
-          setIsAuthLoading(false);
-          navigate('/login');
-          return;
-        }
-
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        const result = await retryAsync(() => dispatch(fetchInitialData()).unwrap());
-        if (!result.success) {
-          let errorMessage = result.error || 'Failed to authenticate. Please log in again.';
-          if (result.status === 401) {
-            errorMessage = 'Session invalid or expired. Please log in again.';
-            localStorage.removeItem('access-token');
-            navigate('/login');
-          } else if (result.status === 404) {
-            errorMessage = 'User account not found. Please contact support.';
-          } else if (result.status === 503) {
-            errorMessage = 'Database unavailable. Please try again later.';
-          }
-          setAuthError(errorMessage);
-          setIsAuthLoading(false);
-          return;
-        }
-
-        setIsAuthLoading(false);
-      } catch (err) {
-        logger.error({ message: 'Authentication error', error: err.message, stack: err.stack });
-        let errorMessage = 'Authentication failed. Please log in again.';
-        if (err.response?.status === 401) {
-          localStorage.removeItem('access-token');
-          navigate('/login');
-        } else if (err.response?.status === 404) {
-          errorMessage = 'User account not found. Please contact support.';
-        } else if (err.response?.status === 503) {
-          errorMessage = 'Database unavailable. Please try again later.';
-        }
-        setAuthError(errorMessage);
-        setIsAuthLoading(false);
-      }
-    };
-
-    initialize();
-  }, [dispatch, navigate, toast]);
-
-  useEffect(() => {
-    if (user && !formData.firstName) {
-      setFormData({
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
-        phoneNumber: user.phoneNumber || '',
-      });
-    }
-  }, [user]);
-
   const handleFundWallet = async (amount) => {
     if (isSubmitting || loading) {
       toast({
@@ -662,6 +740,7 @@ const Profile = () => {
       if (response.success) {
         setFundingAmount(amount);
         dispatch(setPaymentDetails({ ...response.data, amount }));
+        localStorage.setItem(`pendingFunding_${response.data.reference}`, JSON.stringify({ amount }));
         if (response.data.pendingTransactions?.length > 0) {
           toast({
             title: 'Pending Transactions',
@@ -723,6 +802,7 @@ const Profile = () => {
           duration: 5000,
           isClosable: true,
         });
+        localStorage.removeItem(`pendingFunding_${ref}`);
         dispatch(clearPaymentDetails());
         setFundingAmount(null);
         onFundClose();
