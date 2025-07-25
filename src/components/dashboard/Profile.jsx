@@ -23,9 +23,9 @@ const PAYSTACK_BANKS = [
   { name: 'Access Bank', code: '044' },
   { name: 'Wema Bank', code: '035' },
   { name: 'Opay', code: '999992' },
-  { name: 'Kuda Bank', code: '090267' },
+  { name: 'Kuda Bank', code: '090197' },
   { name: 'Zenith Bank', code: '057' },
-  { name: 'Moniepoint Microfinance Bank', code: '50515' },
+  { name: 'Moniepoint Microfinance Bank', code: '090405' },
   { name: 'Palmpay', code: '999991' },
   { name: 'First Bank', code: '011' },
   { name: 'GTBank', code: '058' },
@@ -156,9 +156,8 @@ const FundAmountModal = ({ isOpen, onClose, onSubmit }) => {
   );
 };
 
-const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, userName, amount, pendingTransactions }) => {
+const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, userName, amount, pendingTransactions, handleRefresh }) => {
   const toast = useToast();
-  const dispatch = useDispatch();
   const textColor = useColorModeValue('gray.800', 'white');
   const subtleTextColor = useColorModeValue('gray.600', 'gray.300');
   const boxBg = useColorModeValue('gray.100', 'gray.700');
@@ -166,44 +165,6 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
     toast({ title: 'Copied', description: 'Text copied to clipboard.', status: 'success', duration: 3000, isClosable: true });
-  };
-
-  const handleManualReconcile = async () => {
-    const ref = paymentDetails?.reference || paymentDetails?.paystackReference;
-    if (!ref) {
-      return toast({ title: 'Error', description: 'No reference available.', status: 'error', duration: 5000, isClosable: true });
-    }
-    try {
-      const { success, data } = await retryAsync(() => dispatch(manualReconcileTransaction(ref)).unwrap());
-      if (success) {
-        toast({
-          title: 'Success',
-          description: `Successfully funded ₦${data.transaction.amount.toFixed(2)}. Your wallet has been updated.`,
-          status: 'success',
-          duration: 5000,
-          isClosable: true,
-        });
-        localStorage.removeItem(`pendingFunding_${ref}`);
-        dispatch(clearPaymentDetails());
-        onClose();
-      } else {
-        toast({
-          title: 'Reconciliation Failed',
-          description: data.message || 'Try again.',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
-      }
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Reconciliation failed. Please check your network and try again.',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-    }
   };
 
   return (
@@ -255,7 +216,7 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
                 </Text>
               )}
               <Text color={subtleTextColor} mt={4} fontSize="sm">
-                Your payment will be credited within 5 minutes. If delayed, click "Check Status" or "Reconcile" to update.
+                Your payment will be credited within 5 minutes. If delayed, refresh and check for the updated wallet or wait for 10 minutes. If it still doesn't work, contact support.
               </Text>
             </>
           ) : (
@@ -273,14 +234,16 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, user
         </ModalBody>
         <ModalFooter flexDir={{ base: 'column', sm: 'row' }} gap={2}>
           {paymentDetails?.reference || paymentDetails?.paystackReference ? (
-            <>
-              <Button colorScheme="blue" onClick={onStatusCheck} size="sm" mr={{ sm: 3 }} mb={{ base: 2, sm: 0 }}>
-                Check Status
-              </Button>
-              <Button colorScheme="purple" onClick={handleManualReconcile} size="sm" mr={{ sm: 3 }} mb={{ base: 2, sm: 0 }}>
-                Reconcile
-              </Button>
-            </>
+            <Button
+              leftIcon={<FaSync />}
+              colorScheme="teal"
+              onClick={handleRefresh}
+              size="sm"
+              mr={{ sm: 3 }}
+              mb={{ base: 2, sm: 0 }}
+            >
+              Refresh
+            </Button>
           ) : null}
           <Button variant="ghost" onClick={onClose} size="sm">Cancel</Button>
         </ModalFooter>
@@ -297,19 +260,26 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isVerifying, setIsVerifying] = React.useState(false);
   const [verifiedAccountName, setVerifiedAccountName] = React.useState('');
-  const [banks, setBanks] = React.useState(PAYSTACK_BANKS);
+  const [banks, setBanks] = React.useState([]);
   const toast = useToast();
   const dispatch = useDispatch();
   const textColor = useColorModeValue('gray.800', 'white');
   const subtleTextColor = useColorModeValue('gray.600', 'gray.300');
 
+  const calculateTotalAmount = (amount) => {
+    const fee = amount > 5000 ? 10 + amount * 0.005 : amount > 500 ? 25 : 10;
+    return amount + fee;
+  };
+
   const fetchBanks = async () => {
     try {
       const response = await retryAsync(() => axios.get('/api/wallet/paystack/banks'));
       if (response.data.success && response.data.data.length > 0) {
-        setBanks(response.data.data);
+        const validBanks = response.data.data.filter(bank => /^\d{3}$/.test(bank.code));
+        setBanks(validBanks);
       } else {
-        setBanks(PAYSTACK_BANKS);
+        const validFallbackBanks = PAYSTACK_BANKS.filter(bank => /^\d{3}$/.test(bank.code));
+        setBanks(validFallbackBanks);
         toast({
           title: 'Warning',
           description: 'Using fallback bank list due to network issues.',
@@ -319,8 +289,8 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
         });
       }
     } catch (error) {
-      console.error('Error fetching banks:', error);
-      setBanks(PAYSTACK_BANKS);
+      const validFallbackBanks = PAYSTACK_BANKS.filter(bank => /^\d{3}$/.test(bank.code));
+      setBanks(validFallbackBanks);
       toast({
         title: 'Error',
         description: 'Failed to fetch bank list. Using default banks.',
@@ -335,9 +305,24 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
     fetchBanks();
   }, []);
 
+  useEffect(() => {
+    if (bankCode && accountNumber.length === 10 && /^\d{10}$/.test(accountNumber)) {
+      verifyAccount();
+    } else {
+      setVerifiedAccountName('');
+      setAccountName('');
+    }
+  }, [bankCode, accountNumber]);
+
   const verifyAccount = async () => {
-    if (!accountNumber || !bankCode) {
-      toast({ title: 'Error', description: 'Please provide bank code and account number.', status: 'error', duration: 5000, isClosable: true });
+    if (!accountNumber || !bankCode || accountNumber.length !== 10 || !/^\d{10}$/.test(accountNumber)) {
+      toast({
+        title: 'Error',
+        description: 'Please select a bank and provide a valid 10-digit account number.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
       return;
     }
     setIsVerifying(true);
@@ -346,36 +331,93 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
       if (response.data.success) {
         setVerifiedAccountName(response.data.accountName);
         setAccountName(response.data.accountName);
+        toast({
+          title: 'Success',
+          description: `Account verified: ${response.data.accountName}`,
+          status: 'success',
+          duration: 5000,
+          isClosable: true,
+        });
       } else {
-        toast({ title: 'Error', description: response.data.error || 'Failed to verify account.', status: 'error', duration: 5000, isClosable: true });
+        setVerifiedAccountName('');
+        setAccountName('');
+        toast({
+          title: 'Error',
+          description: response.data.error || 'Failed to verify account.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
       }
     } catch (error) {
-      toast({ title: 'Error', description: error.response?.data?.error || 'Account verification failed.', status: 'error', duration: 5000, isClosable: true });
+      setVerifiedAccountName('');
+      setAccountName('');
+      toast({
+        title: 'Error',
+        description: error.response?.data?.error || 'Account verification failed.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
     } finally {
       setIsVerifying(false);
     }
   };
 
   const handleWithdraw = async () => {
-    if (!amount || amount <= 0 || amount > walletBalance) {
-      toast({ title: 'Error', description: 'Invalid amount.', status: 'error', duration: 5000, isClosable: true });
+    if (!amount || amount < 100) {
+      toast({ title: 'Error', description: 'Minimum withdrawal is ₦100.', status: 'error', duration: 5000, isClosable: true });
       return;
     }
-    if (!bankCode || !accountNumber || !accountName) {
-      toast({ title: 'Error', description: 'Please complete all fields.', status: 'error', duration: 5000, isClosable: true });
+    if (amount > walletBalance) {
+      toast({
+        title: 'Error',
+        description: `Insufficient wallet balance. Available: ₦${walletBalance}, Requested: ₦${amount}`,
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+    const totalAmount = calculateTotalAmount(amount);
+    if (!bankCode || !/^\d{3}$/.test(bankCode)) {
+      toast({ title: 'Error', description: 'Please select a valid bank.', status: 'error', duration: 5000, isClosable: true });
+      return;
+    }
+    if (!accountNumber || !verifiedAccountName) {
+      toast({ title: 'Error', description: 'Please complete and verify all fields.', status: 'error', duration: 5000, isClosable: true });
       return;
     }
     setIsSubmitting(true);
     try {
-      const response = await retryAsync(() => dispatch(withdrawFunds({ amount, bankCode, accountNumber, accountName })).unwrap());
+      const response = await retryAsync(() =>
+        dispatch(
+          withdrawFunds({ amount, bankCode, accountNumber, accountName: verifiedAccountName })
+        ).unwrap()
+      );
       if (response.success) {
-        toast({ title: 'Success', description: `Withdrawal of ₦${amount.toFixed(2)} initiated.`, status: 'success', duration: 5000, isClosable: true });
+        toast({
+          title: 'Success',
+          description: `Withdrawal of ₦${amount.toFixed(2)} initiated.`,
+          status: 'success',
+          duration: 5000,
+          isClosable: true,
+        });
+        setAmount(0);
+        setBankCode('');
+        setAccountNumber('');
+        setAccountName('');
+        setVerifiedAccountName('');
         onClose();
-      } else {
-        toast({ title: 'Error', description: response.error || 'Withdrawal failed.', status: 'error', duration: 5000, isClosable: true });
       }
     } catch (error) {
-      toast({ title: 'Error', description: error.message || 'Withdrawal failed. Please check your network and try again.', status: 'error', duration: 5000, isClosable: true });
+      toast({
+        title: 'Error',
+        description: error.message || 'Withdrawal failed. Please check your bank details or contact support.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -406,8 +448,8 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
               onChange={(e) => setBankCode(e.target.value)}
               color={textColor}
             >
-              {banks.map((bank) => (
-                <option key={bank.code} value={bank.code}>{bank.name}</option>
+              {banks.map((bank, index) => (
+                <option key={`${bank.code}-${index}`} value={bank.code}>{bank.name}</option>
               ))}
             </Select>
           </FormControl>
@@ -428,22 +470,11 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
             <FormLabel color={textColor}>Account Name</FormLabel>
             <Input
               value={accountName}
-              onChange={(e) => setAccountName(e.target.value)}
-              placeholder="Enter account name"
-              isDisabled={!!verifiedAccountName}
+              placeholder={isVerifying ? 'Verifying...' : 'Account name will appear after verification'}
+              isDisabled={true}
               color={textColor}
             />
           </FormControl>
-          <Button
-            colorScheme="blue"
-            onClick={verifyAccount}
-            isLoading={isVerifying}
-            loadingText="Verifying..."
-            size={{ base: 'sm', sm: 'md' }}
-            mb={4}
-          >
-            Verify Account
-          </Button>
           {verifiedAccountName && (
             <Text color={subtleTextColor}>Verified Account Name: {verifiedAccountName}</Text>
           )}
@@ -1198,10 +1229,10 @@ const Profile = () => {
             onFundClose();
           }}
           paymentDetails={paymentDetails}
-          onStatusCheck={handleCheckStatus}
           userName={`${user.firstName} ${user.lastName}`}
           amount={fundingAmount}
           pendingTransactions={transactions.filter(tx => tx.status === 'pending')}
+          handleRefresh={handleRefresh}
         />
         <WithdrawalModal
           isOpen={isWithdrawOpen}

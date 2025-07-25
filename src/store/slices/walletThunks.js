@@ -66,7 +66,7 @@ export const fundWallet = createAsyncThunk(
 );
 
 export const withdrawFunds = createAsyncThunk(
-  'wallet/withdrawFunds',
+  'wallet/witnessFunds',
   async ({ amount, bankCode, accountNumber, accountName }, { rejectWithValue }) => {
     try {
       const response = await axios.post(
@@ -77,16 +77,16 @@ export const withdrawFunds = createAsyncThunk(
       logger.info('Withdraw funds initiated:', {
         amount,
         bankCode,
-        accountNumber,
+        accountNumber: accountNumber?.slice(-4),
       });
       return response.data;
     } catch (error) {
-      logger.error('Withdraw funds error:', {
+      logger.error('Withdraw error:', {
         status: error.response?.status,
-        message: error.response?.data?.error || error.message,
+        message: error.response?.data?.error || 'Failed to process withdrawal.',
       });
       return rejectWithValue({
-        message: error.response?.data?.error || 'Failed to process withdrawal. Please check your network and try again.',
+        message: error.response?.data?.error || 'Failed to process withdrawal.',
         status: error.response?.status,
       });
     }
