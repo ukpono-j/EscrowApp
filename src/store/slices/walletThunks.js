@@ -66,17 +66,16 @@ export const fundWallet = createAsyncThunk(
 );
 
 export const withdrawFunds = createAsyncThunk(
-  'wallet/witnessFunds',
-  async ({ amount, bankCode, accountNumber, accountName }, { rejectWithValue }) => {
+  'wallet/withdrawFunds', // Fixed typo in action type
+  async ({ amount, accountNumber, accountName }, { rejectWithValue }) => {
     try {
       const response = await axios.post(
         `${BASE_URL}/api/wallet/withdraw`,
-        { amount, bankCode, accountNumber, accountName },
+        { amount, accountNumber, accountName },
         { headers: { Authorization: `Bearer ${localStorage.getItem('access-token')}` } }
       );
       logger.info('Withdraw funds initiated:', {
         amount,
-        bankCode,
         accountNumber: accountNumber?.slice(-4),
       });
       return response.data;
@@ -161,6 +160,32 @@ export const manualReconcileTransaction = createAsyncThunk(
       return rejectWithValue({
         message: error.response?.data?.error || 'Failed to reconcile transaction',
         status: error.response?.status,
+      });
+    }
+  }
+);
+
+export const fetchPendingWithdrawals = createAsyncThunk(
+  'wallet/fetchPendingWithdrawals',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await axios.get(`${BASE_URL}/api/wallet/pending-withdrawals`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('access-token')}` },
+        params: { noCache: Date.now() },
+      });
+      logger.info('Fetched pending withdrawals', {
+        count: response.data.data?.pendingWithdrawals?.length || 0,
+      });
+      return response.data; // Return the entire response
+    } catch (error) {
+      logger.error('Fetch pending withdrawals error', {
+        status: error.response?.status,
+        message: error.response?.data?.error || error.message,
+      });
+      return rejectWithValue({
+        message: error.response?.data?.error || 'Failed to fetch pending withdrawals',
+        status: error.response?.status || 500,
+        pendingWithdrawals: [], // Fallback to empty array
       });
     }
   }
