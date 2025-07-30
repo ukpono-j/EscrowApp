@@ -2,7 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App.jsx";
 import { ChakraProvider, ColorModeScript } from "@chakra-ui/react";
-import { BrowserRouter } from "react-router-dom";
+import { HistoryRouter, history } from "./utils/navigate"; // Import HistoryRouter and history
 import { Provider } from 'react-redux';
 import { store } from './store';
 import theme from "./ThemeContext.jsx";
@@ -34,7 +34,7 @@ if ("serviceWorker" in navigator) {
     navigator.serviceWorker
       .register("/service-worker.js")
       .then((reg) => console.log("Service Worker registered:", reg))
-      .catch((err) => console.log("Service Worker registration failed:", err));
+      .catch((err) => console.error("Service Worker registration failed:", err));
   });
 }
 
@@ -44,9 +44,11 @@ if (typeof window !== "undefined" && !window.ethereum) {
     Object.defineProperty(window, "ethereum", {
       value: {
         request: async ({ method, params }) => {
+          console.warn(`Ethereum request (${method}) not handled by mock`);
           return null;
         },
         on: (eventName, callback) => {
+          console.warn(`Ethereum event (${eventName}) not handled by mock`);
           return null;
         },
         isConnected: () => false,
@@ -54,6 +56,7 @@ if (typeof window !== "undefined" && !window.ethereum) {
       writable: true,
       configurable: true,
     });
+    console.log("Mock ethereum object defined");
   } catch (error) {
     console.error("Failed to define ethereum:", error);
   }
@@ -64,14 +67,14 @@ const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
   <AppErrorBoundary>
     <Provider store={store}>
-      <BrowserRouter>
+      <HistoryRouter history={history}>
         <React.StrictMode>
           <ChakraProvider theme={theme}>
             <ColorModeScript initialColorMode={theme.config.initialColorMode} />
             <App />
           </ChakraProvider>
         </React.StrictMode>
-      </BrowserRouter>
+      </HistoryRouter>
     </Provider>
   </AppErrorBoundary>
 );

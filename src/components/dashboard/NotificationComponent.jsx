@@ -414,6 +414,7 @@ const NotificationComponent = () => {
         justify="space-between"
         align="center"
         mb={3}
+        mt={20}
         bg={bgCard}
         p={2}
         borderRadius="lg"
@@ -421,17 +422,6 @@ const NotificationComponent = () => {
         maxW="100%"
         overflow="hidden"
       >
-        <Text
-          fontSize={{ base: "md", md: "lg" }}
-          fontWeight="semibold"
-          color={titleColor}
-          mb={{ base: 2, sm: 0 }}
-          display="flex"
-          alignItems="center"
-        >
-          <MdNotifications size={18} style={{ marginRight: '6px' }} />
-          Notifications
-        </Text>
         <HStack
           spacing={1}
           maxW={{ base: "100%", sm: "70%" }}

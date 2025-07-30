@@ -39,18 +39,15 @@ const Register = () => {
   const navigate = useNavigate();
   const toast = useToast();
 
-  // Set mounted state for animations
   useEffect(() => {
     setMounted(true);
     return () => setMounted(false);
   }, []);
 
-  // Color mode values
   const accentColor = "#B38939";
   const buttonBgColor = "#031420";
   const buttonHoverBgColor = "#B38939";
 
-  // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -71,21 +68,17 @@ const Register = () => {
     },
   };
 
-  // Form field change handler
   const handleChange = (e) => {
     const { name, value } = e.target;
-
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
 
-    // Calculate password strength when password changes
     if (name === 'password') {
       calculatePasswordStrength(value);
     }
 
-    // Clear error when field is edited
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
@@ -94,7 +87,6 @@ const Register = () => {
     }
   };
 
-  // Password strength calculator
   const calculatePasswordStrength = (password) => {
     if (!password) {
       setPasswordStrength(0);
@@ -102,41 +94,27 @@ const Register = () => {
     }
 
     let strength = 0;
-
-    // Length check
     if (password.length >= 8) strength += 1;
-
-    // Character variety checks
     if (/[A-Z]/.test(password)) strength += 1;
     if (/[a-z]/.test(password)) strength += 1;
     if (/[0-9]/.test(password)) strength += 1;
     if (/[^A-Za-z0-9]/.test(password)) strength += 1;
-
     setPasswordStrength(strength);
   };
 
-  // Validate form
   const validateForm = () => {
     const newErrors = {};
-
-    // Validate first name
     if (!formData.firstName.trim()) {
       newErrors.firstName = "First name is required";
     }
-
-    // Validate last name
     if (!formData.lastName.trim()) {
       newErrors.lastName = "Last name is required";
     }
-
-    // Validate email
     if (!formData.email) {
       newErrors.email = "Email is required";
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = "Email is invalid";
     }
-
-    // Validate date of birth
     if (!formData.dateOfBirth) {
       newErrors.dateOfBirth = "Date of birth is required";
     } else {
@@ -155,13 +133,9 @@ const Register = () => {
         }
       }
     }
-
-    // Validate phone number (optional)
     if (formData.phoneNumber && !/^(0\d{10}|\+234\d{10})$/.test(formData.phoneNumber)) {
       newErrors.phoneNumber = "Phone number must be 11 digits starting with 0 or +234";
     }
-
-    // Validate password
     if (!formData.password) {
       newErrors.password = "Password is required";
     } else if (formData.password.length < 8) {
@@ -169,14 +143,11 @@ const Register = () => {
     } else if (!/[A-Z]/.test(formData.password) || !/[0-9]/.test(formData.password) || !/[^A-Za-z0-9]/.test(formData.password)) {
       newErrors.password = "Password must include uppercase, number, and special character";
     }
-
-    // Validate confirm password
     if (!formData.confirmPassword) {
       newErrors.confirmPassword = "Please confirm your password";
     } else if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = "Passwords do not match";
     }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -208,15 +179,10 @@ const Register = () => {
         phoneNumber: formData.phoneNumber
       });
 
-      const { token, wallet } = response.data;
-
-      // Store token
-      localStorage.setItem('access-token', token);
-
-      // Prepare success message with virtual account details
-      let successMessage = "Your account and wallet have been created. Redirecting to your dashboard...";
-      if (wallet?.virtualAccountNumber && wallet?.bankName) {
-        successMessage += `\n\nFund your wallet using:\nAccount Number: ${wallet.virtualAccountNumber}\nBank: ${wallet.bankName}`;
+      // Show success message without storing token
+      let successMessage = "Registration successful! Please log in to continue.";
+      if (response.data.wallet?.virtualAccountNumber && response.data.wallet?.bankName) {
+        successMessage += `\n\nFund your wallet using:\nAccount Number: ${response.data.wallet.virtualAccountNumber}\nBank: ${response.data.wallet.bankName}`;
       }
 
       toast({
@@ -228,9 +194,9 @@ const Register = () => {
         position: "top"
       });
 
-      // Redirect to dashboard
+      // Redirect to login page
       setTimeout(() => {
-        navigate("/dashboard");
+        navigate("/login");
       }, 1500);
     } catch (error) {
       console.error('Registration error:', error.response?.data || error);
@@ -288,7 +254,6 @@ const Register = () => {
     }
   };
 
-  // Password strength indicator color
   const getStrengthColor = (strength) => {
     if (strength === 0) return "gray.400";
     if (strength <= 2) return "red.500";
@@ -372,7 +337,6 @@ const Register = () => {
         />
       </Box>
 
-      {/* Main Content Container */}
       <MotionContainer
         maxW="container.xl"
         minHeight="100vh"
@@ -395,7 +359,6 @@ const Register = () => {
           gap={{ base: 6, lg: 12 }}
           variants={itemVariants}
         >
-          {/* Left Column - Brand Message */}
           <MotionBox
             flex="1"
             display={{ base: "none", lg: "flex" }}
@@ -422,7 +385,6 @@ const Register = () => {
               >
                 Join Our Community
               </Heading>
-
               <Text
                 fontSize="lg"
                 color="#fff"
@@ -433,7 +395,6 @@ const Register = () => {
               >
                 Create your account today and experience secure transactions with our trusted escrow service. Your financial security is our priority.
               </Text>
-
               <VStack align="flex-start" spacing={4} mt={8} className="features-list">
                 <HStack>
                   <Box color={accentColor}>
@@ -454,7 +415,6 @@ const Register = () => {
                   <Text color="#fff">Fast and reliable process</Text>
                 </HStack>
               </VStack>
-
               <Box
                 width="100px"
                 height="4px"
@@ -466,7 +426,6 @@ const Register = () => {
             </MotionBox>
           </MotionBox>
 
-          {/* Right Column - Registration Form */}
           <MotionBox
             flex="1"
             width={{ base: "100%", sm: "90%", md: "500px" }}
@@ -483,12 +442,7 @@ const Register = () => {
                 overflow="hidden"
                 className="form-container"
               >
-                {/* Form Header */}
-                <VStack
-                  spacing={1}
-                  mb={6}
-                  align="flex-start"
-                >
+                <VStack spacing={1} mb={6} align="flex-start">
                   <Heading size="lg" color="white" fontWeight="semibold">
                     Create Account
                   </Heading>
@@ -497,10 +451,8 @@ const Register = () => {
                   </Text>
                 </VStack>
 
-                {/* Registration Form */}
                 <form onSubmit={handleSubmit}>
                   <VStack spacing={4}>
-                    {/* Name Fields - Side by Side on larger screens */}
                     <Flex
                       width="100%"
                       direction={{ base: "column", sm: "row" }}
@@ -683,8 +635,6 @@ const Register = () => {
                         </InputRightElement>
                       </InputGroup>
                       <FormErrorMessage>{errors.password}</FormErrorMessage>
-
-                      {/* Password strength indicator */}
                       {formData.password && (
                         <Flex mt={2} align="center">
                           <Box width="100%" height="4px" borderRadius="full" overflow="hidden">
@@ -772,7 +722,6 @@ const Register = () => {
                   </VStack>
                 </form>
 
-                {/* Decorative accent line */}
                 <Box
                   position="absolute"
                   bottom="0"
@@ -784,7 +733,6 @@ const Register = () => {
               </Box>
             </ScaleFade>
 
-            {/* Login Link */}
             <MotionBox
               textAlign="center"
               mt={6}
@@ -794,7 +742,7 @@ const Register = () => {
               <Text fontSize={{ base: "sm", md: "md" }} color="gray.600">
                 Already have an account?{" "}
                 <Link to="/login">
-                  <Text
+                  <Text 
                     as="span"
                     color={accentColor}
                     fontWeight="bold"

@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Route, Routes } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
 import LogIn from './pages/LogIn';
 import UserDashboard from './pages/UserDashboard';
@@ -25,7 +25,7 @@ function App() {
     let deferredPrompt;
     const handleBeforeInstallPrompt = (event) => {
       event.preventDefault();
-      // console.log('beforeinstallprompt event triggered');
+      console.log('beforeinstallprompt event triggered');
       deferredPrompt = event;
 
       const installButton = document.getElementById('install-btn');
@@ -36,15 +36,16 @@ function App() {
           deferredPrompt.prompt();
           deferredPrompt.userChoice.then((choiceResult) => {
             if (choiceResult.outcome === 'accepted') {
-              // console.log('User accepted the A2HS prompt');
+              console.log('User accepted the A2HS prompt');
             } else {
-              // console.log('User dismissed the A2HS prompt');
+              console.log('User dismissed the A2HS prompt');
             }
             deferredPrompt = null;
           });
         });
+      } else {
+        console.warn('Install button not found in DOM');
       }
-      // console.log('PWA install prompt captured but not shown');
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -56,23 +57,23 @@ function App() {
 
   return (
     <Routes>
-      <Route path="/" element={<PublicRoute element={Home} />} />
-      <Route path="/login" element={<PublicRoute element={LogIn} />} />
-      <Route path="/register" element={<PublicRoute element={Register} />} />
-      <Route path="/forgot-password" element={<PublicRoute element={ForgotPassword} />} />
-      <Route path="/dashboard" element={<PrivateRoute element={UserDashboard} />} />
-      <Route path="/create-transaction" element={<PrivateRoute element={CreateTransaction} />} />
-      <Route path="/profile" element={<PrivateRoute element={MainProfile} />} />
-      <Route path="/transactions" element={<PrivateRoute element={Transaction} />} />
-      <Route path="/transactions/tab" element={<PrivateRoute element={DisplayTransaction} />} />
-      <Route path="/join-transaction" element={<PrivateRoute element={JoinTransaction} />} />
-      <Route path="/contact" element={<PrivateRoute element={ContactUs} />} />
-      <Route path="/notifications" element={<PrivateRoute element={Notification} />} />
-      <Route path="/setAvatar" element={<PrivateRoute element={SetAvatar} />} />
-      <Route path="/security-settings/kyc" element={<PrivateRoute element={Kyc} />} />
-      <Route path="/security-settings" element={<PrivateRoute element={Settings} />} />
-      {/* <Route path="/admin" element={<PrivateRoute element={Admin} />} /> */}
-      <Route path="/chat/:chatroomId" element={<PrivateRoute element={MessageBox} />} />
+      <Route path="/" element={<PublicRoute><Home /></PublicRoute>} />
+      <Route path="/login" element={<PublicRoute><LogIn /></PublicRoute>} />
+      <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+      <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
+      <Route path="/dashboard" element={<PrivateRoute><UserDashboard /></PrivateRoute>} />
+      <Route path="/create-transaction" element={<PrivateRoute><CreateTransaction /></PrivateRoute>} />
+      <Route path="/profile" element={<PrivateRoute><MainProfile /></PrivateRoute>} />
+      <Route path="/transactions" element={<PrivateRoute><Transaction /></PrivateRoute>} />
+      <Route path="/transactions/tab" element={<PrivateRoute><DisplayTransaction /></PrivateRoute>} />
+      <Route path="/join-transaction" element={<PrivateRoute><JoinTransaction /></PrivateRoute>} />
+      <Route path="/contact" element={<PrivateRoute><ContactUs /></PrivateRoute>} />
+      <Route path="/notifications" element={<PrivateRoute><Notification /></PrivateRoute>} />
+      <Route path="/setAvatar" element={<PrivateRoute><SetAvatar /></PrivateRoute>} />
+      <Route path="/security-settings/kyc" element={<PrivateRoute><Kyc /></PrivateRoute>} />
+      <Route path="/security-settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
+      {/* <Route path="/admin" element={<PrivateRoute><Admin /></PrivateRoute>} /> */}
+      <Route path="/chat/:chatroomId" element={<PrivateRoute><MessageBox /></PrivateRoute>} />
     </Routes>
   );
 }

@@ -1,5 +1,6 @@
 import { createSlice } from '@reduxjs/toolkit';
 import { fetchInitialData, updateTransaction, confirmTransaction, fundTransaction, cancelTransaction } from './thunks';
+import { setWallet } from './walletSlice';
 
 const initialState = {
   transactions: [],
@@ -38,6 +39,7 @@ const transactionSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchInitialData.fulfilled, (state, action) => {
+        console.log('fetchInitialData payload:', action.payload); // Debug log
         state.transactions = Array.isArray(action.payload.transactions) ? action.payload.transactions : [];
         state.loading = false;
         state.error = null;
@@ -45,7 +47,7 @@ const transactionSlice = createSlice({
       .addCase(fetchInitialData.rejected, (state, action) => {
         state.error = action.payload?.message || 'Failed to fetch initial data';
         state.loading = false;
-        state.transactions = [];
+        // Do not clear transactions to preserve existing data
       })
       // updateTransaction
       .addCase(updateTransaction.pending, (state) => {
