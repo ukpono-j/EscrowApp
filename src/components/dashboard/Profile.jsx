@@ -14,7 +14,6 @@ import {
 import { FaEdit, FaWallet, FaTimes, FaCreditCard, FaSync, FaMoneyBillWave, FaSave } from 'react-icons/fa';
 import { MdContentCopy } from 'react-icons/md';
 import io from 'socket.io-client';
-import multiavatar from '@multiavatar/multiavatar/esm';
 import moment from 'moment-timezone';
 import axios from '../../utils/axiosConfig';
 import { fetchInitialData, fundWallet, checkFundingStatus, manualReconcileTransaction, fetchPendingWithdrawals } from '../../store/slices/walletThunks';
@@ -265,16 +264,14 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
   const textColor = useColorModeValue('gray.800', 'white');
   const subtleTextColor = useColorModeValue('gray.600', 'gray.300');
 
-  // Fetch pending withdrawals
   useEffect(() => {
     const fetchWithdrawals = async () => {
       try {
         const response = await dispatch(fetchPendingWithdrawals()).unwrap();
-        // Corrected access to pendingWithdrawals
         setPendingWithdrawals(response.data?.data?.pendingWithdrawals || []);
       } catch (error) {
-        setPendingWithdrawals([]); // Handle 404 or errors by showing empty list
-        if (error.status !== 404) { // Only show toast for non-404 errors
+        setPendingWithdrawals([]);
+        if (error.status !== 404) {
           toast({
             title: 'Error',
             description: error.message || 'Failed to fetch pending withdrawals.',
@@ -290,7 +287,6 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
     }
   }, [isOpen, dispatch, toast]);
 
-  // Validate amount in real-time
   useEffect(() => {
     const amountNum = parseFloat(amount);
     if (amount && (isNaN(amountNum) || amountNum < 100)) {
@@ -302,7 +298,6 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
     }
   }, [amount, walletBalance]);
 
-  // Countdown timer logic
   const formatTimeRemaining = (expectedPayoutDate) => {
     const now = moment.tz('Africa/Lagos');
     const payoutDate = moment.tz(expectedPayoutDate, 'Africa/Lagos');
@@ -374,7 +369,6 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
         setAmount('');
         setAccountNumber('');
         setAccountName('');
-        // Refresh pending withdrawals
         const updatedWithdrawals = await dispatch(fetchPendingWithdrawals()).unwrap();
         setPendingWithdrawals(updatedWithdrawals.data.pendingWithdrawals || []);
         onClose();
@@ -491,11 +485,23 @@ const Profile = () => {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [authError, setAuthError] = useState(null);
   const [fundingAmount, setFundingAmount] = useState(null);
+  const [avatarError, setAvatarError] = useState(false);
   const textColor = useColorModeValue('gray.800', 'white');
   const subtleTextColor = useColorModeValue('gray.600', 'gray.300');
   const boxBg = useColorModeValue('white', 'gray.800');
   const cardBg = useColorModeValue('gray.50', 'gray.700');
-  const avatarSvg = user?.email ? multiavatar(user.email) : multiavatar('default');
+
+  // Fallback avatar URL
+  const FALLBACK_AVATAR = 'https://via.placeholder.com/100?text=Avatar';
+
+  // Log avatar URL for debugging
+  useEffect(() => {
+    if (user?.avatarImage) {
+      logger.info('Avatar URL:', { url: `${BASE_URL}${user.avatarImage}` });
+    } else {
+      logger.warn('No avatarImage found in user object');
+    }
+  }, [user]);
 
   // Initialize WebSocket
   const [socket, setSocket] = useState(null);
@@ -857,7 +863,7 @@ const Profile = () => {
   const handleUpdateProfile = async () => {
     setIsSubmitting(true);
     try {
-      const response = await retryAsync(() => axios.put('/api/users/update', formData));
+      const response = await retryAsync(() => axios.put('/api/users/update-user-details', formData));
       if (response.data.success) {
         dispatch(setWallet({ ...user, ...formData }));
         setIsEditing(false);
@@ -1026,7 +1032,11 @@ const Profile = () => {
             <Flex align="center" mb={6} flexDir={{ base: 'column', md: 'row' }} textAlign={{ base: 'center', md: 'left' }}>
               <Avatar
                 size="xl"
-                src={`data:image/svg+xml;utf8,${encodeURIComponent(avatarSvg)}`}
+                src={avatarError ? FALLBACK_AVATAR : `${BASE_URL}${user.avatarImage || '/api/avatar/default'}`}
+                onError={() => {
+                  logger.error('Failed to load avatar', { url: `${BASE_URL}${user.avatarImage || '/api/avatar/default'}` });
+                  setAvatarError(true);
+                }}
                 mr={{ md: 4 }}
                 mb={{ base: 4, md: 0 }}
               />
