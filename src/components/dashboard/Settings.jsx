@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import Sidebar from "./Sidebar";
-import BottomNav from "./BottomNav";
 
 const Settings = () => {
   const [showToggleContainer, setShowToggleContainer] = useState(true);
@@ -34,10 +33,6 @@ const Settings = () => {
           Settings
         </div>
       </div>
-      <BottomNav
-        onShowProfile={handleShowProfile}
-        onShowToggleComponent={handleMyTransaction}
-      />
     </div>
   );
 };

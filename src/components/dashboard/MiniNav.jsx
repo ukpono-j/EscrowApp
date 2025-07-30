@@ -86,7 +86,7 @@ const MiniNav = () => {
 
   const handleMenuToggle = () => setMenu(!menu);
 
-  const bgColor = useColorModeValue("white", "#0F172A");
+  const bgColor = useColorModeValue("white", "#051E2F");
   const textColor = useColorModeValue("#1E293B", "white");
   const shadowColor = useColorModeValue("rgba(0,0,0,0.05)", "rgba(0,0,0,0.2)");
 

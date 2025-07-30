@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import {
   Box, Flex, Text, Button, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter,
-  Grid, Stack, Input, IconButton, Image, Spinner, useDisclosure
+  Grid, Stack, Input, IconButton, Image, Spinner, useDisclosure, useColorModeValue
 } from '@chakra-ui/react';
 import { FiSearch, FiEdit } from 'react-icons/fi';
 import { BsChatFill } from 'react-icons/bs';
@@ -17,7 +17,6 @@ import {
 import { setWallet } from '../../store/slices/walletSlice';
 import { useManagedToast } from '../../utils/toastManager';
 import Sidebar from './Sidebar';
-import BottomNav from './BottomNav';
 import MiniNav from './MiniNav';
 import axios from '../../utils/axiosConfig';
 
@@ -32,12 +31,15 @@ const debounce = (func, wait) => {
   };
 };
 
-const TransactionLoader = () => (
-  <Flex align="center" justify="center" h="50vh" direction="column" gap={4}>
-    <Spinner color="#BB954D" size="lg" />
-    <Text color="gray.400" fontSize="md">Loading transactions...</Text>
-  </Flex>
-);
+const TransactionLoader = () => {
+  const textColor = useColorModeValue('#051E2F', 'white');
+  return (
+    <Flex align="center" justify="center" h="50vh" direction="column" gap={4}>
+      <Spinner color="#BB954D" size="lg" />
+      <Text color={textColor} fontSize="md">Loading transactions...</Text>
+    </Flex>
+  );
+};
 
 const TransactionCard = React.memo(({ transaction, currentUser, isConfirming, handleChat, handleWaybill, handleConfirm, handleFund, handleEditPayment, cancelTransaction, copyToClipboard, toggleDescription, expandedDescriptions }) => {
   const currentUserId = currentUser?._id?.toString() || '';
@@ -53,32 +55,36 @@ const TransactionCard = React.memo(({ transaction, currentUser, isConfirming, ha
   const description = transaction?.productDetails?.description || "No description";
   const isExpanded = expandedDescriptions[transaction._id];
   const truncatedDescription = description.length > 80 && !isExpanded ? `${description.substring(0, 80)}...` : description;
+  const cardBg = useColorModeValue('white', '#1A202C');
+  const textColor = useColorModeValue('#051E2F', 'white');
+  const subtleTextColor = useColorModeValue('gray.500', 'gray.400');
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
 
   return (
     <MotionBox
-      bg="#1A202C"
+      bg={cardBg}
       p={4}
       rounded="lg"
       border="1px"
-      borderColor="gray.700"
+      borderColor={borderColor}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
       <Flex justify="space-between" align="center" mb={3}>
         <Box>
-          <Text fontSize="md" fontWeight="600" color="white">{displayName}</Text>
-          <Text fontSize="xs" color="gray.400">{userRole === "buyer" ? "Buying" : "Selling"}</Text>
+          <Text fontSize="md" fontWeight="600" color={textColor}>{displayName}</Text>
+          <Text fontSize="xs" color={subtleTextColor}>{userRole === "buyer" ? "Buying" : "Selling"}</Text>
         </Box>
         <Flex gap={2}>
-          <IconButton aria-label="Edit payment" icon={<FiEdit />} size="sm" color="gray.400" bg="transparent" _hover={{ color: "#BB954D" }} onClick={() => handleEditPayment(transaction)} />
-          <IconButton aria-label="Open chat" icon={<BsChatFill />} size="sm" color="gray.400" bg="transparent" _hover={{ color: "#BB954D" }} onClick={() => handleChat(transaction._id)} />
+          <IconButton aria-label="Edit payment" icon={<FiEdit />} size="sm" color={subtleTextColor} bg="transparent" _hover={{ color: "#BB954D" }} onClick={() => handleEditPayment(transaction)} />
+          <IconButton aria-label="Open chat" icon={<BsChatFill />} size="sm" color={subtleTextColor} bg="transparent" _hover={{ color: "#BB954D" }} onClick={() => handleChat(transaction._id)} />
         </Flex>
       </Flex>
 
       <Flex justify="space-between" align="center" mb={3}>
         <Box>
-          <Text fontSize="xs" color="gray.400">Amount</Text>
+          <Text fontSize="xs" color={subtleTextColor}>Amount</Text>
           <Text fontSize="lg" color="#BB954D" fontWeight="600">
             {transaction.paymentAmount ? `₦${parseFloat(transaction.paymentAmount).toLocaleString("en-NG", { minimumFractionDigits: 2 })}` : "N/A"}
           </Text>
@@ -99,8 +105,8 @@ const TransactionCard = React.memo(({ transaction, currentUser, isConfirming, ha
       </Flex>
 
       <Box mb={3}>
-        <Text fontSize="xs" color="gray.400">Escrow</Text>
-        <Text fontSize="sm" color={transaction.locked && transaction.status !== "completed" ? "#BB954D" : transaction.status === "completed" ? "#22c55e" : "gray.400"} fontWeight="500">
+        <Text fontSize="xs" color={subtleTextColor}>Escrow</Text>
+        <Text fontSize="sm" color={transaction.locked && transaction.status !== "completed" ? "#BB954D" : transaction.status === "completed" ? "#22c55e" : subtleTextColor} fontWeight="500">
           {transaction.locked && transaction.status !== "completed"
             ? `Locked: ₦${parseFloat(transaction.lockedAmount || 0).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`
             : transaction.status === "completed"
@@ -111,26 +117,26 @@ const TransactionCard = React.memo(({ transaction, currentUser, isConfirming, ha
 
       <Grid templateColumns="1fr 1fr" gap={3} mb={3}>
         <Box>
-          <Text fontSize="xs" color="gray.400">Contact</Text>
-          <Text fontSize="sm" color="white">{transaction.email || "N/A"}</Text>
+          <Text fontSize="xs" color={subtleTextColor}>Contact</Text>
+          <Text fontSize="sm" color={textColor}>{transaction.email || "N/A"}</Text>
         </Box>
         <Box>
-          <Text fontSize="xs" color="gray.400">Created</Text>
-          <Text fontSize="sm" color="white">{transaction.createdAt ? format(new Date(transaction.createdAt), "MMM dd, yyyy") : "N/A"}</Text>
+          <Text fontSize="xs" color={subtleTextColor}>Created</Text>
+          <Text fontSize="sm" color={textColor}>{transaction.createdAt ? format(new Date(transaction.createdAt), "MMM dd, yyyy") : "N/A"}</Text>
         </Box>
       </Grid>
 
       <Box mb={3}>
-        <Text fontSize="xs" color="gray.400">Transaction ID</Text>
+        <Text fontSize="xs" color={subtleTextColor}>Transaction ID</Text>
         <Flex align="center" gap={2}>
-          <Text fontSize="xs" color="gray.300" isTruncated>{transaction._id}</Text>
-          <IconButton aria-label="Copy ID" icon={<MdContentCopy />} size="xs" color="gray.400" bg="transparent" _hover={{ color: "#8a6d27" }} onClick={() => copyToClipboard(transaction._id)} />
+          <Text fontSize="xs" color={subtleTextColor} isTruncated>{transaction._id}</Text>
+          <IconButton aria-label="Copy ID" icon={<MdContentCopy />} size="xs" color={subtleTextColor} bg="transparent" _hover={{ color: "#8a6d27" }} onClick={() => copyToClipboard(transaction._id)} />
         </Flex>
       </Box>
 
       <Box mb={3}>
-        <Text fontSize="xs" color="gray.400">Description</Text>
-        <Text fontSize="sm" color="white" onClick={() => description.length > 80 && toggleDescription(transaction._id)} cursor={description.length > 80 ? "pointer" : "default"}>
+        <Text fontSize="xs" color={subtleTextColor}>Description</Text>
+        <Text fontSize="sm" color={textColor} onClick={() => description.length > 80 && toggleDescription(transaction._id)} cursor={description.length > 80 ? "pointer" : "default"}>
           {truncatedDescription}
         </Text>
         {description.length > 80 && (
@@ -162,154 +168,176 @@ const TransactionCard = React.memo(({ transaction, currentUser, isConfirming, ha
   );
 });
 
-const WaybillModal = React.memo(({ isOpen, onClose, transactionId, isBuyer, details, setDetails, errors, handleSubmit, downloadImage, isFunded }) => (
-  <Modal isOpen={isOpen} onClose={onClose} isCentered size={{ base: "full", sm: "md" }}>
-    <ModalOverlay />
-    <ModalContent bg="#1A202C" color="white" p={4} rounded="lg" border="1px" borderColor="gray.700">
-      <ModalHeader fontSize="lg" fontWeight="600">{isBuyer ? "Waybill Details" : "Submit Waybill"}</ModalHeader>
-      <ModalBody>
-        {isBuyer ? (
-          <Stack spacing={3}>
-            {[
-              { label: "Item", value: details.item || "N/A" },
-              { label: "Shipping/Arrival Address", value: details.shippingAddress || "N/A" },
-              { label: "Tracking Number", value: details.trackingNumber || "N/A" },
-              { label: "Delivery/Arrival Date", value: details.deliveryDate ? format(new Date(details.deliveryDate), "MMM dd, yyyy") : "N/A" },
-            ].map(({ label, value }, idx) => (
-              <Box key={idx}>
-                <Text fontSize="xs" color="gray.400">{label}</Text>
-                <Text fontSize="sm" color="white">{value}</Text>
-              </Box>
-            ))}
-            <Box>
-              <Text fontSize="xs" color="gray.400">Image</Text>
-              {details.image ? (
-                <Flex direction="column" gap={2}>
-                  <Image src={details.image} alt="Waybill" maxW="100%" rounded="md" />
-                  <Button size="sm" bg="#8a6d27" color="white" _hover={{ bg: "#b38939" }} onClick={() => downloadImage(details.image)}>Download Image</Button>
-                </Flex>
-              ) : (
-                <Text fontSize="sm" color="gray.400">No image</Text>
-              )}
-            </Box>
-          </Stack>
-        ) : !isFunded ? (
-          <Text fontSize="sm" color="red.400" textAlign="center">
-            Seller cannot fill or carry out waybill until buyer has funded the transaction.
-          </Text>
-        ) : (
-          <form onSubmit={(e) => { e.preventDefault(); handleSubmit(transactionId); }}>
+const WaybillModal = React.memo(({ isOpen, onClose, transactionId, isBuyer, details, setDetails, errors, handleSubmit, downloadImage, isFunded }) => {
+  const bgColor = useColorModeValue('white', '#1A202C');
+  const textColor = useColorModeValue('#051E2F', 'white');
+  const subtleTextColor = useColorModeValue('gray.500', 'gray.400');
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const inputBg = useColorModeValue('gray.50', '#051E2F');
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} isCentered size={{ base: "full", sm: "md" }}>
+      <ModalOverlay />
+      <ModalContent bg={bgColor} color={textColor} p={4} rounded="lg" border="1px" borderColor={borderColor}>
+        <ModalHeader fontSize="lg" fontWeight="600">{isBuyer ? "Waybill Details" : "Submit Waybill"}</ModalHeader>
+        <ModalBody>
+          {isBuyer ? (
             <Stack spacing={3}>
               {[
-                { label: "Item", key: "item", type: "text", isReadOnly: true },
-                { label: "Shipping/Arrival Address", key: "shippingAddress", type: "text" },
-                { label: "Tracking Number", key: "trackingNumber", type: "text" },
-                { label: "Delivery/Arrival Date", key: "deliveryDate", type: "date" },
-              ].map(({ label, key, type, isReadOnly }) => (
-                <Box key={key}>
-                  <Text fontSize="xs" color="gray.400">{label}</Text>
-                  <Input
-                    type={type}
-                    value={details[key] || ""}
-                    onChange={(e) => setDetails({ ...details, [key]: e.target.value })}
-                    bg="#051E2F"
-                    borderColor="gray.600"
-                    color="white"
-                    size="sm"
-                    _focus={{ borderColor: "#BB954D" }}
-                    isReadOnly={isReadOnly}
-                  />
-                  {errors[key] && <Text color="red.400" fontSize="xs">{errors[key]}</Text>}
+                { label: "Item", value: details.item || "N/A" },
+                { label: "Shipping/Arrival Address", value: details.shippingAddress || "N/A" },
+                { label: "Tracking Number", value: details.trackingNumber || "N/A" },
+                { label: "Delivery/Arrival Date", value: details.deliveryDate ? format(new Date(details.deliveryDate), "MMM dd, yyyy") : "N/A" },
+              ].map(({ label, value }, idx) => (
+                <Box key={idx}>
+                  <Text fontSize="xs" color={subtleTextColor}>{label}</Text>
+                  <Text fontSize="sm" color={textColor}>{value}</Text>
                 </Box>
               ))}
               <Box>
-                <Text fontSize="xs" color="gray.400">Image</Text>
-                <Box border="1px dashed" borderColor="gray.600" p={4} textAlign="center" rounded="md">
-                  <Input
-                    type="file"
-                    id={`waybill-image-${transactionId}`}
-                    accept="image/*"
-                    onChange={(e) => setDetails({ ...details, image: e.target.files[0] })}
-                    display="none"
-                  />
-                  <label htmlFor={`waybill-image-${transactionId}`} style={{ cursor: 'pointer' }}>
-                    <Text fontSize="sm" color="gray.400">Upload image</Text>
-                  </label>
-                  {details.image && <Text fontSize="xs" color="gray.400" mt={1}>{details.image.name}</Text>}
-                </Box>
-                {errors.image && <Text color="red.400" fontSize="xs">{errors.image}</Text>}
+                <Text fontSize="xs" color={subtleTextColor}>Image</Text>
+                {details.image ? (
+                  <Flex direction="column" gap={2}>
+                    <Image src={details.image} alt="Waybill" maxW="100%" rounded="md" />
+                    <Button size="sm" bg="#8a6d27" color="white" _hover={{ bg: "#b38939" }} onClick={() => downloadImage(details.image)}>Download Image</Button>
+                  </Flex>
+                ) : (
+                  <Text fontSize="sm" color={subtleTextColor}>No image</Text>
+                )}
               </Box>
             </Stack>
-          </form>
-        )}
-      </ModalBody>
-      <ModalFooter>
-        <Flex gap={3} w="full">
-          <Button size="sm" bg="gray.600" color="white" _hover={{ bg: "gray.700" }} onClick={onClose}>Close</Button>
-          {!isBuyer && isFunded && (
-            <Button size="sm" bg="#BB954D" color="white" _hover={{ bg: "#8a6d2f" }} onClick={() => handleSubmit(transactionId)}>Submit</Button>
+          ) : !isFunded ? (
+            <Text fontSize="sm" color="red.400" textAlign="center">
+              Seller cannot fill or carry out waybill until buyer has funded the transaction.
+            </Text>
+          ) : (
+            <form onSubmit={(e) => { e.preventDefault(); handleSubmit(transactionId); }}>
+              <Stack spacing={3}>
+                {[
+                  { label: "Item", key: "item", type: "text", isReadOnly: true },
+                  { label: "Shipping/Arrival Address", key: "shippingAddress", type: "text" },
+                  { label: "Tracking Number", key: "trackingNumber", type: "text" },
+                  { label: "Delivery/Arrival Date", key: "deliveryDate", type: "date" },
+                ].map(({ label, key, type, isReadOnly }) => (
+                  <Box key={key}>
+                    <Text fontSize="xs" color={subtleTextColor}>{label}</Text>
+                    <Input
+                      type={type}
+                      value={details[key] || ""}
+                      onChange={(e) => setDetails({ ...details, [key]: e.target.value })}
+                      bg={inputBg}
+                      borderColor={borderColor}
+                      color={textColor}
+                      size="sm"
+                      _focus={{ borderColor: "#BB954D" }}
+                      isReadOnly={isReadOnly}
+                    />
+                    {errors[key] && <Text color="red.400" fontSize="xs">{errors[key]}</Text>}
+                  </Box>
+                ))}
+                <Box>
+                  <Text fontSize="xs" color={subtleTextColor}>Image</Text>
+                  <Box border="1px dashed" borderColor={borderColor} p={4} textAlign="center" rounded="md">
+                    <Input
+                      type="file"
+                      id={`waybill-image-${transactionId}`}
+                      accept="image/*"
+                      onChange={(e) => setDetails({ ...details, image: e.target.files[0] })}
+                      display="none"
+                    />
+                    <label htmlFor={`waybill-image-${transactionId}`} style={{ cursor: 'pointer' }}>
+                      <Text fontSize="sm" color={subtleTextColor}>Upload image</Text>
+                    </label>
+                    {details.image && <Text fontSize="xs" color={subtleTextColor} mt={1}>{details.image.name}</Text>}
+                  </Box>
+                  {errors.image && <Text color="red.400" fontSize="xs">{errors.image}</Text>}
+                </Box>
+              </Stack>
+            </form>
           )}
-        </Flex>
-      </ModalFooter>
-    </ModalContent>
-  </Modal>
-));
-
-const PaymentDetailsModal = ({ isOpen, onClose, transaction, paymentDetails, setPaymentDetails, paymentErrors, handleSubmit }) => (
-  <Modal isOpen={isOpen} onClose={onClose} isCentered size={{ base: "full", sm: "sm" }}>
-    <ModalOverlay />
-    <ModalContent bg="#1A202C" color="white" p={4} rounded="lg" border="1px" borderColor="gray.700">
-      <ModalHeader fontSize="lg" fontWeight="600">Edit Payment</ModalHeader>
-      <form onSubmit={handleSubmit}>
-        <ModalBody>
-          <Box>
-            <Text fontSize="xs" color="gray.400">Amount</Text>
-            <Input
-              type="number"
-              value={paymentDetails.paymentAmount || ""}
-              onChange={(e) => setPaymentDetails({ ...paymentDetails, paymentAmount: e.target.value })}
-              bg="#051E2F"
-              borderColor="gray.600"
-              color="white"
-              size="sm"
-              _focus={{ borderColor: "#BB954D" }}
-              isDisabled={transaction?.locked}
-            />
-            {paymentErrors.paymentAmount && <Text color="red.400" fontSize="xs" mt={1}>{paymentErrors.paymentAmount}</Text>}
-          </Box>
         </ModalBody>
         <ModalFooter>
           <Flex gap={3} w="full">
-            <Button size="sm" bg="gray.600" color="white" _hover={{ bg: "gray.700" }} onClick={onClose}>Cancel</Button>
-            <Button type="submit" size="sm" bg="#BB954D" color="white" _hover={{ bg: "#967532" }}>Save</Button>
+            <Button size="sm" bg={useColorModeValue('gray.200', 'gray.600')} color={textColor} _hover={{ bg: useColorModeValue('gray.300', 'gray.700') }} onClick={onClose}>Close</Button>
+            {!isBuyer && isFunded && (
+              <Button size="sm" bg="#BB954D" color="white" _hover={{ bg: "#8a6d2f" }} onClick={() => handleSubmit(transactionId)}>Submit</Button>
+            )}
           </Flex>
         </ModalFooter>
-      </form>
-    </ModalContent>
-  </Modal>
-);
+      </ModalContent>
+    </Modal>
+  );
+});
 
-const FundingModal = ({ isOpen, onClose, transaction, walletBalance, confirmFunding }) => (
-  <Modal isOpen={isOpen} onClose={onClose} isCentered size={{ base: "full", sm: "sm" }}>
-    <ModalOverlay />
-    <ModalContent bg="#1A202C" color="white" p={4} rounded="lg" border="1px" borderColor="gray.700">
-      <ModalHeader fontSize="lg" fontWeight="600">Fund Transaction</ModalHeader>
-      <ModalBody>
-        <Text fontSize="sm" color="gray.400">
-          Wallet balance: ₦{(walletBalance ?? 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}.
-          Need additional ₦{transaction ? (parseFloat(transaction.paymentAmount || 0) - (walletBalance ?? 0)).toLocaleString('en-NG', { minimumFractionDigits: 2 }) : '0.00'}.
-          Proceed with Paystack?
-        </Text>
-      </ModalBody>
-      <ModalFooter>
-        <Flex gap={3} w="full">
-          <Button size="sm" bg="gray.600" color="white" _hover={{ bg: "gray.700" }} onClick={onClose}>Cancel</Button>
-          <Button size="sm" bg="#BB954D" color="white" _hover={{ bg: "#967532" }} onClick={() => confirmFunding(transaction)}>Proceed</Button>
-        </Flex>
-      </ModalFooter>
-    </ModalContent>
-  </Modal>
-);
+const PaymentDetailsModal = ({ isOpen, onClose, transaction, paymentDetails, setPaymentDetails, paymentErrors, handleSubmit }) => {
+  const bgColor = useColorModeValue('white', '#1A202C');
+  const textColor = useColorModeValue('#051E2F', 'white');
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const inputBg = useColorModeValue('gray.50', '#051E2F');
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} isCentered size={{ base: "full", sm: "sm" }}>
+      <ModalOverlay />
+      <ModalContent bg={bgColor} color={textColor} p={4} rounded="lg" border="1px" borderColor={borderColor}>
+        <ModalHeader fontSize="lg" fontWeight="600">Edit Payment</ModalHeader>
+        <form onSubmit={handleSubmit}>
+          <ModalBody>
+            <Box>
+              <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>Amount</Text>
+              <Input
+                type="number"
+                value={paymentDetails.paymentAmount || ""}
+                onChange={(e) => setPaymentDetails({ ...paymentDetails, paymentAmount: e.target.value })}
+                bg={inputBg}
+                borderColor={borderColor}
+                color={textColor}
+                size="sm"
+                _focus={{ borderColor: "#BB954D" }}
+                isDisabled={transaction?.locked}
+              />
+              {paymentErrors.paymentAmount && <Text color="red.400" fontSize="xs" mt={1}>{paymentErrors.paymentAmount}</Text>}
+            </Box>
+          </ModalBody>
+          <ModalFooter>
+            <Flex gap={3} w="full">
+              <Button size="sm" bg={useColorModeValue('gray.200', 'gray.600')} color={textColor} _hover={{ bg: useColorModeValue('gray.300', 'gray.700') }} onClick={onClose}>Cancel</Button>
+              <Button type="submit" size="sm" bg="#BB954D" color="white" _hover={{ bg: "#967532" }}>Save</Button>
+            </Flex>
+          </ModalFooter>
+        </form>
+      </ModalContent>
+    </Modal>
+  );
+};
+
+const FundingModal = ({ isOpen, onClose, transaction, walletBalance, confirmFunding }) => {
+  const bgColor = useColorModeValue('white', '#1A202C');
+  const textColor = useColorModeValue('#051E2F', 'white');
+  const subtleTextColor = useColorModeValue('gray.500', 'gray.400');
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} isCentered size={{ base: "full", sm: "sm" }}>
+      <ModalOverlay />
+      <ModalContent bg={bgColor} color={textColor} p={4} rounded="lg" border="1px" borderColor={borderColor}>
+        <ModalHeader fontSize="lg" fontWeight="600">Fund Transaction</ModalHeader>
+        <ModalBody>
+          <Text fontSize="sm" color={subtleTextColor}>
+            Wallet balance: ₦{(walletBalance ?? 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}.
+            Need additional ₦{transaction ? (parseFloat(transaction.paymentAmount || 0) - (walletBalance ?? 0)).toLocaleString('en-NG', { minimumFractionDigits: 2 }) : '0.00'}.
+            Proceed with Paystack?
+          </Text>
+        </ModalBody>
+        <ModalFooter>
+          <Flex gap={3} w="full">
+            <Button size="sm" bg={useColorModeValue('gray.200', 'gray.600')} color={textColor} _hover={{ bg: useColorModeValue('gray.300', 'gray.700') }} onClick={onClose}>Cancel</Button>
+            <Button size="sm" bg="#BB954D" color="white" _hover={{ bg: "#967532" }} onClick={() => confirmFunding(transaction)}>Proceed</Button>
+          </Flex>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
+  );
+};
 
 const DisplayTransaction = () => {
   const dispatch = useDispatch();
@@ -341,6 +369,12 @@ const DisplayTransaction = () => {
   const { isOpen: isFundingModalOpen, onOpen: openFundingModal, onClose: closeFundingModal } = useDisclosure();
   const [showWaybillPopup, setShowWaybillPopup] = useState({});
   const [buyerShowWaybillPopup, setBuyerShowWaybillPopup] = useState({});
+  const bgColor = useColorModeValue('gray.100', '#051E2F');
+  const cardBg = useColorModeValue('white', '#1A202C');
+  const textColor = useColorModeValue('#051E2F', 'white');
+  const subtleTextColor = useColorModeValue('gray.500', 'gray.400');
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const inputBg = useColorModeValue('gray.50', '#051E2F');
 
   const debouncedFetchInitialData = useCallback(debounce(() => {
     dispatch(fetchInitialData()).unwrap().then((payload) => {
@@ -735,28 +769,42 @@ const DisplayTransaction = () => {
   };
 
   return (
-    <Flex minH="100vh" bg="#051E2F" direction={{ base: "column", md: "row" }}>
+    <Flex minH="100vh" bg={bgColor} direction={{ base: "column", md: "row" }}>
       <Sidebar onShowProfile={() => setShowProfile(true)} onShowToggleComponent={() => setShowProfile(false)} onCollapseChange={setIsSidebarCollapsed} />
       <Box flex={1} p={{ base: 4, md: 6 }} mt={{ base: "80px", md: 0 }} ml={{ base: 0, md: isSidebarCollapsed ? "80px" : "280px" }} overflowY="auto">
         {!showProfile ? (
           <Box maxW="1400px" mx="auto">
             <MiniNav />
-            <Flex justify="space-between" align="center" mb={6} flexDir={{ base: "column", md: "row" }} gap={4}>
-              <Text fontSize={{ base: "2xl", md: "3xl" }} fontWeight="600" color="white">Transactions</Text>
-              <Button size="md" bg="#BB954D" color="white" _hover={{ bg: "#967532" }} isLoading={transactionsLoading || walletLoading || userLoading} onClick={() => dispatch(fetchInitialData())}>
+            <Flex
+              justify="space-between"
+              align="start"
+              mb={6}
+              mt={{ base: 10, md: 20 }}
+              flexDir={{ base: "row", md: "row" }}
+              gap={4}
+            >
+              <Text fontSize={{ base: "2xl", md: "3xl" }} fontWeight="600" color={textColor}>Transactions</Text>
+              <Button
+                size="md"
+                bg="#B38939"
+                color="white"
+                _hover={{ bg: "#967532" }}
+                isLoading={transactionsLoading || walletLoading || userLoading}
+                onClick={() => dispatch(fetchInitialData())}
+              >
                 Refresh
               </Button>
             </Flex>
 
-            <Flex flexDir={{ base: "column", md: "row" }} gap={4} mb={6}>
+            <Flex flexDir={{ base: "column", md: "row" }} gap={4} mb={6} mt={6}>
               <Stack direction="row" spacing={3} flexWrap="wrap">
                 {["all", "active", "completed", "cancelled", "wallet"].map(tab => (
                   <Button
                     key={tab}
                     size="md"
-                    bg={activeTab === tab ? "#8a6d27" : "gray.700"}
-                    color="white"
-                    _hover={{ bg: activeTab === tab ? "#8a6d27" : "gray.600" }}
+                    bg={activeTab === tab ? "#8a6d27" : useColorModeValue('gray.200', 'gray.700')}
+                    color={activeTab === tab ? "white" : textColor}
+                    _hover={{ bg: activeTab === tab ? "#8a6d27" : useColorModeValue('gray.300', 'gray.600') }}
                     onClick={() => setActiveTab(tab)}
                     fontWeight="500"
                     rounded="lg"
@@ -766,19 +814,19 @@ const DisplayTransaction = () => {
                 ))}
               </Stack>
               <Box pos="relative" w={{ base: "100%", md: "300px", lg: "360px" }} maxW="100%">
-                <Flex align="center" bg="#1A202C" border="1px" borderColor="gray.600" rounded="lg" px={3} py={2} _focusWithin={{ borderColor: "#BB954D", boxShadow: "0 0 0 1px #BB954D" }}>
-                  <FiSearch color="gray.400" size={16} />
+                <Flex align="center" bg={cardBg} border="1px" borderColor={borderColor} rounded="lg" px={3} py={2} _focusWithin={{ borderColor: "#BB954D", boxShadow: "0 0 0 1px #BB954D" }}>
+                  <FiSearch color={subtleTextColor} size={16} />
                   <Input
                     placeholder="Search transactions..."
                     value={searchQuery}
                     onChange={(e) => debouncedSearch(e.target.value)}
                     bg="transparent"
                     border="none"
-                    color="white"
+                    color={textColor}
                     fontSize="sm"
                     pl={2}
                     _focus={{ outline: "none" }}
-                    _placeholder={{ color: "gray.400" }}
+                    _placeholder={{ color: subtleTextColor }}
                   />
                   {searchQuery && (
                     <IconButton
@@ -786,8 +834,8 @@ const DisplayTransaction = () => {
                       icon={<MdClose />}
                       size="xs"
                       bg="transparent"
-                      color="gray.400"
-                      _hover={{ color: "white" }}
+                      color={subtleTextColor}
+                      _hover={{ color: textColor }}
                       onClick={() => setSearchQuery("")}
                     />
                   )}
@@ -799,26 +847,26 @@ const DisplayTransaction = () => {
               <TransactionLoader />
             ) : transactionsError ? (
               <Flex direction="column" align="center" justify="center" py={8}>
-                <Text fontSize="2xl" color="gray.400">⚠️</Text>
-                <Text color="gray.400" fontSize="md" textAlign="center">Failed to load: {transactionsError}</Text>
+                <Text fontSize="2xl" color={subtleTextColor}>⚠️</Text>
+                <Text color={subtleTextColor} fontSize="md" textAlign="center">Failed to load: {transactionsError}</Text>
                 <Button mt={4} size="md" bg="#BB954D" color="white" _hover={{ bg: "#967532" }} onClick={() => dispatch(fetchInitialData())}>Retry</Button>
               </Flex>
             ) : activeTab === "wallet" ? (
-              <Box bg="#1A202C" p={4} rounded="lg" border="1px" borderColor="gray.700">
-                <Text fontSize="lg" fontWeight="600" color="white" mb={3}>Wallet History</Text>
+              <Box bg={cardBg} p={4} rounded="lg" border="1px" borderColor={borderColor}>
+                <Text fontSize="lg" fontWeight="600" color={textColor} mb={3}>Wallet History</Text>
                 {!Array.isArray(walletTransactions) || walletTransactions.length === 0 ? (
                   <Flex direction="column" align="center" justify="center" py={8}>
-                    <Text fontSize="2xl" color="gray.400">💳</Text>
-                    <Text color="gray.400" fontSize="sm">No wallet transactions.</Text>
+                    <Text fontSize="2xl" color={subtleTextColor}>💳</Text>
+                    <Text color={subtleTextColor} fontSize="sm">No wallet transactions.</Text>
                   </Flex>
                 ) : (
                   <Grid templateColumns={{ base: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" }} gap={4}>
                     {walletTransactions.map((tx, idx) => (
-                      <Box key={`${tx.reference}-${tx.createdAt}-${idx}`} p={3} bg="#051E2F" rounded="lg" border="1px" borderColor="gray.700">
-                        <Text color="white" fontSize="sm" isTruncated>{tx.reference || "N/A"}</Text>
+                      <Box key={`${tx.reference}-${tx.createdAt}-${idx}`} p={3} bg={inputBg} rounded="lg" border="1px" borderColor={borderColor}>
+                        <Text color={textColor} fontSize="sm" isTruncated>{tx.reference || "N/A"}</Text>
                         <Text color={tx.type === "deposit" ? "#22c55e" : "#ef4444"} fontSize="sm" fontWeight="600">{tx.type === "deposit" ? "+" : "-"} ₦{(tx.amount || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</Text>
-                        <Text color="gray.400" fontSize="xs">Purpose: {tx.metadata?.purpose || "N/A"}</Text>
-                        <Text color="gray.400" fontSize="xs">{tx.createdAt ? new Date(tx.createdAt).toLocaleDateString() : "N/A"}</Text>
+                        <Text color={subtleTextColor} fontSize="xs">Purpose: {tx.metadata?.purpose || "N/A"}</Text>
+                        <Text color={subtleTextColor} fontSize="xs">{tx.createdAt ? new Date(tx.createdAt).toLocaleDateString() : "N/A"}</Text>
                       </Box>
                     ))}
                   </Grid>
@@ -826,8 +874,8 @@ const DisplayTransaction = () => {
               </Box>
             ) : filteredTransactions.length === 0 ? (
               <Flex direction="column" align="center" justify="center" py={8}>
-                <Text fontSize="2xl" color="gray.400">📭</Text>
-                <Text color="gray.400" fontSize="md" textAlign="center">{searchQuery ? "No matches found." : `No ${activeTab} transactions.`}</Text>
+                <Text fontSize="2xl" color={subtleTextColor}>📭</Text>
+                <Text color={subtleTextColor} fontSize="md" textAlign="center">{searchQuery ? "No matches found." : `No ${activeTab} transactions.`}</Text>
                 <Button mt={4} size="md" bg="#BB954D" color="white" _hover={{ bg: "#967532" }} onClick={() => dispatch(fetchInitialData())}>Retry</Button>
               </Flex>
             ) : (
@@ -854,7 +902,7 @@ const DisplayTransaction = () => {
           </Box>
         ) : (
           <Box maxW="1400px" mx="auto">
-            <Text fontSize="2xl" fontWeight="600" color="white" mb={4}>Profile</Text>
+            <Text fontSize="2xl" fontWeight="600" color={textColor} mb={4}>Profile</Text>
           </Box>
         )}
 
@@ -914,21 +962,20 @@ const DisplayTransaction = () => {
 
         <Modal isOpen={modalVisible} onClose={() => setModalVisible(false)} isCentered size="sm">
           <ModalOverlay />
-          <ModalContent bg="#1A202C" color="white" p={4} rounded="lg" border="1px" borderColor="gray.700">
+          <ModalContent bg={cardBg} color={textColor} p={4} rounded="lg" border="1px" borderColor={borderColor}>
             <ModalHeader fontSize="lg" fontWeight="600">Confirm Transaction</ModalHeader>
             <ModalBody>
-              <Text fontSize="sm" color="gray.400">Are you sure? This cannot be undone.</Text>
+              <Text fontSize="sm" color={subtleTextColor}>Are you sure? This cannot be undone.</Text>
             </ModalBody>
             <ModalFooter>
               <Flex gap={3} w="full">
-                <Button size="sm" bg="gray.600" color="white" _hover={{ bg: "gray.700" }} onClick={() => setModalVisible(false)}>Cancel</Button>
+                <Button size="sm" bg={useColorModeValue('gray.200', 'gray.600')} color={textColor} _hover={{ bg: useColorModeValue('gray.300', 'gray.700') }} onClick={() => setModalVisible(false)}>Cancel</Button>
                 <Button size="sm" bg="#BB954D" color="white" _hover={{ bg: "#967532" }} onClick={() => completeTransaction(selectedTransactionId)} isLoading={isConfirming[selectedTransactionId]}>Confirm</Button>
               </Flex>
             </ModalFooter>
           </ModalContent>
         </Modal>
       </Box>
-      <BottomNav />
     </Flex>
   );
 };

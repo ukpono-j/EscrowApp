@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import Sidebar from "./Sidebar";
 import MyTransaction from "./MyTransaction";
 import Profile from "./Profile";
-import BottomNav from "./BottomNav";
 import MiniNav from "./MiniNav";
 
 const Transaction = () => {
@@ -41,10 +40,6 @@ const Transaction = () => {
           <MyTransaction />
         </div>
       </div>
-      <BottomNav
-        onShowProfile={handleShowProfile}
-        onShowToggleComponent={handleMyTransaction}
-      />
     </div>
   );
 };

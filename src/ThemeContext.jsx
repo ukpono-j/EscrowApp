@@ -11,7 +11,7 @@ const theme = extendTheme({
       600: "#8A6D2F", // Secondary brand color (gradient)
     },
     gray: {
-      800: "#0F172A", // Dark background for sidebar and body
+      800: "#051E2F", // Dark background for sidebar and body
       100: "#FAFAFA", // Light background
     },
   },

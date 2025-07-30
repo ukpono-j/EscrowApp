@@ -5,7 +5,6 @@ import axios from "../utils/axiosConfig";
 import Sidebar from "../components/dashboard/Sidebar";
 import MyTransaction from "../components/dashboard/MyTransaction";
 import Profile from "../components/dashboard/Profile";
-import BottomNav from "../components/dashboard/BottomNav";
 import MiniNav from "../components/dashboard/MiniNav";
 
 const UserDashboard = () => {
@@ -116,10 +115,6 @@ const UserDashboard = () => {
         <Box display={showProfile ? "block" : "none"} p={4}>
           <Profile />
         </Box>
-        <BottomNav
-          onShowProfile={handleShowProfile}
-          onShowToggleComponent={handleMyTransaction}
-        />
       </Box>
     </Box>
   );

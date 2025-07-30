@@ -9,7 +9,8 @@ import {
   Container, useToast, Modal, ModalOverlay, ModalContent, ModalHeader, ModalFooter, ModalBody,
   ModalCloseButton, useDisclosure, NumberInput, NumberInputField, NumberInputStepper,
   NumberIncrementStepper, NumberDecrementStepper, Divider, IconButton, Select, useColorModeValue,
-  Tabs, TabList, Tab, TabPanels, TabPanel, Badge, VStack, Progress,
+  Tabs, TabList, Tab, TabPanels, TabPanel, Badge, VStack, Progress, HStack, Card, CardBody,
+  CardHeader, SimpleGrid,
 } from '@chakra-ui/react';
 import { FaEdit, FaWallet, FaTimes, FaCreditCard, FaSync, FaMoneyBillWave, FaSave } from 'react-icons/fa';
 import { MdContentCopy } from 'react-icons/md';
@@ -69,9 +70,9 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <Box p={4} bg="red.100" borderRadius="md">
+        <Box p={4} bg="red.100" borderRadius="lg">
           <Text color="red.800">Something went wrong: {this.state.error.message}</Text>
-          <Button mt={2} onClick={() => window.location.reload()}>
+          <Button mt={2} bg="#B38939" _hover={{ bg: "#BB954D" }} color="white" onClick={() => window.location.reload()}>
             Retry
           </Button>
         </Box>
@@ -85,7 +86,9 @@ const FundAmountModal = ({ isOpen, onClose, onSubmit }) => {
   const [amount, setAmount] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const toast = useToast();
-  const textColor = useColorModeValue('gray.800', 'white');
+  const bgColor = useColorModeValue('white', '#1A202C');
+  const textColor = useColorModeValue('#051E2F', 'white');
+  const borderColor = useColorModeValue('gray.200', '#051E2F');
 
   const handleSubmit = async () => {
     if (isSubmitting) return;
@@ -120,24 +123,26 @@ const FundAmountModal = ({ isOpen, onClose, onSubmit }) => {
   return (
     <Modal isOpen={isOpen} onClose={onClose} isCentered size={{ base: 'full', sm: 'md' }}>
       <ModalOverlay />
-      <ModalContent>
-        <ModalHeader color={textColor}>Enter Funding Amount</ModalHeader>
-        <ModalCloseButton />
+      <ModalContent bg={bgColor} borderRadius="xl" border="1px" borderColor={borderColor}>
+        <ModalHeader color={textColor} fontWeight="bold">Enter Funding Amount</ModalHeader>
+        <ModalCloseButton color={textColor} />
         <ModalBody px={{ base: 4, sm: 6 }} py={4}>
           <FormControl>
             <FormLabel color={textColor}>Amount (₦)</FormLabel>
             <NumberInput min={100} precision={2} value={amount} onChange={(value) => setAmount(value)}>
-              <NumberInputField placeholder="Enter amount (minimum ₦100)" />
+              <NumberInputField placeholder="Enter amount (minimum ₦100)" bg={useColorModeValue('gray.50', '#051E2F')} borderColor={borderColor} color={textColor} />
               <NumberInputStepper>
-                <NumberIncrementStepper />
-                <NumberDecrementStepper />
+                <NumberIncrementStepper color={textColor} />
+                <NumberDecrementStepper color={textColor} />
               </NumberInputStepper>
             </NumberInput>
           </FormControl>
         </ModalBody>
         <ModalFooter flexDir={{ base: 'column', sm: 'row' }} gap={2}>
           <Button
-            colorScheme="blue"
+            bg="#B38939"
+            _hover={{ bg: "#BB954D" }}
+            color="white"
             onClick={handleSubmit}
             isLoading={isSubmitting}
             isDisabled={isSubmitting}
@@ -147,7 +152,7 @@ const FundAmountModal = ({ isOpen, onClose, onSubmit }) => {
           >
             Proceed to Fund
           </Button>
-          <Button variant="ghost" onClick={onClose} size={{ base: 'sm', sm: 'md' }}>
+          <Button variant="ghost" color={textColor} _hover={{ bg: useColorModeValue('gray.100', '#051E2F') }} onClick={onClose} size={{ base: 'sm', sm: 'md' }}>
             Cancel
           </Button>
         </ModalFooter>
@@ -158,9 +163,11 @@ const FundAmountModal = ({ isOpen, onClose, onSubmit }) => {
 
 const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, userName, amount, pendingTransactions, handleRefresh }) => {
   const toast = useToast();
-  const textColor = useColorModeValue('gray.800', 'white');
-  const subtleTextColor = useColorModeValue('gray.600', 'gray.300');
-  const boxBg = useColorModeValue('gray.100', 'gray.700');
+  const bgColor = useColorModeValue('white', '#1A202C');
+  const textColor = useColorModeValue('#051E2F', 'white');
+  const subtleTextColor = useColorModeValue('gray.500', 'gray.400');
+  const cardBg = useColorModeValue('gray.50', '#051E2F');
+  const borderColor = useColorModeValue('gray.200', '#051E2F');
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
@@ -170,9 +177,9 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, userName, amount, p
   return (
     <Modal isOpen={isOpen} onClose={onClose} isCentered size={{ base: 'full', sm: 'md' }}>
       <ModalOverlay />
-      <ModalContent>
-        <ModalHeader color={textColor}>Fund Wallet</ModalHeader>
-        <ModalCloseButton />
+      <ModalContent bg={bgColor} borderRadius="xl" border="1px" borderColor={borderColor}>
+        <ModalHeader color={textColor} fontWeight="bold">Fund Wallet</ModalHeader>
+        <ModalCloseButton color={textColor} />
         <ModalBody px={{ base: 4, sm: 6 }} py={4}>
           {paymentDetails?.authorization_url ? (
             <>
@@ -182,7 +189,9 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, userName, amount, p
               <Button
                 as="a"
                 href={paymentDetails.authorization_url}
-                colorScheme="blue"
+                bg="#B38939"
+                _hover={{ bg: "#BB954D" }}
+                color="white"
                 size={{ base: 'sm', sm: 'md' }}
                 mb={4}
               >
@@ -195,7 +204,7 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, userName, amount, p
           ) : paymentDetails?.virtualAccount ? (
             <>
               <Text color={textColor} mb={2}>Transfer ₦{amount ? amount.toFixed(2) : '0.00'} to the account below:</Text>
-              <Box p={4} bg={boxBg} borderRadius="md">
+              <Card bg={cardBg} p={4} borderRadius="lg" border="1px" borderColor={borderColor}>
                 <Flex align="center" justify="space-between" mb={2}>
                   <Text fontWeight="bold" color={textColor}>Account Name: {paymentDetails.virtualAccount.account_name}</Text>
                   <IconButton
@@ -209,7 +218,7 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, userName, amount, p
                 </Flex>
                 <Text color={subtleTextColor}>Account Number: {paymentDetails.virtualAccount.account_number}</Text>
                 <Text color={subtleTextColor}>Bank: {paymentDetails.virtualAccount.bank_name}</Text>
-              </Box>
+              </Card>
               {pendingTransactions?.length > 0 && (
                 <Text color="yellow.500" mt={4} fontSize="sm">
                   Note: You have {pendingTransactions.length} pending transaction(s). Check the Transactions tab for details.
@@ -223,7 +232,9 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, userName, amount, p
             <Box>
               <Text color={textColor} mb={4}>Unable to initiate funding. Try again or contact support.</Text>
               <Button
-                colorScheme="blue"
+                bg="#B38939"
+                _hover={{ bg: "#BB954D" }}
+                color="white"
                 onClick={() => { dispatch(clearPaymentDetails()); onClose(); }}
                 size={{ base: 'sm', sm: 'md' }}
               >
@@ -236,7 +247,9 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, userName, amount, p
           {paymentDetails?.reference || paymentDetails?.paystackReference ? (
             <Button
               leftIcon={<FaSync />}
-              colorScheme="teal"
+              bg="#B38939"
+              _hover={{ bg: "#BB954D" }}
+              color="white"
               onClick={handleRefresh}
               size="sm"
               mr={{ sm: 3 }}
@@ -245,7 +258,7 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, userName, amount, p
               Refresh
             </Button>
           ) : null}
-          <Button variant="ghost" onClick={onClose} size="sm">Cancel</Button>
+          <Button variant="ghost" color={textColor} _hover={{ bg: useColorModeValue('gray.100', '#051E2F') }} onClick={onClose} size="sm">Cancel</Button>
         </ModalFooter>
       </ModalContent>
     </Modal>
@@ -261,8 +274,11 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
   const [amountError, setAmountError] = React.useState('');
   const toast = useToast();
   const dispatch = useDispatch();
-  const textColor = useColorModeValue('gray.800', 'white');
-  const subtleTextColor = useColorModeValue('gray.600', 'gray.300');
+  const bgColor = useColorModeValue('white', '#1A202C');
+  const textColor = useColorModeValue('#051E2F', 'white');
+  const subtleTextColor = useColorModeValue('gray.500', 'gray.400');
+  const cardBg = useColorModeValue('gray.50', '#051E2F');
+  const borderColor = useColorModeValue('gray.200', '#051E2F');
 
   useEffect(() => {
     const fetchWithdrawals = async () => {
@@ -389,9 +405,9 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
   return (
     <Modal isOpen={isOpen} onClose={onClose} isCentered size={{ base: 'full', sm: 'lg' }}>
       <ModalOverlay />
-      <ModalContent>
-        <ModalHeader color={textColor}>Withdraw Funds</ModalHeader>
-        <ModalCloseButton />
+      <ModalContent bg={bgColor} borderRadius="xl" border="1px" borderColor={borderColor}>
+        <ModalHeader color={textColor} fontWeight="bold">Withdraw Funds</ModalHeader>
+        <ModalCloseButton color={textColor} />
         <ModalBody px={{ base: 4, sm: 6 }} py={4}>
           <FormControl mb={4} isInvalid={!!amountError}>
             <FormLabel color={textColor}>Amount (₦)</FormLabel>
@@ -402,10 +418,10 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
               value={amount}
               onChange={(value) => setAmount(value)}
             >
-              <NumberInputField placeholder={`Enter amount (max ₦${walletBalance.toFixed(2)})`} />
+              <NumberInputField placeholder={`Enter amount (max ₦${walletBalance.toFixed(2)})`} bg={cardBg} borderColor={borderColor} color={textColor} />
               <NumberInputStepper>
-                <NumberIncrementStepper />
-                <NumberDecrementStepper />
+                <NumberIncrementStepper color={textColor} />
+                <NumberDecrementStepper color={textColor} />
               </NumberInputStepper>
             </NumberInput>
             {amountError && <Text color="red.500" fontSize="sm" mt={1}>{amountError}</Text>}
@@ -420,6 +436,8 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
               type="text"
               inputMode="numeric"
               pattern="[0-9]*"
+              bg={cardBg}
+              borderColor={borderColor}
               color={textColor}
             />
           </FormControl>
@@ -429,6 +447,8 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
               value={accountName}
               onChange={(e) => setAccountName(e.target.value)}
               placeholder="Enter account name"
+              bg={cardBg}
+              borderColor={borderColor}
               color={textColor}
             />
           </FormControl>
@@ -436,21 +456,23 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
             <Box mt={4}>
               <Text fontWeight="bold" color={textColor} mb={2}>Pending Withdrawals</Text>
               {pendingWithdrawals.map((withdrawal) => (
-                <Box key={withdrawal.reference} p={3} bg="gray.100" borderRadius="md" mb={2}>
+                <Card key={withdrawal.reference} bg={cardBg} p={3} borderRadius="lg" mb={2} border="1px" borderColor={borderColor}>
                   <Text color={textColor}>Amount: ₦{withdrawal.amount.toFixed(2)}</Text>
                   <Text color={subtleTextColor}>Account: ****{withdrawal.accountNumber}</Text>
                   <Text color={subtleTextColor}>Name: {withdrawal.accountName}</Text>
                   <Text color={subtleTextColor}>
                     Time Remaining: {formatTimeRemaining(withdrawal.expectedPayoutDate)}
                   </Text>
-                </Box>
+                </Card>
               ))}
             </Box>
           )}
         </ModalBody>
         <ModalFooter flexDir={{ base: 'column', sm: 'row' }} gap={2}>
           <Button
-            colorScheme="blue"
+            bg="#B38939"
+            _hover={{ bg: "#BB954D" }}
+            color="white"
             onClick={handleWithdraw}
             isLoading={isSubmitting}
             loadingText="Processing..."
@@ -461,7 +483,7 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
           >
             Submit Withdrawal
           </Button>
-          <Button variant="ghost" onClick={onClose} size={{ base: 'sm', sm: 'md' }}>
+          <Button variant="ghost" color={textColor} _hover={{ bg: useColorModeValue('gray.100', '#051E2F') }} onClick={onClose} size={{ base: 'sm', sm: 'md' }}>
             Cancel
           </Button>
         </ModalFooter>
@@ -486,15 +508,21 @@ const Profile = () => {
   const [authError, setAuthError] = useState(null);
   const [fundingAmount, setFundingAmount] = useState(null);
   const [avatarError, setAvatarError] = useState(false);
-  const textColor = useColorModeValue('gray.800', 'white');
-  const subtleTextColor = useColorModeValue('gray.600', 'gray.300');
-  const boxBg = useColorModeValue('white', 'gray.800');
-  const cardBg = useColorModeValue('gray.50', 'gray.700');
+  const bgColor = useColorModeValue('gray.100', '#1A202C');
+  const cardBg = useColorModeValue('white', '#051E2F');
+  const textColor = useColorModeValue('#051E2F', 'white');
+  const subtleTextColor = useColorModeValue('gray.500', 'gray.400');
+  const borderColor = useColorModeValue('gray.200', '#051E2F');
 
-  // Fallback avatar URL
+  // Pagination states for each tab
+  const [allPage, setAllPage] = useState(1);
+  const [pendingPage, setPendingPage] = useState(1);
+  const [completedPage, setCompletedPage] = useState(1);
+  const [failedPage, setFailedPage] = useState(1);
+  const itemsPerPage = 5; // Number of transactions per page
+
   const FALLBACK_AVATAR = 'https://via.placeholder.com/100?text=Avatar';
 
-  // Log avatar URL for debugging
   useEffect(() => {
     if (user?.avatarImage) {
       logger.info('Avatar URL:', { url: `${BASE_URL}${user.avatarImage}` });
@@ -503,7 +531,6 @@ const Profile = () => {
     }
   }, [user]);
 
-  // Initialize WebSocket
   const [socket, setSocket] = useState(null);
   useEffect(() => {
     const token = localStorage.getItem('access-token');
@@ -568,7 +595,6 @@ const Profile = () => {
     }
   }, [dispatch, toast]);
 
-  // Check for pending transactions in localStorage on mount
   useEffect(() => {
     const checkPendingTransactions = async () => {
       const pendingKeys = Object.keys(localStorage).filter(key => key.startsWith('pendingFunding_'));
@@ -939,14 +965,15 @@ const Profile = () => {
   };
 
   const renderTransaction = (tx) => (
-    <Box
+    <Card
       key={tx.reference || Math.random()}
-      p={4}
       bg={cardBg}
-      borderRadius="md"
-      boxShadow="sm"
-      _hover={{ boxShadow: 'md' }}
-      transition="all 0.2s"
+      borderRadius="lg"
+      p={4}
+      border="1px"
+      borderColor={borderColor}
+      _hover={{ boxShadow: 'lg', transform: 'translateY(-2px)' }}
+      transition="all 0.3s"
     >
       <Flex justify="space-between" align="center">
         <VStack align="start" spacing={1}>
@@ -969,23 +996,88 @@ const Profile = () => {
           {tx.createdAt ? new Date(tx.createdAt).toLocaleString() : 'N/A'}
         </Text>
       </Flex>
-    </Box>
+    </Card>
   );
+
+  // Pagination Controls Component
+  const PaginationControls = ({ currentPage, setCurrentPage, totalItems }) => {
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    const pageNumbers = [];
+
+    // Generate page numbers to display (e.g., 1, 2, 3, ..., last page)
+    for (let i = 1; i <= totalPages; i++) {
+      if (
+        i === 1 ||
+        i === totalPages ||
+        (i >= currentPage - 1 && i <= currentPage + 1)
+      ) {
+        pageNumbers.push(i);
+      } else if (
+        (i === currentPage - 2 && currentPage > 3) ||
+        (i === currentPage + 2 && currentPage < totalPages - 2)
+      ) {
+        pageNumbers.push('...');
+      }
+    }
+
+    return (
+      <HStack spacing={2} justify="center" mt={4}>
+        <Button
+          size="sm"
+          bg="#B38939"
+          _hover={{ bg: "#BB954D" }}
+          color="white"
+          onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+          isDisabled={currentPage === 1}
+        >
+          Previous
+        </Button>
+        {pageNumbers.map((page, index) =>
+          page === '...' ? (
+            <Text key={index} color={textColor}>...</Text>
+          ) : (
+            <Button
+              key={index}
+              size="sm"
+              bg={currentPage === page ? "#B38939" : cardBg}
+              color={currentPage === page ? "white" : textColor}
+              _hover={{ bg: "#BB954D", color: "white" }}
+              onClick={() => setCurrentPage(page)}
+            >
+              {page}
+            </Button>
+          )
+        )}
+        <Button
+          size="sm"
+          bg="#B38939"
+          _hover={{ bg: "#BB954D" }}
+          color="white"
+          onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+          isDisabled={currentPage === totalPages}
+        >
+          Next
+        </Button>
+      </HStack>
+    );
+  };
 
   if (isAuthLoading) {
     return (
-      <Flex justify="center" align="center" minH="50vh">
-        <Spinner size="xl" color="blue.500" />
+      <Flex justify="center" align="center" minH="100vh" bg={bgColor}>
+        <Spinner size="xl" color="#B38939" />
       </Flex>
     );
   }
 
   if (authError) {
     return (
-      <Flex justify="center" align="center" minH="50vh" flexDir="column">
+      <Flex justify="center" align="center" minH="100vh" bg={bgColor} flexDir="column">
         <Text color={textColor} fontSize="xl" mb={4}>{authError}</Text>
         <Button
-          colorScheme="blue"
+          bg="#B38939"
+          _hover={{ bg: "#BB954D" }}
+          color="white"
           onClick={handleRetryAuth}
           isLoading={isAuthLoading}
           mb={2}
@@ -993,7 +1085,9 @@ const Profile = () => {
           Retry
         </Button>
         <Button
-          colorScheme="red"
+          bg="red.500"
+          _hover={{ bg: "red.600" }}
+          color="white"
           onClick={() => {
             localStorage.removeItem('access-token');
             navigate('/login');
@@ -1007,10 +1101,12 @@ const Profile = () => {
 
   if (!user) {
     return (
-      <Flex justify="center" align="center" minH="50vh" flexDir="column">
+      <Flex justify="center" align="center" minH="100vh" bg={bgColor} flexDir="column">
         <Text color={textColor} fontSize="xl" mb={4}>Unable to load profile data. Please try again.</Text>
         <Button
-          colorScheme="blue"
+          bg="#B38939"
+          _hover={{ bg: "#BB954D" }}
+          color="white"
           onClick={handleRetryAuth}
           isLoading={loading}
         >
@@ -1022,230 +1118,298 @@ const Profile = () => {
 
   return (
     <ErrorBoundary>
-      <Container maxW="container.xl" py={8}>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <Box bg={boxBg} p={6} borderRadius="lg" boxShadow="lg">
-            <Flex align="center" mb={6} flexDir={{ base: 'column', md: 'row' }} textAlign={{ base: 'center', md: 'left' }}>
-              <Avatar
-                size="xl"
-                src={avatarError ? FALLBACK_AVATAR : `${BASE_URL}${user.avatarImage || '/api/avatar/default'}`}
-                onError={() => {
-                  logger.error('Failed to load avatar', { url: `${BASE_URL}${user.avatarImage || '/api/avatar/default'}` });
-                  setAvatarError(true);
-                }}
-                mr={{ md: 4 }}
-                mb={{ base: 4, md: 0 }}
-              />
-              <Box>
-                <Heading size="lg" color={textColor}>
-                  {user.firstName} {user.lastName}
-                </Heading>
-                <Text color={subtleTextColor}>{user.email}</Text>
-              </Box>
-            </Flex>
-
-            {isEditing ? (
-              <Box mb={6}>
-                <Grid templateColumns={{ base: '1fr', md: '1fr 1fr' }} gap={4} mb={4}>
-                  <FormControl>
-                    <FormLabel color={textColor}>First Name</FormLabel>
-                    <Input
-                      value={formData.firstName}
-                      onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                      placeholder="First Name"
-                      color={textColor}
-                    />
-                  </FormControl>
-                  <FormControl>
-                    <FormLabel color={textColor}>Last Name</FormLabel>
-                    <Input
-                      value={formData.lastName}
-                      onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                      placeholder="Last Name"
-                      color={textColor}
-                    />
-                  </FormControl>
-                  <FormControl>
-                    <FormLabel color={textColor}>Phone Number</FormLabel>
-                    <Input
-                      value={formData.phoneNumber}
-                      onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-                      placeholder="Phone Number"
-                      type="tel"
-                      color={textColor}
-                    />
-                  </FormControl>
-                </Grid>
-                <Flex gap={2} justify={{ base: 'center', md: 'flex-start' }}>
-                  <Button
-                    leftIcon={<FaSave />}
-                    colorScheme="blue"
-                    onClick={handleUpdateProfile}
-                    isLoading={isSubmitting}
-                    size={{ base: 'sm', sm: 'md' }}
-                  >
-                    Save
-                  </Button>
-                  <Button
-                    leftIcon={<FaTimes />}
-                    variant="ghost"
-                    onClick={() => setIsEditing(false)}
-                    size={{ base: 'sm', sm: 'md' }}
-                  >
-                    Cancel
-                  </Button>
-                </Flex>
-              </Box>
-            ) : (
-              <Box mb={6}>
-                <Text color={subtleTextColor} mb={2}>Phone: {user.phoneNumber || 'Not set'}</Text>
-                <Button
-                  leftIcon={<FaEdit />}
-                  colorScheme="blue"
-                  onClick={() => setIsEditing(true)}
-                  size={{ base: 'sm', sm: 'md' }}
-                >
-                  Edit Profile
-                </Button>
-              </Box>
-            )}
-
-            <Divider my={6} />
-
-            <Box mb={6}>
-              <Flex align="center" mb={4}>
-                <Icon as={FaWallet} color="blue.500" mr={2} />
-                <Heading size="md" color={textColor}>
-                  Wallet
-                </Heading>
-              </Flex>
-              <Text color={textColor} fontSize="2xl" fontWeight="bold">
-                ₦{(wallet?.balance || 0).toFixed(2)}
-              </Text>
-              {error && (
-                <Text color="red.500" fontSize="sm" mt={2}>
-                  {error} Click "Refresh" to sync.
-                </Text>
-              )}
-              <Text color={subtleTextColor} fontSize="sm" mt={2}>
-                Click "Refresh" to update your balance after funding.
-              </Text>
-              <Flex gap={2} mt={4} flexWrap="wrap" justify={{ base: 'center', md: 'flex-start' }}>
-                <Button
-                  leftIcon={<FaCreditCard />}
-                  colorScheme="blue"
-                  onClick={handleCheckFundingReadiness}
-                  isLoading={isSubmitting || loading}
-                  isDisabled={isSubmitting || loading}
-                  size={{ base: 'sm', sm: 'md' }}
-                >
-                  Fund Wallet
-                </Button>
-                <Button
-                  leftIcon={<FaMoneyBillWave />}
-                  colorScheme="green"
-                  onClick={onWithdrawOpen}
-                  isDisabled={(wallet?.balance || 0) <= 0}
-                  size={{ base: 'sm', sm: 'md' }}
-                >
-                  Withdraw
-                </Button>
-                <Button
-                  leftIcon={<FaSync />}
-                  colorScheme="teal"
-                  onClick={handleRefresh}
-                  isLoading={loading}
-                  size={{ base: 'sm', sm: 'md' }}
-                >
-                  Refresh
-                </Button>
-              </Flex>
-            </Box>
-
-            <Divider my={6} />
-
-            <Box>
-              <Heading size="md" color={textColor} mb={4}>
-                Transactions
-              </Heading>
-              <Tabs variant="enclosed" colorScheme="blue">
-                <TabList>
-                  <Tab>All</Tab>
-                  <Tab>Pending</Tab>
-                  <Tab>Completed</Tab>
-                  <Tab>Failed</Tab>
-                </TabList>
-                <TabPanels>
-                  <TabPanel>
-                    {Array.isArray(transactions) && transactions.length > 0 ? (
-                      <VStack spacing={3}>
-                        {transactions.map(renderTransaction)}
+      <Box minH="100vh" bg={bgColor} py={12}>
+        <Container maxW="container.xl">
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: 'easeOut' }}
+          >
+            <SimpleGrid columns={{ base: 1, lg: 3 }} spacing={8}>
+              <VStack spacing={8} align="stretch" gridColumn={{ lg: 'span 1' }}>
+                <Card bg={cardBg} borderRadius="xl" p={6} border="1px" borderColor={borderColor} boxShadow="lg">
+                  <CardHeader>
+                    <Flex align="center" justify="center" flexDir="column">
+                      <Avatar
+                        size="2xl"
+                        src={avatarError ? FALLBACK_AVATAR : `${BASE_URL}${user.avatarImage || '/api/avatar/default'}`}
+                        onError={() => {
+                          logger.error('Failed to load avatar', { url: `${BASE_URL}${user.avatarImage || '/api/avatar/default'}` });
+                          setAvatarError(true);
+                        }}
+                        mb={4}
+                        border="2px"
+                        borderColor="#B38939"
+                      />
+                      <Heading size="lg" color={textColor} textAlign="center">
+                        <span>{user.firstName} {user.lastName}</span>
+                      </Heading>
+                      <Text color={subtleTextColor} fontSize="sm" mt={2} textAlign="center">
+                        {user.email}
+                      </Text>
+                    </Flex>
+                  </CardHeader>
+                  <CardBody>
+                    {isEditing ? (
+                      <VStack spacing={4}>
+                        <FormControl>
+                          <FormLabel color={textColor}>First Name</FormLabel>
+                          <Input
+                            value={formData.firstName}
+                            onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                            placeholder="First Name"
+                            bg={useColorModeValue('gray.50', '#051E2F')}
+                            borderColor={borderColor}
+                            color={textColor}
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel color={textColor}>Last Name</FormLabel>
+                          <Input
+                            value={formData.lastName}
+                            onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                            placeholder="Last Name"
+                            bg={useColorModeValue('gray.50', '#051E2F')}
+                            borderColor={borderColor}
+                            color={textColor}
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel color={textColor}>Phone Number</FormLabel>
+                          <Input
+                            value={formData.phoneNumber}
+                            onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+                            placeholder="Phone Number"
+                            type="tel"
+                            bg={useColorModeValue('gray.50', '#051E2F')}
+                            borderColor={borderColor}
+                            color={textColor}
+                          />
+                        </FormControl>
+                        <HStack spacing={4} justify="center" mt={4}>
+                          <Button
+                            leftIcon={<FaSave />}
+                            bg="#B38939"
+                            _hover={{ bg: "#BB954D" }}
+                            color="white"
+                            onClick={handleUpdateProfile}
+                            isLoading={isSubmitting}
+                            size="md"
+                          >
+                            Save
+                          </Button>
+                          <Button
+                            leftIcon={<FaTimes />}
+                            variant="ghost"
+                            color={textColor}
+                            _hover={{ bg: useColorModeValue('gray.100', '#051E2F') }}
+                            onClick={() => setIsEditing(false)}
+                            size="md"
+                          >
+                            Cancel
+                          </Button>
+                        </HStack>
                       </VStack>
                     ) : (
-                      <Text color={subtleTextColor}>No transactions available.</Text>
-                    )}
-                  </TabPanel>
-                  <TabPanel>
-                    {Array.isArray(transactions) && transactions.some(tx => tx.status === 'pending') ? (
-                      <VStack spacing={3}>
-                        {transactions.filter(tx => tx.status === 'pending').map(renderTransaction)}
+                      <VStack spacing={4} align="stretch">
+                        <Text color={subtleTextColor}>Phone: {user.phoneNumber || 'Not set'}</Text>
+                        <Button
+                          leftIcon={<FaEdit />}
+                          bg="#B38939"
+                          _hover={{ bg: "#BB954D" }}
+                          color="white"
+                          onClick={() => setIsEditing(true)}
+                          size="md"
+                        >
+                          Edit Profile
+                        </Button>
                       </VStack>
-                    ) : (
-                      <Text color={subtleTextColor}>No pending transactions.</Text>
                     )}
-                  </TabPanel>
-                  <TabPanel>
-                    {Array.isArray(transactions) && transactions.some(tx => tx.status === 'completed') ? (
-                      <VStack spacing={3}>
-                        {transactions.filter(tx => tx.status === 'completed').map(renderTransaction)}
-                      </VStack>
-                    ) : (
-                      <Text color={subtleTextColor}>No completed transactions.</Text>
+                  </CardBody>
+                </Card>
+              </VStack>
+              <VStack spacing={8} align="stretch" gridColumn={{ lg: 'span 2' }}>
+                <Card bg={cardBg} borderRadius="xl" p={6} border="1px" borderColor={borderColor} boxShadow="lg">
+                  <CardHeader>
+                    <Flex align="center">
+                      <Icon as={FaWallet} color="#B38939" boxSize={6} mr={3} />
+                      <Heading size="md" color={textColor}>
+                        <span>Wallet Overview</span>
+                      </Heading>
+                    </Flex>
+                  </CardHeader>
+                  <CardBody>
+                    <Text color={textColor} fontSize="3xl" fontWeight="bold">
+                      ₦{(wallet?.balance || 0).toFixed(2)}
+                    </Text>
+                    {error && (
+                      <Text color="red.500" fontSize="sm" mt={2}>
+                        {error} Click "Refresh" to sync.
+                      </Text>
                     )}
-                  </TabPanel>
-                  <TabPanel>
-                    {Array.isArray(transactions) && transactions.some(tx => tx.status === 'failed') ? (
-                      <VStack spacing={3}>
-                        {transactions.filter(tx => tx.status === 'failed').map(renderTransaction)}
-                      </VStack>
-                    ) : (
-                      <Text color={subtleTextColor}>No failed transactions.</Text>
-                    )}
-                  </TabPanel>
-                </TabPanels>
-              </Tabs>
-            </Box>
-          </Box>
-        </motion.div>
-
-        <FundAmountModal
-          isOpen={isAmountOpen}
-          onClose={onAmountClose}
-          onSubmit={handleFundWallet}
-        />
-        <PaymentInfoModal
-          isOpen={isFundOpen}
-          onClose={() => {
-            dispatch(clearPaymentDetails());
-            setFundingAmount(null);
-            onFundClose();
-          }}
-          paymentDetails={paymentDetails}
-          userName={`${user.firstName} ${user.lastName}`}
-          amount={fundingAmount}
-          pendingTransactions={transactions.filter(tx => tx.status === 'pending')}
-          handleRefresh={handleRefresh}
-        />
-        <WithdrawalModal
-          isOpen={isWithdrawOpen}
-          onClose={onWithdrawClose}
-          walletBalance={wallet?.balance || 0}
-        />
-      </Container>
+                    <Text color={subtleTextColor} fontSize="sm" mt={2}>
+                      Click "Refresh" to update your balance after funding.
+                    </Text>
+                    <HStack spacing={4} mt={6} flexWrap="wrap" justify="start">
+                      <Button
+                        leftIcon={<FaCreditCard />}
+                        bg="#B38939"
+                        _hover={{ bg: "#BB954D" }}
+                        color="white"
+                        onClick={handleCheckFundingReadiness}
+                        isLoading={isSubmitting || loading}
+                        isDisabled={isSubmitting || loading}
+                        size="md"
+                      >
+                        Fund Wallet
+                      </Button>
+                      <Button
+                        leftIcon={<FaMoneyBillWave />}
+                        bg="#B38939"
+                        _hover={{ bg: "#BB954D" }}
+                        color="white"
+                        onClick={onWithdrawOpen}
+                        isDisabled={(wallet?.balance || 0) <= 0}
+                        size="md"
+                      >
+                        Withdraw
+                      </Button>
+                      <Button
+                        leftIcon={<FaSync />}
+                        bg="#B38939"
+                        _hover={{ bg: "#BB954D" }}
+                        color="white"
+                        onClick={handleRefresh}
+                        isLoading={loading}
+                        size="md"
+                      >
+                        Refresh
+                      </Button>
+                    </HStack>
+                  </CardBody>
+                </Card>
+                <Card bg={cardBg} borderRadius="xl" p={6} border="1px" borderColor={borderColor} boxShadow="lg">
+                  <CardHeader>
+                    <Heading size="md" color={textColor}>
+                      <span>Transaction History</span>
+                    </Heading>
+                  </CardHeader>
+                  <CardBody>
+                    <Tabs variant="soft-rounded" colorScheme="yellow">
+                      <TabList mb={4} flexWrap="wrap" justifyContent="start">
+                        <Tab _selected={{ bg: "#B38939", color: "white" }} color={textColor}>All</Tab>
+                        <Tab _selected={{ bg: "#B38939", color: "white" }} color={textColor}>Pending</Tab>
+                        <Tab _selected={{ bg: "#B38939", color: "white" }} color={textColor}>Completed</Tab>
+                        <Tab _selected={{ bg: "#B38939", color: "white" }} color={textColor}>Failed</Tab>
+                      </TabList>
+                      <TabPanels>
+                        <TabPanel>
+                          {Array.isArray(transactions) && transactions.length > 0 ? (
+                            <>
+                              <VStack spacing={4}>
+                                {transactions
+                                  .slice((allPage - 1) * itemsPerPage, allPage * itemsPerPage)
+                                  .map(renderTransaction)}
+                              </VStack>
+                              <PaginationControls
+                                currentPage={allPage}
+                                setCurrentPage={setAllPage}
+                                totalItems={transactions.length}
+                              />
+                            </>
+                          ) : (
+                            <Text color={subtleTextColor} textAlign="center">No transactions available.</Text>
+                          )}
+                        </TabPanel>
+                        <TabPanel>
+                          {Array.isArray(transactions) && transactions.some(tx => tx.status === 'pending') ? (
+                            <>
+                              <VStack spacing={4}>
+                                {transactions
+                                  .filter(tx => tx.status === 'pending')
+                                  .slice((pendingPage - 1) * itemsPerPage, pendingPage * itemsPerPage)
+                                  .map(renderTransaction)}
+                              </VStack>
+                              <PaginationControls
+                                currentPage={pendingPage}
+                                setCurrentPage={setPendingPage}
+                                totalItems={transactions.filter(tx => tx.status === 'pending').length}
+                              />
+                            </>
+                          ) : (
+                            <Text color={subtleTextColor} textAlign="center">No pending transactions.</Text>
+                          )}
+                        </TabPanel>
+                        <TabPanel>
+                          {Array.isArray(transactions) && transactions.some(tx => tx.status === 'completed') ? (
+                            <>
+                              <VStack spacing={4}>
+                                {transactions
+                                  .filter(tx => tx.status === 'completed')
+                                  .slice((completedPage - 1) * itemsPerPage, completedPage * itemsPerPage)
+                                  .map(renderTransaction)}
+                              </VStack>
+                              <PaginationControls
+                                currentPage={completedPage}
+                                setCurrentPage={setCompletedPage}
+                                totalItems={transactions.filter(tx => tx.status === 'completed').length}
+                              />
+                            </>
+                          ) : (
+                            <Text color={subtleTextColor} textAlign="center">No completed transactions.</Text>
+                          )}
+                        </TabPanel>
+                        <TabPanel>
+                          {Array.isArray(transactions) && transactions.some(tx => tx.status === 'failed') ? (
+                            <>
+                              <VStack spacing={4}>
+                                {transactions
+                                  .filter(tx => tx.status === 'failed')
+                                  .slice((failedPage - 1) * itemsPerPage, failedPage * itemsPerPage)
+                                  .map(renderTransaction)}
+                              </VStack>
+                              <PaginationControls
+                                currentPage={failedPage}
+                                setCurrentPage={setFailedPage}
+                                totalItems={transactions.filter(tx => tx.status === 'failed').length}
+                              />
+                            </>
+                          ) : (
+                            <Text color={subtleTextColor} textAlign="center">No failed transactions.</Text>
+                          )}
+                        </TabPanel>
+                      </TabPanels>
+                    </Tabs>
+                  </CardBody>
+                </Card>
+              </VStack>
+            </SimpleGrid>
+          </motion.div>
+          <FundAmountModal
+            isOpen={isAmountOpen}
+            onClose={onAmountClose}
+            onSubmit={handleFundWallet}
+          />
+          <PaymentInfoModal
+            isOpen={isFundOpen}
+            onClose={() => {
+              dispatch(clearPaymentDetails());
+              setFundingAmount(null);
+              onFundClose();
+            }}
+            paymentDetails={paymentDetails}
+            userName={`${user.firstName} ${user.lastName}`}
+            amount={fundingAmount}
+            pendingTransactions={transactions.filter(tx => tx.status === 'pending')}
+            handleRefresh={handleRefresh}
+          />
+          <WithdrawalModal
+            isOpen={isWithdrawOpen}
+            onClose={onWithdrawClose}
+            walletBalance={wallet?.balance || 0}
+          />
+        </Container>
+      </Box>
     </ErrorBoundary>
   );
 };

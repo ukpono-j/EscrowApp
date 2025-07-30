@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "./Sidebar";
-import BottomNav from "./BottomNav";
 import instance from "../../utils/axiosConfig"; // Your custom axios instance
 import {
   Box,
@@ -689,7 +688,6 @@ const Kyc = () => {
           {renderKycStatus()}
         </Flex>
       </Box>
-      <BottomNav />
     </Box>
   );
 };

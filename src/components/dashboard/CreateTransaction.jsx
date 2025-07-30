@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import Profile from './Profile';
-import BottomNav from './BottomNav';
 import TransactionCreation from './TransactionCreation';
 import MiniNav from './MiniNav';
 import { Box, Text, Flex, Avatar } from "@chakra-ui/react";
@@ -80,14 +79,6 @@ const CreateTransaction = () => {
         </div>
       </div>
       
-      {/* Show bottom nav only when sidebar is collapsed on mobile */}
-      {isMobile && isSidebarCollapsed && (
-        <BottomNav
-          onShowProfile={handleShowProfile}
-          onShowToggleComponent={handleMyTransaction}
-          className="fixed bottom-0 left-0 right-0 z-50"
-        />
-      )}
     </Box>
   );
 };

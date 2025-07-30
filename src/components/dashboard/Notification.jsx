@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import Sidebar from "../dashboard/Sidebar";
 import MyTransaction from "../dashboard/MyTransaction";
 import Profile from "../dashboard/Profile";
-import BottomNav from "../dashboard/BottomNav";
 import MiniNav from "./MiniNav";
 import NotificationComponent from "./NotificationComponent";
 
@@ -73,10 +72,6 @@ const Notification = () => {
             {/* ===============End of Profile Component ============= */}
           </div>
         </div>
-        <BottomNav
-          onShowProfile={handleShowProfile}
-          onShowToggleComponent={handleMyTransaction}
-        />
       </div>
     </div>
   );

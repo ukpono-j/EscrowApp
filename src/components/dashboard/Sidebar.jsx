@@ -67,7 +67,7 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
   const [isMobile, setIsMobile] = useState(false);
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
 
-  const bgColor = useColorModeValue("white", "#0F172A");
+  const bgColor = useColorModeValue("white", "#051E2F");
   const borderColor = useColorModeValue("whiteAlpha.100", "whiteAlpha.100");
 
   useEffect(() => {
