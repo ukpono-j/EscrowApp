@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import {
   Box, Flex, Text, Button, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter,
-  Grid, Stack, Input, IconButton, Image, Spinner, useDisclosure, useColorModeValue
+  Grid, Stack, Input, IconButton, Image, Spinner, Skeleton, useDisclosure, useColorModeValue
 } from '@chakra-ui/react';
 import { FiSearch, FiEdit } from 'react-icons/fi';
 import { BsChatFill } from 'react-icons/bs';
@@ -20,9 +20,11 @@ import Sidebar from './Sidebar';
 import MiniNav from './MiniNav';
 import axios from '../../utils/axiosConfig';
 
+// Environment variable for API base URL
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 const MotionBox = motion(Box);
 
+// Debounce utility to prevent excessive API calls
 const debounce = (func, wait) => {
   let timeout;
   return (...args) => {
@@ -31,6 +33,25 @@ const debounce = (func, wait) => {
   };
 };
 
+// Skeleton loader for transaction cards
+const TransactionSkeleton = () => {
+  const cardBg = useColorModeValue('white', '#1A202C');
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  return (
+    <Skeleton
+      startColor={useColorModeValue('gray.100', 'gray.700')}
+      endColor={useColorModeValue('gray.200', 'gray.600')}
+      borderRadius="lg"
+      border="1px"
+      borderColor={borderColor}
+      bg={cardBg}
+      p={4}
+      h="300px"
+    />
+  );
+};
+
+// Loader component for transactions
 const TransactionLoader = () => {
   const textColor = useColorModeValue('#051E2F', 'white');
   return (
@@ -41,6 +62,7 @@ const TransactionLoader = () => {
   );
 };
 
+// Transaction card component for displaying individual transactions
 const TransactionCard = React.memo(({ transaction, currentUser, isConfirming, handleChat, handleWaybill, handleConfirm, handleFund, handleEditPayment, cancelTransaction, copyToClipboard, toggleDescription, expandedDescriptions }) => {
   const currentUserId = currentUser?._id?.toString() || '';
   const creatorId = transaction?.userId?._id?.toString() || '';
@@ -50,7 +72,7 @@ const TransactionCard = React.memo(({ transaction, currentUser, isConfirming, ha
   const isBuyer = userRole === "buyer";
   const displayName = transaction?.participants?.length > 0 && transaction.participants[0]
     ? (isCreator ? `${transaction.participants[0].firstName || ""} ${transaction.participants[0].lastName || ""}`.trim() || transaction.participants[0].email || "Unknown"
-      : `${transaction.userId.firstName || ""} ${transaction.userId.lastName || ""}`.trim() || transaction.userId.email || "Unknown")
+      : `${transaction.userId?.firstName || ""} ${transaction.userId?.lastName || ""}`.trim() || transaction.userId?.email || "Unknown")
     : "No participant";
   const description = transaction?.productDetails?.description || "No description";
   const isExpanded = expandedDescriptions[transaction._id];
@@ -91,7 +113,7 @@ const TransactionCard = React.memo(({ transaction, currentUser, isConfirming, ha
         </Box>
         <Box textAlign="right">
           <Text
-            bg={transaction.status === "completed" ? "#22c55e" : transaction.status === "cancelled" ? "#ef4444" : "#BB954D"}
+            bg={transaction.status === "completed" ? "#22c55e" : transaction.status === "cancelled" ? "#ef4444" : transaction.status === "funded" ? "#FFA500" : "#BB954D"}
             color="white"
             px={2}
             py={1}
@@ -168,6 +190,7 @@ const TransactionCard = React.memo(({ transaction, currentUser, isConfirming, ha
   );
 });
 
+// Waybill modal for viewing or submitting waybill details
 const WaybillModal = React.memo(({ isOpen, onClose, transactionId, isBuyer, details, setDetails, errors, handleSubmit, downloadImage, isFunded }) => {
   const bgColor = useColorModeValue('white', '#1A202C');
   const textColor = useColorModeValue('#051E2F', 'white');
@@ -269,6 +292,7 @@ const WaybillModal = React.memo(({ isOpen, onClose, transactionId, isBuyer, deta
   );
 });
 
+// Modal for editing payment details
 const PaymentDetailsModal = ({ isOpen, onClose, transaction, paymentDetails, setPaymentDetails, paymentErrors, handleSubmit }) => {
   const bgColor = useColorModeValue('white', '#1A202C');
   const textColor = useColorModeValue('#051E2F', 'white');
@@ -280,58 +304,27 @@ const PaymentDetailsModal = ({ isOpen, onClose, transaction, paymentDetails, set
       <ModalOverlay />
       <ModalContent bg={bgColor} color={textColor} p={4} rounded="lg" border="1px" borderColor={borderColor}>
         <ModalHeader fontSize="lg" fontWeight="600">Edit Payment</ModalHeader>
-        <form onSubmit={handleSubmit}>
-          <ModalBody>
-            <Box>
-              <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>Amount</Text>
-              <Input
-                type="number"
-                value={paymentDetails.paymentAmount || ""}
-                onChange={(e) => setPaymentDetails({ ...paymentDetails, paymentAmount: e.target.value })}
-                bg={inputBg}
-                borderColor={borderColor}
-                color={textColor}
-                size="sm"
-                _focus={{ borderColor: "#BB954D" }}
-                isDisabled={transaction?.locked}
-              />
-              {paymentErrors.paymentAmount && <Text color="red.400" fontSize="xs" mt={1}>{paymentErrors.paymentAmount}</Text>}
-            </Box>
-          </ModalBody>
-          <ModalFooter>
-            <Flex gap={3} w="full">
-              <Button size="sm" bg={useColorModeValue('gray.200', 'gray.600')} color={textColor} _hover={{ bg: useColorModeValue('gray.300', 'gray.700') }} onClick={onClose}>Cancel</Button>
-              <Button type="submit" size="sm" bg="#BB954D" color="white" _hover={{ bg: "#967532" }}>Save</Button>
-            </Flex>
-          </ModalFooter>
-        </form>
-      </ModalContent>
-    </Modal>
-  );
-};
-
-const FundingModal = ({ isOpen, onClose, transaction, walletBalance, confirmFunding }) => {
-  const bgColor = useColorModeValue('white', '#1A202C');
-  const textColor = useColorModeValue('#051E2F', 'white');
-  const subtleTextColor = useColorModeValue('gray.500', 'gray.400');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
-
-  return (
-    <Modal isOpen={isOpen} onClose={onClose} isCentered size={{ base: "full", sm: "sm" }}>
-      <ModalOverlay />
-      <ModalContent bg={bgColor} color={textColor} p={4} rounded="lg" border="1px" borderColor={borderColor}>
-        <ModalHeader fontSize="lg" fontWeight="600">Fund Transaction</ModalHeader>
         <ModalBody>
-          <Text fontSize="sm" color={subtleTextColor}>
-            Wallet balance: ₦{(walletBalance ?? 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}.
-            Need additional ₦{transaction ? (parseFloat(transaction.paymentAmount || 0) - (walletBalance ?? 0)).toLocaleString('en-NG', { minimumFractionDigits: 2 }) : '0.00'}.
-            Proceed with Paystack?
-          </Text>
+          <Box>
+            <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>Amount</Text>
+            <Input
+              type="number"
+              value={paymentDetails.paymentAmount || ""}
+              onChange={(e) => setPaymentDetails({ ...paymentDetails, paymentAmount: e.target.value })}
+              bg={inputBg}
+              borderColor={borderColor}
+              color={textColor}
+              size="sm"
+              _focus={{ borderColor: "#BB954D" }}
+              isDisabled={transaction?.locked}
+            />
+            {paymentErrors.paymentAmount && <Text color="red.400" fontSize="xs" mt={1}>{paymentErrors.paymentAmount}</Text>}
+          </Box>
         </ModalBody>
         <ModalFooter>
           <Flex gap={3} w="full">
             <Button size="sm" bg={useColorModeValue('gray.200', 'gray.600')} color={textColor} _hover={{ bg: useColorModeValue('gray.300', 'gray.700') }} onClick={onClose}>Cancel</Button>
-            <Button size="sm" bg="#BB954D" color="white" _hover={{ bg: "#967532" }} onClick={() => confirmFunding(transaction)}>Proceed</Button>
+            <Button size="sm" bg="#BB954D" color="white" _hover={{ bg: "#967532" }} onClick={handleSubmit}>Save</Button>
           </Flex>
         </ModalFooter>
       </ModalContent>
@@ -339,12 +332,102 @@ const FundingModal = ({ isOpen, onClose, transaction, walletBalance, confirmFund
   );
 };
 
+// Modal for funding transactions
+const FundingModal = ({ isOpen, onClose, transaction, walletBalance, confirmFunding, isLoading, fetchWalletBalance }) => {
+  const bgColor = useColorModeValue('white', '#1A202C');
+  const textColor = useColorModeValue('#051E2F', 'white');
+  const subtleTextColor = useColorModeValue('gray.500', 'gray.400');
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} isCentered size={{ base: "full", sm: "sm" }}>
+      <ModalOverlay />
+      <ModalContent bg={bgColor} color={textColor} p={4} rounded="lg" border="1px" borderColor={borderColor}>
+        <ModalHeader fontSize="lg" fontWeight="600">Fund Transaction</ModalHeader>
+        <ModalBody>
+          <Stack spacing={3}>
+            <Box>
+              <Text fontSize="xs" color={subtleTextColor}>Transaction ID</Text>
+              <Text fontSize="sm" color={textColor}>{transaction?._id || 'N/A'}</Text>
+            </Box>
+            <Box>
+              <Text fontSize="xs" color={subtleTextColor}>Description</Text>
+              <Text fontSize="sm" color={textColor}>{transaction?.productDetails?.description || 'N/A'}</Text>
+            </Box>
+            <Box>
+              <Text fontSize="xs" color={subtleTextColor}>Amount Required</Text>
+              <Text fontSize="sm" color={textColor}>
+                ₦{(transaction?.paymentAmount || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+              </Text>
+            </Box>
+            <Box>
+              <Text fontSize="xs" color={subtleTextColor}>Wallet Balance</Text>
+              <Text fontSize="sm" color={textColor}>
+                {walletBalance !== null
+                  ? `₦${(walletBalance || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
+                  : 'Unable to fetch balance. Please try again.'}
+              </Text>
+              {walletBalance === null && (
+                <Button
+                  size="sm"
+                  bg="#BB954D"
+                  color="white"
+                  _hover={{ bg: "#967532" }}
+                  onClick={fetchWalletBalance}
+                  mt={2}
+                >
+                  Retry Fetching Balance
+                </Button>
+              )}
+            </Box>
+            {walletBalance !== null && walletBalance < transaction?.paymentAmount && (
+              <Text fontSize="sm" color="red.400">
+                Your wallet balance is insufficient to fund this transaction. Please top up your wallet in the Profile section.
+              </Text>
+            )}
+            {error && <Text fontSize="sm" color="red.400">{error}</Text>}
+          </Stack>
+        </ModalBody>
+        <ModalFooter>
+          <Flex gap={3} w="full">
+            <Button
+              size="sm"
+              bg={useColorModeValue('gray.200', 'gray.600')}
+              color={textColor}
+              _hover={{ bg: useColorModeValue('gray.300', 'gray.700') }}
+              onClick={onClose}
+              isDisabled={isLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              bg="#BB954D"
+              color="white"
+              _hover={{ bg: "#967532" }}
+              onClick={() => confirmFunding(transaction, setError)}
+              isLoading={isLoading}
+              isDisabled={isLoading || walletBalance === null || walletBalance < transaction?.paymentAmount}
+            >
+              Fund Transaction
+            </Button>
+          </Flex>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
+  );
+};
+
+// Main component for displaying transactions
 const DisplayTransaction = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { userDetails, loading: userLoading, error: userError } = useSelector(state => state.user);
   const { transactions, loading: transactionsLoading, error: transactionsError } = useSelector(state => state.transactions);
   const { wallet, transactions: walletTransactions, loading: walletLoading } = useSelector(state => state.wallet);
-  const walletBalance = wallet?.balance ?? 0;
+  const [walletBalance, setWalletBalance] = useState(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
@@ -365,7 +448,6 @@ const DisplayTransaction = () => {
   const [retryCount, setRetryCount] = useState(0);
   const maxRetries = 3;
   const managedToast = useManagedToast();
-  const navigate = useNavigate();
   const { isOpen: isFundingModalOpen, onOpen: openFundingModal, onClose: closeFundingModal } = useDisclosure();
   const [showWaybillPopup, setShowWaybillPopup] = useState({});
   const [buyerShowWaybillPopup, setBuyerShowWaybillPopup] = useState({});
@@ -376,6 +458,56 @@ const DisplayTransaction = () => {
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   const inputBg = useColorModeValue('gray.50', '#051E2F');
 
+  // Fetch wallet balance with retry logic and exponential backoff
+  const fetchWalletBalance = useCallback(async () => {
+    const maxAttempts = 5; // Increased retries
+    let attempts = 0;
+
+    while (attempts < maxAttempts) {
+      try {
+        const token = localStorage.getItem('access-token');
+        if (!token) {
+          throw new Error('Authentication token missing');
+        }
+        console.log('Fetching wallet balance with token:', token); // Debug token
+        const response = await axios.get(`${BASE_URL}/api/wallet/balance`, {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 15000, // Increased timeout
+        });
+        if (response.data.success) {
+          const balance = response.data.data.wallet.balance || 0;
+          setWalletBalance(balance);
+          dispatch(setWallet({
+            ...wallet,
+            balance,
+            totalDeposits: response.data.data.wallet.totalDeposits || 0,
+            transactions: response.data.data.wallet.transactions || [],
+          }));
+          return;
+        } else {
+          throw new Error(response.data.error || 'Failed to fetch wallet balance');
+        }
+      } catch (err) {
+        attempts++;
+        console.error(`Wallet balance fetch attempt ${attempts} failed:`, err);
+        if (attempts >= maxAttempts) {
+          managedToast({
+            id: `wallet-fetch-error`,
+            title: 'Error',
+            description: 'Unable to fetch wallet balance. Please check your connection or try again later.',
+            status: 'error',
+            duration: 5000,
+            isClosable: true,
+          });
+          setWalletBalance(wallet?.balance || 0); // Fallback to Redux state
+        } else {
+          await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempts))); // Exponential backoff
+        }
+      }
+    }
+  }, [dispatch, managedToast, wallet]);
+
+  // Fetch initial data with retry logic
   const debouncedFetchInitialData = useCallback(debounce(() => {
     dispatch(fetchInitialData()).unwrap().then((payload) => {
       dispatch(setWallet({
@@ -384,19 +516,21 @@ const DisplayTransaction = () => {
         totalDeposits: payload.wallet?.totalDeposits ?? 0,
         transactions: Array.isArray(payload.wallet?.transactions) ? payload.wallet.transactions : [],
       }));
+      setWalletBalance(payload.wallet?.balance ?? 0);
       setHasFetchedInitially(true);
       setRetryCount(0);
     }).catch(err => {
       console.error('Fetch initial data error:', err);
       if (retryCount < maxRetries) {
         setRetryCount(prev => prev + 1);
-        setTimeout(() => debouncedFetchInitialData(), 2000 * (retryCount + 1));
+        setTimeout(() => debouncedFetchInitialData(), 1000 * (retryCount + 1));
       } else {
         managedToast({ id: 'fetch-error', title: 'Error', description: err.message || 'Unable to fetch data.', status: 'error', duration: 5000, isClosable: true });
       }
     });
-  }, 1000), [dispatch, managedToast, retryCount]);
+  }, 500), [dispatch, managedToast, retryCount]);
 
+  // Initial data fetch and auth check
   useEffect(() => {
     const token = localStorage.getItem('access-token');
     if (!token) {
@@ -406,9 +540,11 @@ const DisplayTransaction = () => {
     }
     if (!hasFetchedInitially) {
       debouncedFetchInitialData();
+      fetchWalletBalance();
     }
-  }, [dispatch, managedToast, navigate, hasFetchedInitially, debouncedFetchInitialData]);
+  }, [dispatch, managedToast, navigate, hasFetchedInitially, debouncedFetchInitialData, fetchWalletBalance]);
 
+  // Responsive sidebar handling
   useEffect(() => {
     const checkScreenSize = () => {
       const mobile = window.innerWidth < 768;
@@ -420,6 +556,7 @@ const DisplayTransaction = () => {
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
 
+  // WebSocket connection for real-time updates
   useEffect(() => {
     const token = localStorage.getItem('access-token');
     if (!token) return;
@@ -464,7 +601,7 @@ const DisplayTransaction = () => {
     socket.on('balanceUpdate', (data) => {
       if (data?.userId === userDetails?._id) {
         managedToast({ id: `balance-update-${Date.now()}`, title: 'Balance Updated', description: 'Your wallet balance updated.', status: 'info', duration: 5000, isClosable: true });
-        debouncedFetchInitialData();
+        fetchWalletBalance();
       }
     });
 
@@ -484,15 +621,24 @@ const DisplayTransaction = () => {
       socket.off('transactionUpdated');
       socket.disconnect();
     };
-  }, [userDetails?._id, transactions, debouncedFetchInitialData, managedToast]);
+  }, [userDetails?._id, transactions, debouncedFetchInitialData, managedToast, fetchWalletBalance]);
 
+  // Fetch wallet balance when funding modal opens
+  useEffect(() => {
+    if (isFundingModalOpen && walletBalance === null) {
+      fetchWalletBalance();
+    }
+  }, [isFundingModalOpen, fetchWalletBalance]);
+
+  // Debounced search for transactions
   const debouncedSearch = useCallback(debounce((value) => setSearchQuery(value), 300), []);
 
+  // Filter transactions based on active tab and search query
   const filteredTransactions = useMemo(() => {
     if (!Array.isArray(transactions)) return [];
     const query = searchQuery.toLowerCase().trim();
     return transactions.filter(t => {
-      if (activeTab === 'active' && t.status !== 'pending') return false;
+      if (activeTab === 'active' && t.status !== 'pending' && t.status !== 'funded') return false;
       if (activeTab === 'completed' && t.status !== 'completed') return false;
       if (activeTab === 'cancelled' && t.status !== 'cancelled') return false;
       const participantName = t.participants?.length > 0
@@ -508,9 +654,12 @@ const DisplayTransaction = () => {
     });
   }, [transactions, activeTab, searchQuery]);
 
+  // Handle chatroom creation and navigation
   const handleChat = async (transactionId) => {
     try {
-      const res = await axios.post(`${BASE_URL}/api/transactions/create-chatroom`, { transactionId }, { headers: { Authorization: `Bearer ${localStorage.getItem('access-token')}` } });
+      const res = await axios.post(`${BASE_URL}/api/transactions/create-chatroom`, { transactionId }, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('access-token')}` },
+      });
       if (res.data?.success && res.data.chatroomId) {
         navigate(`/chat/${res.data.chatroomId}`);
       } else {
@@ -521,8 +670,10 @@ const DisplayTransaction = () => {
     }
   };
 
+  // Handle waybill modal opening
   const handleWaybill = (transactionId, isBuyer) => {
     const transaction = transactions.find(t => t._id === transactionId);
+    if (!transaction) return;
     if (!isBuyer && !transaction?.locked) {
       managedToast({
         id: `waybill-error-${transactionId}`,
@@ -530,7 +681,7 @@ const DisplayTransaction = () => {
         description: 'Seller cannot fill or carry out waybill until buyer has funded the transaction.',
         status: 'warning',
         duration: 5000,
-        isClosable: true
+        isClosable: true,
       });
       return;
     }
@@ -541,14 +692,17 @@ const DisplayTransaction = () => {
       setShowWaybillPopup(prev => ({ ...prev, [transactionId]: true }));
       setWaybillDetails(prev => ({
         ...prev,
-        item: transaction?.productDetails?.description || ''
+        item: transaction?.productDetails?.description || '',
       }));
     }
   };
 
+  // Fetch waybill details for buyer
   const fetchBuyerWaybillDetails = async (transactionId) => {
     try {
-      const res = await axios.get(`${BASE_URL}/api/transactions/waybill-details/${transactionId}`, { headers: { Authorization: `Bearer ${localStorage.getItem("access-token")}` } });
+      const res = await axios.get(`${BASE_URL}/api/transactions/waybill-details/${transactionId}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("access-token")}` },
+      });
       if (res.data?.success && res.data.data) {
         setBuyerWaybillDetails(prev => ({ ...prev, [transactionId]: res.data.data }));
       } else {
@@ -559,6 +713,7 @@ const DisplayTransaction = () => {
     }
   };
 
+  // Submit waybill details
   const handleWaybillSubmit = async (transactionId) => {
     const newErrors = {};
     ["item", "shippingAddress", "trackingNumber", "deliveryDate", "image"].forEach(key => {
@@ -589,6 +744,7 @@ const DisplayTransaction = () => {
     }
   };
 
+  // Download waybill image
   const downloadImage = (url) => {
     if (!url) return;
     const link = document.createElement("a");
@@ -599,30 +755,53 @@ const DisplayTransaction = () => {
     document.body.removeChild(link);
   };
 
+  // Cancel transaction
   const cancelTransactionAction = async (transactionId) => {
     if (isConfirming[transactionId]) return;
     setIsConfirming(prev => ({ ...prev, [transactionId]: true }));
     try {
       const response = await dispatch(cancelTransaction(transactionId)).unwrap();
-      managedToast({ id: `cancel-success-${transactionId}`, title: 'Cancelled', description: response.refunded > 0 ? `Refunded ₦${response.refunded.toLocaleString('en-NG', { minimumFractionDigits: 2 })}` : 'No funds refunded.', status: 'success', duration: 5000, isClosable: true });
+      managedToast({
+        id: `cancel-success-${transactionId}`,
+        title: 'Cancelled',
+        description: response.refunded > 0 ? `Refunded ₦${response.refunded.toLocaleString('en-NG', { minimumFractionDigits: 2 })}` : 'No funds refunded.',
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+      });
     } catch (error) {
-      managedToast({ id: `cancel-error-${transactionId}`, title: 'Error', description: error.message || 'Failed to cancel', status: 'error', duration: 5000, isClosable: true });
+      managedToast({
+        id: `cancel-error-${transactionId}`,
+        title: 'Error',
+        description: error.message || 'Failed to cancel',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
     } finally {
       setIsConfirming(prev => ({ ...prev, [transactionId]: false }));
     }
   };
 
+  // Handle transaction confirmation
   const handleConfirm = async (transactionId) => {
-    if (isConfirming[transactionId]) return;
+    if (isConfirming[transactionId] || !userDetails?._id) return;
     setIsConfirming(prev => ({ ...prev, [transactionId]: true }));
     const transaction = transactions.find(t => t._id === transactionId);
-    if (!transaction || !transaction.participants?.length || transaction.status !== 'pending') {
-      managedToast({ id: `confirm-error-${transactionId}`, title: 'Error', description: !transaction ? 'Transaction not found' : !transaction.participants?.length ? 'No participant' : 'Only pending transactions can be confirmed', status: 'error', duration: 5000, isClosable: true });
+    if (!transaction || !transaction.userId?._id || !transaction.participants?.length || transaction.status !== 'pending') {
+      managedToast({
+        id: `confirm-error-${transactionId}`,
+        title: 'Error',
+        description: !transaction ? 'Transaction not found' : !transaction.userId?._id ? 'Transaction owner not found' : !transaction.participants?.length ? 'No participant' : 'Only pending transactions can be confirmed',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
       setIsConfirming(prev => ({ ...prev, [transactionId]: false }));
       return;
     }
 
-    const isCreator = userDetails?._id === transaction.userId._id.toString();
+    const isCreator = userDetails._id === transaction.userId._id.toString();
     const isBuyer = (isCreator && transaction.selectedUserType === 'buyer') ||
       (!isCreator && transaction.selectedUserType === 'seller');
 
@@ -630,6 +809,7 @@ const DisplayTransaction = () => {
       try {
         const amount = parseFloat(transaction.paymentAmount);
         if (isNaN(amount)) throw new Error('Invalid payment amount');
+        await fetchWalletBalance();
         if (walletBalance >= amount) {
           await dispatch(fundTransaction({ transactionId: transaction._id, amount })).unwrap();
           managedToast({ id: `fund-success-${transaction._id}`, title: 'Funded', description: 'Funded from wallet.', status: 'success', duration: 5000, isClosable: true });
@@ -651,6 +831,7 @@ const DisplayTransaction = () => {
     setIsConfirming(prev => ({ ...prev, [transactionId]: false }));
   };
 
+  // Complete transaction after confirmation
   const completeTransaction = async (transactionId) => {
     if (isConfirming[transactionId]) return;
     setIsConfirming(prev => ({ ...prev, [transactionId]: true }));
@@ -662,7 +843,7 @@ const DisplayTransaction = () => {
         description: transaction.status === 'completed' ? 'Funds released.' : 'Waiting for other party.',
         status: transaction.status === 'completed' ? 'success' : 'info',
         duration: 5000,
-        isClosable: true
+        isClosable: true,
       });
     } catch (error) {
       if (error.message.includes('Insufficient funds')) {
@@ -676,7 +857,7 @@ const DisplayTransaction = () => {
           description: error.message || 'Failed to confirm',
           status: 'error',
           duration: 5000,
-          isClosable: true
+          isClosable: true,
         });
       }
     } finally {
@@ -686,52 +867,72 @@ const DisplayTransaction = () => {
     }
   };
 
+  // Handle funding transaction
   const handleFund = async (transaction) => {
     if (!transaction || !transaction._id || transaction.locked || !transaction.paymentAmount || parseFloat(transaction.paymentAmount) <= 0) {
-      managedToast({ id: `fund-error-${transaction?._id || 'unknown'}`, title: 'Error', description: 'Invalid transaction.', status: 'error', duration: 5000, isClosable: true });
+      managedToast({
+        id: `fund-error-${transaction?._id || 'unknown'}`,
+        title: 'Error',
+        description: 'Invalid transaction.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
       return;
     }
+    setCurrentTransaction(transaction);
+    await fetchWalletBalance();
+    openFundingModal();
+  };
+
+  // Confirm funding action
+  const confirmFunding = async (transaction, setError) => {
+    if (!transaction || !transaction.paymentAmount) {
+      managedToast({
+        id: `fund-error-${transaction?._id || 'unknown'}`,
+        title: 'Error',
+        description: 'Invalid transaction.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      closeFundingModal();
+      return;
+    }
+    setIsConfirming(prev => ({ ...prev, [transaction._id]: true }));
     try {
-      setIsConfirming(prev => ({ ...prev, [transaction._id]: true }));
       const amount = parseFloat(transaction.paymentAmount);
       if (isNaN(amount)) throw new Error('Invalid payment amount');
-      if ((walletBalance ?? 0) >= amount) {
-        await dispatch(fundTransaction({ transactionId: transaction._id, amount })).unwrap();
-        managedToast({ id: `fund-success-${transaction._id}`, title: 'Funded', description: 'Funded from wallet.', status: 'success', duration: 5000, isClosable: true });
-      } else {
-        setCurrentTransaction(transaction);
-        openFundingModal();
-      }
+      await dispatch(fundTransaction({ transactionId: transaction._id, amount })).unwrap();
+      managedToast({
+        id: `fund-success-${transaction._id}`,
+        title: 'Funded',
+        description: 'Funded from wallet.',
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+      });
+      closeFundingModal();
+      await fetchWalletBalance();
     } catch (error) {
-      managedToast({ id: `fund-error-${transaction._id}`, title: 'Error', description: error.message || 'Failed to fund', status: 'error', duration: 5000, isClosable: true });
+      if (error.message?.includes('Insufficient')) {
+        setError('Insufficient wallet balance. Please top up your wallet in your Profile to fund this transaction.');
+      } else {
+        managedToast({
+          id: `fund-error-${transaction._id}`,
+          title: 'Error',
+          description: error.message || 'Failed to fund',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+      }
     } finally {
       setIsConfirming(prev => ({ ...prev, [transaction._id]: false }));
     }
   };
 
-  const confirmFunding = async (transaction) => {
-    if (!transaction || !transaction.paymentAmount) {
-      managedToast({ id: `fund-error-${transaction?._id || 'unknown'}`, title: 'Error', description: 'Invalid transaction.', status: 'error', duration: 5000, isClosable: true });
-      closeFundingModal();
-      return;
-    }
-    try {
-      const amount = parseFloat(transaction.paymentAmount);
-      const shortfall = Math.max(amount - (walletBalance ?? 0), 0);
-      const fundingAmount = Math.ceil(shortfall * 100) / 100;
-      const response = await axios.post(`${BASE_URL}/api/wallet/fund`, { amount: fundingAmount, email: userDetails?.email || '', phoneNumber: userDetails?.phoneNumber || '', transactionId: transaction._id }, { headers: { Authorization: `Bearer ${localStorage.getItem('access-token')}` } });
-      if (response.data?.success && response.data.data?.authorization_url) {
-        window.location.href = response.data.data.authorization_url;
-      } else {
-        throw new Error('Failed to initiate funding');
-      }
-    } catch (error) {
-      managedToast({ id: `fund-error-${transaction._id}`, title: 'Error', description: error.response?.data?.error || error.message, status: 'error', duration: 5000, isClosable: true });
-    } finally {
-      closeFundingModal();
-    }
-  };
-
+  // Edit payment details
   const handleEditPayment = (transaction) => {
     if (!transaction) return;
     setCurrentTransaction(transaction);
@@ -739,6 +940,7 @@ const DisplayTransaction = () => {
     setShowPaymentDetailsModal(true);
   };
 
+  // Submit updated payment details
   const handlePaymentSubmit = (e) => {
     e.preventDefault();
     if (!paymentDetails.paymentAmount || parseFloat(paymentDetails.paymentAmount) <= 0) {
@@ -747,23 +949,39 @@ const DisplayTransaction = () => {
     }
     dispatch(updateTransaction({ transactionId: currentTransaction._id, data: { paymentAmount: parseFloat(paymentDetails.paymentAmount) } })).unwrap()
       .then(() => {
-        managedToast({ id: `payment-success-${currentTransaction._id}`, title: 'Updated', description: `Amount set to ₦${parseFloat(paymentDetails.paymentAmount).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`, status: 'success', duration: 3000, isClosable: true });
+        managedToast({
+          id: `payment-success-${currentTransaction._id}`,
+          title: 'Updated',
+          description: `Amount set to ₦${parseFloat(paymentDetails.paymentAmount).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`,
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
         setShowPaymentDetailsModal(false);
         setCurrentTransaction(null);
         setPaymentDetails({ paymentAmount: "" });
         setPaymentErrors({});
       })
       .catch(error => {
-        managedToast({ id: `payment-error-${currentTransaction._id}`, title: 'Error', description: error.message || 'Failed to update', status: 'error', duration: 5000, isClosable: true });
+        managedToast({
+          id: `payment-error-${currentTransaction._id}`,
+          title: 'Error',
+          description: error.message || 'Failed to update',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
       });
   };
 
+  // Copy text to clipboard
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text).then(() =>
       managedToast({ id: `copy-${text}`, title: 'Copied', status: 'success', duration: 2000, isClosable: true })
     );
   };
 
+  // Toggle description expansion
   const toggleDescription = (transactionId) => {
     setExpandedDescriptions(prev => ({ ...prev, [transactionId]: !prev[transactionId] }));
   };
@@ -809,7 +1027,7 @@ const DisplayTransaction = () => {
                     fontWeight="500"
                     rounded="lg"
                   >
-                    {tab.charAt(0).toUpperCase() + tab.slice(1)} ({tab === "wallet" ? (Array.isArray(walletTransactions) ? walletTransactions.length : 0) : tab === "all" ? (Array.isArray(transactions) ? transactions.length : 0) : (Array.isArray(transactions) ? transactions.filter(t => tab === "active" ? t.status === "pending" : t.status === tab).length : 0)})
+                    {tab.charAt(0).toUpperCase() + tab.slice(1)} ({tab === "wallet" ? (Array.isArray(walletTransactions) ? walletTransactions.length : 0) : tab === "all" ? (Array.isArray(transactions) ? transactions.length : 0) : (Array.isArray(transactions) ? transactions.filter(t => tab === "active" ? t.status === "pending" || t.status === "funded" : t.status === tab).length : 0)})
                   </Button>
                 ))}
               </Stack>
@@ -844,7 +1062,11 @@ const DisplayTransaction = () => {
             </Flex>
 
             {(transactionsLoading || walletLoading || userLoading) ? (
-              <TransactionLoader />
+              <Grid templateColumns={{ base: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" }} gap={4}>
+                {Array(6).fill().map((_, idx) => (
+                  <TransactionSkeleton key={idx} />
+                ))}
+              </Grid>
             ) : transactionsError ? (
               <Flex direction="column" align="center" justify="center" py={8}>
                 <Text fontSize="2xl" color={subtleTextColor}>⚠️</Text>
@@ -884,7 +1106,7 @@ const DisplayTransaction = () => {
                   <TransactionCard
                     key={transaction._id}
                     transaction={transaction}
-                    currentUser={userDetails}
+                    currentUser={userDetails || {}}
                     isConfirming={isConfirming}
                     handleChat={handleChat}
                     handleWaybill={handleWaybill}
@@ -932,7 +1154,7 @@ const DisplayTransaction = () => {
             details={buyerWaybillDetails[transactionId] || {}}
             setDetails={setBuyerWaybillDetails}
             errors={errors}
-            handleSubmit={() => { }}
+            handleSubmit={() => {}}
             downloadImage={downloadImage}
             isFunded={true}
           />
@@ -941,7 +1163,12 @@ const DisplayTransaction = () => {
         {showPaymentDetailsModal && currentTransaction && (
           <PaymentDetailsModal
             isOpen={showPaymentDetailsModal}
-            onClose={() => { setShowPaymentDetailsModal(false); setCurrentTransaction(null); setPaymentDetails({ paymentAmount: "" }); setPaymentErrors({}); }}
+            onClose={() => {
+              setShowPaymentDetailsModal(false);
+              setCurrentTransaction(null);
+              setPaymentDetails({ paymentAmount: "" });
+              setPaymentErrors({});
+            }}
             transaction={currentTransaction}
             paymentDetails={paymentDetails}
             setPaymentDetails={setPaymentDetails}
@@ -953,10 +1180,16 @@ const DisplayTransaction = () => {
         {isFundingModalOpen && currentTransaction && (
           <FundingModal
             isOpen={isFundingModalOpen}
-            onClose={() => { closeFundingModal(); setCurrentTransaction(null); }}
+            onClose={() => {
+              closeFundingModal();
+              setCurrentTransaction(null);
+              setWalletBalance(null);
+            }}
             transaction={currentTransaction}
             walletBalance={walletBalance}
             confirmFunding={confirmFunding}
+            isLoading={isConfirming[currentTransaction?._id]}
+            fetchWalletBalance={fetchWalletBalance}
           />
         )}
 

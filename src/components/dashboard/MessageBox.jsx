@@ -9,7 +9,7 @@ import { BsChatLeftText } from "react-icons/bs";
 import { format } from "date-fns";
 import { useToast } from "@chakra-ui/react";
 import { v4 as uuidv4 } from "uuid";
-import multiavatar from "@multiavatar/multiavatar/esm"; // Import Multiavatar
+import multiavatar from "@multiavatar/multiavatar/esm";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 const SOCKET_SERVER_URL = `${BASE_URL}`;
@@ -25,7 +25,7 @@ const MessageBox = () => {
   const [error, setError] = useState("");
   const [socketConnected, setSocketConnected] = useState(false);
   const [pendingMessages, setPendingMessages] = useState([]);
-  const [typingUsers, setTypingUsers] = useState([]); // New state for typing users
+  const [typingUsers, setTypingUsers] = useState([]);
   const navigate = useNavigate();
   const toast = useToast();
   const messagesEndRef = useRef(null);
@@ -39,7 +39,7 @@ const MessageBox = () => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages]);
+  }, [messages, typingUsers]);
 
   // Fetch user details
   useEffect(() => {
@@ -54,9 +54,10 @@ const MessageBox = () => {
 
       try {
         const response = await axios.get(`${BASE_URL}/api/users/user-details`);
+        console.log("User details response:", response.data);
         setUserDetails(response.data.data.user);
       } catch (error) {
-        console.error("Error fetching user details:", error);
+        console.error("Error fetching user details:", error.response?.data || error.message);
         setError("Failed to fetch user details. Please log in again.");
         navigate("/");
       }
@@ -65,9 +66,9 @@ const MessageBox = () => {
     fetchUserDetails();
   }, [navigate]);
 
-  // Fetch transaction details
+  // Fetch transaction and messages
   useEffect(() => {
-    const fetchTransactionDetails = async () => {
+    const fetchTransactionAndMessages = async () => {
       setIsLoading(true);
       const token = localStorage.getItem("access-token");
       if (!token) {
@@ -78,20 +79,70 @@ const MessageBox = () => {
       axios.defaults.headers.common["access-token"] = token;
 
       try {
-        const response = await axios.get(`${BASE_URL}/api/transactions/chatroom/${chatroomId}`);
-        setTransactionDetails(response.data.data);
-        setParticipants(Array.isArray(response.data.data.participants) ? response.data.data.participants : []);
+        // Fetch transaction details
+        const transactionResponse = await axios.get(`${BASE_URL}/api/transactions/chatroom/${chatroomId}`);
+        console.log("Transaction response:", transactionResponse.data);
+        const transactionData = transactionResponse.data.data;
+        setTransactionDetails(transactionData);
+        setParticipants(Array.isArray(transactionData.participants) ? transactionData.participants : []);
+
+        // Verify chatroomId matches transaction
+        if (!transactionData.chatroomId || transactionData.chatroomId.toString() !== chatroomId) {
+          console.warn("Chatroom ID mismatch:", {
+            transactionChatroomId: transactionData.chatroomId,
+            urlChatroomId: chatroomId,
+          });
+          setError("Invalid chatroom ID for this transaction.");
+          toast({
+            title: "Error",
+            description: "Invalid chatroom ID for this transaction.",
+            status: "error",
+            duration: 5000,
+            isClosable: true,
+          });
+          navigate("/transactions/tab");
+          return;
+        }
+
+        // Fetch messages
+        console.log("Fetching messages for chatroom:", chatroomId);
+        const messagesResponse = await axios.get(`${BASE_URL}/api/messages/${chatroomId}`);
+        console.log("Raw messages response:", JSON.stringify(messagesResponse.data, null, 2));
+        let fetchedMessages = [];
+        if (Array.isArray(messagesResponse.data)) {
+          fetchedMessages = messagesResponse.data;
+        } else if (Array.isArray(messagesResponse.data?.data)) {
+          fetchedMessages = messagesResponse.data.data;
+        } else if (typeof messagesResponse.data === 'object' && messagesResponse.data !== null) {
+          fetchedMessages = Object.keys(messagesResponse.data)
+            .filter(key => !isNaN(key))
+            .map(key => messagesResponse.data[key]);
+        }
+        // Filter and sort messages
+        fetchedMessages = fetchedMessages.filter(
+          (msg) => msg.message?.trim() && msg.userId
+        );
+        fetchedMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        console.log(`Fetched ${fetchedMessages.length} messages for chatroom ${chatroomId}:`, JSON.stringify(fetchedMessages, null, 2));
+        setMessages(fetchedMessages);
       } catch (error) {
-        console.error("Error fetching transaction details:", error);
-        setError(error.response?.data?.error || "Failed to load transaction details.");
+        console.error("Error fetching data:", error.response?.data || error.message);
+        setError(error.response?.data?.error || "Failed to load transaction or messages.");
+        toast({
+          title: "Error",
+          description: error.response?.data?.error || "Failed to load transaction or messages.",
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+        });
         navigate("/transactions/tab");
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchTransactionDetails();
-  }, [chatroomId, navigate]);
+    fetchTransactionAndMessages();
+  }, [chatroomId, navigate, toast]);
 
   // Socket setup
   useEffect(() => {
@@ -109,7 +160,7 @@ const MessageBox = () => {
       reconnectionAttempts: 20,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
-      randomizationFactor: 0.5, // Add randomization to prevent thundering herd
+      randomizationFactor: 0.5,
     });
 
     socketRef.current.on("connect", () => {
@@ -119,22 +170,26 @@ const MessageBox = () => {
 
       // Process pending messages
       if (pendingMessages.length > 0) {
-        const messagesToSend = [...pendingMessages]; // Copy to avoid mutation issues
-        setPendingMessages([]); // Clear pending messages immediately
+        const messagesToSend = [...pendingMessages];
+        setPendingMessages([]);
         messagesToSend.forEach((msg) => {
           socketRef.current.emit("message", msg);
           axios
             .post(`${BASE_URL}/api/messages/send-message`, msg)
             .then((response) => {
               console.log("Pending message saved to database:", response.data);
-              setMessages((prevMessages) =>
-                prevMessages.map((m) =>
-                  m.tempId === msg.tempId ? { ...response.data, tempId: msg.tempId } : m
-                )
-              );
+              setMessages((prevMessages) => {
+                const serverMessage = response.data._doc || response.data.data || response.data;
+                const updatedMessages = prevMessages.map((m) =>
+                  m.tempId === msg.tempId ? { ...serverMessage, tempId: m.tempId } : m
+                );
+                return updatedMessages
+                  .filter((m) => m.message?.trim() && m.userId)
+                  .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+              });
             })
             .catch((error) => {
-              console.error("Error saving pending message:", error);
+              console.error("Error saving pending message:", error.response?.data || error.message);
               setMessages((prevMessages) => prevMessages.filter((m) => m.tempId !== msg.tempId));
               toast({
                 title: "Error",
@@ -147,7 +202,33 @@ const MessageBox = () => {
         });
       }
 
-      // Heartbeat to maintain connection
+      // Refetch messages on connect
+      const refetchMessages = async () => {
+        try {
+          const response = await axios.get(`${BASE_URL}/api/messages/${chatroomId}`);
+          console.log("Raw refetched messages response:", JSON.stringify(response.data, null, 2));
+          let fetchedMessages = [];
+          if (Array.isArray(response.data)) {
+            fetchedMessages = response.data;
+          } else if (Array.isArray(response.data?.data)) {
+            fetchedMessages = response.data.data;
+          } else if (typeof response.data === 'object' && response.data !== null) {
+            fetchedMessages = Object.keys(response.data)
+              .filter(key => !isNaN(key))
+              .map(key => response.data[key]);
+          }
+          fetchedMessages = fetchedMessages.filter(
+            (msg) => msg.message?.trim() && msg.userId
+          );
+          fetchedMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+          console.log(`Refetched ${fetchedMessages.length} messages on socket connect for chatroom ${chatroomId}:`, JSON.stringify(fetchedMessages, null, 2));
+          setMessages(fetchedMessages);
+        } catch (error) {
+          console.error("Error refetching messages on socket connect:", error.response?.data || error.message);
+        }
+      };
+      refetchMessages();
+
       const heartbeat = setInterval(() => {
         socketRef.current.emit("ping", { userId: userDetails._id });
       }, 30000);
@@ -160,17 +241,65 @@ const MessageBox = () => {
     });
 
     socketRef.current.on("message", (message) => {
-      console.log("Received message via Socket.io:", message);
+      console.log("Received message via Socket.io:", JSON.stringify(message, null, 2));
+      // Validate message
+      if (
+        !message.message?.trim() ||
+        !message.userId ||
+        message.chatroomId !== chatroomId ||
+        message.userId === userDetails._id
+      ) {
+        console.warn("Ignoring invalid or self-sent Socket.io message:", message, {
+          hasMessage: !!message.message?.trim(),
+          hasUserId: !!message.userId,
+          chatroomIdMatch: message.chatroomId === chatroomId,
+          isSelf: message.userId === userDetails._id,
+          expectedChatroomId: chatroomId,
+          receivedChatroomId: message.chatroomId
+        });
+        // Fallback: Refetch messages if a valid message is ignored
+        if (message.message?.trim() && message.userId && message.chatroomId === chatroomId) {
+          console.log("Valid message ignored (not self), refetching messages...");
+          const refetchMessages = async () => {
+            try {
+              const response = await axios.get(`${BASE_URL}/api/messages/${chatroomId}`);
+              let fetchedMessages = [];
+              if (Array.isArray(response.data)) {
+                fetchedMessages = response.data;
+              } else if (Array.isArray(response.data?.data)) {
+                fetchedMessages = response.data.data;
+              } else if (typeof response.data === 'object' && response.data !== null) {
+                fetchedMessages = Object.keys(response.data)
+                  .filter(key => !isNaN(key))
+                  .map(key => response.data[key]);
+              }
+              fetchedMessages = fetchedMessages.filter(
+                (msg) => msg.message?.trim() && msg.userId
+              );
+              fetchedMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+              console.log(`Refetched ${fetchedMessages.length} messages due to ignored message:`, JSON.stringify(fetchedMessages, null, 2));
+              setMessages(fetchedMessages);
+            } catch (error) {
+              console.error("Error refetching messages after ignored message:", error.response?.data || error.message);
+            }
+          };
+          refetchMessages();
+        }
+        return;
+      }
       setMessages((prevMessages) => {
         if (prevMessages.some((msg) => msg._id === message._id)) {
           return prevMessages;
         }
-        return [...prevMessages.filter((msg) => msg.tempId !== message.tempId), message];
+        const updatedMessages = [...prevMessages, message];
+        return updatedMessages
+          .filter((m) => m.message?.trim() && m.userId)
+          .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
       });
     });
 
     socketRef.current.on("typing", (data) => {
-      if (data.userId !== userDetails._id) {
+      if (data.userId !== userDetails._id && data.chatroomId === chatroomId) {
         setTypingUsers((prev) => {
           if (!prev.some((user) => user.userId === data.userId)) {
             return [...prev, data];
@@ -181,24 +310,21 @@ const MessageBox = () => {
     });
 
     socketRef.current.on("stop-typing", (data) => {
-      setTypingUsers((prev) => prev.filter((user) => user.userId !== data.userId));
+      if (data.chatroomId === chatroomId) {
+        setTypingUsers((prev) => prev.filter((user) => user.userId !== data.userId));
+      }
     });
 
     socketRef.current.on("connect_error", (err) => {
       console.error("Socket connection error:", err.message);
       setSocketConnected(false);
-      if (err.message.includes("Authentication error")) {
-        setError("Session expired. Please log in again.");
-        navigate("/");
-      } else {
-        toast({
-          title: "Connection Error",
-          description: "Failed to connect to chat server. Messages will be queued.",
-          status: "warning",
-          duration: 5000,
-          isClosable: true,
-        });
-      }
+      toast({
+        title: "Connection Error",
+        description: "Failed to connect to chat server. Messages will be queued.",
+        status: "warning",
+        duration: 5000,
+        isClosable: true,
+      });
     });
 
     socketRef.current.on("error", (err) => {
@@ -216,6 +342,31 @@ const MessageBox = () => {
     socketRef.current.on("reconnect", (attempt) => {
       console.log(`Socket reconnected after ${attempt} attempts`);
       setSocketConnected(true);
+      const fetchMessages = async () => {
+        try {
+          const response = await axios.get(`${BASE_URL}/api/messages/${chatroomId}`);
+          console.log("Raw reconnected messages response:", JSON.stringify(response.data, null, 2));
+          let fetchedMessages = [];
+          if (Array.isArray(response.data)) {
+            fetchedMessages = response.data;
+          } else if (Array.isArray(response.data?.data)) {
+            fetchedMessages = response.data.data;
+          } else if (typeof response.data === 'object' && response.data !== null) {
+            fetchedMessages = Object.keys(response.data)
+              .filter(key => !isNaN(key))
+              .map(key => response.data[key]);
+          }
+          fetchedMessages = fetchedMessages.filter(
+            (msg) => msg.message?.trim() && msg.userId
+          );
+          fetchedMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+          console.log(`Refetched ${fetchedMessages.length} messages on reconnect for chatroom ${chatroomId}:`, JSON.stringify(fetchedMessages, null, 2));
+          setMessages(fetchedMessages);
+        } catch (error) {
+          console.error("Error refetching messages on reconnect:", error.response?.data || error.message);
+        }
+      };
+      fetchMessages();
     });
 
     return () => {
@@ -249,33 +400,9 @@ const MessageBox = () => {
           chatroomId,
           userId: userDetails._id,
         });
-      }, 3000); // Stop typing after 3 seconds of inactivity
+      }, 3000);
     }
   };
-
-  // Fetch messages
-  useEffect(() => {
-    const fetchMessages = async () => {
-      const token = localStorage.getItem("access-token");
-      if (!token) {
-        setError("No access token found. Please log in.");
-        navigate("/");
-        return;
-      }
-      axios.defaults.headers.common["access-token"] = token;
-      try {
-        console.log("Fetching messages for chatroom:", chatroomId);
-        const response = await axios.get(`${BASE_URL}/api/messages/${chatroomId}`);
-        setMessages(Array.isArray(response.data) ? response.data : []);
-      } catch (error) {
-        console.error("Error fetching messages:", error);
-        setError(error.response?.data?.error || "Failed to load messages.");
-        setMessages([]);
-      }
-    };
-
-    fetchMessages();
-  }, [chatroomId, navigate]);
 
   const getAvatarSvg = (avatarSeed, userId) => {
     try {
@@ -305,16 +432,29 @@ const MessageBox = () => {
       return;
     }
 
+    if (!transactionDetails._id) {
+      toast({
+        title: "Error",
+        description: "Transaction details not loaded.",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
     const tempId = uuidv4();
     const newMessage = {
+      transactionId: transactionDetails._id,
       chatroomId,
       userId: userDetails._id,
       userFirstName: userDetails.firstName || "User",
       userLastName: userDetails.lastName || "",
-      message,
+      message: message.trim(),
       avatarSeed: userDetails.avatarSeed || userDetails._id,
       timestamp: new Date().toISOString(),
       tempId,
+      _id: tempId,
     };
 
     setMessage("");
@@ -322,7 +462,13 @@ const MessageBox = () => {
       messageInputRef.current.focus();
     }
 
-    setMessages((prevMessages) => [...prevMessages, newMessage]);
+    // Optimistically add the message
+    setMessages((prevMessages) => {
+      const updatedMessages = [...prevMessages, newMessage];
+      return updatedMessages
+        .filter((m) => m.message?.trim() && m.userId)
+        .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    });
 
     if (!socketRef.current || !socketConnected) {
       setPendingMessages((prev) => [...prev, newMessage]);
@@ -338,20 +484,30 @@ const MessageBox = () => {
 
     try {
       socketRef.current.emit("message", newMessage);
+      console.log("Sending message to backend:", newMessage);
       const response = await axios.post(`${BASE_URL}/api/messages/send-message`, newMessage);
-      setMessages((prevMessages) =>
-        prevMessages.map((msg) =>
-          msg.tempId === newMessage.tempId ? { ...response.data, tempId } : msg
-        )
-      );
+      console.log("Message save response:", JSON.stringify(response.data, null, 2));
+      setMessages((prevMessages) => {
+        const serverMessage = response.data._doc || response.data.data || response.data;
+        if (!serverMessage.message?.trim() || !serverMessage.userId) {
+          console.warn("Invalid server message, retaining optimistic message:", serverMessage);
+          return prevMessages;
+        }
+        const updatedMessages = prevMessages.map((msg) =>
+          msg.tempId === newMessage.tempId ? { ...serverMessage, tempId: msg.tempId } : msg
+        );
+        return updatedMessages
+          .filter((m) => m.message?.trim() && m.userId)
+          .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      });
     } catch (error) {
-      console.error("Error saving message:", error);
+      console.error("Error saving message:", error.response?.data || error.message);
       setMessages((prevMessages) =>
         prevMessages.filter((msg) => msg.tempId !== newMessage.tempId)
       );
       toast({
         title: "Error",
-        description: error.response?.data?.message || "Failed to send message.",
+        description: error.response?.data?.message || error.response?.data?.error || "Failed to send message.",
         status: "error",
         duration: 5000,
         isClosable: true,
@@ -460,8 +616,7 @@ const MessageBox = () => {
         </div>
         <button
           onClick={toggleInfoPanel}
-          className={`p-2 rounded-full ${showInfo ? "bg-[#318AE6]" : "hover:bg-[#28313A]"} transition10
-          transition-colors`}
+          className={`p-2 rounded-full ${showInfo ? "bg-[#318AE6]" : "hover:bg-[#28313A]"} transition-colors`}
         >
           <FiInfo size={20} />
         </button>
@@ -470,12 +625,12 @@ const MessageBox = () => {
         <div className={`flex-1 flex flex-col ${showInfo ? "md:mr-80" : ""} transition-all duration-300`}>
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {participants.length === 0 && isCreator && (
-              <div className="p-4 bg-yellow-900 text-yellow-300 text-center">
+              <div className="p-4 bg-yellow-900 text-yellow-300 text-center rounded-lg">
                 No participants yet. Messages will be visible once participants are added.
               </div>
             )}
             {!socketConnected && (
-              <div className="p-2 text-center text-yellow-300 bg-yellow-900/50">
+              <div className="p-2 text-center text-yellow-300 bg-yellow-900/50 rounded-lg">
                 Connecting to chat server...
               </div>
             )}
@@ -494,13 +649,14 @@ const MessageBox = () => {
               messages.map((msg, index) => {
                 const isSentByCurrentUser = msg.userId === userDetails._id;
                 const showAvatar = index === 0 || messages[index - 1].userId !== msg.userId;
+                const isLastInGroup = index === messages.length - 1 || messages[index + 1].userId !== msg.userId;
                 return (
                   <div
-                    key={msg._id || msg.tempId || index}
-                    className={`flex ${isSentByCurrentUser ? "justify-end" : "justify-start"}`}
+                    key={msg._id || msg.tempId}
+                    className={`flex ${isSentByCurrentUser ? "justify-end" : "justify-start"} mb-2`}
                   >
                     <div
-                      className={`max-w-[75%] flex ${isSentByCurrentUser ? "flex-row-reverse" : "flex-row"}`}
+                      className={`max-w-[75%] flex ${isSentByCurrentUser ? "flex-row-reverse" : "flex-row"} items-end`}
                     >
                       {showAvatar && (
                         <div className={`flex-shrink-0 ${isSentByCurrentUser ? "ml-2" : "mr-2"}`}>
@@ -527,10 +683,11 @@ const MessageBox = () => {
                         )}
                         <div
                           className={`rounded-2xl px-4 py-2 break-words ${isSentByCurrentUser ? "bg-[#318AE6] text-white" : "bg-[#28313A] text-gray-100"
-                            }`}
+                            } ${showAvatar && isLastInGroup ? "rounded-b-2xl" : "rounded-2xl"} ${showAvatar ? isSentByCurrentUser ? "rounded-tr-sm" : "rounded-tl-sm" : ""
+                            } ${isLastInGroup ? isSentByCurrentUser ? "rounded-br-sm" : "rounded-bl-sm" : ""}`}
                         >
-                          {msg.message}
-                          <span className="text-xs opacity-70 ml-2 inline-block">
+                          <p className="text-sm">{msg.message}</p>
+                          <span className="text-xs opacity-70 mt-1 inline-block text-right">
                             {formatMessageTimestamp(msg.timestamp)}
                           </span>
                         </div>
@@ -554,15 +711,15 @@ const MessageBox = () => {
                 }}
                 onKeyDown={handleKeyPress}
                 placeholder="Type a message..."
-                className="flex-1 px-4 py-3 bg-transparent outline-none text-white"
+                className="flex-1 px-4 py-3 bg-transparent outline-none text-white text-sm"
                 disabled={participants.length === 0 && !isCreator}
               />
               <button
                 onClick={sendMessage}
                 disabled={!message.trim() || (participants.length === 0 && !isCreator)}
                 className={`p-3 rounded-full mr-1 ${message.trim() && (participants.length > 0 || isCreator)
-                  ? "bg-[#318AE6] hover:bg-[#2571c5] text-white"
-                  : "bg-[#1d2329] text-gray-500"
+                    ? "bg-[#318AE6] hover:bg-[#2571c5] text-white"
+                    : "bg-[#1d2329] text-gray-500"
                   } transition-colors`}
               >
                 <MdSend size={20} />
@@ -593,10 +750,10 @@ const MessageBox = () => {
                   <p className="text-xs text-gray-400 mb-1">Status</p>
                   <div
                     className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${transactionDetails.status === "completed"
-                      ? "bg-green-900 text-green-300"
-                      : transactionDetails.status === "cancelled"
-                        ? "bg-red-900 text-red-300"
-                        : "bg-yellow-900 text-yellow-300"
+                        ? "bg-green-900 text-green-300"
+                        : transactionDetails.status === "cancelled"
+                          ? "bg-red-900 text-red-300"
+                          : "bg-yellow-900 text-yellow-300"
                       }`}
                   >
                     {transactionDetails.status || "pending"}
