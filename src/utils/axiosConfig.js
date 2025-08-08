@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { navigate } from './navigate'; // Custom navigation helper for React Router
+import { navigateTo } from './navigate'; // Updated to import navigateTo
 import { toast } from 'react-toastify'; // Import react-toastify for user-friendly notifications
 
 const instance = axios.create({
@@ -48,7 +48,7 @@ instance.interceptors.request.use(
       toast.error('Please log in again.', { autoClose: 3000 });
       localStorage.removeItem('access-token');
       localStorage.removeItem('refresh-token');
-      navigate('/login');
+      navigateTo('/login'); // Updated to use navigateTo
       return Promise.reject(new Error('No access token available'));
     }
     return config;
@@ -96,7 +96,7 @@ instance.interceptors.response.use(
         toast.error('Your session has expired. Please log in again.', { autoClose: 3000 });
         localStorage.removeItem('access-token');
         localStorage.removeItem('refresh-token');
-        navigate('/login');
+        navigateTo('/login'); // Updated to use navigateTo
         return Promise.reject(new Error('No refresh token available'));
       }
       try {
@@ -121,7 +121,7 @@ instance.interceptors.response.use(
         toast.error('Your session has expired. Please log in again.', { autoClose: 3000 });
         localStorage.removeItem('access-token');
         localStorage.removeItem('refresh-token');
-        navigate('/login');
+        navigateTo('/login'); // Updated to use navigateTo
         return Promise.reject(new Error('Session expired'));
       }
     }
