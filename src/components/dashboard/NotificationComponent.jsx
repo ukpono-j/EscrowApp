@@ -49,7 +49,7 @@ const NotificationComponent = () => {
     accepted: "green",
     declined: "red",
     completed: "blue",
-    cancelled: "gray",
+    canceled: "gray",
     failed: "red",
     transaction: "purple",
     funding: "teal",
@@ -59,7 +59,7 @@ const NotificationComponent = () => {
     registration: "blue",
   };
 
-  const filterOptions = ["all", "pending", "accepted", "declined", "completed", "cancelled", "failed"];
+  const filterOptions = ["all", "pending", "accepted", "declined", "completed", "canceled", "failed"];
 
   const refreshToken = async () => {
     try {

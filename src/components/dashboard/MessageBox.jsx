@@ -757,7 +757,7 @@ const MessageBox = () => {
                   <div
                     className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${transactionDetails.status === "completed"
                       ? "bg-green-900 text-green-300"
-                      : transactionDetails.status === "cancelled"
+                      : transactionDetails.status === "canceled"
                         ? "bg-red-900 text-red-300"
                         : "bg-yellow-900 text-yellow-300"
                       }`}

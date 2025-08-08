@@ -7,7 +7,7 @@ const BASE_URL = import.meta.env.VITE_BASE_URL;
 export const fetchInitialData = createAsyncThunk(
   'app/fetchInitialData',
   async (_, { rejectWithValue }) => {
-    const maxRetries = 2; // Reduced retries for 500 errors to avoid flooding
+    const maxRetries = 2;
     const token = localStorage.getItem('access-token');
 
     if (!token) {
@@ -28,7 +28,7 @@ export const fetchInitialData = createAsyncThunk(
         } catch (err) {
           lastError = err;
           if (err.response?.status === 401) {
-            throw err; // Handled by axios interceptor
+            throw err;
           }
           if (err.response?.status === 500 || err.response?.status === 404) {
             console.warn(`Stopping retries for ${url} due to status ${err.response?.status}`);
@@ -164,7 +164,6 @@ export const fetchSingleTransaction = createAsyncThunk(
   }
 );
 
-// Other thunks remain unchanged
 export const updateTransaction = createAsyncThunk(
   'transactions/updateTransaction',
   async ({ transactionId, data }, { rejectWithValue }) => {
@@ -204,33 +203,65 @@ export const updateTransaction = createAsyncThunk(
 
 export const confirmTransaction = createAsyncThunk(
   'app/confirmTransaction',
-  async (transactionId, { rejectWithValue }) => {
+  async (transactionId, { dispatch, rejectWithValue }) => {
+    const maxRetries = 3;
+    const baseDelay = 1000;
+    const token = localStorage.getItem('access-token');
+
+    if (!token) {
+      toast.error('Please log in again.', { autoClose: 3000 });
+      return rejectWithValue({ error: 'Authentication token missing' });
+    }
+    if (!/^[0-9a-fA-F]{24}$/.test(transactionId)) {
+      toast.error('Invalid transaction ID.', { autoClose: 3000 });
+      return rejectWithValue({ error: 'Invalid transaction ID format' });
+    }
+
+    const confirmWithRetry = async () => {
+      let lastError = null;
+      for (let i = 0; i < maxRetries; i++) {
+        try {
+          await new Promise(resolve => setTimeout(resolve, baseDelay * Math.pow(2, i)));
+          const response = await axios.post(
+            `${BASE_URL}/api/transactions/confirm`,
+            { transactionId },
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          if (response.data?.success) {
+            return response.data;
+          }
+          throw new Error(response.data?.error || 'Failed to confirm transaction');
+        } catch (err) {
+          lastError = err;
+          if (err.response?.status === 404) {
+            toast.error('Transaction not found.', { autoClose: 3000 });
+            throw new Error('Resource not found. The transaction may have been deleted or does not exist.');
+          }
+          if (err.response?.status === 401) {
+            throw err; // Handled by axios interceptor
+          }
+          if ([429, 503].includes(err.response?.status)) {
+            console.warn(`Retry ${i + 1}/${maxRetries} for confirmTransaction due to status ${err.response?.status}`);
+            if (i === maxRetries - 1) {
+              throw lastError;
+            }
+            continue;
+          }
+          throw lastError;
+        }
+      }
+      throw lastError;
+    };
+
     try {
-      const token = localStorage.getItem('access-token');
-      if (!token) {
-        toast.error('Please log in again.', { autoClose: 3000 });
-        return rejectWithValue({ error: 'Authentication token missing' });
-      }
-      if (!/^[0-9a-fA-F]{24}$/.test(transactionId)) {
-        toast.error('Invalid transaction ID.', { autoClose: 3000 });
-        return rejectWithValue({ error: 'Invalid transaction ID format' });
-      }
-      const response = await axios.post(
-        `${BASE_URL}/api/transactions/confirm`,
-        { transactionId },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      if (response.data?.success) {
-        return response.data.data;
-      }
-      throw new Error(response.data?.error || 'Failed to confirm transaction');
+      const result = await confirmWithRetry();
+      // Refresh transaction data after successful confirmation
+      await dispatch(fetchSingleTransaction(transactionId)).unwrap();
+      return result.data;
     } catch (error) {
-      if (error.response?.status === 404) {
-        toast.error('Transaction not found.', { autoClose: 3000 });
-        return rejectWithValue({ error: 'Resource not found. The transaction may have been deleted or does not exist.' });
-      }
-      toast.error(error.response?.data?.error || 'Failed to confirm transaction.', { autoClose: 3000 });
-      return rejectWithValue({ error: error.response?.data?.error || error.message || 'Failed to confirm transaction' });
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to confirm transaction';
+      toast.error(errorMessage, { autoClose: 3000 });
+      return rejectWithValue({ error: errorMessage });
     }
   }
 );
@@ -270,7 +301,7 @@ export const fundTransaction = createAsyncThunk(
 
 export const cancelTransaction = createAsyncThunk(
   'app/cancelTransaction',
-  async (transactionId, { rejectWithValue }) => {
+  async (transactionId, { dispatch, rejectWithValue }) => {
     try {
       const token = localStorage.getItem('access-token');
       if (!token) {
@@ -286,17 +317,20 @@ export const cancelTransaction = createAsyncThunk(
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      if (response.data?.success) {
-        return response.data.data;
+      if (response.data?.message) {
+        await dispatch(fetchSingleTransaction(transactionId)).unwrap();
+        toast.success(response.data.message, { autoClose: 3000 });
+        return response.data;
       }
-      throw new Error(response.data?.error || 'Failed to cancel transaction');
+      throw new Error(response.data?.message || 'Failed to cancel transaction');
     } catch (error) {
       if (error.response?.status === 404) {
         toast.error('Transaction not found.', { autoClose: 3000 });
         return rejectWithValue({ error: 'Resource not found. The transaction may have been deleted or does not exist.' });
       }
-      toast.error(error.response?.data?.error || 'Failed to cancel transaction.', { autoClose: 3000 });
-      return rejectWithValue({ error: error.response?.data?.error || error.message || 'Failed to cancel transaction' });
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to cancel transaction';
+      toast.error(errorMessage, { autoClose: 3000 });
+      return rejectWithValue({ error: errorMessage });
     }
   }
 );

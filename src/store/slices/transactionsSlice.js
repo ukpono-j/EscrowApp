@@ -13,7 +13,7 @@ const transactionSlice = createSlice({
   reducers: {
     setTransactions(state, action) {
       state.transactions = Array.isArray(action.payload)
-        ? action.payload.filter(t => t && t._id) // Ensure valid transactions
+        ? action.payload.filter(t => t && t._id)
         : [];
       state.loading = false;
       state.error = null;
@@ -44,7 +44,7 @@ const transactionSlice = createSlice({
       .addCase(fetchInitialData.fulfilled, (state, action) => {
         console.log('fetchInitialData payload:', action.payload);
         state.transactions = Array.isArray(action.payload.transactions)
-          ? action.payload.transactions.filter(t => t && t._id) // Filter valid transactions
+          ? action.payload.transactions.filter(t => t && t._id)
           : [];
         state.loading = false;
         state.error = null;
@@ -72,7 +72,7 @@ const transactionSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchSingleTransaction.rejected, (state, action) => {
-        state.error = action.payload?.error || 'Failed to fetch transaction';
+        state.error = action.payload || 'Failed to fetch transaction';
         state.loading = false;
       })
       // updateTransaction
@@ -84,7 +84,7 @@ const transactionSlice = createSlice({
         const updatedTransaction = action.payload;
         if (updatedTransaction && updatedTransaction._id) {
           state.transactions = state.transactions
-            .filter(t => t && t._id) // Ensure no undefined transactions
+            .filter(t => t && t._id)
             .map(t =>
               t._id === updatedTransaction._id ? { ...t, ...updatedTransaction } : t
             );
@@ -144,7 +144,8 @@ const transactionSlice = createSlice({
         state.error = null;
       })
       .addCase(cancelTransaction.fulfilled, (state, action) => {
-        const updatedTransaction = action.payload;
+        // Backend returns { message, refunded, transaction }
+        const updatedTransaction = action.payload.transaction;
         if (updatedTransaction && updatedTransaction._id) {
           state.transactions = state.transactions
             .filter(t => t && t._id)

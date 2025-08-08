@@ -59,11 +59,8 @@ const TransactionLoader = () => {
   );
 };
 
-const TransactionCard = React.memo(({ transaction, currentUser, isConfirming, handleChat, handleWaybill, handleConfirm, handleFund, handleEditPayment, cancelTransaction, copyToClipboard, toggleDescription, expandedDescriptions }) => {
+const TransactionCard = React.memo(({ transaction, currentUser, isConfirming, handleChat, handleWaybill, handleConfirm, handleFund, handleEditPayment, openCancelModal, copyToClipboard, toggleDescription, expandedDescriptions }) => {
   const managedToast = useManagedToast();
-  // const currentUserId = currentUser?._id || currentUser?.id || currentUser?.user?.id || '';
-
-  // Ensure currentUser is defined and extract ID safely
   const currentUserId = currentUser
     ? currentUser._id || currentUser.id || currentUser.user?.id || ''
     : '';
@@ -120,6 +117,9 @@ const TransactionCard = React.memo(({ transaction, currentUser, isConfirming, ha
     handleEditPayment(transaction);
   };
 
+  // Hide buttons if transaction is canceled
+  const isCanceled = transaction.status === "canceled";
+
   return (
     <MotionBox
       bg={cardBg}
@@ -144,7 +144,7 @@ const TransactionCard = React.memo(({ transaction, currentUser, isConfirming, ha
             bg="transparent"
             _hover={{ color: "#BB954D" }}
             onClick={handleEditClick}
-            isDisabled={!isCreator}
+            isDisabled={!isCreator || isCanceled}
           />
           <IconButton
             aria-label="Open chat"
@@ -154,6 +154,7 @@ const TransactionCard = React.memo(({ transaction, currentUser, isConfirming, ha
             bg="transparent"
             _hover={{ color: "#BB954D" }}
             onClick={() => handleChat(transaction._id)}
+            isDisabled={isCanceled}
           />
         </Flex>
       </Flex>
@@ -167,7 +168,7 @@ const TransactionCard = React.memo(({ transaction, currentUser, isConfirming, ha
         </Box>
         <Box textAlign="right">
           <Text
-            bg={transaction.status === "completed" ? "#22c55e" : transaction.status === "cancelled" ? "#ef4444" : transaction.status === "funded" ? "#FFA500" : "#BB954D"}
+            bg={transaction.status === "completed" ? "#22c55e" : transaction.status === "canceled" ? "#ef4444" : transaction.status === "funded" ? "#FFA500" : "#BB954D"}
             color="white"
             px={2}
             py={1}
@@ -220,49 +221,51 @@ const TransactionCard = React.memo(({ transaction, currentUser, isConfirming, ha
         )}
       </Box>
 
-      <Stack spacing={2}>
-        {!((isCreator && transaction.selectedUserType === 'buyer') || (isParticipant && participant?.role === 'buyer')) && (
-          <Button
-            onClick={() => handleWaybill(transaction._id, false)}
-            bg="#8a6d27"
-            color="white"
-            _hover={{ bg: "#8a6d27" }}
-            size="sm"
-            fontWeight="500"
-          >
-            Submit Waybill
-          </Button>
-        )}
+      {!isCanceled && (
+        <Stack spacing={2}>
+          {!((isCreator && transaction.selectedUserType === 'buyer') || (isParticipant && participant?.role === 'buyer')) && (
+            <Button
+              onClick={() => handleWaybill(transaction._id, false)}
+              bg="#8a6d27"
+              color="white"
+              _hover={{ bg: "#8a6d27" }}
+              size="sm"
+              fontWeight="500"
+            >
+              Submit Waybill
+            </Button>
+          )}
 
-        {!((isCreator && transaction.selectedUserType === 'seller') || (isParticipant && participant?.role === 'seller')) && (
-          <Button
-            onClick={() => handleWaybill(transaction._id, true)}
-            bg="#8a6d27"
-            color="white"
-            _hover={{ bg: "#8a6d27" }}
-            size="sm"
-            fontWeight="500"
-          >
-            View Waybill
-          </Button>
-        )}
+          {!((isCreator && transaction.selectedUserType === 'seller') || (isParticipant && participant?.role === 'seller')) && (
+            <Button
+              onClick={() => handleWaybill(transaction._id, true)}
+              bg="#8a6d27"
+              color="white"
+              _hover={{ bg: "#8a6d27" }}
+              size="sm"
+              fontWeight="500"
+            >
+              View Waybill
+            </Button>
+          )}
 
-        {(transaction.status === "pending" || transaction.status === "funded") && (
-          <Button onClick={() => handleConfirm(transaction._id)} bg="#22c55e" color="white" _hover={{ bg: "#16a34a" }} size="sm" fontWeight="500" isLoading={isConfirming[transaction._id]}>
-            Complete Transaction
-          </Button>
-        )}
+          {(transaction.status === "pending" || transaction.status === "funded") && (
+            <Button onClick={() => handleConfirm(transaction._id)} bg="#22c55e" color="white" _hover={{ bg: "#16a34a" }} size="sm" fontWeight="500" isLoading={isConfirming[transaction._id]}>
+              Complete Transaction
+            </Button>
+          )}
 
-        {!((isCreator && transaction.selectedUserType === 'seller') || (isParticipant && participant?.role === 'seller')) && !transaction.locked && transaction.status === "pending" && (
-          <Button onClick={() => handleFund(transaction)} bg="#8a6d27" color="white" _hover={{ bg: "#8a6d27" }} size="sm" fontWeight="500">
-            Fund Transaction
-          </Button>
-        )}
+          {!((isCreator && transaction.selectedUserType === 'seller') || (isParticipant && participant?.role === 'seller')) && !transaction.locked && transaction.status === "pending" && (
+            <Button onClick={() => handleFund(transaction)} bg="#8a6d27" color="white" _hover={{ bg: "#8a6d27" }} size="sm" fontWeight="500">
+              Fund Transaction
+            </Button>
+          )}
 
-        <Button onClick={() => cancelTransaction(transaction._id)} bg="transparent" border="1px" borderColor="#ef4444" color="#ef4444" _hover={{ bg: "#ef4444", color: "white" }} size="sm" fontWeight="500">
-          Cancel
-        </Button>
-      </Stack>
+          <Button onClick={() => openCancelModal(transaction._id)} bg="transparent" border="1px" borderColor="#ef4444" color="#ef4444" _hover={{ bg: "#ef4444", color: "white" }} size="sm" fontWeight="500">
+            Cancel
+          </Button>
+        </Stack>
+      )}
     </MotionBox>
   );
 });
@@ -537,6 +540,8 @@ const DisplayTransaction = () => {
   const [expandedDescriptions, setExpandedDescriptions] = useState({});
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedTransactionId, setSelectedTransactionId] = useState(null);
+  const [cancelModalVisible, setCancelModalVisible] = useState(false);
+  const [cancelTransactionId, setCancelTransactionId] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
   const [lastSocketFetch, setLastSocketFetch] = useState(0);
   const maxRetries = 3;
@@ -681,140 +686,148 @@ const DisplayTransaction = () => {
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
 
-useEffect(() => {
-  const token = localStorage.getItem('access-token');
-  if (!token) return;
+  useEffect(() => {
+    const token = localStorage.getItem('access-token');
+    if (!token) return;
 
-  const socket = io(BASE_URL, {
-    auth: { token },
-    reconnection: true,
-    reconnectionAttempts: 5,
-    reconnectionDelay: 1000,
-  });
-  const joinedRooms = new Set();
-
-  socket.on('connect', () => {
-    console.log('WebSocket connected');
-    const userId = userDetails?.id || userDetails?.user?.id || 'unknown';
-    if (userId && !joinedRooms.has(userId)) {
-      socket.emit('join-room', userId);
-      joinedRooms.add(userId);
-    }
-    if (Array.isArray(transactions)) {
-      transactions.forEach((t) => {
-        if (t?._id && !joinedRooms.has(`transaction_${t._id}`)) {
-          socket.emit('join-room', `transaction_${t._id}`);
-          joinedRooms.add(`transaction_${t._id}`);
-        }
-      });
-    }
-  });
-
-  socket.on('connect_error', (err) => {
-    console.error('WebSocket connection error:', err);
-    managedToast({
-      id: 'socket-error',
-      title: 'Connection Error',
-      description: 'Failed to connect to real-time updates. Please check your network or try again later.',
-      status: 'warning',
-      duration: 5000,
-      isClosable: true,
+    const socket = io(BASE_URL, {
+      auth: { token },
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
     });
-  });
+    const joinedRooms = new Set();
 
-  socket.on('transactionCreated', (data) => {
-    const userId = userDetails?.id || userDetails?.user?.id || 'unknown';
-    if (data?.userId === userId || data?.participants?.some((p) => p.userId === userId)) {
-      managedToast({
-        id: `transaction-created-${Date.now()}`,
-        title: 'New Transaction',
-        description: 'A new transaction was created.',
-        status: 'success',
-        duration: 5000,
-        isClosable: true,
-      });
-      if (data?.transactionId) {
-        dispatch(fetchSingleTransaction(data.transactionId)).unwrap().catch((err) => {
-          console.error('Failed to fetch new transaction:', err);
+    socket.on('connect', () => {
+      console.log('WebSocket connected');
+      const userId = userDetails?.id || userDetails?.user?.id || 'unknown';
+      if (userId && !joinedRooms.has(userId)) {
+        socket.emit('join-room', userId);
+        joinedRooms.add(userId);
+      }
+      if (Array.isArray(transactions)) {
+        transactions.forEach((t) => {
+          if (t?._id && !joinedRooms.has(`transaction_${t._id}`)) {
+            socket.emit('join-room', `transaction_${t._id}`);
+            joinedRooms.add(`transaction_${t._id}`);
+          }
         });
       }
-    }
-  });
+    });
 
-  socket.on('transactionCompleted', (data) => {
-    if (data?.transactionId && Array.isArray(transactions) && transactions.some((t) => t._id === data.transactionId)) {
+    socket.on('connect_error', (err) => {
+      console.error('WebSocket connection error:', err);
       managedToast({
-        id: `transaction-completed-${data.transactionId || Date.now()}`,
-        title: 'Transaction Completed',
-        description: 'A transaction was completed.',
-        status: 'success',
+        id: 'socket-error',
+        title: 'Connection Error',
+        description: 'Failed to connect to real-time updates. Please check your network or try again later.',
+        status: 'warning',
         duration: 5000,
         isClosable: true,
       });
-      dispatch(fetchSingleTransaction(data.transactionId)).unwrap().catch((err) => {
-        console.error('Failed to fetch updated transaction:', err);
-      });
-    }
-  });
+    });
 
-  socket.on('balanceUpdate', (data) => {
-    const userId = userDetails?.id || userDetails?.user?.id || 'unknown';
-    if (data?.userId === userId) {
-      managedToast({
-        id: `balance-update-${Date.now()}`,
-        title: 'Balance Updated',
-        description: 'Your wallet balance updated.',
-        status: 'info',
-        duration: 5000,
-        isClosable: true,
-      });
-      fetchWalletBalance();
-    }
-  });
-
-  socket.on('transactionUpdated', async (data) => {
-    if (data?.transactionId && Array.isArray(transactions) && transactions.some((t) => t?._id === data.transactionId)) {
-      managedToast({
-        id: `transaction-updated-${data.transactionId || Date.now()}`,
-        title: 'Transaction Updated',
-        description: data.message || 'Transaction details updated.',
-        status: 'info',
-        duration: 5000,
-        isClosable: true,
-      });
-      // Add a delay to allow server to process the update
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      try {
-        await dispatch(fetchSingleTransaction(data.transactionId)).unwrap();
-      } catch (err) {
-        console.warn('Failed to fetch updated transaction:', err);
-        // Only show toast for non-404 errors to avoid clutter
-        if (err !== 'Resource not found. Retrying may resolve this.') {
-          managedToast({
-            id: `fetch-transaction-error-${data.transactionId}`,
-            title: 'Error',
-            description: typeof err === 'string' ? err : err?.error || 'Failed to refresh transaction data.',
-            status: 'error',
-            duration: 5000,
-            isClosable: true,
+    socket.on('transactionCreated', (data) => {
+      const userId = userDetails?.id || userDetails?.user?.id || 'unknown';
+      if (data?.userId === userId || data?.participants?.some((p) => p.userId === userId)) {
+        managedToast({
+          id: `transaction-created-${Date.now()}`,
+          title: 'New Transaction',
+          description: 'A new transaction was created.',
+          status: 'success',
+          duration: 5000,
+          isClosable: true,
+        });
+        if (data?.transactionId) {
+          dispatch(fetchSingleTransaction(data.transactionId)).unwrap().catch((err) => {
+            console.error('Failed to fetch new transaction:', err);
           });
         }
       }
-    } else {
-      console.warn('Transaction not found or invalid:', data.transactionId);
-    }
-  });
+    });
 
-  return () => {
-    socket.off('connect');
-    socket.off('connect_error');
-    socket.off('transactionCreated');
-    socket.off('transactionCompleted');
-    socket.off('balanceUpdate');
-    socket.off('transactionUpdated');
-    socket.disconnect();
-  };
-}, [userDetails, transactions, dispatch, fetchWalletBalance, managedToast]);
+    socket.on('transactionCompleted', (data) => {
+      if (data?.transactionId && Array.isArray(transactions) && transactions.some((t) => t._id === data.transactionId)) {
+        managedToast({
+          id: `transaction-completed-${data.transactionId || Date.now()}`,
+          title: 'Transaction Completed',
+          description: 'A transaction was completed.',
+          status: 'success',
+          duration: 5000,
+          isClosable: true,
+        });
+        dispatch(fetchSingleTransaction(data.transactionId)).unwrap().catch((err) => {
+          console.error('Failed to fetch updated transaction:', err);
+        });
+      }
+    });
+
+    socket.on('balanceUpdate', (data) => {
+      const userId = userDetails?.id || userDetails?.user?.id || 'unknown';
+      if (data?.userId === userId) {
+        managedToast({
+          id: `balance-update-${Date.now()}`,
+          title: 'Balance Updated',
+          description: 'Your wallet balance updated.',
+          status: 'info',
+          duration: 5000,
+          isClosable: true,
+        });
+        fetchWalletBalance();
+      }
+    });
+
+    socket.on('transactionUpdated', async (data) => {
+      if (data?.transactionId && Array.isArray(transactions) && transactions.some((t) => t?._id === data.transactionId)) {
+        managedToast({
+          id: `transaction-updated-${data.transactionId || Date.now()}`,
+          title: 'Transaction Updated',
+          description: data.message || 'Transaction details updated.',
+          status: 'info',
+          duration: 5000,
+          isClosable: true,
+        });
+        let attempts = 0;
+        const maxAttempts = 3;
+        const baseDelay = 1000;
+
+        while (attempts < maxAttempts) {
+          try {
+            await dispatch(fetchSingleTransaction(data.transactionId)).unwrap();
+            return;
+          } catch (err) {
+            attempts++;
+            if (err === 'Transaction not found' && attempts < maxAttempts) {
+              await new Promise(resolve => setTimeout(resolve, baseDelay * Math.pow(2, attempts)));
+              continue;
+            }
+            console.warn('Failed to fetch updated transaction:', err);
+            managedToast({
+              id: `fetch-transaction-error-${data.transactionId}`,
+              title: 'Error',
+              description: typeof err === 'string' ? err : err?.error || 'Failed to refresh transaction data.',
+              status: 'error',
+              duration: 5000,
+              isClosable: true,
+            });
+            break;
+          }
+        }
+      } else {
+        console.warn('Transaction not found or invalid:', data.transactionId);
+      }
+    });
+
+    return () => {
+      socket.off('connect');
+      socket.off('connect_error');
+      socket.off('transactionCreated');
+      socket.off('transactionCompleted');
+      socket.off('balanceUpdate');
+      socket.off('transactionUpdated');
+      socket.disconnect();
+    };
+  }, [userDetails, transactions, dispatch, fetchWalletBalance, managedToast]);
 
   useEffect(() => {
     if (isFundingModalOpen && walletBalance === null) {
@@ -835,7 +848,7 @@ useEffect(() => {
       if (!t || !t._id) return false;
       if (activeTab === 'active' && t.status !== 'pending' && t.status !== 'funded') return false;
       if (activeTab === 'completed' && t.status !== 'completed') return false;
-      if (activeTab === 'cancelled' && t.status !== 'cancelled') return false;
+      if (activeTab === 'canceled' && t.status !== 'canceled') return false;
       const participantName = t.participants?.length > 0 && t.participants[0]?.userId
         ? `${t.participants[0].userId.firstName || ''} ${t.participants[0].userId.lastName || ''}`.trim().toLowerCase() || t.participants[0]?.userId?.email?.toLowerCase() || ''
         : t.userId?.email?.toLowerCase() || '';
@@ -969,6 +982,11 @@ useEffect(() => {
     document.body.removeChild(link);
   };
 
+  const openCancelModal = (transactionId) => {
+    setCancelTransactionId(transactionId);
+    setCancelModalVisible(true);
+  };
+
   const cancelTransactionAction = async (transactionId) => {
     if (isConfirming[transactionId]) return;
     setIsConfirming(prev => ({ ...prev, [transactionId]: true }));
@@ -976,9 +994,13 @@ useEffect(() => {
       const response = await dispatch(cancelTransaction(transactionId)).unwrap();
       managedToast({
         id: `cancel-success-${transactionId}`,
-        title: 'Cancelled',
-        description: response.refunded > 0 ? `Refunded ₦${response.refunded.toLocaleString('en-NG', { minimumFractionDigits: 2 })}` : 'No funds refunded.',
-        status: 'success',
+        title: 'Cancellation Requested',
+        description: response.message.includes('Waiting')
+          ? response.message
+          : response.refunded > 0
+            ? `Transaction cancelled. Refunded ₦${response.refunded.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
+            : 'Transaction cancelled successfully.',
+        status: response.message.includes('Waiting') ? 'info' : 'success',
         duration: 5000,
         isClosable: true,
       });
@@ -986,13 +1008,15 @@ useEffect(() => {
       managedToast({
         id: `cancel-error-${transactionId}`,
         title: 'Error',
-        description: error.message || 'Failed to cancel',
+        description: error.error || 'Failed to cancel transaction',
         status: 'error',
         duration: 5000,
         isClosable: true,
       });
     } finally {
       setIsConfirming(prev => ({ ...prev, [transactionId]: false }));
+      setCancelModalVisible(false);
+      setCancelTransactionId(null);
     }
   };
 
@@ -1001,11 +1025,11 @@ useEffect(() => {
     if (isConfirming[transactionId] || !userId) return;
     setIsConfirming(prev => ({ ...prev, [transactionId]: true }));
     const transaction = transactions.find(t => t._id === transactionId);
-    if (!transaction || !transaction.userId?._id || !transaction.participants?.length || transaction.status !== 'pending') {
+    if (!transaction || !transaction.userId?._id || !transaction.participants?.length || (transaction.status !== 'pending' && transaction.status !== 'funded')) {
       managedToast({
         id: `confirm-error-${transactionId}`,
         title: 'Error',
-        description: !transaction ? 'Transaction not found' : !transaction.userId?._id ? 'Transaction owner not found' : !transaction.participants?.length ? 'No participant' : 'Only pending transactions can be confirmed',
+        description: !transaction ? 'Transaction not found' : !transaction.userId?._id ? 'Transaction owner not found' : !transaction.participants?.length ? 'No participant' : 'Only pending or funded transactions can be confirmed',
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -1162,77 +1186,75 @@ useEffect(() => {
     setShowPaymentDetailsModal(true);
   };
 
-const handlePaymentSubmit = async () => {
-  if (!currentTransaction || !currentTransaction._id) {
-    managedToast({
-      id: `payment-error-no-transaction`,
-      title: 'Error',
-      description: 'No transaction selected. Please try again.',
-      status: 'error',
-      duration: 5000,
-      isClosable: true,
-    });
-    setShowPaymentDetailsModal(false);
-    setPaymentDetails({ paymentAmount: '' });
-    setPaymentErrors({});
-    return;
-  }
-
-  if (!paymentDetails.paymentAmount || parseFloat(paymentDetails.paymentAmount) <= 0) {
-    setPaymentErrors({ paymentAmount: 'Amount must be greater than zero' });
-    return;
-  }
-
-  setPaymentErrors({});
-  try {
-    const updatedTransaction = await dispatch(updateTransaction({
-      transactionId: currentTransaction._id,
-      data: { paymentAmount: parseFloat(paymentDetails.paymentAmount) }
-    })).unwrap();
-    managedToast({
-      id: `payment-success-${currentTransaction._id}`,
-      title: 'Updated',
-      description: `Payment amount updated to ₦${parseFloat(paymentDetails.paymentAmount).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`,
-      status: 'success',
-      duration: 3000,
-      isClosable: true,
-    });
-    setShowPaymentDetailsModal(false);
-    setCurrentTransaction(null);
-    setPaymentDetails({ paymentAmount: '' });
-    // Add a delay before fetching to allow server processing
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    try {
-      await dispatch(fetchSingleTransaction(currentTransaction._id)).unwrap();
-    } catch (err) {
-      console.error('Refresh after payment update failed:', err);
-      // Only show toast for non-404 errors
-      if (err !== 'Resource not found. Retrying may resolve this.') {
-        managedToast({
-          id: `refresh-error-${currentTransaction._id}`,
-          title: 'Error',
-          description: typeof err === 'string' ? err : err?.error || 'Failed to refresh transaction data.',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
-      }
+  const handlePaymentSubmit = async () => {
+    if (!currentTransaction || !currentTransaction._id) {
+      managedToast({
+        id: `payment-error-no-transaction`,
+        title: 'Error',
+        description: 'No transaction selected. Please try again.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      setShowPaymentDetailsModal(false);
+      setPaymentDetails({ paymentAmount: '' });
+      setPaymentErrors({});
+      return;
     }
-  } catch (error) {
-    console.error('Payment update error:', error);
-    const errorMessage = typeof error === 'string'
-      ? error
-      : error?.message || error?.error || 'Failed to update payment details. Please try again.';
-    managedToast({
-      id: `payment-error-${currentTransaction._id || 'unknown'}`,
-      title: 'Error',
-      description: errorMessage,
-      status: 'error',
-      duration: 5000,
-      isClosable: true,
-    });
-  }
-};
+
+    if (!paymentDetails.paymentAmount || parseFloat(paymentDetails.paymentAmount) <= 0) {
+      setPaymentErrors({ paymentAmount: 'Amount must be greater than zero' });
+      return;
+    }
+
+    setPaymentErrors({});
+    try {
+      const updatedTransaction = await dispatch(updateTransaction({
+        transactionId: currentTransaction._id,
+        data: { paymentAmount: parseFloat(paymentDetails.paymentAmount) }
+      })).unwrap();
+      managedToast({
+        id: `payment-success-${currentTransaction._id}`,
+        title: 'Updated',
+        description: `Payment amount updated to ₦${parseFloat(paymentDetails.paymentAmount).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`,
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+      setShowPaymentDetailsModal(false);
+      setCurrentTransaction(null);
+      setPaymentDetails({ paymentAmount: '' });
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      try {
+        await dispatch(fetchSingleTransaction(currentTransaction._id)).unwrap();
+      } catch (err) {
+        console.error('Refresh after payment update failed:', err);
+        if (err !== 'Resource not found. Retrying may resolve this.') {
+          managedToast({
+            id: `refresh-error-${currentTransaction._id}`,
+            title: 'Error',
+            description: typeof err === 'string' ? err : err?.error || 'Failed to refresh transaction data.',
+            status: 'error',
+            duration: 5000,
+            isClosable: true,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Payment update error:', error);
+      const errorMessage = typeof error === 'string'
+        ? error
+        : error?.message || error?.error || 'Failed to update payment details. Please try again.';
+      managedToast({
+        id: `payment-error-${currentTransaction._id || 'unknown'}`,
+        title: 'Error',
+        description: errorMessage,
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+  };
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text).then(() =>
@@ -1276,7 +1298,7 @@ const handlePaymentSubmit = async () => {
 
             <Flex flexDir={{ base: "column", md: "row" }} gap={4} mb={6} mt={6}>
               <Stack direction="row" spacing={3} flexWrap="wrap">
-                {["active", "completed", "cancelled", "all"].map(tab => (
+                {["active", "completed", "canceled", "all"].map(tab => (
                   <Button
                     key={tab}
                     size="md"
@@ -1348,7 +1370,7 @@ const handlePaymentSubmit = async () => {
                     handleConfirm={handleConfirm}
                     handleFund={handleFund}
                     handleEditPayment={handleEditPayment}
-                    cancelTransaction={cancelTransactionAction}
+                    openCancelModal={openCancelModal}
                     copyToClipboard={copyToClipboard}
                     toggleDescription={toggleDescription}
                     expandedDescriptions={expandedDescriptions}
@@ -1443,6 +1465,27 @@ const handlePaymentSubmit = async () => {
               <Flex gap={3} w="full">
                 <Button size="sm" bg={useColorModeValue('gray.200', 'gray.600')} color={textColor} _hover={{ bg: useColorModeValue('gray.300', 'gray.700') }} onClick={() => setModalVisible(false)}>Cancel</Button>
                 <Button size="sm" bg="#BB954D" color="white" _hover={{ bg: "#967532" }} onClick={() => completeTransaction(selectedTransactionId)} isLoading={isConfirming[selectedTransactionId]}>Confirm</Button>
+              </Flex>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
+        <Modal isOpen={cancelModalVisible} onClose={() => setCancelModalVisible(false)} isCentered size="sm">
+          <ModalOverlay />
+          <ModalContent bg={cardBg} color={textColor} p={4} rounded="lg" border="1px" borderColor={borderColor}>
+            <ModalHeader fontSize="lg" fontWeight="600">Cancel Transaction</ModalHeader>
+            <ModalBody>
+              <Text fontSize="sm" color={subtleTextColor}>
+                Are you sure you want to cancel this transaction?{' '}
+                {transactions.find(t => t._id === cancelTransactionId)?.locked
+                  ? 'The other party must also confirm cancellation.'
+                  : 'This cannot be undone.'}
+              </Text>
+            </ModalBody>
+            <ModalFooter>
+              <Flex gap={3} w="full">
+                <Button size="sm" bg={useColorModeValue('gray.200', 'gray.600')} color={textColor} _hover={{ bg: useColorModeValue('gray.300', 'gray.700') }} onClick={() => setCancelModalVisible(false)}>No</Button>
+                <Button size="sm" bg="#ef4444" color="white" _hover={{ bg: "#dc2626" }} onClick={() => cancelTransactionAction(cancelTransactionId)} isLoading={isConfirming[cancelTransactionId]}>Yes</Button>
               </Flex>
             </ModalFooter>
           </ModalContent>
