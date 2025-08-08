@@ -137,12 +137,12 @@ instance.interceptors.response.use(
       data: error.config.url.includes('transactions/get-transaction')
         ? [] // For /api/transactions/get-transaction
         : error.config.url.includes('transactions/') && error.config.url.match(/transactions\/[0-9a-fA-F]{24}$/)
-        ? {} // For /api/transactions/:id
-        : error.config.url.includes('wallet/balance')
-        ? { balance: 0 }
-        : error.config.url.includes('user-details')
-        ? { user: {} }
-        : null,
+          ? {} // For /api/transactions/:id
+          : error.config.url.includes('wallet/balance')
+            ? { balance: 0 }
+            : error.config.url.includes('user-details')
+              ? { user: {} }
+              : null,
     };
 
     // Enhanced error handling for 500 errors
