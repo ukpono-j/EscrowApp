@@ -34,6 +34,7 @@
   align-items: center;
   justify-content: flex-start;
   max-width: 100%;
+  width: 100%; /* Ensure container takes full available width */
 }
 
 /* Very small screens (below 320px) */
@@ -43,6 +44,14 @@
     max-height: 28px;
     width: 100%;
     height: auto;
+  }
+  .logo-responsive-container {
+    padding-left: 0; /* Remove padding for consistent left alignment */
+    justify-content: flex-start; /* Explicitly enforce left alignment */
+  }
+  .side_links {
+    justify-content: flex-start;
+    padding-left: 1rem; /* Consistent left padding for links */
   }
 }
 
@@ -55,10 +64,12 @@
     height: auto;
   }
   .logo-responsive-container {
-    padding-left: 3.5rem; /* Match pl-14 for mobile toggle */
+    padding-left: 0; /* Remove padding to align logo to the left */
+    justify-content: flex-start; /* Ensure logo stays left-aligned */
   }
   .side_links {
     justify-content: flex-start;
+    padding-left: 1rem; /* Consistent padding for links */
   }
 }
 
@@ -70,8 +81,13 @@
     width: 100%;
     height: auto;
   }
+  .logo-responsive-container {
+    padding-left: 0; /* Ensure no padding interferes */
+    justify-content: flex-start;
+  }
   .side_links {
     justify-content: flex-start;
+    padding-left: 1rem;
   }
 }
 
@@ -87,11 +103,17 @@
     max-width: 60px;
     max-height: 32px;
   }
+  .logo-responsive-container {
+    padding-left: 0; /* Consistent left alignment */
+    justify-content: flex-start;
+  }
   .side_links {
     justify-content: flex-start;
+    padding-left: 1rem;
   }
   .side_links.active-link {
     justify-content: flex-start;
+    padding-left: 1rem;
   }
 }
 

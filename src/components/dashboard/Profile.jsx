@@ -19,6 +19,7 @@ import moment from 'moment-timezone';
 import axios from '../../utils/axiosConfig';
 import { fetchInitialData, fundWallet, checkFundingStatus, manualReconcileTransaction, fetchPendingWithdrawals } from '../../store/slices/walletThunks';
 import { setWallet, setPaymentDetails, clearPaymentDetails } from '../../store/slices/walletSlice';
+import './Profile.css'; // Import the new CSS file
 
 const PAYSTACK_BANKS = [
   { name: 'Access Bank', code: '044' },
@@ -216,14 +217,29 @@ const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, userName, amount, p
                     onClick={() => copyToClipboard(paymentDetails.virtualAccount.account_name)}
                   />
                 </Flex>
-                <Text color={subtleTextColor}>Account Number: {paymentDetails.virtualAccount.account_number}</Text>
-                <Text color={subtleTextColor}>Bank: {paymentDetails.virtualAccount.bank_name}</Text>
+                <Flex align="center" justify="space-between" mb={2}>
+                  <Text color={subtleTextColor}>Account Number: {paymentDetails.virtualAccount.account_number}</Text>
+                  <IconButton
+                    aria-label="Copy account number"
+                    icon={<MdContentCopy />}
+                    size="xs"
+                    bg="transparent"
+                    color={subtleTextColor}
+                    onClick={() => copyToClipboard(paymentDetails.virtualAccount.account_number)}
+                  />
+                </Flex>
+                <Flex align="center" justify="space-between">
+                  <Text color={subtleTextColor}>Bank: {paymentDetails.virtualAccount.bank_name}</Text>
+                  <IconButton
+                    aria-label="Copy bank name"
+                    icon={<MdContentCopy />}
+                    size="xs"
+                    bg="transparent"
+                    color={subtleTextColor}
+                    onClick={() => copyToClipboard(paymentDetails.virtualAccount.bank_name)}
+                  />
+                </Flex>
               </Card>
-              {pendingTransactions?.length > 0 && (
-                <Text color="yellow.500" mt={4} fontSize="sm">
-                  Note: You have {pendingTransactions.length} pending transaction(s). Check the Transactions tab for details.
-                </Text>
-              )}
               <Text color={subtleTextColor} mt={4} fontSize="sm">
                 Your payment will be credited within 5 minutes. If delayed, refresh and check for the updated wallet or wait for 10 minutes. If it still doesn't work, contact support.
               </Text>
@@ -269,6 +285,7 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
   const [amount, setAmount] = React.useState('');
   const [accountNumber, setAccountNumber] = React.useState('');
   const [accountName, setAccountName] = React.useState('');
+  const [bankCode, setBankCode] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [pendingWithdrawals, setPendingWithdrawals] = React.useState([]);
   const [amountError, setAmountError] = React.useState('');
@@ -367,11 +384,21 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
       });
       return;
     }
+    if (!bankCode) {
+      toast({
+        title: 'Error',
+        description: 'Please select a bank.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
     setIsSubmitting(true);
     try {
       const response = await axios.post(
         `${BASE_URL}/api/wallet/withdraw`,
-        { amount: amountNum, accountNumber, accountName },
+        { amount: amountNum, accountNumber, accountName, bankCode },
         { headers: { Authorization: `Bearer ${localStorage.getItem('access-token')}` } }
       );
       if (response.data.success) {
@@ -385,6 +412,7 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
         setAmount('');
         setAccountNumber('');
         setAccountName('');
+        setBankCode('');
         const updatedWithdrawals = await dispatch(fetchPendingWithdrawals()).unwrap();
         setPendingWithdrawals(updatedWithdrawals.data.pendingWithdrawals || []);
         onClose();
@@ -452,6 +480,21 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
               color={textColor}
             />
           </FormControl>
+          <FormControl mb={4}>
+            <FormLabel color={textColor}>Bank Name</FormLabel>
+            <Select
+              value={bankCode}
+              onChange={(e) => setBankCode(e.target.value)}
+              placeholder="Select bank"
+              bg={cardBg}
+              borderColor={borderColor}
+              color={textColor}
+            >
+              {PAYSTACK_BANKS.map((bank) => (
+                <option key={bank.code} value={bank.code}>{bank.name}</option>
+              ))}
+            </Select>
+          </FormControl>
           {pendingWithdrawals.length > 0 && (
             <Box mt={4}>
               <Text fontWeight="bold" color={textColor} mb={2}>Pending Withdrawals</Text>
@@ -460,6 +503,7 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
                   <Text color={textColor}>Amount: ₦{withdrawal.amount.toFixed(2)}</Text>
                   <Text color={subtleTextColor}>Account: ****{withdrawal.accountNumber}</Text>
                   <Text color={subtleTextColor}>Name: {withdrawal.accountName}</Text>
+                  <Text color={subtleTextColor}>Bank: {withdrawal.bankName || 'N/A'}</Text>
                   <Text color={subtleTextColor}>
                     Time Remaining: {formatTimeRemaining(withdrawal.expectedPayoutDate)}
                   </Text>
@@ -476,7 +520,7 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
             onClick={handleWithdraw}
             isLoading={isSubmitting}
             loadingText="Processing..."
-            isDisabled={!!amountError || !accountNumber || !/^\d{10}$/.test(accountNumber) || !accountName || isSubmitting}
+            isDisabled={!!amountError || !accountNumber || !/^\d{10}$/.test(accountNumber) || !accountName || !bankCode || isSubmitting}
             size={{ base: 'sm', sm: 'md' }}
             mr={{ sm: 3 }}
             mb={{ base: 2, sm: 0 }}
@@ -519,7 +563,7 @@ const Profile = () => {
   const [pendingPage, setPendingPage] = useState(1);
   const [completedPage, setCompletedPage] = useState(1);
   const [failedPage, setFailedPage] = useState(1);
-  const itemsPerPage = 5; // Number of transactions per page
+  const itemsPerPage = 5;
 
   const FALLBACK_AVATAR = 'https://via.placeholder.com/100?text=Avatar';
 
@@ -967,44 +1011,43 @@ const Profile = () => {
   const renderTransaction = (tx) => (
     <Card
       key={tx.reference || Math.random()}
+      className="transaction-card"
       bg={cardBg}
       borderRadius="lg"
-      p={4}
       border="1px"
       borderColor={borderColor}
       _hover={{ boxShadow: 'lg', transform: 'translateY(-2px)' }}
       transition="all 0.3s"
     >
-      <Flex justify="space-between" align="center">
+      <Flex className="transaction-details">
         <VStack align="start" spacing={1}>
           <Flex align="center">
-            <Text fontWeight="bold" color={textColor}>
+            <Text fontWeight="bold" color={textColor} className="transaction-text">
               {tx.type ? (tx.type.charAt(0).toUpperCase() + tx.type.slice(1)) : 'Unknown'}: ₦{(tx.amount || 0).toFixed(2)}
             </Text>
             <Badge
               ml={2}
               colorScheme={tx.status === 'completed' ? 'green' : tx.status === 'pending' ? 'yellow' : 'red'}
+              className="transaction-badge"
             >
               {tx.status ? (tx.status.charAt(0).toUpperCase() + tx.status.slice(1)) : 'Unknown'}
             </Badge>
           </Flex>
-          <Text fontSize="sm" color={subtleTextColor}>
+          <Text fontSize="sm" color={subtleTextColor} className="transaction-text">
             Ref: {tx.reference || 'N/A'}
           </Text>
         </VStack>
-        <Text fontSize="sm" color={subtleTextColor}>
+        <Text fontSize="sm" color={subtleTextColor} className="transaction-date">
           {tx.createdAt ? new Date(tx.createdAt).toLocaleString() : 'N/A'}
         </Text>
       </Flex>
     </Card>
   );
 
-  // Pagination Controls Component
   const PaginationControls = ({ currentPage, setCurrentPage, totalItems }) => {
     const totalPages = Math.ceil(totalItems / itemsPerPage);
     const pageNumbers = [];
 
-    // Generate page numbers to display (e.g., 1, 2, 3, ..., last page)
     for (let i = 1; i <= totalPages; i++) {
       if (
         i === 1 ||
@@ -1021,7 +1064,7 @@ const Profile = () => {
     }
 
     return (
-      <HStack spacing={2} justify="center" mt={4}>
+      <HStack spacing={2} justify="center" mt={4} className="pagination-controls">
         <Button
           size="sm"
           bg="#B38939"
@@ -1029,6 +1072,7 @@ const Profile = () => {
           color="white"
           onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
           isDisabled={currentPage === 1}
+          className="pagination-button"
         >
           Previous
         </Button>
@@ -1043,6 +1087,7 @@ const Profile = () => {
               color={currentPage === page ? "white" : textColor}
               _hover={{ bg: "#BB954D", color: "white" }}
               onClick={() => setCurrentPage(page)}
+              className="pagination-button"
             >
               {page}
             </Button>
@@ -1055,6 +1100,7 @@ const Profile = () => {
           color="white"
           onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
           isDisabled={currentPage === totalPages}
+          className="pagination-button"
         >
           Next
         </Button>
@@ -1127,7 +1173,7 @@ const Profile = () => {
           >
             <SimpleGrid columns={{ base: 1, lg: 3 }} spacing={8}>
               <VStack spacing={8} align="stretch" gridColumn={{ lg: 'span 1' }}>
-                <Card bg={cardBg} borderRadius="xl" p={6} border="1px" borderColor={borderColor} boxShadow="lg">
+                <Card bg={cardBg} borderRadius="xl" className="wallet-profile-card" border="1px" borderColor={borderColor} boxShadow="lg">
                   <CardHeader>
                     <Flex align="center" justify="center" flexDir="column">
                       <Avatar
@@ -1229,7 +1275,7 @@ const Profile = () => {
                 </Card>
               </VStack>
               <VStack spacing={8} align="stretch" gridColumn={{ lg: 'span 2' }}>
-                <Card bg={cardBg} borderRadius="xl" p={6} border="1px" borderColor={borderColor} boxShadow="lg">
+                <Card bg={cardBg} borderRadius="xl" className="Wallet-Overview-card" border="1px" borderColor={borderColor} boxShadow="lg">
                   <CardHeader>
                     <Flex align="center">
                       <Icon as={FaWallet} color="#B38939" boxSize={6} mr={3} />
@@ -1288,22 +1334,22 @@ const Profile = () => {
                     </HStack>
                   </CardBody>
                 </Card>
-                <Card bg={cardBg} borderRadius="xl" p={6} border="1px" borderColor={borderColor} boxShadow="lg">
+                <Card bg={cardBg} borderRadius="xl" border="1px" borderColor={borderColor} boxShadow="lg" className="transaction-history-card">
                   <CardHeader>
                     <Heading size="md" color={textColor}>
                       <span>Transaction History</span>
                     </Heading>
                   </CardHeader>
                   <CardBody>
-                    <Tabs variant="soft-rounded" colorScheme="yellow">
-                      <TabList mb={4} flexWrap="wrap" justifyContent="start">
-                        <Tab _selected={{ bg: "#B38939", color: "white" }} color={textColor}>All</Tab>
-                        <Tab _selected={{ bg: "#B38939", color: "white" }} color={textColor}>Pending</Tab>
-                        <Tab _selected={{ bg: "#B38939", color: "white" }} color={textColor}>Completed</Tab>
-                        <Tab _selected={{ bg: "#B38939", color: "white" }} color={textColor}>Failed</Tab>
+                    <Tabs variant="soft-rounded" colorScheme="yellow" className="transaction-tabs">
+                      <TabList mb={4} flexWrap="wrap" justifyContent="start" className="tab-list">
+                        <Tab _selected={{ bg: "#B38939", color: "white" }} color={textColor} className="tab">All</Tab>
+                        <Tab _selected={{ bg: "#B38939", color: "white" }} color={textColor} className="tab">Pending</Tab>
+                        <Tab _selected={{ bg: "#B38939", color: "white" }} color={textColor} className="tab">Completed</Tab>
+                        <Tab _selected={{ bg: "#B38939", color: "white" }} color={textColor} className="tab">Failed</Tab>
                       </TabList>
                       <TabPanels>
-                        <TabPanel>
+                        <TabPanel className="transaction-card-container">
                           {Array.isArray(transactions) && transactions.length > 0 ? (
                             <>
                               <VStack spacing={4}>
@@ -1321,7 +1367,7 @@ const Profile = () => {
                             <Text color={subtleTextColor} textAlign="center">No transactions available.</Text>
                           )}
                         </TabPanel>
-                        <TabPanel>
+                        <TabPanel className="transaction-card-container">
                           {Array.isArray(transactions) && transactions.some(tx => tx.status === 'pending') ? (
                             <>
                               <VStack spacing={4}>
@@ -1340,7 +1386,7 @@ const Profile = () => {
                             <Text color={subtleTextColor} textAlign="center">No pending transactions.</Text>
                           )}
                         </TabPanel>
-                        <TabPanel>
+                        <TabPanel className="transaction-card-container">
                           {Array.isArray(transactions) && transactions.some(tx => tx.status === 'completed') ? (
                             <>
                               <VStack spacing={4}>
@@ -1359,7 +1405,7 @@ const Profile = () => {
                             <Text color={subtleTextColor} textAlign="center">No completed transactions.</Text>
                           )}
                         </TabPanel>
-                        <TabPanel>
+                        <TabPanel className="transaction-card-container">
                           {Array.isArray(transactions) && transactions.some(tx => tx.status === 'failed') ? (
                             <>
                               <VStack spacing={4}>

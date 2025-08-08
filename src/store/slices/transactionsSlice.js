@@ -1,6 +1,5 @@
 import { createSlice } from '@reduxjs/toolkit';
-import { fetchInitialData, updateTransaction, confirmTransaction, fundTransaction, cancelTransaction } from './thunks';
-import { setWallet } from './walletSlice';
+import { fetchInitialData, fetchSingleTransaction, updateTransaction, confirmTransaction, fundTransaction, cancelTransaction } from './thunks';
 
 const initialState = {
   transactions: [],
@@ -13,12 +12,16 @@ const transactionSlice = createSlice({
   initialState,
   reducers: {
     setTransactions(state, action) {
-      state.transactions = Array.isArray(action.payload) ? action.payload : [];
+      state.transactions = Array.isArray(action.payload)
+        ? action.payload.filter(t => t && t._id) // Ensure valid transactions
+        : [];
       state.loading = false;
       state.error = null;
     },
     addTransaction(state, action) {
-      state.transactions.push(action.payload);
+      if (action.payload && action.payload._id) {
+        state.transactions.push(action.payload);
+      }
       state.loading = false;
       state.error = null;
     },
@@ -39,15 +42,38 @@ const transactionSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchInitialData.fulfilled, (state, action) => {
-        console.log('fetchInitialData payload:', action.payload); // Debug log
-        state.transactions = Array.isArray(action.payload.transactions) ? action.payload.transactions : [];
+        console.log('fetchInitialData payload:', action.payload);
+        state.transactions = Array.isArray(action.payload.transactions)
+          ? action.payload.transactions.filter(t => t && t._id) // Filter valid transactions
+          : [];
         state.loading = false;
         state.error = null;
       })
       .addCase(fetchInitialData.rejected, (state, action) => {
-        state.error = action.payload?.message || 'Failed to fetch initial data';
+        state.error = action.payload || 'Failed to fetch initial data';
         state.loading = false;
-        // Do not clear transactions to preserve existing data
+      })
+      // fetchSingleTransaction
+      .addCase(fetchSingleTransaction.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchSingleTransaction.fulfilled, (state, action) => {
+        const updatedTransaction = action.payload;
+        if (updatedTransaction && updatedTransaction._id) {
+          const index = state.transactions.findIndex(t => t?._id === updatedTransaction._id);
+          if (index !== -1) {
+            state.transactions[index] = { ...state.transactions[index], ...updatedTransaction };
+          } else {
+            state.transactions.push(updatedTransaction);
+          }
+        }
+        state.loading = false;
+        state.error = null;
+      })
+      .addCase(fetchSingleTransaction.rejected, (state, action) => {
+        state.error = action.payload?.error || 'Failed to fetch transaction';
+        state.loading = false;
       })
       // updateTransaction
       .addCase(updateTransaction.pending, (state) => {
@@ -56,14 +82,18 @@ const transactionSlice = createSlice({
       })
       .addCase(updateTransaction.fulfilled, (state, action) => {
         const updatedTransaction = action.payload;
-        state.transactions = state.transactions.map(t =>
-          t._id === updatedTransaction._id ? { ...t, ...updatedTransaction } : t
-        );
+        if (updatedTransaction && updatedTransaction._id) {
+          state.transactions = state.transactions
+            .filter(t => t && t._id) // Ensure no undefined transactions
+            .map(t =>
+              t._id === updatedTransaction._id ? { ...t, ...updatedTransaction } : t
+            );
+        }
         state.loading = false;
         state.error = null;
       })
       .addCase(updateTransaction.rejected, (state, action) => {
-        state.error = action.payload?.message || 'Failed to update transaction';
+        state.error = action.payload || 'Failed to update transaction';
         state.loading = false;
       })
       // confirmTransaction
@@ -73,14 +103,18 @@ const transactionSlice = createSlice({
       })
       .addCase(confirmTransaction.fulfilled, (state, action) => {
         const updatedTransaction = action.payload;
-        state.transactions = state.transactions.map(t =>
-          t._id === updatedTransaction._id ? { ...t, ...updatedTransaction } : t
-        );
+        if (updatedTransaction && updatedTransaction._id) {
+          state.transactions = state.transactions
+            .filter(t => t && t._id)
+            .map(t =>
+              t._id === updatedTransaction._id ? { ...t, ...updatedTransaction } : t
+            );
+        }
         state.loading = false;
         state.error = null;
       })
       .addCase(confirmTransaction.rejected, (state, action) => {
-        state.error = action.payload?.message || 'Failed to confirm transaction';
+        state.error = action.payload?.error || 'Failed to confirm transaction';
         state.loading = false;
       })
       // fundTransaction
@@ -90,14 +124,18 @@ const transactionSlice = createSlice({
       })
       .addCase(fundTransaction.fulfilled, (state, action) => {
         const updatedTransaction = action.payload;
-        state.transactions = state.transactions.map(t =>
-          t._id === updatedTransaction._id ? { ...t, ...updatedTransaction } : t
-        );
+        if (updatedTransaction && updatedTransaction._id) {
+          state.transactions = state.transactions
+            .filter(t => t && t._id)
+            .map(t =>
+              t._id === updatedTransaction._id ? { ...t, ...updatedTransaction } : t
+            );
+        }
         state.loading = false;
         state.error = null;
       })
       .addCase(fundTransaction.rejected, (state, action) => {
-        state.error = action.payload?.message || 'Failed to fund transaction';
+        state.error = action.payload?.error || 'Failed to fund transaction';
         state.loading = false;
       })
       // cancelTransaction
@@ -107,18 +145,23 @@ const transactionSlice = createSlice({
       })
       .addCase(cancelTransaction.fulfilled, (state, action) => {
         const updatedTransaction = action.payload;
-        state.transactions = state.transactions.map(t =>
-          t._id === updatedTransaction._id ? { ...t, ...updatedTransaction } : t
-        );
+        if (updatedTransaction && updatedTransaction._id) {
+          state.transactions = state.transactions
+            .filter(t => t && t._id)
+            .map(t =>
+              t._id === updatedTransaction._id ? { ...t, ...updatedTransaction } : t
+            );
+        }
         state.loading = false;
         state.error = null;
       })
       .addCase(cancelTransaction.rejected, (state, action) => {
-        state.error = action.payload?.message || 'Failed to cancel transaction';
+        state.error = action.payload?.error || 'Failed to cancel transaction';
         state.loading = false;
       });
   },
 });
 
 export const { setTransactions, addTransaction, setLoading, setError } = transactionSlice.actions;
+
 export default transactionSlice.reducer;

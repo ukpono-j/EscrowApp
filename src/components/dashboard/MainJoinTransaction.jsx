@@ -62,44 +62,46 @@ const MainJoinTransaction = () => {
     }
   }, [responseMessage]);
 
-  const fetchTransactionDetails = async (e) => {
-    e.preventDefault();
-    try {
-      setIsLoading(true);
-      const token = localStorage.getItem("access-token");
+const fetchTransactionDetails = async (e) => {
+  e.preventDefault();
+  try {
+    setIsLoading(true);
+    const token = localStorage.getItem("access-token");
 
-      if (!token) {
-        setResponseMessage("You must be logged in to join a transaction");
-        setMessageType("error");
-        setIsLoading(false);
-        return;
-      }
-
-      const response = await axios.get(`${BASE_URL}/api/transactions/${transactionId}`, {
-        headers: { "access-token": token },
-      });
-
-      if (!response.data.success) {
-        setResponseMessage(response.data.error || "Error fetching transaction details");
-        setMessageType("error");
-      } else {
-        setTransactionDetails(response.data.data);
-        setShowPreviewModal(true);
-      }
-    } catch (error) {
-      console.error("Error fetching transaction details:", error);
-      if (error.response?.data?.error === "Transaction not found") {
-        setResponseMessage("Invalid transaction ID. Please check and try again.");
-      } else if (error.response?.data?.error === "Unauthorized to view this transaction") {
-        setResponseMessage("You are not authorized to view this transaction.");
-      } else {
-        setResponseMessage("Network error. Please try again.");
-      }
+    if (!token) {
+      setResponseMessage("You must be logged in to join a transaction");
       setMessageType("error");
-    } finally {
       setIsLoading(false);
+      return;
     }
-  };
+
+    const response = await axios.get(`${BASE_URL}/api/transactions/${transactionId}`, {
+      headers: { "access-token": token },
+    });
+
+    if (!response.data.success) {
+      setResponseMessage(response.data.error || "Error fetching transaction details");
+      setMessageType("error");
+    } else {
+      setTransactionDetails(response.data.data);
+      setShowPreviewModal(true);
+    }
+  } catch (error) {
+    console.error("Error fetching transaction details:", error);
+    if (error.response?.data?.error === "Transaction not found") {
+      setResponseMessage("Invalid transaction ID. Please check and try again.");
+    } else if (error.response?.data?.error.includes("Unauthorized to view this transaction")) {
+      setResponseMessage(
+        error.response.data.error || "You cannot view this transaction. It may already have a participant or is not in a pending state."
+      );
+    } else {
+      setResponseMessage("Network error. Please try again.");
+    }
+    setMessageType("error");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleAccept = async () => {
     try {

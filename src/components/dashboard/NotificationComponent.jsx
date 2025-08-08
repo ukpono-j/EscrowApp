@@ -19,14 +19,7 @@ import {
   Grid,
 } from "@chakra-ui/react";
 import { BsThreeDots, BsClock, BsBell } from "react-icons/bs";
-import { 
-  MdDelete, 
-  MdOutlineReportGmailerrorred,
-  MdCheck,
-  MdClose,
-  MdOutlinePayment,
-  MdNotifications
-} from "react-icons/md";
+import { MdDelete, MdOutlineReportGmailerrorred, MdCheck, MdClose, MdOutlinePayment, MdNotifications } from "react-icons/md";
 import { motion } from "framer-motion";
 import axios from "../../utils/axiosConfig";
 import { formatCreatedAt } from "../../utils/DateTimeStramp";
@@ -80,7 +73,7 @@ const NotificationComponent = () => {
       console.log('Token refreshed successfully');
       return newToken;
     } catch (err) {
-      console.error('Token refresh failed:', err.response || err);
+      console.error('Token refresh failed:', err.response?.data || err.message);
       localStorage.removeItem('access-token');
       localStorage.removeItem('refresh-token');
       toast({
@@ -90,84 +83,65 @@ const NotificationComponent = () => {
         duration: 3000,
         isClosable: true,
       });
-      window.location.href = '/login'; // Redirect to login page
+      window.location.href = '/login';
       throw err;
     }
   };
 
-  const fetchData = async () => {
+  const fetchData = async (retries = 3, delay = 1000) => {
     setLoading(true);
-    try {
-      let token = localStorage.getItem('access-token');
-      if (!token) {
-        console.warn('No access token found, attempting to refresh');
-        token = await refreshToken();
-      }
-
-      const res = await axios.get(`${BASE_URL}/api/notifications/notifications`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      const notificationsArray = res.data.data || [];
-      if (!Array.isArray(notificationsArray)) {
-        console.warn('Notifications data is not an array:', notificationsArray);
-        setNotifications([]);
-        return;
-      }
-      const sortedNotifications = notificationsArray.sort((a, b) => 
-        new Date(b.timestamp) - new Date(a.timestamp)
-      );
-      setNotifications(sortedNotifications);
-    } catch (err) {
-      console.error('Fetch error:', err.response || err);
-      const status = err.response?.status;
-      let description = "Please try again later";
-      if (status === 401) {
-        if (err.response?.data?.tokenExpired) {
-          try {
-            const newToken = await refreshToken();
-            const res = await axios.get(`${BASE_URL}/api/notifications/notifications`, {
-              headers: {
-                Authorization: `Bearer ${newToken}`,
-              },
-            });
-            const notificationsArray = res.data.data || [];
-            if (!Array.isArray(notificationsArray)) {
-              console.warn('Notifications data is not an array:', notificationsArray);
-              setNotifications([]);
-              return;
-            }
-            const sortedNotifications = notificationsArray.sort((a, b) => 
-              new Date(b.timestamp) - new Date(a.timestamp)
-            );
-            setNotifications(sortedNotifications);
-            return;
-          } catch (refreshErr) {
-            description = "Please log in again";
-          }
-        } else {
-          description = "Please log in to view notifications";
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        let token = localStorage.getItem('access-token');
+        if (!token) {
+          console.warn('No access token found, attempting to refresh');
+          token = await refreshToken();
         }
-      } else if (status === 403) {
-        description = "You are not authorized to view notifications";
+
+        const res = await axios.get(`${BASE_URL}/api/notifications/notifications`, {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 30000,
+        });
+
+        if (!res.data.success) {
+          console.warn('Notifications fetch failed:', res.data.error);
+          setNotifications([]);
+          return;
+        }
+
+        const notificationsArray = Array.isArray(res.data.data) ? res.data.data : [];
+        const sortedNotifications = notificationsArray
+          .filter(n => n._id && n.message && n.userId) // Basic validation
+          .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        setNotifications(sortedNotifications);
+        return;
+      } catch (err) {
+        console.error(`Fetch notifications attempt ${attempt} failed:`, {
+          message: err.message,
+          status: err.response?.status,
+          data: err.response?.data,
+        });
+        if (attempt === retries) {
+          setNotifications([]);
+          toast({
+            title: "Error fetching notifications",
+            description: err.response?.data?.error || "Please try again later",
+            status: "error",
+            duration: 3000,
+            isClosable: true,
+          });
+          return;
+        }
+        await new Promise(resolve => setTimeout(resolve, delay * attempt));
+      } finally {
+        setLoading(false);
       }
-      toast({
-        title: "Error fetching notifications",
-        description,
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
-      setNotifications([]);
-    } finally {
-      setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 30000);
+    const interval = setInterval(fetchData, 60000);
     return () => clearInterval(interval);
   }, [toast]);
 
@@ -176,22 +150,18 @@ const NotificationComponent = () => {
       console.warn('Notifications is not an array:', notifications);
       return [];
     }
-    return filter === "all" 
-      ? notifications 
-      : notifications.filter(n => 
-          n.status && n.status.toLowerCase() === filter.toLowerCase()
-        );
+    return filter === "all"
+      ? notifications
+      : notifications.filter(n => n.status && n.status.toLowerCase() === filter.toLowerCase());
   };
 
   const handleRemoveNotification = async (id) => {
     try {
       const token = localStorage.getItem('access-token');
       await axios.delete(`${BASE_URL}/api/notifications/notifications/${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
-      setNotifications((prev) => prev.filter((n) => n._id !== id));
+      setNotifications(prev => prev.filter(n => n._id !== id));
       toast({
         title: "Notification removed",
         status: "success",
@@ -199,16 +169,14 @@ const NotificationComponent = () => {
         isClosable: true,
       });
     } catch (err) {
-      console.error('Remove notification error:', err.response || err);
+      console.error('Remove notification error:', err.response?.data || err.message);
       if (err.response?.status === 401) {
         try {
           const newToken = await refreshToken();
           await axios.delete(`${BASE_URL}/api/notifications/notifications/${id}`, {
-            headers: {
-              Authorization: `Bearer ${newToken}`,
-            },
+            headers: { Authorization: `Bearer ${newToken}` },
           });
-          setNotifications((prev) => prev.filter((n) => n._id !== id));
+          setNotifications(prev => prev.filter(n => n._id !== id));
           toast({
             title: "Notification removed",
             status: "success",
@@ -228,6 +196,7 @@ const NotificationComponent = () => {
       } else {
         toast({
           title: "Error removing notification",
+          description: err.response?.data?.error || "Please try again",
           status: "error",
           duration: 2000,
           isClosable: true,
@@ -242,14 +211,10 @@ const NotificationComponent = () => {
       await axios.patch(
         `${BASE_URL}/api/notifications/notifications/${id}`,
         { status: newStatus },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-      setNotifications((prev) => {
-        const updated = prev.map((n) => (n._id === id ? { ...n, status: newStatus } : n));
+      setNotifications(prev => {
+        const updated = prev.map(n => (n._id === id ? { ...n, status: newStatus } : n));
         return updated.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
       });
       toast({
@@ -259,21 +224,17 @@ const NotificationComponent = () => {
         isClosable: true,
       });
     } catch (err) {
-      console.error('Update status error:', err.response || err);
+      console.error('Update status error:', err.response?.data || err.message);
       if (err.response?.status === 401) {
         try {
           const newToken = await refreshToken();
           await axios.patch(
             `${BASE_URL}/api/notifications/notifications/${id}`,
             { status: newStatus },
-            {
-              headers: {
-                Authorization: `Bearer ${newToken}`,
-              },
-            }
+            { headers: { Authorization: `Bearer ${newToken}` } }
           );
-          setNotifications((prev) => {
-            const updated = prev.map((n) => (n._id === id ? { ...n, status: newStatus } : n));
+          setNotifications(prev => {
+            const updated = prev.map(n => (n._id === id ? { ...n, status: newStatus } : n));
             return updated.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
           });
           toast({
@@ -295,6 +256,7 @@ const NotificationComponent = () => {
       } else {
         toast({
           title: "Error updating status",
+          description: err.response?.data?.error || "Please try again",
           status: "error",
           duration: 2000,
           isClosable: true,
@@ -318,14 +280,10 @@ const NotificationComponent = () => {
       await axios.patch(
         `${BASE_URL}/api/notifications/notifications/${id}`,
         { isRead: true },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-      setNotifications((prev) => {
-        const updated = prev.map((n) => (n._id === id ? { ...n, isRead: true } : n));
+      setNotifications(prev => {
+        const updated = prev.map(n => (n._id === id ? { ...n, isRead: true } : n));
         return updated.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
       });
       toast({
@@ -335,21 +293,17 @@ const NotificationComponent = () => {
         isClosable: true,
       });
     } catch (err) {
-      console.error('Mark as read error:', err.response || err);
+      console.error('Mark as read error:', err.response?.data || err.message);
       if (err.response?.status === 401) {
         try {
           const newToken = await refreshToken();
           await axios.patch(
             `${BASE_URL}/api/notifications/notifications/${id}`,
             { isRead: true },
-            {
-              headers: {
-                Authorization: `Bearer ${newToken}`,
-              },
-            }
+            { headers: { Authorization: `Bearer ${newToken}` } }
           );
-          setNotifications((prev) => {
-            const updated = prev.map((n) => (n._id === id ? { ...n, isRead: true } : n));
+          setNotifications(prev => {
+            const updated = prev.map(n => (n._id === id ? { ...n, isRead: true } : n));
             return updated.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
           });
           toast({
@@ -371,6 +325,7 @@ const NotificationComponent = () => {
       } else {
         toast({
           title: "Error marking notification as read",
+          description: err.response?.data?.error || "Please try again",
           status: "error",
           duration: 2000,
           isClosable: true,
@@ -437,7 +392,7 @@ const NotificationComponent = () => {
             <Button
               key={status}
               variant={filter === status ? "solid" : "ghost"}
-              colorScheme={filter === status ? badgeColors[status] : "gray"}
+              colorScheme={badgeColors[status] || "gray"}
               size="sm"
               fontSize={{ base: "xs", md: "sm" }}
               fontWeight="medium"
@@ -568,6 +523,15 @@ const NotificationComponent = () => {
                           {notification.transactionId.substring(0, 8)}...
                         </Text>
                       </Tooltip>
+                    )}
+                    {notification.participants?.length > 0 && (
+                      <Text
+                        fontSize="xs"
+                        color={subText}
+                        mt={1}
+                      >
+                        Participants: {notification.participants.map(p => `${p.userId?.firstName || 'User'} (${p.role || 'unknown'})`).join(', ')}
+                      </Text>
                     )}
                   </Box>
                   <VStack align="flex-end" spacing={1}>

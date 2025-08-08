@@ -1,0 +1,283 @@
+/* Base styles for the transaction history card */
+.transaction-history-card {
+    width: 100%;
+    overflow: hidden;
+    /* Prevent any overflow */
+    box-sizing: border-box;
+    padding: 10px;
+    /* Ensure padding and borders are included in width */
+}
+
+.Wallet-Overview-card {
+    padding: 10px;
+}
+.wallet-profile-card{
+    padding: 10px;
+}
+/* Container for the tabs */
+.transaction-tabs {
+    width: 100%;
+    overflow-x: hidden;
+    /* Prevent horizontal overflow */
+}
+
+/* Tab list styles */
+.tab-list {
+    display: flex;
+    flex-wrap: wrap;
+    /* Allow tabs to wrap on smaller screens */
+    gap: 8px;
+    /* Space between tabs */
+    padding: 0 16px;
+    /* Consistent padding */
+    margin-bottom: 16px;
+}
+
+/* Individual tab styles */
+.tab {
+    flex: 1 1 auto;
+    /* Allow tabs to grow/shrink */
+    min-width: 80px;
+    /* Minimum width for readability */
+    padding: 8px 16px;
+    text-align: center;
+    border: 1px solid #B38939;
+    font-size: 14px;
+    /* Slightly smaller font for mobile */
+}
+
+/* Transaction card container */
+.transaction-card-container {
+    width: 100%;
+    overflow-x: hidden;
+    /* Prevent horizontal overflow */
+    box-sizing: border-box;
+}
+
+/* Individual transaction card */
+.transaction-card {
+    width: 100%;
+    min-width: 0;
+    /* Prevent cards from exceeding container */
+    margin-bottom: 16px;
+    /* Space between cards */
+    padding: 16px 0px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    /* Stack content vertically */
+    box-sizing: border-box;
+    transition: all 0.3s ease;
+}
+
+/* Flex layout for transaction details */
+.transaction-details {
+    display: flex;
+    flex-direction: column;
+    /* Stack on smaller screens */
+    gap: 8px;
+    /* Space between elements */
+    width: 100%;
+    overflow: hidden;
+    /* Prevent text overflow */
+}
+
+/* Transaction text styles */
+.transaction-text {
+    white-space: nowrap;
+    /* Prevent text wrapping */
+    overflow: hidden;
+    /* Hide overflow */
+    text-overflow: ellipsis;
+    /* Add ellipsis for long text */
+    max-width: 100%;
+    /* Ensure text doesn't exceed container */
+}
+
+/* Badge styles */
+.transaction-badge {
+    flex-shrink: 0;
+    /* Prevent badge from shrinking */
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+/* Date text */
+.transaction-date {
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+/* Pagination controls */
+.pagination-controls {
+    display: flex;
+    flex-wrap: wrap;
+    /* Allow buttons to wrap */
+    justify-content: center;
+    gap: 8px;
+    /* Space between buttons */
+    padding: 16px 0;
+    width: 100%;
+}
+
+/* Pagination button */
+.pagination-button {
+    min-width: 32px;
+    /* Minimum width for buttons */
+    padding: 8px;
+    font-size: 14px;
+}
+
+/* Very small screens (below 320px) */
+@media (max-width: 319px) {
+    .tab-list {
+        padding: 0 8px;
+        gap: 4px;
+    }
+
+    .tab {
+        min-width: 60px;
+        font-size: 12px;
+        padding: 6px 8px;
+    }
+
+    .transaction-card-container {
+        /* padding: 0 8px; */
+    }
+
+    .transaction-card {
+        /* padding: 12px; */
+    }
+
+    .transaction-text {
+        font-size: 14px;
+    }
+
+    .transaction-badge {
+        font-size: 10px;
+        padding: 2px 6px;
+    }
+
+    .transaction-date {
+        font-size: 10px;
+    }
+
+    .pagination-button {
+        font-size: 12px;
+        padding: 6px;
+    }
+}
+
+/* Mobile screens (320px - 767px) */
+@media (min-width: 320px) and (max-width: 767px) {
+    .tab-list {
+        padding: 0 12px;
+        gap: 6px;
+    }
+
+    .tab {
+        min-width: 70px;
+        font-size: 13px;
+        padding: 6px 12px;
+    }
+
+    .transaction-card-container {
+        /* padding: 0 12px; */
+    }
+
+    .transaction-card {
+        /* padding: 14px; */
+    }
+
+    .transaction-text {
+        font-size: 15px;
+    }
+
+    .transaction-badge {
+        font-size: 11px;
+    }
+
+    .transaction-date {
+        font-size: 11px;
+    }
+
+    .pagination-button {
+        font-size: 13px;
+        padding: 6px 8px;
+    }
+}
+
+/* Tablet screens (768px - 1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
+    .tab-list {
+        padding: 0 16px;
+        gap: 8px;
+    }
+
+    .tab {
+        min-width: 80px;
+        font-size: 14px;
+    }
+
+    .transaction-card-container {
+        /* padding: 0 16px; */
+    }
+
+    .transaction-details {
+        flex-direction: row;
+        /* Horizontal layout on larger screens */
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .transaction-text {
+        font-size: 16px;
+    }
+
+    .transaction-badge {
+        font-size: 12px;
+    }
+
+    .transaction-date {
+        font-size: 12px;
+    }
+}
+
+/* Desktop screens (1024px and above) */
+@media (min-width: 1024px) {
+    .tab-list {
+        padding: 0 24px;
+        gap: 12px;
+    }
+
+    .tab {
+        min-width: 100px;
+        font-size: 16px;
+        padding: 8px 16px;
+    }
+
+    .transaction-card-container {
+        /* padding: 0 24px; */
+    }
+
+    .transaction-details {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .transaction-text {
+        font-size: 16px;
+    }
+
+    .transaction-badge {
+        font-size: 12px;
+    }
+
+    .transaction-date {
+        font-size: 12px;
+    }
+}

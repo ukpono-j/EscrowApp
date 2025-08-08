@@ -7,8 +7,8 @@ import Logo from "../../assets/logo3.png";
 import Logo2 from "../../assets/logo-m.png";
 import Menu from "./Menu";
 import { motion, AnimatePresence } from "framer-motion";
-import { Box, Text, Flex, ScaleFade, useColorModeValue, Avatar, SkeletonCircle } from "@chakra-ui/react";
-import multiavatar from "@multiavatar/multiavatar/esm"; // Use ESM import
+import { Box, Text, Flex, ScaleFade, useColorModeValue, Avatar, SkeletonCircle, useToast } from "@chakra-ui/react";
+import multiavatar from "@multiavatar/multiavatar/esm";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 
@@ -17,11 +17,11 @@ const MiniNav = () => {
   const [menu, setMenu] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [userData, setUserData] = useState(null);
+  const toast = useToast();
 
   useEffect(() => {
     const handleScroll = () => {
-      if (window.scrollY > 10) setScrolled(true);
-      else setScrolled(false);
+      setScrolled(window.scrollY > 10);
     };
 
     window.addEventListener("scroll", handleScroll);
@@ -32,57 +32,75 @@ const MiniNav = () => {
     const fetchUserData = async () => {
       try {
         const token = localStorage.getItem("access-token");
-        if (token) axios.defaults.headers.common["access-token"] = token;
+        if (!token) {
+          console.warn("No access token found for user data fetch");
+          return;
+        }
+        axios.defaults.headers.common["access-token"] = token;
 
-        const response = await axios.get(`${BASE_URL}/api/users/user-details`, {
-          headers: { "access-token": token },
-        });
-        setUserData(response.data);
+        const response = await axios.get(`${BASE_URL}/api/users/user-details`);
+        setUserData(response.data.data?.user || {});
       } catch (error) {
-        console.error("Error fetching user data:", error);
+        console.error("Error fetching user data:", {
+          message: error.message,
+          status: error.response?.status,
+          data: error.response?.data,
+        });
+        setUserData({});
       }
     };
-
-    fetchUserData();
 
     const fetchNotificationCount = async (retries = 3, delay = 1000) => {
       for (let attempt = 1; attempt <= retries; attempt++) {
         try {
           const token = localStorage.getItem("access-token");
+          if (!token) {
+            console.warn("No access token for notifications fetch");
+            setNotificationCount(0);
+            return;
+          }
           const response = await axios.get(`${BASE_URL}/api/notifications/notifications`, {
             headers: { "access-token": token },
             timeout: 30000,
           });
           if (response.data.success) {
-            const unreadNotifications = response.data.data.filter((n) => !n.isRead);
+            const unreadNotifications = Array.isArray(response.data.data)
+              ? response.data.data.filter((n) => !n.isRead)
+              : [];
             setNotificationCount(unreadNotifications.length);
           } else {
             console.error("Failed to fetch notifications:", response.data.error);
             setNotificationCount(0);
           }
-          return; // Success, exit the loop
+          return;
         } catch (error) {
-          console.error(`Attempt ${attempt} failed:`, error);
+          console.error(`Attempt ${attempt} failed to fetch notifications:`, {
+            message: error.message,
+            status: error.response?.status,
+            data: error.response?.data,
+            url: `${BASE_URL}/api/notifications/notifications`,
+          });
           if (attempt === retries) {
             setNotificationCount(0);
             toast({
               title: "Error",
-              description: "Failed to fetch notifications after multiple attempts.",
+              description: error.response?.data?.error || "Failed to fetch notifications after multiple attempts.",
               status: "error",
               duration: 3000,
               isClosable: true,
             });
             return;
           }
-          await new Promise((resolve) => setTimeout(resolve, delay * attempt)); // Exponential backoff
+          await new Promise((resolve) => setTimeout(resolve, delay * attempt));
         }
       }
     };
 
+    fetchUserData();
     fetchNotificationCount();
-    const interval = setInterval(fetchNotificationCount, 60000); // Poll every 30 seconds
+    const interval = setInterval(fetchNotificationCount, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [toast]);
 
   const handleMenuToggle = () => setMenu(!menu);
 
@@ -90,7 +108,7 @@ const MiniNav = () => {
   const textColor = useColorModeValue("#1E293B", "white");
   const shadowColor = useColorModeValue("rgba(0,0,0,0.05)", "rgba(0,0,0,0.2)");
 
-  const userName = userData ? `${userData.firstName} ${userData.lastName}` : "";
+  const userName = userData ? `${userData.firstName || ''} ${userData.lastName || ''}`.trim() : "";
   const avatarSeed = userData?.avatarSeed || userData?._id || "default-user";
 
   const getAvatarSvg = () => {
@@ -173,15 +191,17 @@ const MiniNav = () => {
               overflow="hidden"
               className="cursor-pointer border-2 border-white dark:border-gray-800"
             >
+             <Link to= "/profile">
               <img
                 src={getAvatarSvg()}
-                alt={`${userData.firstName}'s avatar`}
+                alt={`${userData.firstName || 'User'}'s avatar`}
                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
                 onError={(e) => {
                   e.target.onerror = null;
                   e.target.src = getAvatarSvg();
                 }}
               />
+             </Link>
             </Box>
           ) : (
             <Avatar

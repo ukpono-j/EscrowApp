@@ -66,17 +66,18 @@ export const fundWallet = createAsyncThunk(
 );
 
 export const withdrawFunds = createAsyncThunk(
-  'wallet/withdrawFunds', // Fixed typo in action type
-  async ({ amount, accountNumber, accountName }, { rejectWithValue }) => {
+  'wallet/withdrawFunds',
+  async ({ amount, accountNumber, accountName, bankCode }, { rejectWithValue }) => {
     try {
       const response = await axios.post(
         `${BASE_URL}/api/wallet/withdraw`,
-        { amount, accountNumber, accountName },
+        { amount, accountNumber, accountName, bankCode },
         { headers: { Authorization: `Bearer ${localStorage.getItem('access-token')}` } }
       );
       logger.info('Withdraw funds initiated:', {
         amount,
         accountNumber: accountNumber?.slice(-4),
+        bankCode,
       });
       return response.data;
     } catch (error) {

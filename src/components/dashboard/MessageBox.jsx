@@ -19,6 +19,7 @@ const MessageBox = () => {
   const [message, setMessage] = useState("");
   const [userDetails, setUserDetails] = useState({});
   const [transactionDetails, setTransactionDetails] = useState({});
+  const [creatorDetails, setCreatorDetails] = useState({});
   const [participants, setParticipants] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showInfo, setShowInfo] = useState(false);
@@ -41,9 +42,14 @@ const MessageBox = () => {
     }
   }, [messages, typingUsers]);
 
-  // Fetch user details
+  // Debug messages state
   useEffect(() => {
-    const fetchUserDetails = async () => {
+    console.log("Messages state:", JSON.stringify(messages, null, 2));
+  }, [messages]);
+
+  // Fetch user details and transaction data
+  useEffect(() => {
+    const fetchData = async () => {
       const token = localStorage.getItem("access-token");
       if (!token) {
         setError("No access token found. Please log in.");
@@ -53,45 +59,42 @@ const MessageBox = () => {
       axios.defaults.headers.common["access-token"] = token;
 
       try {
-        const response = await axios.get(`${BASE_URL}/api/users/user-details`);
-        console.log("User details response:", response.data);
-        setUserDetails(response.data.data.user);
-      } catch (error) {
-        console.error("Error fetching user details:", error.response?.data || error.message);
-        setError("Failed to fetch user details. Please log in again.");
-        navigate("/");
-      }
-    };
+        // Fetch current user details
+        const userResponse = await axios.get(`${BASE_URL}/api/users/user-details`);
+        console.log("User details response:", userResponse.data);
+        setUserDetails(userResponse.data.data.user);
 
-    fetchUserDetails();
-  }, [navigate]);
-
-  // Fetch transaction and messages
-  useEffect(() => {
-    const fetchTransactionAndMessages = async () => {
-      setIsLoading(true);
-      const token = localStorage.getItem("access-token");
-      if (!token) {
-        setError("No access token found. Please log in.");
-        navigate("/");
-        return;
-      }
-      axios.defaults.headers.common["access-token"] = token;
-
-      try {
         // Fetch transaction details
         const transactionResponse = await axios.get(`${BASE_URL}/api/transactions/chatroom/${chatroomId}`);
         console.log("Transaction response:", transactionResponse.data);
         const transactionData = transactionResponse.data.data;
         setTransactionDetails(transactionData);
-        setParticipants(Array.isArray(transactionData.participants) ? transactionData.participants : []);
 
-        // Verify chatroomId matches transaction
+        // Use populated creator details
+        if (!transactionData.userId?._id) {
+          throw new Error("Creator ID not found in transaction data");
+        }
+        setCreatorDetails({
+          _id: transactionData.userId._id,
+          firstName: transactionData.userId.firstName || "User",
+          lastName: transactionData.userId.lastName || "",
+          email: transactionData.userId.email || "N/A",
+          avatarSeed: transactionData.userId.avatarSeed || transactionData.userId._id,
+        });
+
+        // Use populated participant details
+        const participantDetails = (transactionData.participants || []).map((p) => ({
+          userId: p.userId?._id || p.userId,
+          role: p.role,
+          firstName: p.userId?.firstName || p.firstName || "User",
+          lastName: p.userId?.lastName || p.lastName || "",
+          email: p.userId?.email || p.email || "N/A",
+          avatarSeed: p.userId?.avatarSeed || p.avatarSeed || p.userId?._id || p.userId,
+        })).filter(p => p.userId);
+        setParticipants(participantDetails);
+
+        // Verify chatroomId
         if (!transactionData.chatroomId || transactionData.chatroomId.toString() !== chatroomId) {
-          console.warn("Chatroom ID mismatch:", {
-            transactionChatroomId: transactionData.chatroomId,
-            urlChatroomId: chatroomId,
-          });
           setError("Invalid chatroom ID for this transaction.");
           toast({
             title: "Error",
@@ -105,28 +108,24 @@ const MessageBox = () => {
         }
 
         // Fetch messages
-        console.log("Fetching messages for chatroom:", chatroomId);
         const messagesResponse = await axios.get(`${BASE_URL}/api/messages/${chatroomId}`);
-        console.log("Raw messages response:", JSON.stringify(messagesResponse.data, null, 2));
+        console.log("Messages response:", JSON.stringify(messagesResponse.data, null, 2));
         let fetchedMessages = [];
         if (Array.isArray(messagesResponse.data)) {
           fetchedMessages = messagesResponse.data;
-        } else if (Array.isArray(messagesResponse.data?.data)) {
-          fetchedMessages = messagesResponse.data.data;
         } else if (typeof messagesResponse.data === 'object' && messagesResponse.data !== null) {
-          fetchedMessages = Object.keys(messagesResponse.data)
-            .filter(key => !isNaN(key))
-            .map(key => messagesResponse.data[key]);
+          fetchedMessages = Object.values(messagesResponse.data).filter(
+            (item) => item && typeof item === 'object' && item._id && item.message
+          );
         }
-        // Filter and sort messages
-        fetchedMessages = fetchedMessages.filter(
-          (msg) => msg.message?.trim() && msg.userId
-        );
-        fetchedMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-        console.log(`Fetched ${fetchedMessages.length} messages for chatroom ${chatroomId}:`, JSON.stringify(fetchedMessages, null, 2));
+        fetchedMessages = fetchedMessages.map((msg) => ({
+          ...msg,
+          userId: msg.userId?._id || msg.userId, // Normalize userId to string
+        })).filter((msg) => msg.message?.trim() && msg.userId)
+          .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
         setMessages(fetchedMessages);
       } catch (error) {
-        console.error("Error fetching data:", error.response?.data || error.message);
+        console.error("Fetch data error:", error.response?.data || error.message);
         setError(error.response?.data?.error || "Failed to load transaction or messages.");
         toast({
           title: "Error",
@@ -141,8 +140,26 @@ const MessageBox = () => {
       }
     };
 
-    fetchTransactionAndMessages();
+    fetchData();
   }, [chatroomId, navigate, toast]);
+
+  // Log header-related data for debugging
+  useEffect(() => {
+    console.log("Header Debug Info:", {
+      participants: participants,
+      creatorDetails: creatorDetails,
+      userDetails: userDetails,
+      transactionDetails: {
+        selectedUserType: transactionDetails.selectedUserType,
+        _id: transactionDetails._id,
+      },
+      headerText: `${transactionDetails.selectedUserType
+          ? transactionDetails.selectedUserType.charAt(0).toUpperCase() + transactionDetails.selectedUserType.slice(1)
+          : "Unknown Role"
+        }: ${isCreator ? `${userDetails?.firstName || ''} ${userDetails?.lastName || ''}`.trim() || userDetails?.email || 'You' : `${creatorDetails?.firstName || ''} ${creatorDetails?.lastName || ''}`.trim() || creatorDetails?.email || 'Unknown'}${isCreator ? ' (You)' : ''}  ${transactionDetails.selectedUserType === 'buyer' ? 'Seller' : transactionDetails.selectedUserType === 'seller' ? 'Buyer' : 'Other'
+        }: ${participants?.length > 0 ? `${participants[0]?.firstName || ''} ${participants[0]?.lastName || ''}`.trim() || participants[0]?.email || 'Unknown' : 'No participant'}${participants?.length > 0 && participants[0]?.userId === userDetails._id ? ' (You)' : ''}`,
+    });
+  }, [participants, creatorDetails, userDetails, transactionDetails]);
 
   // Socket setup
   useEffect(() => {
@@ -164,7 +181,7 @@ const MessageBox = () => {
     });
 
     socketRef.current.on("connect", () => {
-      console.log("Socket connected, joining room:", `transaction_${chatroomId}`);
+      console.log("Socket connected:", socketRef.current.id);
       socketRef.current.emit("join-room", `transaction_${chatroomId}`, userDetails._id);
       setSocketConnected(true);
 
@@ -173,15 +190,18 @@ const MessageBox = () => {
         const messagesToSend = [...pendingMessages];
         setPendingMessages([]);
         messagesToSend.forEach((msg) => {
-          socketRef.current.emit("message", msg);
           axios
             .post(`${BASE_URL}/api/messages/send-message`, msg)
             .then((response) => {
-              console.log("Pending message saved to database:", response.data);
               setMessages((prevMessages) => {
                 const serverMessage = response.data._doc || response.data.data || response.data;
+                if (!serverMessage.message?.trim() || !serverMessage.userId) {
+                  return prevMessages;
+                }
                 const updatedMessages = prevMessages.map((m) =>
-                  m.tempId === msg.tempId ? { ...serverMessage, tempId: m.tempId } : m
+                  m.tempId === msg.tempId
+                    ? { ...serverMessage, userId: serverMessage.userId?._id || serverMessage.userId, tempId: m.tempId }
+                    : m
                 );
                 return updatedMessages
                   .filter((m) => m.message?.trim() && m.userId)
@@ -189,7 +209,6 @@ const MessageBox = () => {
               });
             })
             .catch((error) => {
-              console.error("Error saving pending message:", error.response?.data || error.message);
               setMessages((prevMessages) => prevMessages.filter((m) => m.tempId !== msg.tempId));
               toast({
                 title: "Error",
@@ -206,22 +225,20 @@ const MessageBox = () => {
       const refetchMessages = async () => {
         try {
           const response = await axios.get(`${BASE_URL}/api/messages/${chatroomId}`);
-          console.log("Raw refetched messages response:", JSON.stringify(response.data, null, 2));
+          console.log("Refetched messages on socket connect:", JSON.stringify(response.data, null, 2));
           let fetchedMessages = [];
           if (Array.isArray(response.data)) {
             fetchedMessages = response.data;
-          } else if (Array.isArray(response.data?.data)) {
-            fetchedMessages = response.data.data;
           } else if (typeof response.data === 'object' && response.data !== null) {
-            fetchedMessages = Object.keys(response.data)
-              .filter(key => !isNaN(key))
-              .map(key => response.data[key]);
+            fetchedMessages = Object.values(response.data).filter(
+              (item) => item && typeof item === 'object' && item._id && item.message
+            );
           }
-          fetchedMessages = fetchedMessages.filter(
-            (msg) => msg.message?.trim() && msg.userId
-          );
-          fetchedMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-          console.log(`Refetched ${fetchedMessages.length} messages on socket connect for chatroom ${chatroomId}:`, JSON.stringify(fetchedMessages, null, 2));
+          fetchedMessages = fetchedMessages.map((msg) => ({
+            ...msg,
+            userId: msg.userId?._id || msg.userId, // Normalize userId to string
+          })).filter((msg) => msg.message?.trim() && msg.userId)
+            .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
           setMessages(fetchedMessages);
         } catch (error) {
           console.error("Error refetching messages on socket connect:", error.response?.data || error.message);
@@ -241,68 +258,58 @@ const MessageBox = () => {
     });
 
     socketRef.current.on("message", (message) => {
-      console.log("Received message via Socket.io:", JSON.stringify(message, null, 2));
-      // Validate message
+      console.log("Received socket message:", JSON.stringify(message, null, 2));
       if (
         !message.message?.trim() ||
         !message.userId ||
-        message.chatroomId !== chatroomId ||
-        message.userId === userDetails._id
+        message.chatroomId !== chatroomId
       ) {
-        console.warn("Ignoring invalid or self-sent Socket.io message:", message, {
-          hasMessage: !!message.message?.trim(),
-          hasUserId: !!message.userId,
-          chatroomIdMatch: message.chatroomId === chatroomId,
-          isSelf: message.userId === userDetails._id,
-          expectedChatroomId: chatroomId,
-          receivedChatroomId: message.chatroomId
-        });
-        // Fallback: Refetch messages if a valid message is ignored
-        if (message.message?.trim() && message.userId && message.chatroomId === chatroomId) {
-          console.log("Valid message ignored (not self), refetching messages...");
-          const refetchMessages = async () => {
-            try {
-              const response = await axios.get(`${BASE_URL}/api/messages/${chatroomId}`);
-              let fetchedMessages = [];
-              if (Array.isArray(response.data)) {
-                fetchedMessages = response.data;
-              } else if (Array.isArray(response.data?.data)) {
-                fetchedMessages = response.data.data;
-              } else if (typeof response.data === 'object' && response.data !== null) {
-                fetchedMessages = Object.keys(response.data)
-                  .filter(key => !isNaN(key))
-                  .map(key => response.data[key]);
-              }
-              fetchedMessages = fetchedMessages.filter(
-                (msg) => msg.message?.trim() && msg.userId
-              );
-              fetchedMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-              console.log(`Refetched ${fetchedMessages.length} messages due to ignored message:`, JSON.stringify(fetchedMessages, null, 2));
-              setMessages(fetchedMessages);
-            } catch (error) {
-              console.error("Error refetching messages after ignored message:", error.response?.data || error.message);
-            }
-          };
-          refetchMessages();
-        }
+        console.log("Ignoring invalid or irrelevant message:", JSON.stringify(message, null, 2));
         return;
       }
+
       setMessages((prevMessages) => {
-        if (prevMessages.some((msg) => msg._id === message._id)) {
-          return prevMessages;
+        // Check if the message exists by _id or tempId
+        const existingMessage = prevMessages.find(
+          (msg) => msg._id === message._id || (msg.tempId && msg.tempId === message.tempId)
+        );
+
+        if (existingMessage) {
+          console.log("Updating existing message:", existingMessage._id || existingMessage.tempId);
+          return prevMessages.map((msg) =>
+            (msg._id && msg._id === message._id) || (msg.tempId && msg.tempId === message.tempId)
+              ? {
+                  ...message,
+                  userId: message.userId?._id || message.userId,
+                  tempId: msg.tempId || message.tempId, // Preserve tempId if it exists
+                }
+              : msg
+          ).filter((m) => m.message?.trim() && m.userId)
+            .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
         }
-        const updatedMessages = [...prevMessages, message];
-        return updatedMessages
-          .filter((m) => m.message?.trim() && m.userId)
-          .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+        // Only add if the message is from another user
+        if ((message.userId?._id || message.userId) !== userDetails._id) {
+          console.log("Adding new message from other user:", message._id || message.tempId);
+          const updatedMessage = {
+            ...message,
+            userId: message.userId?._id || message.userId,
+          };
+          return [...prevMessages, updatedMessage]
+            .filter((m) => m.message?.trim() && m.userId)
+            .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        }
+
+        console.log("Ignoring own message to prevent duplication:", message._id || message.tempId);
+        return prevMessages;
       });
     });
 
     socketRef.current.on("typing", (data) => {
-      if (data.userId !== userDetails._id && data.chatroomId === chatroomId) {
+      if ((data.userId?._id || data.userId) !== userDetails._id && data.chatroomId === chatroomId) {
         setTypingUsers((prev) => {
-          if (!prev.some((user) => user.userId === data.userId)) {
-            return [...prev, data];
+          if (!prev.some((user) => (user.userId?._id || user.userId) === (data.userId?._id || data.userId))) {
+            return [...prev, { ...data, userId: data.userId?._id || data.userId }];
           }
           return prev;
         });
@@ -311,12 +318,11 @@ const MessageBox = () => {
 
     socketRef.current.on("stop-typing", (data) => {
       if (data.chatroomId === chatroomId) {
-        setTypingUsers((prev) => prev.filter((user) => user.userId !== data.userId));
+        setTypingUsers((prev) => prev.filter((user) => (user.userId?._id || user.userId) !== (data.userId?._id || data.userId)));
       }
     });
 
     socketRef.current.on("connect_error", (err) => {
-      console.error("Socket connection error:", err.message);
       setSocketConnected(false);
       toast({
         title: "Connection Error",
@@ -328,7 +334,6 @@ const MessageBox = () => {
     });
 
     socketRef.current.on("error", (err) => {
-      console.error("Socket error:", err.message);
       setSocketConnected(false);
       toast({
         title: "Error",
@@ -339,34 +344,31 @@ const MessageBox = () => {
       });
     });
 
-    socketRef.current.on("reconnect", (attempt) => {
-      console.log(`Socket reconnected after ${attempt} attempts`);
+    socketRef.current.on("reconnect", () => {
       setSocketConnected(true);
-      const fetchMessages = async () => {
+      const refetchMessages = async () => {
         try {
           const response = await axios.get(`${BASE_URL}/api/messages/${chatroomId}`);
-          console.log("Raw reconnected messages response:", JSON.stringify(response.data, null, 2));
+          console.log("Refetched messages on reconnect:", JSON.stringify(response.data, null, 2));
           let fetchedMessages = [];
           if (Array.isArray(response.data)) {
             fetchedMessages = response.data;
-          } else if (Array.isArray(response.data?.data)) {
-            fetchedMessages = response.data.data;
           } else if (typeof response.data === 'object' && response.data !== null) {
-            fetchedMessages = Object.keys(response.data)
-              .filter(key => !isNaN(key))
-              .map(key => response.data[key]);
+            fetchedMessages = Object.values(response.data).filter(
+              (item) => item && typeof item === 'object' && item._id && item.message
+            );
           }
-          fetchedMessages = fetchedMessages.filter(
-            (msg) => msg.message?.trim() && msg.userId
-          );
-          fetchedMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-          console.log(`Refetched ${fetchedMessages.length} messages on reconnect for chatroom ${chatroomId}:`, JSON.stringify(fetchedMessages, null, 2));
+          fetchedMessages = fetchedMessages.map((msg) => ({
+            ...msg,
+            userId: msg.userId?._id || msg.userId, // Normalize userId to string
+          })).filter((msg) => m.message?.trim() && m.userId)
+            .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
           setMessages(fetchedMessages);
         } catch (error) {
           console.error("Error refetching messages on reconnect:", error.response?.data || error.message);
         }
       };
-      fetchMessages();
+      refetchMessages();
     });
 
     return () => {
@@ -380,7 +382,7 @@ const MessageBox = () => {
       socketRef.current.disconnect();
       setSocketConnected(false);
     };
-  }, [chatroomId, userDetails._id, toast, pendingMessages]);
+  }, [chatroomId, userDetails._id, toast]); // Removed pendingMessages from dependencies
 
   // Handle typing events
   const handleTyping = () => {
@@ -432,10 +434,10 @@ const MessageBox = () => {
       return;
     }
 
-    if (!transactionDetails._id) {
+    if (!transactionDetails._id || !chatroomId) {
       toast({
         title: "Error",
-        description: "Transaction details not loaded.",
+        description: "Transaction or chatroom details not loaded.",
         status: "error",
         duration: 3000,
         isClosable: true,
@@ -454,7 +456,6 @@ const MessageBox = () => {
       avatarSeed: userDetails.avatarSeed || userDetails._id,
       timestamp: new Date().toISOString(),
       tempId,
-      _id: tempId,
     };
 
     setMessage("");
@@ -462,10 +463,14 @@ const MessageBox = () => {
       messageInputRef.current.focus();
     }
 
-    // Optimistically add the message
+    // Optimistic update
     setMessages((prevMessages) => {
-      const updatedMessages = [...prevMessages, newMessage];
-      return updatedMessages
+      // Ensure no duplicate tempId
+      if (prevMessages.some((msg) => msg.tempId === tempId)) {
+        console.log("Duplicate tempId detected, skipping optimistic update:", tempId);
+        return prevMessages;
+      }
+      return [...prevMessages, newMessage]
         .filter((m) => m.message?.trim() && m.userId)
         .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     });
@@ -482,37 +487,47 @@ const MessageBox = () => {
       return;
     }
 
-    try {
-      socketRef.current.emit("message", newMessage);
-      console.log("Sending message to backend:", newMessage);
-      const response = await axios.post(`${BASE_URL}/api/messages/send-message`, newMessage);
-      console.log("Message save response:", JSON.stringify(response.data, null, 2));
-      setMessages((prevMessages) => {
-        const serverMessage = response.data._doc || response.data.data || response.data;
-        if (!serverMessage.message?.trim() || !serverMessage.userId) {
-          console.warn("Invalid server message, retaining optimistic message:", serverMessage);
-          return prevMessages;
+    const maxRetries = 3;
+    let attempt = 0;
+    const sendMessageWithRetry = async () => {
+      try {
+        const response = await axios.post(`${BASE_URL}/api/messages/send-message`, newMessage);
+        console.log("Send message response:", JSON.stringify(response.data, null, 2));
+        setMessages((prevMessages) => {
+          const serverMessage = response.data._doc || response.data.data || response.data;
+          if (!serverMessage.message?.trim() || !serverMessage.userId) {
+            return prevMessages;
+          }
+          const updatedMessages = prevMessages.map((msg) =>
+            msg.tempId === newMessage.tempId
+              ? { ...serverMessage, userId: serverMessage.userId?._id || serverMessage.userId, tempId: msg.tempId }
+              : msg
+          );
+          return updatedMessages
+            .filter((m) => m.message?.trim() && m.userId)
+            .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        });
+      } catch (error) {
+        console.error("Message send attempt failed:", { attempt, error: error.message });
+        if (attempt < maxRetries) {
+          attempt++;
+          setTimeout(sendMessageWithRetry, 2000 * attempt);
+        } else {
+          setMessages((prevMessages) =>
+            prevMessages.filter((msg) => msg.tempId !== newMessage.tempId)
+          );
+          toast({
+            title: "Error",
+            description: error.response?.data?.message || error.response?.data?.error || "Failed to send message after retries.",
+            status: "error",
+            duration: 5000,
+            isClosable: true,
+          });
         }
-        const updatedMessages = prevMessages.map((msg) =>
-          msg.tempId === newMessage.tempId ? { ...serverMessage, tempId: msg.tempId } : msg
-        );
-        return updatedMessages
-          .filter((m) => m.message?.trim() && m.userId)
-          .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-      });
-    } catch (error) {
-      console.error("Error saving message:", error.response?.data || error.message);
-      setMessages((prevMessages) =>
-        prevMessages.filter((msg) => msg.tempId !== newMessage.tempId)
-      );
-      toast({
-        title: "Error",
-        description: error.response?.data?.message || error.response?.data?.error || "Failed to send message.",
-        status: "error",
-        duration: 5000,
-        isClosable: true,
-      });
-    }
+      }
+    };
+
+    sendMessageWithRetry();
   };
 
   const handleKeyPress = (e) => {
@@ -522,7 +537,7 @@ const MessageBox = () => {
     }
   };
 
-  const isCreator = transactionDetails.userId?._id === userDetails._id;
+  const isCreator = creatorDetails._id === userDetails._id;
 
   const handleChatExit = () => {
     navigate("/transactions/tab");
@@ -544,6 +559,19 @@ const MessageBox = () => {
     if (!firstName && !lastName) return "?";
     return `${firstName?.charAt(0) || ""}${lastName?.charAt(0) || ""}`.toUpperCase();
   };
+
+  // Construct header text similar to TransactionCard
+  const creatorName = isCreator
+    ? `${userDetails?.firstName || ''} ${userDetails?.lastName || ''}`.trim() || userDetails?.email || 'You'
+    : `${creatorDetails?.firstName || ''} ${creatorDetails?.lastName || ''}`.trim() || creatorDetails?.email || 'Unknown';
+  const participantName = participants?.length > 0
+    ? `${participants[0]?.firstName || ''} ${participants[0]?.lastName || ''}`.trim() || participants[0]?.email || 'Unknown'
+    : 'No participant';
+  const headerText = `${transactionDetails.selectedUserType
+      ? transactionDetails.selectedUserType.charAt(0).toUpperCase() + transactionDetails.selectedUserType.slice(1)
+      : 'Unknown Role'
+    }: ${creatorName}${isCreator ? ' (You)' : ''}  ${transactionDetails.selectedUserType === 'buyer' ? 'Seller' : transactionDetails.selectedUserType === 'seller' ? 'Buyer' : 'Other'
+    }: ${participantName}${participants?.length > 0 && participants[0]?.userId === userDetails._id ? ' (You)' : ''}`;
 
   if (error) {
     return (
@@ -573,24 +601,6 @@ const MessageBox = () => {
     );
   }
 
-  if (participants.length === 0 && !isCreator) {
-    return (
-      <div className="bg-[#111518] h-screen flex items-center justify-center text-white">
-        <div className="flex flex-col items-center">
-          <BsChatLeftText size={48} className="mb-4 opacity-50" />
-          <p className="text-lg font-medium">No participants in this transaction</p>
-          <p className="text-sm mt-2">You cannot send messages until participants are added.</p>
-          <button
-            onClick={() => navigate("/transactions/tab")}
-            className="mt-4 px-4 py-2 bg-[#318AE6] rounded-md hover:bg-[#2571c5]"
-          >
-            Back to Transactions
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="bg-[#111518] h-screen flex flex-col text-white">
       <div className="flex items-center justify-between px-4 py-3 bg-[#1A1E21] border-b border-[#28313A]">
@@ -606,11 +616,7 @@ const MessageBox = () => {
               <BsChatLeftText size={18} />
             </div>
             <div className="ml-3">
-              <p className="font-bold text-lg">
-                {participants.length > 0
-                  ? participants.map((p) => `${p.firstName || "User"} ${p.lastName || ""}`).join(", ")
-                  : "No participants"}
-              </p>
+              <p className="font-bold text-sm">{headerText}</p>
             </div>
           </div>
         </div>
@@ -647,9 +653,9 @@ const MessageBox = () => {
               </div>
             ) : (
               messages.map((msg, index) => {
-                const isSentByCurrentUser = msg.userId === userDetails._id;
-                const showAvatar = index === 0 || messages[index - 1].userId !== msg.userId;
-                const isLastInGroup = index === messages.length - 1 || messages[index + 1].userId !== msg.userId;
+                const isSentByCurrentUser = (msg.userId?._id || msg.userId) === userDetails._id;
+                const showAvatar = index === 0 || (messages[index - 1].userId?._id || messages[index - 1].userId) !== (msg.userId?._id || msg.userId);
+                const isLastInGroup = index === messages.length - 1 || (messages[index + 1].userId?._id || messages[index + 1].userId) !== (msg.userId?._id || msg.userId);
                 return (
                   <div
                     key={msg._id || msg.tempId}
@@ -662,12 +668,12 @@ const MessageBox = () => {
                         <div className={`flex-shrink-0 ${isSentByCurrentUser ? "ml-2" : "mr-2"}`}>
                           <div className="h-8 w-8 rounded-full overflow-hidden flex items-center justify-center bg-[#28313A]">
                             <img
-                              src={getAvatarSvg(msg.avatarSeed, msg.userId)}
+                              src={getAvatarSvg(msg.avatarSeed, msg.userId?._id || msg.userId)}
                               alt={`${msg.userFirstName || "User"}'s avatar`}
                               className="h-full w-full object-cover"
                               onError={(e) => {
                                 e.target.onerror = null;
-                                e.target.src = getAvatarSvg("default-user", msg.userId);
+                                e.target.src = getAvatarSvg("default-user", msg.userId?._id || msg.userId);
                               }}
                             />
                           </div>
@@ -678,7 +684,7 @@ const MessageBox = () => {
                       >
                         {showAvatar && (
                           <span className="text-xs text-gray-400 mb-1 px-1">
-                            {isSentByCurrentUser ? "You" : `${msg.userFirstName || "User"} ${msg.userLastName || ""}`}
+                            {isSentByCurrentUser ? "You" : `${msg.userFirstName || "User"} ${msg.userLastName || ""}`.trim()}
                           </span>
                         )}
                         <div
@@ -718,8 +724,8 @@ const MessageBox = () => {
                 onClick={sendMessage}
                 disabled={!message.trim() || (participants.length === 0 && !isCreator)}
                 className={`p-3 rounded-full mr-1 ${message.trim() && (participants.length > 0 || isCreator)
-                    ? "bg-[#318AE6] hover:bg-[#2571c5] text-white"
-                    : "bg-[#1d2329] text-gray-500"
+                  ? "bg-[#318AE6] hover:bg-[#2571c5] text-white"
+                  : "bg-[#1d2329] text-gray-500"
                   } transition-colors`}
               >
                 <MdSend size={20} />
@@ -750,10 +756,10 @@ const MessageBox = () => {
                   <p className="text-xs text-gray-400 mb-1">Status</p>
                   <div
                     className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${transactionDetails.status === "completed"
-                        ? "bg-green-900 text-green-300"
-                        : transactionDetails.status === "cancelled"
-                          ? "bg-red-900 text-red-300"
-                          : "bg-yellow-900 text-yellow-300"
+                      ? "bg-green-900 text-green-300"
+                      : transactionDetails.status === "cancelled"
+                        ? "bg-red-900 text-red-300"
+                        : "bg-yellow-900 text-yellow-300"
                       }`}
                   >
                     {transactionDetails.status || "pending"}
@@ -762,6 +768,25 @@ const MessageBox = () => {
               </div>
               <h3 className="text-lg font-bold mt-6 mb-4">Participants</h3>
               <div className="space-y-2">
+                <div className="flex items-center p-2 hover:bg-[#28313A] rounded-lg transition-colors">
+                  <div className="h-10 w-10 rounded-full overflow-hidden flex items-center justify-center bg-[#318AE6] mr-3">
+                    <img
+                      src={getAvatarSvg(creatorDetails.avatarSeed, creatorDetails._id)}
+                      alt={`${creatorDetails.firstName || "User"}'s avatar`}
+                      className="h-full w-full object-cover"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = getAvatarSvg("default-user", creatorDetails._id);
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <p className="font-medium">
+                      {`${creatorDetails.firstName || "User"} ${creatorDetails.lastName || ""} (Creator)`}
+                    </p>
+                    <p className="text-xs text-gray-400">{creatorDetails.email || "N/A"}</p>
+                  </div>
+                </div>
                 {participants.length > 0 ? (
                   participants.map((participant, index) => (
                     <div
@@ -770,23 +795,23 @@ const MessageBox = () => {
                     >
                       <div className="h-10 w-10 rounded-full overflow-hidden flex items-center justify-center bg-[#318AE6] mr-3">
                         <img
-                          src={getAvatarSvg(participant.avatarSeed, participant._id)}
+                          src={getAvatarSvg(participant.avatarSeed, participant.userId)}
                           alt={`${participant.firstName || "User"}'s avatar`}
                           className="h-full w-full object-cover"
                           onError={(e) => {
                             e.target.onerror = null;
-                            e.target.src = getAvatarSvg("default-user", participant._id);
+                            e.target.src = getAvatarSvg("default-user", participant.userId);
                           }}
                         />
                       </div>
                       <div>
-                        <p className="font-medium">{`${participant.firstName || "User"} ${participant.lastName || ""}`}</p>
+                        <p className="font-medium">{`${participant.firstName || "User"} ${participant.lastName || ""} (${participant.role})`}</p>
                         <p className="text-xs text-gray-400">{participant.email || "N/A"}</p>
                       </div>
                     </div>
                   ))
                 ) : (
-                  <p className="text-gray-400 text-sm">No participants found</p>
+                  <p className="text-gray-400 text-sm">No additional participants</p>
                 )}
               </div>
             </div>
