@@ -507,7 +507,7 @@ const NotificationComponent = () => {
                     >
                       {notification.message || 'No message'}
                     </Text>
-                    {notification.transactionId && (
+                    {notification.transactionId && notification.transactionId._id && (
                       <Tooltip label="Transaction ID">
                         <Text
                           as="span"
@@ -520,7 +520,7 @@ const NotificationComponent = () => {
                           isTruncated
                           maxW={{ base: "100px", md: "200px" }}
                         >
-                          {notification.transactionId.substring(0, 8)}...
+                          {notification.transactionId._id.toString().substring(0, 8)}...
                         </Text>
                       </Tooltip>
                     )}
