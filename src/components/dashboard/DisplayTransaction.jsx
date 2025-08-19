@@ -64,11 +64,15 @@ const TransactionCard = React.memo(({ transaction, currentUser, isConfirming, ha
   const currentUserId = currentUser
     ? currentUser._id || currentUser.id || currentUser.user?.id || ''
     : '';
-
   const creatorId = transaction?.userId?._id ? String(transaction.userId._id) : '';
   const isCreator = currentUserId && currentUserId === creatorId;
   const participant = transaction?.participants?.find(p => p.userId?._id && String(p.userId._id) === currentUserId);
   const isParticipant = !!participant;
+  const isBuyer = isCreator ? transaction.selectedUserType === 'buyer' : participant?.role === 'buyer';
+  const hasConfirmed = isBuyer ? transaction.buyerConfirmed : transaction.sellerConfirmed;
+  const hasRequestedCancel = isCreator
+    ? transaction.cancelConfirmations?.creator
+    : transaction.cancelConfirmations?.participant;
   const creatorName = isCreator
     ? `${currentUser?.firstName || currentUser?.user?.firstName || ''} ${currentUser?.lastName || currentUser?.user?.lastName || ''}`.trim() || currentUser?.email || currentUser?.user?.email || 'You'
     : `${transaction?.userId?.firstName || ''} ${transaction?.userId?.lastName || ''}`.trim() || transaction?.userId?.email || 'Unknown';
@@ -117,8 +121,7 @@ const TransactionCard = React.memo(({ transaction, currentUser, isConfirming, ha
     handleEditPayment(transaction);
   };
 
-  // Hide buttons if transaction is canceled
-  const isCanceled = transaction.status === "canceled";
+  const isCanceled = transaction.status === 'canceled';
 
   return (
     <MotionBox
@@ -250,8 +253,17 @@ const TransactionCard = React.memo(({ transaction, currentUser, isConfirming, ha
           )}
 
           {(transaction.status === "pending" || transaction.status === "funded") && (
-            <Button onClick={() => handleConfirm(transaction._id)} bg="#22c55e" color="white" _hover={{ bg: "#16a34a" }} size="sm" fontWeight="500" isLoading={isConfirming[transaction._id]}>
-              Complete Transaction
+            <Button
+              onClick={() => handleConfirm(transaction._id)}
+              bg={hasConfirmed ? "#FFA500" : "#22c55e"}
+              color="white"
+              _hover={{ bg: hasConfirmed ? "#FFA500" : "#16a34a" }}
+              size="sm"
+              fontWeight="500"
+              isLoading={isConfirming[transaction._id]}
+              isDisabled={hasConfirmed}
+            >
+              {hasConfirmed ? "Pending" : "Complete Transaction"}
             </Button>
           )}
 
@@ -261,9 +273,22 @@ const TransactionCard = React.memo(({ transaction, currentUser, isConfirming, ha
             </Button>
           )}
 
-          <Button onClick={() => openCancelModal(transaction._id)} bg="transparent" border="1px" borderColor="#ef4444" color="#ef4444" _hover={{ bg: "#ef4444", color: "white" }} size="sm" fontWeight="500">
-            Cancel
-          </Button>
+          {(transaction.status === "pending" || transaction.status === "funded") && (
+            <Button
+              onClick={() => openCancelModal(transaction._id)}
+              bg={hasRequestedCancel ? "#FFA500" : "transparent"}
+              border={hasRequestedCancel ? "none" : "1px"}
+              borderColor="#ef4444"
+              color={hasRequestedCancel ? "white" : "#ef4444"}
+              _hover={{ bg: hasRequestedCancel ? "#FFA500" : "#ef4444", color: "white" }}
+              size="sm"
+              fontWeight="500"
+              isLoading={isConfirming[transaction._id]}
+              isDisabled={hasRequestedCancel}
+            >
+              {hasRequestedCancel ? "Pending" : "Cancel"}
+            </Button>
+          )}
         </Stack>
       )}
     </MotionBox>
@@ -690,11 +715,23 @@ const DisplayTransaction = () => {
     const token = localStorage.getItem('access-token');
     if (!token) return;
 
+    // const socket = io(BASE_URL, {
+    //   auth: { token },
+    //   reconnection: true,
+    //   reconnectionAttempts: 5,
+    //   reconnectionDelay: 1000,
+    // });
     const socket = io(BASE_URL, {
       auth: { token },
       reconnection: true,
-      reconnectionAttempts: 5,
+      reconnectionAttempts: Infinity,  // Increased reconnection attempts
       reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      randomizationFactor: 0.5,
+      timeout: 20000,  // Added connection timeout
+      transports: ['websocket', 'polling'],
+      pingTimeout: 60000,  // Increased ping timeout
+      pingInterval: 25000,
     });
     const joinedRooms = new Set();
 
@@ -1005,14 +1042,35 @@ const DisplayTransaction = () => {
         isClosable: true,
       });
     } catch (error) {
-      managedToast({
-        id: `cancel-error-${transactionId}`,
-        title: 'Error',
-        description: error.error || 'Failed to cancel transaction',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
+      const errorMessage = error.error || 'Failed to cancel transaction';
+      if (errorMessage === 'Unauthorized to cancel this transaction') {
+        managedToast({
+          id: `cancel-unauthorized-${transactionId}`,
+          title: 'Unauthorized',
+          description: 'You are not authorized to cancel this transaction.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+      } else if (errorMessage === 'Only pending or funded transactions can be cancelled') {
+        managedToast({
+          id: `cancel-status-error-${transactionId}`,
+          title: 'Invalid Status',
+          description: 'Only pending or funded transactions can be cancelled.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+      } else {
+        managedToast({
+          id: `cancel-error-${transactionId}`,
+          title: 'Error',
+          description: errorMessage,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+      }
     } finally {
       setIsConfirming(prev => ({ ...prev, [transactionId]: false }));
       setCancelModalVisible(false);
@@ -1072,7 +1130,8 @@ const DisplayTransaction = () => {
     if (isConfirming[transactionId]) return;
     setIsConfirming(prev => ({ ...prev, [transactionId]: true }));
     try {
-      const transaction = await dispatch(confirmTransaction(transactionId)).unwrap();
+      const response = await dispatch(confirmTransaction(transactionId)).unwrap();
+      const transaction = response.transaction; // Extract transaction from response
       managedToast({
         id: `confirm-success-${transactionId}`,
         title: transaction.status === 'completed' ? 'Completed' : 'Confirmation Recorded',
@@ -1082,7 +1141,17 @@ const DisplayTransaction = () => {
         isClosable: true,
       });
     } catch (error) {
-      if (error.message.includes('Insufficient funds')) {
+      const errorMessage = error.error || error.message || 'Failed to confirm';
+      if (errorMessage === 'Buyer has already confirmed this transaction' || errorMessage === 'Seller has already confirmed this transaction') {
+        managedToast({
+          id: `confirm-already-${transactionId}`,
+          title: 'Already Confirmed',
+          description: 'You have already confirmed this transaction. Waiting for the other party.',
+          status: 'info',
+          duration: 5000,
+          isClosable: true,
+        });
+      } else if (errorMessage.includes && errorMessage.includes('Insufficient funds')) {
         const transaction = transactions.find(t => t._id === transactionId);
         setCurrentTransaction(transaction);
         openFundingModal();
@@ -1090,7 +1159,7 @@ const DisplayTransaction = () => {
         managedToast({
           id: `confirm-error-${transactionId}`,
           title: 'Error',
-          description: error.message || 'Failed to confirm',
+          description: errorMessage,
           status: 'error',
           duration: 5000,
           isClosable: true,

@@ -33,9 +33,23 @@ window.addEventListener('offline', () => {
   toast.warn('You are offline. Please check your internet connection.');
 });
 
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
 instance.interceptors.request.use(
   (config) => {
-    if (config.url.includes('/api/auth/login') || config.url.includes('/api/auth/register')) {
+    if (config.url.includes('/api/auth/login') || config.url.includes('/api/auth/register') || config.url.includes('/api/auth/refreshToken')) {
       console.log('Skipping Authorization header for endpoint:', config.url);
       return config;
     }
@@ -83,13 +97,23 @@ instance.interceptors.response.use(
     });
 
     // Handle token expiry or server unavailability
-    if (
-      (status === 401 || error.code === 'ETIMEDOUT' || error.code === 'ECONNRESET' || status === undefined) &&
-      !originalRequest._retry &&
-      !originalRequest.url.includes('/api/auth/login') &&
-      !originalRequest.url.includes('/api/auth/register')
-    ) {
+    if (status === 401 && !originalRequest._retry && !originalRequest.url.includes('/api/auth/refreshToken')) {
+      if (isRefreshing) {
+        return new Promise(function(resolve, reject) {
+          failedQueue.push({ resolve, reject });
+        })
+          .then(token => {
+            originalRequest.headers['Authorization'] = 'Bearer ' + token;
+            return instance(originalRequest);
+          })
+          .catch(err => {
+            return Promise.reject(err);
+          });
+      }
+
       originalRequest._retry = true;
+      isRefreshing = true;
+
       const refreshToken = localStorage.getItem('refresh-token');
       if (!refreshToken) {
         console.warn('No refresh token available, logging out');
@@ -97,8 +121,11 @@ instance.interceptors.response.use(
         localStorage.removeItem('access-token');
         localStorage.removeItem('refresh-token');
         navigateTo('/login'); // Updated to use navigateTo
+        processQueue(new Error('No refresh token available'));
+        isRefreshing = false;
         return Promise.reject(new Error('No refresh token available'));
       }
+
       try {
         console.log('Attempting to refresh token for URL:', originalRequest.url);
         const response = await axios.post(
@@ -112,6 +139,8 @@ instance.interceptors.response.use(
         localStorage.setItem('access-token', newAccessToken);
         originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
         console.log('Token refreshed, retrying request:', originalRequest.url);
+        processQueue(null, newAccessToken);
+        isRefreshing = false;
         return instance(originalRequest);
       } catch (refreshError) {
         console.error('Token refresh failed:', {
@@ -122,6 +151,8 @@ instance.interceptors.response.use(
         localStorage.removeItem('access-token');
         localStorage.removeItem('refresh-token');
         navigateTo('/login'); // Updated to use navigateTo
+        processQueue(new Error('Session expired'));
+        isRefreshing = false;
         return Promise.reject(new Error('Session expired'));
       }
     }
@@ -134,13 +165,13 @@ instance.interceptors.response.use(
     const fallbackData = {
       success: false,
       error: errorMessage,
-      data: error.config.url.includes('transactions/get-transaction')
+      data: originalRequest.url.includes('transactions/get-transaction')
         ? [] // For /api/transactions/get-transaction
-        : error.config.url.includes('transactions/') && error.config.url.match(/transactions\/[0-9a-fA-F]{24}$/)
+        : originalRequest.url.includes('transactions/') && originalRequest.url.match(/transactions\/[0-9a-fA-F]{24}$/)
           ? {} // For /api/transactions/:id
-          : error.config.url.includes('wallet/balance')
+          : originalRequest.url.includes('wallet/balance')
             ? { balance: 0 }
-            : error.config.url.includes('user-details')
+            : originalRequest.url.includes('user-details')
               ? { user: {} }
               : null,
     };

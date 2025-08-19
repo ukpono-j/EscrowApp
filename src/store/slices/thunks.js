@@ -257,7 +257,7 @@ export const confirmTransaction = createAsyncThunk(
       const result = await confirmWithRetry();
       // Refresh transaction data after successful confirmation
       await dispatch(fetchSingleTransaction(transactionId)).unwrap();
-      return result.data;
+      return { transaction: result.transaction }; // Standardize response to include transaction
     } catch (error) {
       const errorMessage = error.response?.data?.error || error.message || 'Failed to confirm transaction';
       toast.error(errorMessage, { autoClose: 3000 });
@@ -266,38 +266,92 @@ export const confirmTransaction = createAsyncThunk(
   }
 );
 
+// export const fundTransaction = createAsyncThunk(
+//   'app/fundTransaction',
+//   async ({ transactionId, amount }, { rejectWithValue }) => {
+//     try {
+//       const token = localStorage.getItem('access-token');
+//       if (!token) {
+//         toast.error('Please log in again.', { autoClose: 3000 });
+//         return rejectWithValue({ error: 'Authentication token missing' });
+//       }
+//       if (!/^[0-9a-fA-F]{24}$/.test(transactionId)) {
+//         toast.error('Invalid transaction ID.', { autoClose: 3000 });
+//         return rejectWithValue({ error: 'Invalid transaction ID format' });
+//       }
+//       const response = await axios.post(
+//         `${BASE_URL}/api/transactions/fund-transaction`,
+//         { transactionId, amount },
+//         { headers: { Authorization: `Bearer ${token}` } }
+//       );
+//       if (response.data?.success) {
+//         return response.data.data;
+//       }
+//       throw new Error(response.data?.error || 'Failed to fund transaction');
+//     } catch (error) {
+//       if (error.response?.status === 404) {
+//         toast.error('Transaction not found.', { autoClose: 3000 });
+//         return rejectWithValue({ error: 'Resource not found. The transaction may have been deleted or does not exist.' });
+//       }
+//       toast.error(error.response?.data?.error || 'Failed to fund transaction.', { autoClose: 3000 });
+//       return rejectWithValue({ error: error.response?.data?.error || error.message || 'Failed to fund transaction' });
+//     }
+//   }
+// );
+
+// Updated fundTransaction thunk with retry logic and increased timeout
 export const fundTransaction = createAsyncThunk(
   'app/fundTransaction',
   async ({ transactionId, amount }, { rejectWithValue }) => {
-    try {
-      const token = localStorage.getItem('access-token');
-      if (!token) {
-        toast.error('Please log in again.', { autoClose: 3000 });
-        return rejectWithValue({ error: 'Authentication token missing' });
-      }
-      if (!/^[0-9a-fA-F]{24}$/.test(transactionId)) {
-        toast.error('Invalid transaction ID.', { autoClose: 3000 });
-        return rejectWithValue({ error: 'Invalid transaction ID format' });
-      }
-      const response = await axios.post(
-        `${BASE_URL}/api/transactions/fund-transaction`,
-        { transactionId, amount },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      if (response.data?.success) {
-        return response.data.data;
-      }
-      throw new Error(response.data?.error || 'Failed to fund transaction');
-    } catch (error) {
-      if (error.response?.status === 404) {
-        toast.error('Transaction not found.', { autoClose: 3000 });
-        return rejectWithValue({ error: 'Resource not found. The transaction may have been deleted or does not exist.' });
-      }
-      toast.error(error.response?.data?.error || 'Failed to fund transaction.', { autoClose: 3000 });
-      return rejectWithValue({ error: error.response?.data?.error || error.message || 'Failed to fund transaction' });
+    const maxRetries = 3;
+    const baseDelay = 2000;
+    const token = localStorage.getItem('access-token');
+
+    if (!token) {
+      toast.error('Please log in again.', { autoClose: 3000 });
+      return rejectWithValue({ error: 'Authentication token missing' });
     }
+    if (!/^[0-9a-fA-F]{24}$/.test(transactionId)) {
+      toast.error('Invalid transaction ID.', { autoClose: 3000 });
+      return rejectWithValue({ error: 'Invalid transaction ID format' });
+    }
+
+    let lastError = null;
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const response = await axios.post(
+          `${BASE_URL}/api/transactions/fund-transaction`,
+          { transactionId, amount },
+          {
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 60000  // Increased timeout to 60 seconds
+          }
+        );
+        if (response.data?.success) {
+          return response.data.data;
+        }
+        throw new Error(response.data?.error || 'Failed to fund transaction');
+      } catch (error) {
+        lastError = error;
+        if (error.code === 'ECONNABORTED' || error.response?.status === 408 || error.message.includes('timeout')) {
+          if (attempt < maxRetries - 1) {
+            await new Promise(resolve => setTimeout(resolve, baseDelay * Math.pow(2, attempt)));
+            continue;
+          }
+        }
+        if (error.response?.status === 404) {
+          toast.error('Transaction not found.', { autoClose: 3000 });
+          return rejectWithValue({ error: 'Resource not found. The transaction may have been deleted or does not exist.' });
+        }
+        toast.error(error.response?.data?.error || 'Failed to fund transaction.', { autoClose: 3000 });
+        return rejectWithValue({ error: error.response?.data?.error || error.message || 'Failed to fund transaction' });
+      }
+    }
+    return rejectWithValue({ error: lastError?.message || 'Failed after retries' });
   }
 );
+
+
 
 export const cancelTransaction = createAsyncThunk(
   'app/cancelTransaction',
