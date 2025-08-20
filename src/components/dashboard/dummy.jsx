@@ -1,1352 +1,1567 @@
-import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
-import jwtDecode from 'jwt-decode';
-import pino from 'pino';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
+import { io } from 'socket.io-client';
+import { useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
 import {
-  Box, Text, Button, Flex, Heading, Input, Grid, FormControl, FormLabel, Icon, Avatar, Spinner,
-  Container, useToast, Modal, ModalOverlay, ModalContent, ModalHeader, ModalFooter, ModalBody,
-  ModalCloseButton, useDisclosure, NumberInput, NumberInputField, NumberInputStepper,
-  NumberIncrementStepper, NumberDecrementStepper, Divider, IconButton, Select, useColorModeValue,
-  Tabs, TabList, Tab, TabPanels, TabPanel, Badge, VStack,
+  Box, Flex, Text, Button, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter,
+  Grid, Stack, Input, IconButton, Image, Spinner, Skeleton, useDisclosure, useColorModeValue
 } from '@chakra-ui/react';
-import { FaEdit, FaWallet, FaTimes, FaCreditCard, FaSync, FaMoneyBillWave, FaSave } from 'react-icons/fa';
-import { MdContentCopy } from 'react-icons/md';
-import multiavatar from '@multiavatar/multiavatar/esm';
+import { FiSearch, FiEdit } from 'react-icons/fi';
+import { BsChatFill } from 'react-icons/bs';
+import { MdClose, MdContentCopy } from 'react-icons/md';
+import { useSelector, useDispatch } from 'react-redux';
+import {
+  fetchInitialData, fetchSingleTransaction, updateTransaction, confirmTransaction, fundTransaction, cancelTransaction
+} from '../../store/slices/thunks';
+import { setWallet } from '../../store/slices/walletSlice';
+import { setUserDetails, setError } from '../../store/slices/userSlice';
+import { useManagedToast } from '../../utils/toastManager';
+import Sidebar from './Sidebar';
+import MiniNav from './MiniNav';
 import axios from '../../utils/axiosConfig';
-import { fetchInitialData, fundWallet, checkFundingStatus, manualReconcileTransaction, withdrawFunds } from '../../store/slices/walletThunks';
-import { setWallet, setPaymentDetails, clearPaymentDetails } from '../../store/slices/walletSlice';
 
-const PAYSTACK_BANKS = [
-  { name: 'Access Bank', code: '044' },
-  { name: 'Wema Bank', code: '035' },
-  { name: 'Opay', code: '999992' },
-  { name: 'Kuda Bank', code: '090267' },
-  { name: 'Zenith Bank', code: '057' },
-  { name: 'Moniepoint Microfinance Bank', code: '50515' },
-  { name: 'Palmpay', code: '999991' },
-  { name: 'First Bank', code: '011' },
-  { name: 'GTBank', code: '058' },
-  { name: 'UBA', code: '033' },
-  { name: 'Fidelity Bank', code: '070' },
-];
+const BASE_URL = import.meta.env.VITE_BASE_URL;
+const MotionBox = motion(Box);
 
-const BASE_URL = (import.meta.env.VITE_BASE_URL || 'http://localhost:3001').replace(/\/$/, '');
-const logger = pino({ level: 'info', browser: { asObject: true } });
-
-const retryAsync = async (fn, maxRetries = 3, initialDelay = 1000) => {
-  let lastError = null;
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      return await fn();
-    } catch (error) {
-      lastError = error;
-      const delay = initialDelay * Math.pow(2, i);
-      await new Promise(resolve => setTimeout(resolve, delay));
-    }
-  }
-  throw lastError;
+const debounce = (func, wait) => {
+  let timeout;
+  return (...args) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  };
 };
 
-class ErrorBoundary extends React.Component {
-  state = { hasError: false, error: null };
+const TransactionSkeleton = () => {
+  const cardBg = useColorModeValue('white', '#1A202C');
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  return (
+    <Skeleton
+      startColor={useColorModeValue('gray.100', 'gray.700')}
+      endColor={useColorModeValue('gray.200', 'gray.600')}
+      borderRadius="lg"
+      border="1px"
+      borderColor={borderColor}
+      bg={cardBg}
+      p={4}
+      h="300px"
+    />
+  );
+};
 
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error };
+const TransactionLoader = () => {
+  const textColor = useColorModeValue('#051E2F', 'white');
+  return (
+    <Flex align="center" justify="center" h="50vh" direction="column" gap={4}>
+      <Spinner color="#BB954D" size="lg" />
+      <Text color={textColor} fontSize="md">Loading transactions...</Text>
+    </Flex>
+  );
+};
+
+const TransactionCard = React.memo(({ transaction, currentUser, isConfirming, handleChat, handleWaybill, handleConfirm, handleFund, handleEditPayment, openCancelModal, copyToClipboard, toggleDescription, expandedDescriptions }) => {
+  const managedToast = useManagedToast();
+  const currentUserId = currentUser
+    ? currentUser._id || currentUser.id || currentUser.user?.id || ''
+    : '';
+  const creatorId = transaction?.userId?._id ? String(transaction.userId._id) : '';
+  const isCreator = currentUserId && currentUserId === creatorId;
+  const participant = transaction?.participants?.find(p => p.userId?._id && String(p.userId._id) === currentUserId);
+  const isParticipant = !!participant;
+  const isBuyer = isCreator ? transaction.selectedUserType === 'buyer' : participant?.role === 'buyer';
+  const hasConfirmed = isBuyer ? transaction.buyerConfirmed : transaction.sellerConfirmed;
+  const hasRequestedCancel = isCreator
+    ? transaction.cancelConfirmations?.creator
+    : transaction.cancelConfirmations?.participant;
+  const creatorName = isCreator
+    ? `${currentUser?.firstName || currentUser?.user?.firstName || ''} ${currentUser?.lastName || currentUser?.user?.lastName || ''}`.trim() || currentUser?.email || currentUser?.user?.email || 'You'
+    : `${transaction?.userId?.firstName || ''} ${transaction?.userId?.lastName || ''}`.trim() || transaction?.userId?.email || 'Unknown';
+  const participantName = transaction?.participants?.length > 0 && transaction.participants[0]?.userId
+    ? `${transaction.participants[0].userId.firstName || ''} ${transaction.participants[0].userId.lastName || ''}`.trim() || transaction.participants[0].userId.email || 'Unknown'
+    : 'No participant';
+  const headerText = `${transaction.selectedUserType.charAt(0).toUpperCase() + transaction.selectedUserType.slice(1)}: ${creatorName}${isCreator ? ' (You)' : ''}  ${transaction.selectedUserType === 'buyer' ? 'Seller' : 'Buyer'}: ${participantName}${isParticipant ? ' (You)' : ''}`;
+  const description = transaction?.productDetails?.description || 'No description';
+  const isExpanded = expandedDescriptions[transaction._id];
+  const truncatedDescription = description.length > 80 && !isExpanded ? `${description.substring(0, 80)}...` : description;
+  const cardBg = useColorModeValue('white', '#1A202C');
+  const textColor = useColorModeValue('#051E2F', 'white');
+  const subtleTextColor = useColorModeValue('gray.500', 'gray.400');
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
+
+  if (!currentUserId) {
+    console.warn('TransactionCard: currentUserId is empty, currentUser:', currentUser);
+    return (
+      <MotionBox
+        bg={cardBg}
+        p={4}
+        rounded="lg"
+        border="1px"
+        borderColor={borderColor}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+      >
+        <Text color="red.400" fontSize="sm">Error: User data not loaded. Please refresh or log in again.</Text>
+      </MotionBox>
+    );
   }
 
-  componentDidCatch(error, errorInfo) {
-    logger.error({
-      message: 'Error in Profile component',
-      error: error.message,
-      stack: error.stack,
-      errorInfo,
-    });
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <Box p={4} bg="red.100" borderRadius="md">
-          <Text color="red.800">Something went wrong: {this.state.error.message}</Text>
-          <Button mt={2} onClick={() => window.location.reload()}>
-            Retry
-          </Button>
-        </Box>
-      );
-    }
-    return this.props.children;
-  }
-}
-
-const FundAmountModal = ({ isOpen, onClose, onSubmit }) => {
-  const [amount, setAmount] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const toast = useToast();
-  const textColor = useColorModeValue('gray.800', 'white');
-
-  const handleSubmit = async () => {
-    if (isSubmitting) return;
-    const amountNum = parseFloat(amount);
-    if (!amountNum || amountNum < 100) {
-      toast({
-        title: 'Error',
-        description: 'Please enter an amount of at least ₦100.',
-        status: 'error',
+  const handleEditClick = () => {
+    if (!isCreator) {
+      managedToast({
+        id: `edit-restricted-${transaction._id}`,
+        title: 'Restricted',
+        description: 'Only the creator can make changes to this transaction.',
+        status: 'warning',
         duration: 5000,
         isClosable: true,
       });
       return;
     }
-    setIsSubmitting(true);
-    try {
-      await retryAsync(() => onSubmit(amountNum));
-      onClose();
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to initiate funding. Please check your network and try again.',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+    handleEditPayment(transaction);
   };
 
+  const isCanceled = transaction.status === 'canceled';
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} isCentered size={{ base: 'full', sm: 'md' }}>
-      <ModalOverlay />
-      <ModalContent>
-        <ModalHeader color={textColor}>Enter Funding Amount</ModalHeader>
-        <ModalCloseButton />
-        <ModalBody px={{ base: 4, sm: 6 }} py={4}>
-          <FormControl>
-            <FormLabel color={textColor}>Amount (₦)</FormLabel>
-            <NumberInput min={100} precision={2} value={amount} onChange={(value) => setAmount(value)}>
-              <NumberInputField placeholder="Enter amount (minimum ₦100)" />
-              <NumberInputStepper>
-                <NumberIncrementStepper />
-                <NumberDecrementStepper />
-              </NumberInputStepper>
-            </NumberInput>
-          </FormControl>
-        </ModalBody>
-        <ModalFooter flexDir={{ base: 'column', sm: 'row' }} gap={2}>
-          <Button
-            colorScheme="blue"
-            onClick={handleSubmit}
-            isLoading={isSubmitting}
-            isDisabled={isSubmitting}
-            size={{ base: 'sm', sm: 'md' }}
-            mr={{ sm: 3 }}
-            mb={{ base: 2, sm: 0 }}
+    <MotionBox
+      bg={cardBg}
+      p={4}
+      rounded="lg"
+      border="1px"
+      borderColor={borderColor}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      <Flex justify="space-between" align="center" mb={3}>
+        <Box>
+          <Text fontSize="sm" fontWeight="600" color={textColor}>{headerText}</Text>
+        </Box>
+        <Flex gap={2}>
+          <IconButton
+            aria-label="Edit payment"
+            icon={<FiEdit />}
+            size="sm"
+            color={subtleTextColor}
+            bg="transparent"
+            _hover={{ color: "#BB954D" }}
+            onClick={handleEditClick}
+            isDisabled={!isCreator || isCanceled}
+          />
+          <IconButton
+            aria-label="Open chat"
+            icon={<BsChatFill />}
+            size="sm"
+            color={subtleTextColor}
+            bg="transparent"
+            _hover={{ color: "#BB954D" }}
+            onClick={() => handleChat(transaction._id)}
+            isDisabled={isCanceled}
+          />
+        </Flex>
+      </Flex>
+
+      <Flex justify="space-between" align="center" mb={3}>
+        <Box>
+          <Text fontSize="xs" color={subtleTextColor}>Amount</Text>
+          <Text fontSize="lg" color="#BB954D" fontWeight="600">
+            {transaction.paymentAmount ? `₦${parseFloat(transaction.paymentAmount).toLocaleString("en-NG", { minimumFractionDigits: 2 })}` : "N/A"}
+          </Text>
+        </Box>
+        <Box textAlign="right">
+          <Text
+            bg={transaction.status === "completed" ? "#22c55e" : transaction.status === "canceled" ? "#ef4444" : transaction.status === "funded" ? "#FFA500" : "#BB954D"}
+            color="white"
+            px={2}
+            py={1}
+            rounded="sm"
+            fontSize="xs"
+            fontWeight="500"
           >
-            Proceed to Fund
-          </Button>
-          <Button variant="ghost" onClick={onClose} size={{ base: 'sm', sm: 'md' }}>
-            Cancel
-          </Button>
+            {transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1)}
+          </Text>
+        </Box>
+      </Flex>
+
+      <Box mb={3}>
+        <Text fontSize="xs" color={subtleTextColor}>Escrow</Text>
+        <Text fontSize="sm" color={transaction.locked && transaction.status !== "completed" ? "#BB954D" : transaction.status === "completed" ? "#22c55e" : subtleTextColor} fontWeight="500">
+          {transaction.locked && transaction.status !== "completed"
+            ? `Locked: ₦${parseFloat(transaction.lockedAmount || 0).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`
+            : transaction.status === "completed"
+              ? `Released: ₦${parseFloat(transaction.paymentAmount || 0).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`
+              : "Not Locked"}
+        </Text>
+      </Box>
+
+      <Box mb={3}>
+        <Text fontSize="xs" color={subtleTextColor}>Contact</Text>
+        <Text fontSize="sm" color={textColor}>{transaction.email || "N/A"}</Text>
+      </Box>
+      <Box mb={3}>
+        <Text fontSize="xs" color={subtleTextColor}>Created</Text>
+        <Text fontSize="sm" color={textColor}>{transaction.createdAt ? format(new Date(transaction.createdAt), "MMM dd, yyyy") : "N/A"}</Text>
+      </Box>
+
+      <Box mb={3}>
+        <Text fontSize="xs" color={subtleTextColor}>Transaction ID</Text>
+        <Flex align="center" gap={2}>
+          <Text fontSize="xs" color={subtleTextColor} isTruncated>{transaction._id}</Text>
+          <IconButton aria-label="Copy ID" icon={<MdContentCopy />} size="xs" color={subtleTextColor} bg="transparent" _hover={{ color: "#8a6d27" }} onClick={() => copyToClipboard(transaction._id)} />
+        </Flex>
+      </Box>
+
+      <Box mb={3}>
+        <Text fontSize="xs" color={subtleTextColor}>Description</Text>
+        <Text fontSize="sm" color={textColor} onClick={() => description.length > 80 && toggleDescription(transaction._id)} cursor={description.length > 80 ? "pointer" : "default"}>
+          {truncatedDescription}
+        </Text>
+        {description.length > 80 && (
+          <Text fontSize="xs" color="#8a6d27" mt={1} cursor="pointer" onClick={() => toggleDescription(transaction._id)}>
+            {isExpanded ? "Show less" : "Read more"}
+          </Text>
+        )}
+      </Box>
+
+      {!isCanceled && (
+        <Stack spacing={2}>
+          {!((isCreator && transaction.selectedUserType === 'buyer') || (isParticipant && participant?.role === 'buyer')) && (
+            <Button
+              onClick={() => handleWaybill(transaction._id, false)}
+              bg="#8a6d27"
+              color="white"
+              _hover={{ bg: "#8a6d27" }}
+              size="sm"
+              fontWeight="500"
+            >
+              Submit Waybill
+            </Button>
+          )}
+
+          {!((isCreator && transaction.selectedUserType === 'seller') || (isParticipant && participant?.role === 'seller')) && (
+            <Button
+              onClick={() => handleWaybill(transaction._id, true)}
+              bg="#8a6d27"
+              color="white"
+              _hover={{ bg: "#8a6d27" }}
+              size="sm"
+              fontWeight="500"
+            >
+              View Waybill
+            </Button>
+          )}
+
+          {(transaction.status === "pending" || transaction.status === "funded") && (
+            <Button
+              onClick={() => handleConfirm(transaction._id)}
+              bg={hasConfirmed ? "#FFA500" : "#22c55e"}
+              color="white"
+              _hover={{ bg: hasConfirmed ? "#FFA500" : "#16a34a" }}
+              size="sm"
+              fontWeight="500"
+              isLoading={isConfirming[transaction._id]}
+              isDisabled={hasConfirmed}
+            >
+              {hasConfirmed ? "Pending" : "Complete Transaction"}
+            </Button>
+          )}
+
+          {!((isCreator && transaction.selectedUserType === 'seller') || (isParticipant && participant?.role === 'seller')) && !transaction.locked && transaction.status === "pending" && (
+            <Button onClick={() => handleFund(transaction)} bg="#8a6d27" color="white" _hover={{ bg: "#8a6d27" }} size="sm" fontWeight="500">
+              Fund Transaction
+            </Button>
+          )}
+
+          {(transaction.status === "pending" || transaction.status === "funded") && (
+            <Button
+              onClick={() => openCancelModal(transaction._id)}
+              bg={hasRequestedCancel ? "#FFA500" : "transparent"}
+              border={hasRequestedCancel ? "none" : "1px"}
+              borderColor="#ef4444"
+              color={hasRequestedCancel ? "white" : "#ef4444"}
+              _hover={{ bg: hasRequestedCancel ? "#FFA500" : "#ef4444", color: "white" }}
+              size="sm"
+              fontWeight="500"
+              isLoading={isConfirming[transaction._id]}
+              isDisabled={hasRequestedCancel}
+            >
+              {hasRequestedCancel ? "Pending" : "Cancel"}
+            </Button>
+          )}
+        </Stack>
+      )}
+    </MotionBox>
+  );
+});
+
+const WaybillModal = React.memo(({ isOpen, onClose, transactionId, isBuyer, details, setDetails, errors, handleSubmit, downloadImage, isFunded }) => {
+  const bgColor = useColorModeValue('white', '#1A202C');
+  const textColor = useColorModeValue('#051E2F', 'white');
+  const subtleTextColor = useColorModeValue('gray.500', 'gray.400');
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const inputBg = useColorModeValue('gray.50', '#051E2F');
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} isCentered size={{ base: "full", sm: "md" }}>
+      <ModalOverlay />
+      <ModalContent bg={bgColor} color={textColor} p={4} rounded="lg" border="1px" borderColor={borderColor}>
+        <ModalHeader fontSize="lg" fontWeight="600">{isBuyer ? "Waybill Details" : "Submit Waybill"}</ModalHeader>
+        <ModalBody>
+          {isBuyer ? (
+            !details || Object.keys(details).length === 0 ? (
+              <Text fontSize="sm" color={textColor} textAlign="center">
+                No waybill details uploaded yet
+              </Text>
+            ) : (
+              <Stack spacing={3}>
+                {[
+                  { label: "Item", value: details.item || "N/A" },
+                  { label: "Shipping/Arrival Address", value: details.shippingAddress || "N/A" },
+                  { label: "Tracking Number", value: details.trackingNumber || "N/A" },
+                  { label: "Delivery/Arrival Date", value: details.deliveryDate ? format(new Date(details.deliveryDate), "MMM dd, yyyy") : "N/A" },
+                ].map(({ label, value }, idx) => (
+                  <Box key={idx}>
+                    <Text fontSize="xs" color={subtleTextColor}>{label}</Text>
+                    <Text fontSize="sm" color={textColor}>{value}</Text>
+                  </Box>
+                ))}
+                <Box>
+                  <Text fontSize="xs" color={subtleTextColor}>Image</Text>
+                  {details.image ? (
+                    <Flex direction="column" gap={2}>
+                      <Image src={details.image} alt="Waybill" maxW="100%" rounded="md" />
+                      <Button size="sm" bg="#8a6d27" color="white" _hover={{ bg: "#b38939" }} onClick={() => downloadImage(details.image)}>Download Image</Button>
+                    </Flex>
+                  ) : (
+                    <Text fontSize="sm" color={subtleTextColor}>No image uploaded</Text>
+                  )}
+                </Box>
+              </Stack>
+            )
+          ) : !isFunded ? (
+            <Text fontSize="sm" color="red.400" textAlign="center">
+              Seller cannot fill or carry out waybill until buyer has funded the transaction.
+            </Text>
+          ) : (
+            <form onSubmit={(e) => { e.preventDefault(); handleSubmit(transactionId); }}>
+              <Stack spacing={3}>
+                {[
+                  { label: "Item", key: "item", type: "text", isReadOnly: true },
+                  { label: "Shipping/Arrival Address", key: "shippingAddress", type: "text" },
+                  { label: "Tracking Number", key: "trackingNumber", type: "text" },
+                  { label: "Delivery/Arrival Date", key: "deliveryDate", type: "date" },
+                ].map(({ label, key, type, isReadOnly }) => (
+                  <Box key={key}>
+                    <Text fontSize="xs" color={subtleTextColor}>{label}</Text>
+                    <Input
+                      type={type}
+                      value={details[key] || ""}
+                      onChange={(e) => setDetails({ ...details, [key]: e.target.value })}
+                      bg={inputBg}
+                      borderColor={borderColor}
+                      color={textColor}
+                      size="sm"
+                      _focus={{ borderColor: "#BB954D" }}
+                      isReadOnly={isReadOnly}
+                    />
+                    {errors[key] && <Text color="red.400" fontSize="xs">{errors[key]}</Text>}
+                  </Box>
+                ))}
+                <Box>
+                  <Text fontSize="xs" color={subtleTextColor}>Image</Text>
+                  <Box border="1px dashed" borderColor={borderColor} p={4} textAlign="center" rounded="md">
+                    <Input
+                      type="file"
+                      id={`waybill-image-${transactionId}`}
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                          const imageUrl = URL.createObjectURL(file);
+                          setDetails({ ...details, image: file, imagePreview: imageUrl });
+                        }
+                      }}
+                      display="none"
+                    />
+                    <label htmlFor={`waybill-image-${transactionId}`} style={{ cursor: 'pointer' }}>
+                      <Text fontSize="sm" color={subtleTextColor}>
+                        {details.image ? "Change Image" : "Upload Image"}
+                      </Text>
+                    </label>
+                    {details.imagePreview && (
+                      <Box mt={2}>
+                        <Image src={details.imagePreview} alt="Waybill preview" maxW="100%" maxH="200px" rounded="md" />
+                        <Text fontSize="xs" color={subtleTextColor} mt={1}>{details.image.name}</Text>
+                      </Box>
+                    )}
+                    {errors.image && <Text color="red.400" fontSize="xs">{errors.image}</Text>}
+                  </Box>
+                </Box>
+              </Stack>
+            </form>
+          )}
+        </ModalBody>
+        <ModalFooter>
+          <Flex gap={3} w="full">
+            <Button size="sm" bg={useColorModeValue('gray.200', 'gray.600')} color={textColor} _hover={{ bg: useColorModeValue('gray.300', 'gray.700') }} onClick={onClose}>Close</Button>
+            {!isBuyer && isFunded && (
+              <Button size="sm" bg="#BB954D" color="white" _hover={{ bg: "#8a6d2f" }} onClick={() => handleSubmit(transactionId)}>Submit</Button>
+            )}
+          </Flex>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
+  );
+});
+
+const PaymentDetailsModal = ({ isOpen, onClose, transaction, paymentDetails, setPaymentDetails, paymentErrors, handleSubmit }) => {
+  const bgColor = useColorModeValue('white', '#1A202C');
+  const textColor = useColorModeValue('#051E2F', 'white');
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const inputBg = useColorModeValue('gray.50', '#051E2F');
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} isCentered size={{ base: "full", sm: "sm" }}>
+      <ModalOverlay />
+      <ModalContent bg={bgColor} color={textColor} p={4} rounded="lg" border="1px" borderColor={borderColor}>
+        <ModalHeader fontSize="lg" fontWeight="600">Edit Payment</ModalHeader>
+        <ModalBody>
+          <Box>
+            <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>Amount</Text>
+            <Input
+              type="number"
+              value={paymentDetails.paymentAmount || ""}
+              onChange={(e) => setPaymentDetails({ ...paymentDetails, paymentAmount: e.target.value })}
+              bg={inputBg}
+              borderColor={borderColor}
+              color={textColor}
+              size="sm"
+              _focus={{ borderColor: "#BB954D" }}
+              isDisabled={transaction?.locked}
+            />
+            {paymentErrors.paymentAmount && <Text color="red.400" fontSize="xs" mt={1}>{paymentErrors.paymentAmount}</Text>}
+          </Box>
+        </ModalBody>
+        <ModalFooter>
+          <Flex gap={3} w="full">
+            <Button size="sm" bg={useColorModeValue('gray.200', 'gray.600')} color={textColor} _hover={{ bg: useColorModeValue('gray.300', 'gray.700') }} onClick={onClose}>Cancel</Button>
+            <Button size="sm" bg="#BB954D" color="white" _hover={{ bg: "#967532" }} onClick={handleSubmit}>Save</Button>
+          </Flex>
         </ModalFooter>
       </ModalContent>
     </Modal>
   );
 };
 
-const PaymentInfoModal = ({ isOpen, onClose, paymentDetails, onStatusCheck, userName, amount, pendingTransactions }) => {
-  const toast = useToast();
+const FundingModal = ({ isOpen, onClose, transaction, walletBalance, confirmFunding, isLoading, fetchWalletBalance }) => {
+  const bgColor = useColorModeValue('white', '#1A202C');
+  const textColor = useColorModeValue('#051E2F', 'white');
+  const subtleTextColor = useColorModeValue('gray.500', 'gray.400');
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} isCentered size={{ base: "full", sm: "sm" }}>
+      <ModalOverlay />
+      <ModalContent bg={bgColor} color={textColor} p={4} rounded="lg" border="1px" borderColor={borderColor}>
+        <ModalHeader fontSize="lg" fontWeight="600">Fund Transaction</ModalHeader>
+        <ModalBody>
+          <Stack spacing={3}>
+            <Box>
+              <Text fontSize="xs" color={subtleTextColor}>Transaction ID</Text>
+              <Text fontSize="sm" color={textColor}>{transaction?._id || 'N/A'}</Text>
+            </Box>
+            <Box>
+              <Text fontSize="xs" color={subtleTextColor}>Description</Text>
+              <Text fontSize="sm" color={textColor}>{transaction?.productDetails?.description || 'N/A'}</Text>
+            </Box>
+            <Box>
+              <Text fontSize="xs" color={subtleTextColor}>Amount Required</Text>
+              <Text fontSize="sm" color={textColor}>
+                ₦{(transaction?.paymentAmount || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+              </Text>
+            </Box>
+            <Box>
+              <Text fontSize="xs" color={subtleTextColor}>Wallet Balance</Text>
+              <Text fontSize="sm" color={textColor}>
+                {walletBalance !== null
+                  ? `₦${(walletBalance || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
+                  : 'Unable to fetch balance. Please try again.'}
+              </Text>
+              {walletBalance === null && (
+                <Button
+                  size="sm"
+                  bg="#BB954D"
+                  color="white"
+                  _hover={{ bg: "#967532" }}
+                  onClick={fetchWalletBalance}
+                  mt={2}
+                >
+                  Retry Fetching Balance
+                </Button>
+              )}
+            </Box>
+            {walletBalance !== null && walletBalance < transaction?.paymentAmount && (
+              <Text fontSize="sm" color="red.400">
+                Your wallet balance is insufficient to fund this transaction. Please top up your wallet in the Profile section.
+              </Text>
+            )}
+            {error && <Text fontSize="sm" color="red.400">{error}</Text>}
+          </Stack>
+        </ModalBody>
+        <ModalFooter>
+          <Flex gap={3} w="full">
+            <Button
+              size="sm"
+              bg={useColorModeValue('gray.200', 'gray.600')}
+              color={textColor}
+              _hover={{ bg: useColorModeValue('gray.300', 'gray.700') }}
+              onClick={onClose}
+              isDisabled={isLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              bg="#BB954D"
+              color="white"
+              _hover={{ bg: "#967532" }}
+              onClick={() => confirmFunding(transaction, setError)}
+              isLoading={isLoading}
+              isDisabled={isLoading || walletBalance === null || walletBalance < transaction?.paymentAmount}
+            >
+              Fund Transaction
+            </Button>
+          </Flex>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
+  );
+};
+
+const DisplayTransaction = () => {
   const dispatch = useDispatch();
-  const textColor = useColorModeValue('gray.800', 'white');
-  const subtleTextColor = useColorModeValue('gray.600', 'gray.300');
-  const boxBg = useColorModeValue('gray.100', 'gray.700');
+  const navigate = useNavigate();
+  const { userDetails, loading: userLoading, error: userError } = useSelector(state => state.user);
+  const { transactions, loading: transactionsLoading, error: transactionsError } = useSelector(state => state.transactions);
+  const { wallet, transactions: walletTransactions, loading: walletLoading } = useSelector(state => state.wallet);
+  const [walletBalance, setWalletBalance] = useState(null);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [activeTab, setActiveTab] = useState('active');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [hasFetchedInitially, setHasFetchedInitially] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const [waybillDetails, setWaybillDetails] = useState({ item: '', image: null, imagePreview: null, shippingAddress: '', trackingNumber: '', deliveryDate: '' });
+  const [buyerWaybillDetails, setBuyerWaybillDetails] = useState({});
+  const [errors, setErrors] = useState({});
+  const [showPaymentDetailsModal, setShowPaymentDetailsModal] = useState(false);
+  const [currentTransaction, setCurrentTransaction] = useState(null);
+  const [paymentDetails, setPaymentDetails] = useState({ paymentAmount: '' });
+  const [paymentErrors, setPaymentErrors] = useState({});
+  const [isConfirming, setIsConfirming] = useState({});
+  const [expandedDescriptions, setExpandedDescriptions] = useState({});
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedTransactionId, setSelectedTransactionId] = useState(null);
+  const [cancelModalVisible, setCancelModalVisible] = useState(false);
+  const [cancelTransactionId, setCancelTransactionId] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [lastSocketFetch, setLastSocketFetch] = useState(0);
+  const maxRetries = 3;
+  const socketFetchCooldown = 5000;
+  const managedToast = useManagedToast();
+  const { isOpen: isFundingModalOpen, onOpen: openFundingModal, onClose: closeFundingModal } = useDisclosure();
+  const [showWaybillPopup, setShowWaybillPopup] = useState({});
+  const [buyerShowWaybillPopup, setBuyerShowWaybillPopup] = useState({});
+  const bgColor = useColorModeValue('gray.100', '#051E2F');
+  const cardBg = useColorModeValue('white', '#1A202C');
+  const textColor = useColorModeValue('#051E2F', 'white');
+  const subtleTextColor = useColorModeValue('gray.500', 'gray.400');
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const inputBg = useColorModeValue('gray.50', '#051E2F');
 
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text);
-    toast({ title: 'Copied', description: 'Text copied to clipboard.', status: 'success', duration: 3000, isClosable: true });
-  };
-
-  const handleManualReconcile = async () => {
-    const ref = paymentDetails?.reference || paymentDetails?.paystackReference;
-    if (!ref) {
-      return toast({ title: 'Error', description: 'No reference available.', status: 'error', duration: 5000, isClosable: true });
+  useEffect(() => {
+    const token = localStorage.getItem('access-token');
+    if (!token) {
+      managedToast({ id: 'auth-error', title: 'Authentication Required', description: 'Please log in.', status: 'error', duration: 3000, isClosable: true });
+      navigate('/');
+      return;
     }
-    try {
-      const { success, data } = await retryAsync(() => dispatch(manualReconcileTransaction(ref)).unwrap());
-      if (success) {
-        toast({
-          title: 'Success',
-          description: `Successfully funded ₦${data.transaction.amount.toFixed(2)}. Your wallet has been updated.`,
+
+    if (!hasFetchedInitially) {
+      console.log('Fetching initial data');
+      dispatch(fetchInitialData()).unwrap().then((payload) => {
+        console.log('Initial data fetched:', payload);
+        const normalizedUserDetails = payload.userDetails
+          ? {
+            id: payload.userDetails.id || payload.userDetails._id || null,
+            firstName: payload.userDetails.firstName || '',
+            lastName: payload.userDetails.lastName || '',
+            email: payload.userDetails.email || '',
+          }
+          : { id: null, firstName: '', lastName: '', email: '' };
+        dispatch(setUserDetails(normalizedUserDetails));
+        setWalletBalance(payload.wallet?.balance ?? 0);
+        setHasFetchedInitially(true);
+        setRetryCount(0);
+      }).catch(err => {
+        console.error('Initial data fetch error:', err);
+        if (retryCount < maxRetries) {
+          setRetryCount(prev => prev + 1);
+          setTimeout(() => dispatch(fetchInitialData()), 1000 * (retryCount + 1));
+        } else {
+          dispatch(setError(err.message || 'Unable to fetch user data'));
+          managedToast({ id: 'fetch-error', title: 'Error', description: err.message || 'Unable to fetch data.', status: 'error', duration: 5000, isClosable: true });
+          dispatch(setUserDetails({ id: null, firstName: '', lastName: '', email: '' }));
+        }
+      });
+    }
+  }, [dispatch, navigate, hasFetchedInitially, retryCount, managedToast]);
+
+  const fetchWalletBalance = useCallback(async () => {
+    const maxAttempts = 5;
+    let attempts = 0;
+
+    while (attempts < maxAttempts) {
+      try {
+        const token = localStorage.getItem('access-token');
+        if (!token) {
+          throw new Error('Authentication token missing');
+        }
+        const response = await axios.get(`${BASE_URL}/api/wallet/balance`, {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 15000,
+        });
+        if (response.data.success) {
+          const balance = response.data.data.wallet.balance || 0;
+          setWalletBalance(balance);
+          dispatch(setWallet({
+            ...wallet,
+            balance,
+            totalDeposits: response.data.data.wallet.totalDeposits || 0,
+            transactions: response.data.data.wallet.transactions || [],
+          }));
+          return;
+        } else {
+          throw new Error(response.data.error || 'Failed to fetch wallet balance');
+        }
+      } catch (err) {
+        attempts++;
+        console.error(`Wallet balance fetch attempt ${attempts} failed:`, err);
+        if (attempts >= maxAttempts) {
+          managedToast({
+            id: `wallet-fetch-error`,
+            title: 'Error',
+            description: 'Unable to fetch wallet balance. Please check your connection or try again later.',
+            status: 'error',
+            duration: 5000,
+            isClosable: true,
+          });
+          setWalletBalance(wallet?.balance || 0);
+        } else {
+          await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempts)));
+        }
+      }
+    }
+  }, [dispatch, managedToast, wallet]);
+
+  const debouncedFetchInitialData = useCallback(debounce(() => {
+    const now = Date.now();
+    if (now - lastSocketFetch < socketFetchCooldown) {
+      console.log('Skipping fetchInitialData due to cooldown');
+      return;
+    }
+    setLastSocketFetch(now);
+    dispatch(fetchInitialData()).unwrap().then((payload) => {
+      console.log('Refreshed data:', payload);
+      const normalizedUserDetails = payload.userDetails || { id: null, firstName: '', lastName: '', email: '' };
+      dispatch(setUserDetails(normalizedUserDetails));
+      dispatch(setWallet({
+        user: normalizedUserDetails,
+        balance: payload.wallet?.balance ?? 0,
+        totalDeposits: payload.wallet?.totalDeposits ?? 0,
+        transactions: Array.isArray(payload.wallet?.transactions) ? payload.wallet.transactions : [],
+      }));
+      setWalletBalance(payload.wallet?.balance ?? 0);
+      setHasFetchedInitially(true);
+      setRetryCount(0);
+    }).catch(err => {
+      console.error('Fetch initial data error:', err);
+      if (retryCount < maxRetries) {
+        setRetryCount(prev => prev + 1);
+        setTimeout(() => debouncedFetchInitialData(), 1000 * (retryCount + 1));
+      } else {
+        dispatch(setError(err.message || 'Unable to fetch data'));
+        managedToast({ id: 'fetch-error', title: 'Error', description: err.message || 'Unable to fetch data.', status: 'error', duration: 5000, isClosable: true });
+        dispatch(setUserDetails({ id: null, firstName: '', lastName: '', email: '' }));
+      }
+    });
+  }, 500), [dispatch, retryCount, managedToast, lastSocketFetch]);
+
+  useEffect(() => {
+    const checkScreenSize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile) setIsSidebarCollapsed(true);
+    };
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
+
+  useEffect(() => {
+    const token = localStorage.getItem('access-token');
+    if (!token) return;
+
+    // const socket = io(BASE_URL, {
+    //   auth: { token },
+    //   reconnection: true,
+    //   reconnectionAttempts: 5,
+    //   reconnectionDelay: 1000,
+    // });
+    const socket = io(BASE_URL, {
+      auth: { token },
+      reconnection: true,
+      reconnectionAttempts: Infinity,  // Increased reconnection attempts
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      randomizationFactor: 0.5,
+      timeout: 20000,  // Added connection timeout
+      transports: ['websocket', 'polling'],
+      pingTimeout: 60000,  // Increased ping timeout
+      pingInterval: 25000,
+    });
+    const joinedRooms = new Set();
+
+    socket.on('connect', () => {
+      console.log('WebSocket connected');
+      const userId = userDetails?.id || userDetails?.user?.id || 'unknown';
+      if (userId && !joinedRooms.has(userId)) {
+        socket.emit('join-room', userId);
+        joinedRooms.add(userId);
+      }
+      if (Array.isArray(transactions)) {
+        transactions.forEach((t) => {
+          if (t?._id && !joinedRooms.has(`transaction_${t._id}`)) {
+            socket.emit('join-room', `transaction_${t._id}`);
+            joinedRooms.add(`transaction_${t._id}`);
+          }
+        });
+      }
+    });
+
+    socket.on('connect_error', (err) => {
+      console.error('WebSocket connection error:', err);
+      managedToast({
+        id: 'socket-error',
+        title: 'Connection Error',
+        description: 'Failed to connect to real-time updates. Please check your network or try again later.',
+        status: 'warning',
+        duration: 5000,
+        isClosable: true,
+      });
+    });
+
+    socket.on('transactionCreated', (data) => {
+      const userId = userDetails?.id || userDetails?.user?.id || 'unknown';
+      if (data?.userId === userId || data?.participants?.some((p) => p.userId === userId)) {
+        managedToast({
+          id: `transaction-created-${Date.now()}`,
+          title: 'New Transaction',
+          description: 'A new transaction was created.',
           status: 'success',
           duration: 5000,
           isClosable: true,
         });
-        dispatch(clearPaymentDetails());
-        onClose();
-      } else {
-        toast({
-          title: 'Reconciliation Failed',
-          description: data.message || 'Try again.',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
-      }
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Reconciliation failed. Please check your network and try again.',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-    }
-  };
-
-  return (
-    <Modal isOpen={isOpen} onClose={onClose} isCentered size={{ base: 'full', sm: 'md' }}>
-      <ModalOverlay />
-      <ModalContent>
-        <ModalHeader color={textColor}>Fund Wallet</ModalHeader>
-        <ModalCloseButton />
-        <ModalBody px={{ base: 4, sm: 6 }} py={4}>
-          {paymentDetails?.authorization_url ? (
-            <>
-              <Text color={textColor} mb={4}>
-                Click the button below to proceed with payment of ₦{amount ? amount.toFixed(2) : '0.00'}:
-              </Text>
-              <Button
-                as="a"
-                href={paymentDetails.authorization_url}
-                colorScheme="blue"
-                size={{ base: 'sm', sm: 'md' }}
-                mb={4}
-              >
-                Pay Now
-              </Button>
-              <Text color={subtleTextColor} fontSize="sm">
-                You will be redirected to Paystack to complete the payment.
-              </Text>
-            </>
-          ) : paymentDetails?.virtualAccount ? (
-            <>
-              <Text color={textColor} mb={2}>Transfer ₦{amount ? amount.toFixed(2) : '0.00'} to the account below:</Text>
-              <Box p={4} bg={boxBg} borderRadius="md">
-                <Flex align="center" justify="space-between" mb={2}>
-                  <Text fontWeight="bold" color={textColor}>Account Name: {paymentDetails.virtualAccount.account_name}</Text>
-                  <IconButton
-                    aria-label="Copy account name"
-                    icon={<MdContentCopy />}
-                    size="xs"
-                    bg="transparent"
-                    color={subtleTextColor}
-                    onClick={() => copyToClipboard(paymentDetails.virtualAccount.account_name)}
-                  />
-                </Flex>
-                <Text color={subtleTextColor}>Account Number: {paymentDetails.virtualAccount.account_number}</Text>
-                <Text color={subtleTextColor}>Bank: {paymentDetails.virtualAccount.bank_name}</Text>
-              </Box>
-              {pendingTransactions?.length > 0 && (
-                <Text color="yellow.500" mt={4} fontSize="sm">
-                  Note: You have {pendingTransactions.length} pending transaction(s). Check the Transactions tab for details.
-                </Text>
-              )}
-              <Text color={subtleTextColor} mt={4} fontSize="sm">
-                Your payment will be credited within 5 minutes. If delayed, click "Check Status" or "Reconcile" to update.
-              </Text>
-            </>
-          ) : (
-            <Box>
-              <Text color={textColor} mb={4}>Unable to initiate funding. Try again or contact support.</Text>
-              <Button
-                colorScheme="blue"
-                onClick={() => { dispatch(clearPaymentDetails()); onClose(); }}
-                size={{ base: 'sm', sm: 'md' }}
-              >
-                Retry
-              </Button>
-            </Box>
-          )}
-        </ModalBody>
-        <ModalFooter flexDir={{ base: 'column', sm: 'row' }} gap={2}>
-          {paymentDetails?.reference || paymentDetails?.paystackReference ? (
-            <>
-              <Button colorScheme="blue" onClick={onStatusCheck} size="sm" mr={{ sm: 3 }} mb={{ base: 2, sm: 0 }}>
-                Check Status
-              </Button>
-              <Button colorScheme="purple" onClick={handleManualReconcile} size="sm" mr={{ sm: 3 }} mb={{ base: 2, sm: 0 }}>
-                Reconcile
-              </Button>
-            </>
-          ) : null}
-          <Button variant="ghost" onClick={onClose} size="sm">Cancel</Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
-  );
-};
-
-const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
-  const [amount, setAmount] = React.useState(0);
-  const [bankCode, setBankCode] = React.useState('');
-  const [accountNumber, setAccountNumber] = React.useState('');
-  const [accountName, setAccountName] = React.useState('');
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [isVerifying, setIsVerifying] = React.useState(false);
-  const [verifiedAccountName, setVerifiedAccountName] = React.useState('');
-  const [banks, setBanks] = React.useState(PAYSTACK_BANKS);
-  const toast = useToast();
-  const dispatch = useDispatch();
-  const textColor = useColorModeValue('gray.800', 'white');
-  const subtleTextColor = useColorModeValue('gray.600', 'gray.300');
-
-  const fetchBanks = async () => {
-    try {
-      const response = await retryAsync(() => axios.get('/api/wallet/paystack/banks'));
-      if (response.data.success && response.data.data.length > 0) {
-        setBanks(response.data.data);
-      } else {
-        setBanks(PAYSTACK_BANKS);
-        toast({
-          title: 'Warning',
-          description: 'Using fallback bank list due to network issues.',
-          status: 'warning',
-          duration: 5000,
-          isClosable: true,
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching banks:', error);
-      setBanks(PAYSTACK_BANKS);
-      toast({
-        title: 'Error',
-        description: 'Failed to fetch bank list. Using default banks.',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-    }
-  };
-
-  useEffect(() => {
-    fetchBanks();
-  }, []);
-
-  const verifyAccount = async () => {
-    if (!accountNumber || !bankCode) {
-      toast({ title: 'Error', description: 'Please provide bank code and account number.', status: 'error', duration: 5000, isClosable: true });
-      return;
-    }
-    setIsVerifying(true);
-    try {
-      const response = await retryAsync(() => axios.post('/api/wallet/verify-account', { bankCode, accountNumber }));
-      if (response.data.success) {
-        setVerifiedAccountName(response.data.accountName);
-        setAccountName(response.data.accountName);
-      } else {
-        toast({ title: 'Error', description: response.data.error || 'Failed to verify account.', status: 'error', duration: 5000, isClosable: true });
-      }
-    } catch (error) {
-      toast({ title: 'Error', description: error.response?.data?.error || 'Account verification failed.', status: 'error', duration: 5000, isClosable: true });
-    } finally {
-      setIsVerifying(false);
-    }
-  };
-
-  const handleWithdraw = async () => {
-    if (!amount || amount <= 0 || amount > walletBalance) {
-      toast({ title: 'Error', description: 'Invalid amount.', status: 'error', duration: 5000, isClosable: true });
-      return;
-    }
-    if (!bankCode || !accountNumber || !accountName) {
-      toast({ title: 'Error', description: 'Please complete all fields.', status: 'error', duration: 5000, isClosable: true });
-      return;
-    }
-    setIsSubmitting(true);
-    try {
-      const response = await retryAsync(() => dispatch(withdrawFunds({ amount, bankCode, accountNumber, accountName })).unwrap());
-      if (response.success) {
-        toast({ title: 'Success', description: `Withdrawal of ₦${amount.toFixed(2)} initiated.`, status: 'success', duration: 5000, isClosable: true });
-        onClose();
-      } else {
-        toast({ title: 'Error', description: response.error || 'Withdrawal failed.', status: 'error', duration: 5000, isClosable: true });
-      }
-    } catch (error) {
-      toast({ title: 'Error', description: error.message || 'Withdrawal failed. Please check your network and try again.', status: 'error', duration: 5000, isClosable: true });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  return (
-    <Modal isOpen={isOpen} onClose={onClose} isCentered size={{ base: 'full', sm: 'lg' }}>
-      <ModalOverlay />
-      <ModalContent>
-        <ModalHeader color={textColor}>Withdraw Funds</ModalHeader>
-        <ModalCloseButton />
-        <ModalBody px={{ base: 4, sm: 6 }} py={4}>
-          <FormControl mb={4}>
-            <FormLabel color={textColor}>Amount (₦)</FormLabel>
-            <NumberInput min={100} max={walletBalance} onChange={(value) => setAmount(Number(value))}>
-              <NumberInputField />
-              <NumberInputStepper>
-                <NumberIncrementStepper />
-                <NumberDecrementStepper />
-              </NumberInputStepper>
-            </NumberInput>
-          </FormControl>
-          <FormControl mb={4}>
-            <FormLabel color={textColor}>Bank</FormLabel>
-            <Select
-              placeholder="Select bank"
-              value={bankCode}
-              onChange={(e) => setBankCode(e.target.value)}
-              color={textColor}
-            >
-              {banks.map((bank) => (
-                <option key={bank.code} value={bank.code}>{bank.name}</option>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl mb={4}>
-            <FormLabel color={textColor}>Account Number</FormLabel>
-            <Input
-              value={accountNumber}
-              onChange={(e) => setAccountNumber(e.target.value)}
-              placeholder="Enter 10-digit account number"
-              maxLength={10}
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              color={textColor}
-            />
-          </FormControl>
-          <FormControl mb={4}>
-            <FormLabel color={textColor}>Account Name</FormLabel>
-            <Input
-              value={accountName}
-              onChange={(e) => setAccountName(e.target.value)}
-              placeholder="Enter account name"
-              isDisabled={!!verifiedAccountName}
-              color={textColor}
-            />
-          </FormControl>
-          <Button
-            colorScheme="blue"
-            onClick={verifyAccount}
-            isLoading={isVerifying}
-            loadingText="Verifying..."
-            size={{ base: 'sm', sm: 'md' }}
-            mb={4}
-          >
-            Verify Account
-          </Button>
-          {verifiedAccountName && (
-            <Text color={subtleTextColor}>Verified Account Name: {verifiedAccountName}</Text>
-          )}
-        </ModalBody>
-        <ModalFooter flexDir={{ base: 'column', sm: 'row' }} gap={2}>
-          <Button
-            colorScheme="blue"
-            onClick={handleWithdraw}
-            isLoading={isSubmitting}
-            loadingText="Processing..."
-            size={{ base: 'sm', sm: 'md' }}
-            mr={{ sm: 3 }}
-            mb={{ base: 2, sm: 0 }}
-          >
-            Withdraw
-          </Button>
-          <Button variant="ghost" onClick={onClose} size={{ base: 'sm', sm: 'md' }}>
-            Cancel
-          </Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
-  );
-};
-
-const Profile = () => {
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
-  const toast = useToast();
-  const { isOpen: isFundOpen, onOpen: onFundOpen, onClose: onFundClose } = useDisclosure();
-  const { isOpen: isWithdrawOpen, onOpen: onWithdrawOpen, onClose: onWithdrawClose } = useDisclosure();
-  const { isOpen: isAmountOpen, onOpen: onAmountOpen, onClose: onAmountClose } = useDisclosure();
-  const { user, wallet, paymentDetails, loading, error } = useSelector((state) => state.wallet);
-  const transactions = wallet?.transactions || [];
-  const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({ firstName: '', lastName: '', phoneNumber: '' });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isAuthLoading, setIsAuthLoading] = useState(true);
-  const [authError, setAuthError] = useState(null);
-  const [fundingAmount, setFundingAmount] = useState(null);
-  const textColor = useColorModeValue('gray.800', 'white');
-  const subtleTextColor = useColorModeValue('gray.600', 'gray.300');
-  const boxBg = useColorModeValue('white', 'gray.800');
-  const cardBg = useColorModeValue('gray.50', 'gray.700');
-  const avatarSvg = user?.email ? multiavatar(user.email) : multiavatar('default');
-
-  const handleCheckFundingReadiness = async () => {
-    if (isSubmitting) {
-      toast({
-        title: 'Please Wait',
-        description: 'A funding request is already in progress. Please wait.',
-        status: 'warning',
-        duration: 5000,
-        isClosable: true,
-      });
-      return;
-    }
-    try {
-      setIsSubmitting(true);
-      const token = localStorage.getItem('access-token');
-      if (!token) {
-        toast({
-          title: 'Authentication Error',
-          description: 'No authentication token found. Please log in again.',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-          action: {
-            label: 'Log In',
-            onClick: () => navigate('/login'),
-          },
-        });
-        return;
-      }
-
-      const response = await retryAsync(() =>
-        axios.post(
-          `${BASE_URL}/api/wallet/check-funding-readiness`,
-          {},
-          { headers: { Authorization: `Bearer ${token}` }, params: { noCache: Date.now() } }
-        )
-      );
-
-      if (response.data.success) {
-        onAmountOpen();
-      } else {
-        toast({
-          title: 'Funding Unavailable',
-          description: response.data.error || 'Funding is not available at the moment.',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-          action: {
-            label: 'Retry',
-            onClick: () => handleCheckFundingReadiness(),
-          },
-        });
-      }
-    } catch (error) {
-      const status = error.response?.status;
-      let errorMessage = 'Failed to check funding readiness. Please check your network and try again.';
-      let action = { label: 'Retry', onClick: () => handleCheckFundingReadiness() };
-
-      if (status === 404) {
-        errorMessage = 'User account not found. Please log in again or contact support.';
-        action = { label: 'Log In', onClick: () => navigate('/login') };
-      } else if (status === 401) {
-        errorMessage = 'Session expired or invalid. Please log in again.';
-        action = { label: 'Log In', onClick: () => navigate('/login') };
-      } else if (status === 429) {
-        errorMessage = 'Too many requests. Please wait a moment and try again.';
-        action = { label: 'Retry', onClick: () => handleCheckFundingReadiness() };
-      }
-
-      toast({
-        title: 'Funding Unavailable',
-        description: errorMessage,
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-        action,
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  useEffect(() => {
-    const initialize = async () => {
-      const token = localStorage.getItem('access-token');
-      if (!token) {
-        setAuthError('No authentication token found. Please log in again.');
-        setIsAuthLoading(false);
-        navigate('/login');
-        return;
-      }
-
-      try {
-        const decoded = jwtDecode(token);
-        const isExpired = decoded.exp * 1000 < Date.now();
-        if (isExpired) {
-          setAuthError('Your session has expired. Please log in again.');
-          localStorage.removeItem('access-token');
-          setIsAuthLoading(false);
-          navigate('/login');
-          return;
+        if (data?.transactionId) {
+          dispatch(fetchSingleTransaction(data.transactionId)).unwrap().catch((err) => {
+            console.error('Failed to fetch new transaction:', err);
+          });
         }
+      }
+    });
 
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        const result = await retryAsync(() => dispatch(fetchInitialData()).unwrap());
-        if (!result.success) {
-          let errorMessage = result.error || 'Failed to authenticate. Please log in again.';
-          if (result.status === 401) {
-            errorMessage = 'Session invalid or expired. Please log in again.';
-            localStorage.removeItem('access-token');
-            navigate('/login');
-          } else if (result.status === 404) {
-            errorMessage = 'User account not found. Please contact support.';
-          } else if (result.status === 503) {
-            errorMessage = 'Database unavailable. Please try again later.';
+    socket.on('transactionCompleted', (data) => {
+      if (data?.transactionId && Array.isArray(transactions) && transactions.some((t) => t._id === data.transactionId)) {
+        managedToast({
+          id: `transaction-completed-${data.transactionId || Date.now()}`,
+          title: 'Transaction Completed',
+          description: 'A transaction was completed.',
+          status: 'success',
+          duration: 5000,
+          isClosable: true,
+        });
+        dispatch(fetchSingleTransaction(data.transactionId)).unwrap().catch((err) => {
+          console.error('Failed to fetch updated transaction:', err);
+        });
+      }
+    });
+
+    socket.on('balanceUpdate', (data) => {
+      const userId = userDetails?.id || userDetails?.user?.id || 'unknown';
+      if (data?.userId === userId) {
+        managedToast({
+          id: `balance-update-${Date.now()}`,
+          title: 'Balance Updated',
+          description: 'Your wallet balance updated.',
+          status: 'info',
+          duration: 5000,
+          isClosable: true,
+        });
+        fetchWalletBalance();
+      }
+    });
+
+    socket.on('transactionUpdated', async (data) => {
+      if (data?.transactionId && Array.isArray(transactions) && transactions.some((t) => t?._id === data.transactionId)) {
+        managedToast({
+          id: `transaction-updated-${data.transactionId || Date.now()}`,
+          title: 'Transaction Updated',
+          description: data.message || 'Transaction details updated.',
+          status: 'info',
+          duration: 5000,
+          isClosable: true,
+        });
+        let attempts = 0;
+        const maxAttempts = 3;
+        const baseDelay = 1000;
+
+        while (attempts < maxAttempts) {
+          try {
+            await dispatch(fetchSingleTransaction(data.transactionId)).unwrap();
+            return;
+          } catch (err) {
+            attempts++;
+            if (err === 'Transaction not found' && attempts < maxAttempts) {
+              await new Promise(resolve => setTimeout(resolve, baseDelay * Math.pow(2, attempts)));
+              continue;
+            }
+            console.warn('Failed to fetch updated transaction:', err);
+            managedToast({
+              id: `fetch-transaction-error-${data.transactionId}`,
+              title: 'Error',
+              description: typeof err === 'string' ? err : err?.error || 'Failed to refresh transaction data.',
+              status: 'error',
+              duration: 5000,
+              isClosable: true,
+            });
+            break;
           }
-          setAuthError(errorMessage);
-          setIsAuthLoading(false);
-          return;
         }
-
-        setIsAuthLoading(false);
-      } catch (err) {
-        logger.error({ message: 'Authentication error', error: err.message, stack: err.stack });
-        let errorMessage = 'Authentication failed. Please log in again.';
-        if (err.response?.status === 401) {
-          localStorage.removeItem('access-token');
-          navigate('/login');
-        } else if (err.response?.status === 404) {
-          errorMessage = 'User account not found. Please contact support.';
-        } else if (err.response?.status === 503) {
-          errorMessage = 'Database unavailable. Please try again later.';
-        }
-        setAuthError(errorMessage);
-        setIsAuthLoading(false);
+      } else {
+        console.warn('Transaction not found or invalid:', data.transactionId);
       }
-    };
+    });
 
-    initialize();
-  }, [dispatch, navigate, toast]);
+    return () => {
+      socket.off('connect');
+      socket.off('connect_error');
+      socket.off('transactionCreated');
+      socket.off('transactionCompleted');
+      socket.off('balanceUpdate');
+      socket.off('transactionUpdated');
+      socket.disconnect();
+    };
+  }, [userDetails, transactions, dispatch, fetchWalletBalance, managedToast]);
 
   useEffect(() => {
-    if (user && !formData.firstName) {
-      setFormData({
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
-        phoneNumber: user.phoneNumber || '',
-      });
+    if (isFundingModalOpen && walletBalance === null) {
+      fetchWalletBalance();
     }
-  }, [user]);
+  }, [isFundingModalOpen, fetchWalletBalance]);
 
-  const handleFundWallet = async (amount) => {
-    if (isSubmitting || loading) {
-      toast({
-        title: 'Please Wait',
-        description: 'A funding request is already in progress. Please wait.',
+  const debouncedSearch = useCallback(debounce((value) => setSearchQuery(value), 300), []);
+
+  const filteredTransactions = useMemo(() => {
+    console.log('Filtering transactions:', transactions);
+    if (!Array.isArray(transactions) || transactions.length === 0) {
+      console.log('No transactions or invalid transactions array');
+      return [];
+    }
+    const query = searchQuery.toLowerCase().trim();
+    const filtered = transactions.filter(t => {
+      if (!t || !t._id) return false;
+      if (activeTab === 'active' && t.status !== 'pending' && t.status !== 'funded') return false;
+      if (activeTab === 'completed' && t.status !== 'completed') return false;
+      if (activeTab === 'canceled' && t.status !== 'canceled') return false;
+      const participantName = t.participants?.length > 0 && t.participants[0]?.userId
+        ? `${t.participants[0].userId.firstName || ''} ${t.participants[0].userId.lastName || ''}`.trim().toLowerCase() || t.participants[0]?.userId?.email?.toLowerCase() || ''
+        : t.userId?.email?.toLowerCase() || '';
+      const matches = (
+        participantName.includes(query) ||
+        (t.productDetails?.description?.toLowerCase() || '').includes(query) ||
+        (t.paymentName?.toLowerCase() || '').includes(query) ||
+        t._id.toLowerCase().includes(query) ||
+        (t.email?.toLowerCase() || '').includes(query)
+      );
+      console.log(`Transaction ${t._id} matches filter:`, matches);
+      return matches;
+    }).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    console.log('Filtered and sorted transactions:', filtered);
+    return filtered;
+  }, [transactions, activeTab, searchQuery]);
+
+  const handleChat = async (transactionId) => {
+    try {
+      const res = await axios.post(`${BASE_URL}/api/transactions/create-chatroom`, { transactionId }, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('access-token')}` },
+      });
+      if (res.data?.success && res.data.chatroomId) {
+        navigate(`/chat/${res.data.chatroomId}`);
+      } else {
+        throw new Error('Failed to create chatroom');
+      }
+    } catch (error) {
+      managedToast({ id: `chat-error-${transactionId}`, title: 'Error', description: error.response?.data?.error || error.message, status: 'error', duration: 5000, isClosable: true });
+    }
+  };
+
+  const handleWaybill = (transactionId, isBuyer) => {
+    const transaction = transactions.find(t => t._id === transactionId);
+    if (!transaction) {
+      managedToast({
+        id: `waybill-error-${transactionId}`,
+        title: 'Error',
+        description: 'Transaction not found.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+    if (!isBuyer && !transaction?.locked) {
+      managedToast({
+        id: `waybill-error-${transactionId}`,
+        title: 'Action Restricted',
+        description: 'Seller cannot fill or carry out waybill until buyer has funded the transaction.',
         status: 'warning',
         duration: 5000,
         isClosable: true,
       });
       return;
     }
+    if (isBuyer) {
+      setBuyerShowWaybillPopup(prev => ({ ...prev, [transactionId]: true }));
+      fetchBuyerWaybillDetails(transactionId);
+    } else {
+      setShowWaybillPopup(prev => ({ ...prev, [transactionId]: true }));
+      setWaybillDetails(prev => ({
+        ...prev,
+        item: transaction?.productDetails?.description || '',
+      }));
+    }
+  };
+
+  const fetchBuyerWaybillDetails = async (transactionId) => {
     try {
-      setIsSubmitting(true);
-      const response = await retryAsync(() =>
-        dispatch(fundWallet({
-          amount,
-          email: user.email,
-          phoneNumber: user.phoneNumber,
-          userId: user._id,
-        })).unwrap()
-      );
-      if (response.success) {
-        setFundingAmount(amount);
-        dispatch(setPaymentDetails({ ...response.data, amount }));
-        if (response.data.pendingTransactions?.length > 0) {
-          toast({
-            title: 'Pending Transactions',
-            description: `You have ${response.data.pendingTransactions.length} pending transaction(s). Check the Transactions tab.`,
-            status: 'info',
+      const res = await axios.get(`${BASE_URL}/api/transactions/waybill-details/${transactionId}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("access-token")}` },
+      });
+      if (res.data?.success && res.data.data) {
+        setBuyerWaybillDetails(prev => ({ ...prev, [transactionId]: res.data.data }));
+      } else {
+        setBuyerWaybillDetails(prev => ({ ...prev, [transactionId]: {} }));
+      }
+    } catch (error) {
+      managedToast({ id: `waybill-fetch-error-${transactionId}`, title: "Error", description: "Failed to retrieve waybill details", status: "error", duration: 5000, isClosable: true });
+      setBuyerWaybillDetails(prev => ({ ...prev, [transactionId]: {} }));
+    }
+  };
+
+  const handleWaybillSubmit = async (transactionId) => {
+    const newErrors = {};
+    ["shippingAddress", "trackingNumber", "deliveryDate"].forEach(key => {
+      if (!waybillDetails[key]) newErrors[key] = `${key.charAt(0).toUpperCase() + key.slice(1)} is required`;
+    });
+    if (!waybillDetails.image) newErrors.image = "Image is required";
+
+    if (Object.keys(newErrors).length) {
+      setErrors(newErrors);
+      return;
+    }
+    setErrors({});
+    const formData = new FormData();
+    formData.append("transactionId", transactionId);
+    formData.append("item", waybillDetails.item);
+    formData.append("shippingAddress", waybillDetails.shippingAddress);
+    formData.append("trackingNumber", waybillDetails.trackingNumber);
+    formData.append("deliveryDate", waybillDetails.deliveryDate);
+    if (waybillDetails.image) formData.append("image", waybillDetails.image);
+
+    try {
+      const response = await axios.post(`${BASE_URL}/api/transactions/submit-waybill`, formData, {
+        headers: { "Content-Type": "multipart/form-data", Authorization: `Bearer ${localStorage.getItem("access-token")}` },
+      });
+      if (response.data.success) {
+        managedToast({ id: `waybill-success-${transactionId}`, title: "Waybill Submitted", status: "success", duration: 3000, isClosable: true });
+        setShowWaybillPopup(prev => ({ ...prev, [transactionId]: false }));
+        setWaybillDetails({ item: "", image: null, imagePreview: null, shippingAddress: "", trackingNumber: "", deliveryDate: "" });
+        dispatch(fetchSingleTransaction(transactionId)).unwrap().catch(err => {
+          console.error('Refresh after waybill submit failed:', err);
+        });
+      } else {
+        throw new Error(response.data.error || "Failed to submit waybill");
+      }
+    } catch (error) {
+      managedToast({ id: `waybill-error-${transactionId}`, title: "Error", description: error.response?.data?.error || error.message, status: "error", duration: 5000, isClosable: true });
+    }
+  };
+
+  const downloadImage = (url) => {
+    if (!url) return;
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = url.split("/").pop() || "waybill-image";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const openCancelModal = (transactionId) => {
+    setCancelTransactionId(transactionId);
+    setCancelModalVisible(true);
+  };
+
+  const cancelTransactionAction = async (transactionId) => {
+    if (isConfirming[transactionId]) return;
+    setIsConfirming(prev => ({ ...prev, [transactionId]: true }));
+    try {
+      const response = await dispatch(cancelTransaction(transactionId)).unwrap();
+      managedToast({
+        id: `cancel-success-${transactionId}`,
+        title: 'Cancellation Requested',
+        description: response.message.includes('Waiting')
+          ? response.message
+          : response.refunded > 0
+            ? `Transaction cancelled. Refunded ₦${response.refunded.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
+            : 'Transaction cancelled successfully.',
+        status: response.message.includes('Waiting') ? 'info' : 'success',
+        duration: 5000,
+        isClosable: true,
+      });
+    } catch (error) {
+      const errorMessage = error.error || 'Failed to cancel transaction';
+      if (errorMessage === 'Unauthorized to cancel this transaction') {
+        managedToast({
+          id: `cancel-unauthorized-${transactionId}`,
+          title: 'Unauthorized',
+          description: 'You are not authorized to cancel this transaction.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+      } else if (errorMessage === 'Only pending or funded transactions can be cancelled') {
+        managedToast({
+          id: `cancel-status-error-${transactionId}`,
+          title: 'Invalid Status',
+          description: 'Only pending or funded transactions can be cancelled.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+      } else {
+        managedToast({
+          id: `cancel-error-${transactionId}`,
+          title: 'Error',
+          description: errorMessage,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+      }
+    } finally {
+      setIsConfirming(prev => ({ ...prev, [transactionId]: false }));
+      setCancelModalVisible(false);
+      setCancelTransactionId(null);
+    }
+  };
+
+  const handleConfirm = async (transactionId) => {
+    const userId = userDetails?.id || userDetails?.user?.id || 'unknown';
+    if (isConfirming[transactionId] || !userId) return;
+    setIsConfirming(prev => ({ ...prev, [transactionId]: true }));
+    const transaction = transactions.find(t => t._id === transactionId);
+    if (!transaction || !transaction.userId?._id || !transaction.participants?.length || (transaction.status !== 'pending' && transaction.status !== 'funded')) {
+      managedToast({
+        id: `confirm-error-${transactionId}`,
+        title: 'Error',
+        description: !transaction ? 'Transaction not found' : !transaction.userId?._id ? 'Transaction owner not found' : !transaction.participants?.length ? 'No participant' : 'Only pending or funded transactions can be confirmed',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      setIsConfirming(prev => ({ ...prev, [transactionId]: false }));
+      return;
+    }
+
+    const isCreator = userId === transaction.userId._id.toString();
+    const participant = transaction.participants.find(p => p.userId.toString() === userId);
+    const isBuyer = isCreator ? transaction.selectedUserType === 'buyer' : participant?.role === 'buyer';
+
+    if (isBuyer && !transaction.locked) {
+      try {
+        const amount = parseFloat(transaction.paymentAmount);
+        if (isNaN(amount)) throw new Error('Invalid payment amount');
+        await fetchWalletBalance();
+        if (walletBalance >= amount) {
+          await dispatch(fundTransaction({ transactionId: transaction._id, amount })).unwrap();
+          managedToast({ id: `fund-success-${transaction._id}`, title: 'Funded', description: 'Funded from wallet.', status: 'success', duration: 5000, isClosable: true });
+        } else {
+          setCurrentTransaction(transaction);
+          openFundingModal();
+          setIsConfirming(prev => ({ ...prev, [transactionId]: false }));
+          return;
+        }
+      } catch (error) {
+        managedToast({ id: `fund-error-${transaction._id}`, title: 'Error', description: error.message || 'Failed to fund', status: 'error', duration: 5000, isClosable: true });
+        setIsConfirming(prev => ({ ...prev, [transactionId]: false }));
+        return;
+      }
+    }
+
+    setSelectedTransactionId(transactionId);
+    setModalVisible(true);
+    setIsConfirming(prev => ({ ...prev, [transactionId]: false }));
+  };
+
+  const completeTransaction = async (transactionId) => {
+    if (isConfirming[transactionId]) return;
+    setIsConfirming(prev => ({ ...prev, [transactionId]: true }));
+    try {
+      const response = await dispatch(confirmTransaction(transactionId)).unwrap();
+      const transaction = response.transaction; // Extract transaction from response
+      managedToast({
+        id: `confirm-success-${transactionId}`,
+        title: transaction.status === 'completed' ? 'Completed' : 'Confirmation Recorded',
+        description: transaction.status === 'completed' ? 'Funds released.' : 'Waiting for other party.',
+        status: transaction.status === 'completed' ? 'success' : 'info',
+        duration: 5000,
+        isClosable: true,
+      });
+    } catch (error) {
+      const errorMessage = error.error || error.message || 'Failed to confirm';
+      if (errorMessage === 'Buyer has already confirmed this transaction' || errorMessage === 'Seller has already confirmed this transaction') {
+        managedToast({
+          id: `confirm-already-${transactionId}`,
+          title: 'Already Confirmed',
+          description: 'You have already confirmed this transaction. Waiting for the other party.',
+          status: 'info',
+          duration: 5000,
+          isClosable: true,
+        });
+      } else if (errorMessage.includes && errorMessage.includes('Insufficient funds')) {
+        const transaction = transactions.find(t => t._id === transactionId);
+        setCurrentTransaction(transaction);
+        openFundingModal();
+      } else {
+        managedToast({
+          id: `confirm-error-${transactionId}`,
+          title: 'Error',
+          description: errorMessage,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+      }
+    } finally {
+      setIsConfirming(prev => ({ ...prev, [transactionId]: false }));
+      setModalVisible(false);
+      setSelectedTransactionId(null);
+    }
+  };
+
+  const handleFund = async (transaction) => {
+    if (!transaction || !transaction._id || transaction.locked || !transaction.paymentAmount || parseFloat(transaction.paymentAmount) <= 0) {
+      managedToast({
+        id: `fund-error-${transaction?._id || 'unknown'}`,
+        title: 'Error',
+        description: 'Invalid transaction.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+    setCurrentTransaction(transaction);
+    await fetchWalletBalance();
+    openFundingModal();
+  };
+
+  const confirmFunding = async (transaction, setError) => {
+    if (!transaction || !transaction.paymentAmount) {
+      managedToast({
+        id: `fund-error-${transaction?._id || 'unknown'}`,
+        title: 'Error',
+        description: 'Invalid transaction.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      closeFundingModal();
+      return;
+    }
+    setIsConfirming(prev => ({ ...prev, [transaction._id]: true }));
+    try {
+      const amount = parseFloat(transaction.paymentAmount);
+      if (isNaN(amount)) throw new Error('Invalid payment amount');
+      await dispatch(fundTransaction({ transactionId: transaction._id, amount })).unwrap();
+      managedToast({
+        id: `fund-success-${transaction._id}`,
+        title: 'Funded',
+        description: 'Funded from wallet.',
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+      });
+      closeFundingModal();
+      await fetchWalletBalance();
+      dispatch(fetchSingleTransaction(transaction._id)).unwrap().catch(err => {
+        console.error('Refresh after funding failed:', err);
+      });
+    } catch (error) {
+      if (error.message?.includes('Insufficient')) {
+        setError('Insufficient wallet balance. Please top up your wallet in your Profile to fund this transaction.');
+      } else {
+        managedToast({
+          id: `fund-error-${transaction._id}`,
+          title: 'Error',
+          description: error.message || 'Failed to fund',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+      }
+    } finally {
+      setIsConfirming(prev => ({ ...prev, [transaction._id]: false }));
+    }
+  };
+
+  const handleEditPayment = (transaction) => {
+    if (!transaction || !transaction._id) {
+      managedToast({
+        id: `edit-error-${transaction?._id || 'unknown'}`,
+        title: 'Error',
+        description: 'Invalid transaction. Please try again.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+    setCurrentTransaction(transaction);
+    setPaymentDetails({ paymentAmount: transaction.paymentAmount || "" });
+    setShowPaymentDetailsModal(true);
+  };
+
+  const handlePaymentSubmit = async () => {
+    if (!currentTransaction || !currentTransaction._id) {
+      managedToast({
+        id: `payment-error-no-transaction`,
+        title: 'Error',
+        description: 'No transaction selected. Please try again.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      setShowPaymentDetailsModal(false);
+      setPaymentDetails({ paymentAmount: '' });
+      setPaymentErrors({});
+      return;
+    }
+
+    if (!paymentDetails.paymentAmount || parseFloat(paymentDetails.paymentAmount) <= 0) {
+      setPaymentErrors({ paymentAmount: 'Amount must be greater than zero' });
+      return;
+    }
+
+    setPaymentErrors({});
+    try {
+      const updatedTransaction = await dispatch(updateTransaction({
+        transactionId: currentTransaction._id,
+        data: { paymentAmount: parseFloat(paymentDetails.paymentAmount) }
+      })).unwrap();
+      managedToast({
+        id: `payment-success-${currentTransaction._id}`,
+        title: 'Updated',
+        description: `Payment amount updated to ₦${parseFloat(paymentDetails.paymentAmount).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`,
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+      setShowPaymentDetailsModal(false);
+      setCurrentTransaction(null);
+      setPaymentDetails({ paymentAmount: '' });
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      try {
+        await dispatch(fetchSingleTransaction(currentTransaction._id)).unwrap();
+      } catch (err) {
+        console.error('Refresh after payment update failed:', err);
+        if (err !== 'Resource not found. Retrying may resolve this.') {
+          managedToast({
+            id: `refresh-error-${currentTransaction._id}`,
+            title: 'Error',
+            description: typeof err === 'string' ? err : err?.error || 'Failed to refresh transaction data.',
+            status: 'error',
             duration: 5000,
             isClosable: true,
           });
         }
-        if (response.data.authorization_url) {
-          window.location.href = response.data.authorization_url;
-        } else {
-          onFundOpen();
-        }
-      } else {
-        toast({
-          title: 'Error',
-          description: response.error || 'Failed to initiate funding.',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
       }
     } catch (error) {
-      let errorMessage = error.message || 'Failed to initiate funding. Please check your network and try again.';
-      if (error.response?.status === 502 && error.message.includes('Payment provider authentication failed')) {
-        errorMessage = 'Payment provider configuration issue. Please contact support.';
-      } else if (error.response?.status === 429) {
-        errorMessage = 'Too many requests. Please wait a moment and try again.';
-      } else if (error.response?.status === 401) {
-        errorMessage = 'Authentication failed. Please log in again.';
-        navigate('/login');
-      }
-      toast({
+      console.error('Payment update error:', error);
+      const errorMessage = typeof error === 'string'
+        ? error
+        : error?.message || error?.error || 'Failed to update payment details. Please try again.';
+      managedToast({
+        id: `payment-error-${currentTransaction._id || 'unknown'}`,
         title: 'Error',
         description: errorMessage,
         status: 'error',
         duration: 5000,
         isClosable: true,
       });
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
-  const handleCheckStatus = async () => {
-    const ref = paymentDetails?.reference || paymentDetails?.paystackReference;
-    if (!ref) {
-      toast({ title: 'Error', description: 'No reference available.', status: 'error', duration: 5000, isClosable: true });
-      return;
-    }
-    try {
-      const response = await retryAsync(() => dispatch(checkFundingStatus(ref)).unwrap());
-      if (response.success && response.data.transaction?.status === 'completed') {
-        toast({
-          title: 'Success',
-          description: `Successfully funded ₦${response.data.transaction.amount.toFixed(2)}. Your wallet has been updated.`,
-          status: 'success',
-          duration: 5000,
-          isClosable: true,
-        });
-        dispatch(clearPaymentDetails());
-        setFundingAmount(null);
-        onFundClose();
-        await retryAsync(() => dispatch(fetchInitialData()).unwrap());
-      } else {
-        toast({
-          title: response.data.transaction?.status === 'failed' ? 'Failed' : 'Pending',
-          description: response.message || 'Transaction is still processing. Please check again later.',
-          status: response.data.transaction?.status === 'failed' ? 'error' : 'info',
-          duration: 5000,
-          isClosable: true,
-        });
-      }
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to check funding status. Please check your network and try again.',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-    }
-  };
-
-  const handleUpdateProfile = async () => {
-    setIsSubmitting(true);
-    try {
-      const response = await retryAsync(() => axios.put('/api/users/update', formData));
-      if (response.data.success) {
-        dispatch(setWallet({ ...user, ...formData }));
-        setIsEditing(false);
-        toast({
-          title: 'Success',
-          description: 'Profile updated successfully.',
-          status: 'success',
-          duration: 5000,
-          isClosable: true,
-        });
-      } else {
-        toast({
-          title: 'Error',
-          description: response.data.error || 'Failed to update profile.',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
-      }
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: error.response?.data?.error || 'Failed to update profile. Please check your network and try again.',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleRefresh = async () => {
-    try {
-      const result = await retryAsync(() => dispatch(fetchInitialData()).unwrap());
-      if (result.success) {
-        toast({
-          title: 'Success',
-          description: `Wallet balance refreshed. New balance: ₦${result.data.wallet.balance.toFixed(2)}`,
-          status: 'success',
-          duration: 5000,
-          isClosable: true,
-        });
-      } else {
-        toast({
-          title: 'Error',
-          description: result.error || 'Failed to refresh wallet balance.',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
-      }
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to refresh wallet balance. Please check your network and try again.',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-        action: error.response?.status === 401 ? {
-          label: 'Log In',
-          onClick: () => navigate('/login'),
-        } : null,
-      });
-    }
-  };
-
-  const handleRetryAuth = async () => {
-    setIsAuthLoading(true);
-    setAuthError(null);
-    await handleRefresh();
-    setIsAuthLoading(false);
-  };
-
-  if (isAuthLoading) {
-    return (
-      <Flex justify="center" align="center" minH="50vh">
-        <Spinner size="xl" color="blue.500" />
-      </Flex>
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text).then(() =>
+      managedToast({ id: `copy-${text}`, title: 'Copied', status: 'success', duration: 2000, isClosable: true })
     );
-  }
+  };
 
-  if (authError) {
-    return (
-      <Flex justify="center" align="center" minH="50vh" flexDir="column">
-        <Text color={textColor} fontSize="xl" mb={4}>{authError}</Text>
-        <Button
-          colorScheme="blue"
-          onClick={handleRetryAuth}
-          isLoading={isAuthLoading}
-          mb={2}
-        >
-          Retry
-        </Button>
-        <Button
-          colorScheme="red"
-          onClick={() => {
-            localStorage.removeItem('access-token');
-            navigate('/login');
-          }}
-        >
-          Log In Again
-        </Button>
-      </Flex>
-    );
-  }
+  const toggleDescription = (transactionId) => {
+    setExpandedDescriptions(prev => ({ ...prev, [transactionId]: !prev[transactionId] }));
+  };
 
-  if (!user) {
-    return (
-      <Flex justify="center" align="center" minH="50vh" flexDir="column">
-        <Text color={textColor} fontSize="xl" mb={4}>Unable to load profile data. Please try again.</Text>
-        <Button
-          colorScheme="blue"
-          onClick={handleRetryAuth}
-          isLoading={loading}
-        >
-          Retry
-        </Button>
-      </Flex>
-    );
-  }
-
-  const renderTransaction = (tx) => (
-    <Box
-      key={tx.reference}
-      p={4}
-      bg={cardBg}
-      borderRadius="md"
-      boxShadow="sm"
-      _hover={{ boxShadow: 'md' }}
-      transition="all 0.2s"
-    >
-      <Flex justify="space-between" align="center">
-        <VStack align="start" spacing={1}>
-          <Flex align="center">
-            <Text fontWeight="bold" color={textColor}>
-              {tx.type.charAt(0).toUpperCase() + tx.type.slice(1)}: ₦{tx.amount.toFixed(2)}
-            </Text>
-            <Badge
-              ml={2}
-              colorScheme={tx.status === 'completed' ? 'green' : tx.status === 'pending' ? 'yellow' : 'red'}
-            >
-              {tx.status.charAt(0).toUpperCase() + tx.status.slice(1)}
-            </Badge>
-          </Flex>
-          <Text fontSize="sm" color={subtleTextColor}>
-            Ref: {tx.reference}
-          </Text>
-        </VStack>
-        <Text fontSize="sm" color={subtleTextColor}>
-          {new Date(tx.createdAt).toLocaleString()}
-        </Text>
-      </Flex>
-    </Box>
-  );
+  const isUserDataLoaded = userDetails && (userDetails.id || userDetails.user?.id || userDetails.email);
 
   return (
-    <ErrorBoundary>
-      <Container maxW="container.xl" py={8}>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <Box bg={boxBg} p={6} borderRadius="lg" boxShadow="lg">
-            <Flex align="center" mb={6} flexDir={{ base: 'column', md: 'row' }} textAlign={{ base: 'center', md: 'left' }}>
-              <Avatar
-                size="xl"
-                src={`data:image/svg+xml;utf8,${encodeURIComponent(avatarSvg)}`}
-                mr={{ md: 4 }}
-                mb={{ base: 4, md: 0 }}
-              />
-              <Box>
-                <Heading size="lg" color={textColor}>
-                  {user.firstName} {user.lastName}
-                </Heading>
-                <Text color={subtleTextColor}>{user.email}</Text>
+    <Flex minH="100vh" bg={bgColor} direction={{ base: "column", md: "row" }}>
+      <Sidebar onShowProfile={() => setShowProfile(true)} onShowToggleComponent={() => setShowProfile(false)} onCollapseChange={setIsSidebarCollapsed} />
+      <Box flex={1} p={{ base: 4, md: 6 }} mt={{ base: "80px", md: 0 }} ml={{ base: 0, md: isSidebarCollapsed ? "80px" : "280px" }} overflowY="auto">
+        {!showProfile ? (
+          <Box maxW="1400px" mx="auto">
+            <MiniNav />
+            <Flex
+              justify="space-between"
+              align="start"
+              mb={6}
+              mt={{ base: 10, md: 20 }}
+              flexDir={{ base: "row", md: "row" }}
+              gap={4}
+            >
+              <Text fontSize={{ base: "2xl", md: "3xl" }} fontWeight="600" color={textColor}>Transactions</Text>
+              <Button
+                size="md"
+                bg="#B38939"
+                color="white"
+                _hover={{ bg: "#967532" }}
+                isLoading={transactionsLoading || walletLoading || userLoading}
+                onClick={() => dispatch(fetchInitialData())}
+              >
+                Refresh
+              </Button>
+            </Flex>
+
+            <Flex flexDir={{ base: "column", md: "row" }} gap={4} mb={6} mt={6}>
+              <Stack direction="row" spacing={3} flexWrap="wrap">
+                {["active", "completed", "canceled", "all"].map(tab => (
+                  <Button
+                    key={tab}
+                    size="md"
+                    bg={activeTab === tab ? "#8a6d27" : useColorModeValue('gray.200', 'gray.700')}
+                    color={activeTab === tab ? "white" : textColor}
+                    _hover={{ bg: activeTab === tab ? "#8a6d27" : useColorModeValue('gray.300', 'gray.600') }}
+                    onClick={() => setActiveTab(tab)}
+                    fontWeight="500"
+                    rounded="lg"
+                  >
+                    {tab.charAt(0).toUpperCase() + tab.slice(1)} ({tab === "all" ? (Array.isArray(transactions) ? transactions.length : 0) : (Array.isArray(transactions) ? transactions.filter(t => tab === "active" ? t.status === "pending" || t.status === "funded" : t.status === tab).length : 0)})
+                  </Button>
+                ))}
+              </Stack>
+              <Box pos="relative" w={{ base: "100%", md: "300px", lg: "360px" }} maxW="100%">
+                <Flex align="center" bg={cardBg} border="1px" borderColor={borderColor} rounded="lg" px={3} py={2} _focusWithin={{ borderColor: "#BB954D", boxShadow: "0 0 0 1px #BB954D" }}>
+                  <FiSearch color={subtleTextColor} size={16} />
+                  <Input
+                    placeholder="Search transactions..."
+                    value={searchQuery}
+                    onChange={(e) => debouncedSearch(e.target.value)}
+                    bg="transparent"
+                    border="none"
+                    color={textColor}
+                    fontSize="sm"
+                    pl={2}
+                    _focus={{ outline: "none" }}
+                    _placeholder={{ color: subtleTextColor }}
+                  />
+                  {searchQuery && (
+                    <IconButton
+                      aria-label="Clear search"
+                      icon={<MdClose />}
+                      size="xs"
+                      bg="transparent"
+                      color={subtleTextColor}
+                      _hover={{ color: textColor }}
+                      onClick={() => setSearchQuery("")}
+                    />
+                  )}
+                </Flex>
               </Box>
             </Flex>
 
-            {isEditing ? (
-              <Box mb={6}>
-                <Grid templateColumns={{ base: '1fr', md: '1fr 1fr' }} gap={4} mb={4}>
-                  <FormControl>
-                    <FormLabel color={textColor}>First Name</FormLabel>
-                    <Input
-                      value={formData.firstName}
-                      onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                      placeholder="First Name"
-                      color={textColor}
-                    />
-                  </FormControl>
-                  <FormControl>
-                    <FormLabel color={textColor}>Last Name</FormLabel>
-                    <Input
-                      value={formData.lastName}
-                      onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                      placeholder="Last Name"
-                      color={textColor}
-                    />
-                  </FormControl>
-                  <FormControl>
-                    <FormLabel color={textColor}>Phone Number</FormLabel>
-                    <Input
-                      value={formData.phoneNumber}
-                      onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-                      placeholder="Phone Number"
-                      type="tel"
-                      color={textColor}
-                    />
-                  </FormControl>
-                </Grid>
-                <Flex gap={2} justify={{ base: 'center', md: 'flex-start' }}>
-                  <Button
-                    leftIcon={<FaSave />}
-                    colorScheme="blue"
-                    onClick={handleUpdateProfile}
-                    isLoading={isSubmitting}
-                    size={{ base: 'sm', sm: 'md' }}
-                  >
-                    Save
-                  </Button>
-                  <Button
-                    leftIcon={<FaTimes />}
-                    variant="ghost"
-                    onClick={() => setIsEditing(false)}
-                    size={{ base: 'sm', sm: 'md' }}
-                  >
-                    Cancel
-                  </Button>
-                </Flex>
-              </Box>
+            {transactionsLoading || walletLoading || userLoading ? (
+              <TransactionLoader />
+            ) : transactionsError ? (
+              <Flex direction="column" align="center" justify="center" py={8}>
+                <Text fontSize="2xl" color={subtleTextColor}>⚠️</Text>
+                <Text color={subtleTextColor} fontSize="md" textAlign="center">Failed to load: {transactionsError}</Text>
+                <Button mt={4} size="md" bg="#BB954D" color="white" _hover={{ bg: "#967532" }} onClick={() => dispatch(fetchInitialData())}>Retry</Button>
+              </Flex>
+            ) : !Array.isArray(transactions) || transactions.length === 0 ? (
+              <Flex direction="column" align="center" justify="center" py={8}>
+                <Text fontSize="2xl" color={subtleTextColor}>📭</Text>
+                <Text color={subtleTextColor} fontSize="md" textAlign="center">{searchQuery ? "No matches found." : "No transactions available."}</Text>
+                <Button mt={4} size="md" bg="#BB954D" color="white" _hover={{ bg: "#967532" }} onClick={() => dispatch(fetchInitialData())}>Retry</Button>
+              </Flex>
             ) : (
-              <Box mb={6}>
-                <Text color={subtleTextColor} mb={2}>Phone: {user.phoneNumber || 'Not set'}</Text>
-                <Button
-                  leftIcon={<FaEdit />}
-                  colorScheme="blue"
-                  onClick={() => setIsEditing(true)}
-                  size={{ base: 'sm', sm: 'md' }}
-                >
-                  Edit Profile
-                </Button>
-              </Box>
+              <Grid templateColumns={{ base: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" }} gap={4}>
+                {filteredTransactions.map((transaction, index) => (
+                  <TransactionCard
+                    key={`${transaction._id}-${index}`}
+                    transaction={transaction}
+                    currentUser={userDetails || {}}
+                    isConfirming={isConfirming}
+                    handleChat={handleChat}
+                    handleWaybill={handleWaybill}
+                    handleConfirm={handleConfirm}
+                    handleFund={handleFund}
+                    handleEditPayment={handleEditPayment}
+                    openCancelModal={openCancelModal}
+                    copyToClipboard={copyToClipboard}
+                    toggleDescription={toggleDescription}
+                    expandedDescriptions={expandedDescriptions}
+                  />
+                ))}
+              </Grid>
             )}
-
-            <Divider my={6} />
-
-            <Box mb={6}>
-              <Flex align="center" mb={4}>
-                <Icon as={FaWallet} color="blue.500" mr={2} />
-                <Heading size="md" color={textColor}>
-                  Wallet
-                </Heading>
-              </Flex>
-              <Text color={textColor} fontSize="2xl" fontWeight="bold">
-                ₦{(wallet?.balance || 0).toFixed(2)}
-              </Text>
-              {error && (
-                <Text color="red.500" fontSize="sm" mt={2}>
-                  {error} Click "Refresh" to sync.
-                </Text>
-              )}
-              <Text color={subtleTextColor} fontSize="sm" mt={2}>
-                Click "Refresh" to update your balance after funding.
-              </Text>
-              <Flex gap={2} mt={4} flexWrap="wrap" justify={{ base: 'center', md: 'flex-start' }}>
-                <Button
-                  leftIcon={<FaCreditCard />}
-                  colorScheme="blue"
-                  onClick={handleCheckFundingReadiness}
-                  isLoading={isSubmitting || loading}
-                  isDisabled={isSubmitting || loading}
-                  size={{ base: 'sm', sm: 'md' }}
-                >
-                  Fund Wallet
-                </Button>
-                <Button
-                  leftIcon={<FaMoneyBillWave />}
-                  colorScheme="green"
-                  onClick={onWithdrawOpen}
-                  isDisabled={(wallet?.balance || 0) <= 0}
-                  size={{ base: 'sm', sm: 'md' }}
-                >
-                  Withdraw
-                </Button>
-                <Button
-                  leftIcon={<FaSync />}
-                  colorScheme="teal"
-                  onClick={handleRefresh}
-                  isLoading={loading}
-                  size={{ base: 'sm', sm: 'md' }}
-                >
-                  Refresh
-                </Button>
-              </Flex>
-            </Box>
-
-            <Divider my={6} />
-
-            <Box>
-              <Heading size="md" color={textColor} mb={4}>
-                Transactions
-              </Heading>
-              <Tabs variant="enclosed" colorScheme="blue">
-                <TabList>
-                  <Tab>All</Tab>
-                  <Tab>Pending</Tab>
-                  <Tab>Completed</Tab>
-                  <Tab>Failed</Tab>
-                </TabList>
-                <TabPanels>
-                  <TabPanel>
-                    {Array.isArray(transactions) && transactions.length > 0 ? (
-                      <VStack spacing={3}>
-                        {transactions.map(renderTransaction)}
-                      </VStack>
-                    ) : (
-                      <Text color={subtleTextColor}>No transactions available.</Text>
-                    )}
-                  </TabPanel>
-                  <TabPanel>
-                    {Array.isArray(transactions) && transactions.some(tx => tx.status === 'pending') ? (
-                      <VStack spacing={3}>
-                        {transactions.filter(tx => tx.status === 'pending').map(renderTransaction)}
-                      </VStack>
-                    ) : (
-                      <Text color={subtleTextColor}>No pending transactions.</Text>
-                    )}
-                  </TabPanel>
-                  <TabPanel>
-                    {Array.isArray(transactions) && transactions.some(tx => tx.status === 'completed') ? (
-                      <VStack spacing={3}>
-                        {transactions.filter(tx => tx.status === 'completed').map(renderTransaction)}
-                      </VStack>
-                    ) : (
-                      <Text color={subtleTextColor}>No completed transactions.</Text>
-                    )}
-                  </TabPanel>
-                  <TabPanel>
-                    {Array.isArray(transactions) && transactions.some(tx => tx.status === 'failed') ? (
-                      <VStack spacing={3}>
-                        {transactions.filter(tx => tx.status === 'failed').map(renderTransaction)}
-                      </VStack>
-                    ) : (
-                      <Text color={subtleTextColor}>No failed transactions.</Text>
-                    )}
-                  </TabPanel>
-                </TabPanels>
-              </Tabs>
-            </Box>
           </Box>
-        </motion.div>
+        ) : (
+          <Box maxW="1400px" mx="auto">
+            <Text fontSize="2xl" fontWeight="600" color={textColor} mb={4}>Profile</Text>
+          </Box>
+        )}
 
-        <FundAmountModal
-          isOpen={isAmountOpen}
-          onClose={onAmountClose}
-          onSubmit={handleFundWallet}
-        />
-        <PaymentInfoModal
-          isOpen={isFundOpen}
-          onClose={() => {
-            dispatch(clearPaymentDetails());
-            setFundingAmount(null);
-            onFundClose();
-          }}
-          paymentDetails={paymentDetails}
-          onStatusCheck={handleCheckStatus}
-          userName={`${user.firstName} ${user.lastName}`}
-          amount={fundingAmount}
-          pendingTransactions={transactions.filter(tx => tx.status === 'pending')}
-        />
-        <WithdrawalModal
-          isOpen={isWithdrawOpen}
-          onClose={onWithdrawClose}
-          walletBalance={wallet?.balance || 0}
-        />
-      </Container>
-    </ErrorBoundary>
+        {Object.entries(showWaybillPopup).map(([transactionId, isOpen]) => isOpen && (
+          <WaybillModal
+            key={`seller-${transactionId}`}
+            isOpen={isOpen}
+            onClose={() => {
+              setShowWaybillPopup(prev => ({ ...prev, [transactionId]: false }));
+              setWaybillDetails({ item: "", image: null, imagePreview: null, shippingAddress: "", trackingNumber: "", deliveryDate: "" });
+              setErrors({});
+            }}
+            transactionId={transactionId}
+            isBuyer={false}
+            details={waybillDetails}
+            setDetails={setWaybillDetails}
+            errors={errors}
+            handleSubmit={handleWaybillSubmit}
+            downloadImage={downloadImage}
+            isFunded={transactions.find(t => t._id === transactionId)?.locked}
+          />
+        ))}
+
+        {Object.entries(buyerShowWaybillPopup).map(([transactionId, isOpen]) => isOpen && (
+          <WaybillModal
+            key={`buyer-${transactionId}`}
+            isOpen={isOpen}
+            onClose={() => setBuyerShowWaybillPopup(prev => ({ ...prev, [transactionId]: false }))}
+            transactionId={transactionId}
+            isBuyer={true}
+            details={buyerWaybillDetails[transactionId] || {}}
+            setDetails={setBuyerWaybillDetails}
+            errors={errors}
+            handleSubmit={() => { }}
+            downloadImage={downloadImage}
+            isFunded={true}
+          />
+        ))}
+
+        {showPaymentDetailsModal && currentTransaction && (
+          <PaymentDetailsModal
+            isOpen={showPaymentDetailsModal}
+            onClose={() => {
+              setShowPaymentDetailsModal(false);
+              setCurrentTransaction(null);
+              setPaymentDetails({ paymentAmount: "" });
+              setPaymentErrors({});
+            }}
+            transaction={currentTransaction}
+            paymentDetails={paymentDetails}
+            setPaymentDetails={setPaymentDetails}
+            paymentErrors={paymentErrors}
+            handleSubmit={handlePaymentSubmit}
+          />
+        )}
+
+        {isFundingModalOpen && currentTransaction && (
+          <FundingModal
+            isOpen={isFundingModalOpen}
+            onClose={() => {
+              closeFundingModal();
+              setCurrentTransaction(null);
+              setWalletBalance(null);
+            }}
+            transaction={currentTransaction}
+            walletBalance={walletBalance}
+            confirmFunding={confirmFunding}
+            isLoading={isConfirming[currentTransaction?._id]}
+            fetchWalletBalance={fetchWalletBalance}
+          />
+        )}
+
+        <Modal isOpen={modalVisible} onClose={() => setModalVisible(false)} isCentered size="sm">
+          <ModalOverlay />
+          <ModalContent bg={cardBg} color={textColor} p={4} rounded="lg" border="1px" borderColor={borderColor}>
+            <ModalHeader fontSize="lg" fontWeight="600">Confirm Transaction</ModalHeader>
+            <ModalBody>
+              <Text fontSize="sm" color={subtleTextColor}>Are you sure? This cannot be undone.</Text>
+            </ModalBody>
+            <ModalFooter>
+              <Flex gap={3} w="full">
+                <Button size="sm" bg={useColorModeValue('gray.200', 'gray.600')} color={textColor} _hover={{ bg: useColorModeValue('gray.300', 'gray.700') }} onClick={() => setModalVisible(false)}>Cancel</Button>
+                <Button size="sm" bg="#BB954D" color="white" _hover={{ bg: "#967532" }} onClick={() => completeTransaction(selectedTransactionId)} isLoading={isConfirming[selectedTransactionId]}>Confirm</Button>
+              </Flex>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
+        <Modal isOpen={cancelModalVisible} onClose={() => setCancelModalVisible(false)} isCentered size="sm">
+          <ModalOverlay />
+          <ModalContent bg={cardBg} color={textColor} p={4} rounded="lg" border="1px" borderColor={borderColor}>
+            <ModalHeader fontSize="lg" fontWeight="600">Cancel Transaction</ModalHeader>
+            <ModalBody>
+              <Text fontSize="sm" color={subtleTextColor}>
+                Are you sure you want to cancel this transaction?{' '}
+                {transactions.find(t => t._id === cancelTransactionId)?.locked
+                  ? 'The other party must also confirm cancellation.'
+                  : 'This cannot be undone.'}
+              </Text>
+            </ModalBody>
+            <ModalFooter>
+              <Flex gap={3} w="full">
+                <Button size="sm" bg={useColorModeValue('gray.200', 'gray.600')} color={textColor} _hover={{ bg: useColorModeValue('gray.300', 'gray.700') }} onClick={() => setCancelModalVisible(false)}>No</Button>
+                <Button size="sm" bg="#ef4444" color="white" _hover={{ bg: "#dc2626" }} onClick={() => cancelTransactionAction(cancelTransactionId)} isLoading={isConfirming[cancelTransactionId]}>Yes</Button>
+              </Flex>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+      </Box>
+    </Flex>
   );
 };
 
-export default Profile;
-
-
-
-
-// Previous withdrawFunds function 
-// exports.withdrawFunds = async (req, res) => {
-//   const session = await mongoose.startSession();
-//   try {
-//     await session.withTransaction(async () => {
-//       const { amount, bankCode, accountNumber, accountName } = req.body;
-//       const userId = req.user?.id;
-
-//       if (!userId) {
-//         logger.error('User ID not found in request', { url: req.originalUrl, headers: req.headers });
-//         throw new Error('Unauthorized: User ID not found in request');
-//       }
-//       if (!amount || amount < 100 || !bankCode || !accountNumber || !accountName) {
-//         throw new Error('All fields are required. Minimum withdrawal is ₦100.');
-//       }
-
-//       logger.info('Withdraw funds request', { userId, amount, bankCode, accountNumber: accountNumber.slice(-4) });
-
-//       const wallet = await Wallet.findOne({ userId }).session(session);
-//       if (!wallet) {
-//         throw new Error('Wallet not found');
-//       }
-//       if (wallet.balance < amount) {
-//         throw new Error(`Insufficient wallet balance. Available: ₦${wallet.balance}, Requested: ₦${amount}`);
-//       }
-
-//       // Check Paystack balance with retries and delay
-//       let balanceResponse;
-//       let attempts = 0;
-//       const maxAttempts = 3;
-//       const delay = 2000; // 2 seconds delay between retries
-
-//       while (attempts < maxAttempts) {
-//         try {
-//           balanceResponse = await retryAsync(() =>
-//             axios.get('https://api.paystack.co/balance', {
-//               headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
-//               timeout: 10000,
-//             })
-//           );
-//           logger.info('Paystack balance response', {
-//             status: balanceResponse.data.status,
-//             data: balanceResponse.data.data,
-//           });
-//           break;
-//         } catch (error) {
-//           attempts++;
-//           logger.warn('Paystack balance check failed', {
-//             attempt: attempts,
-//             error: error.message,
-//             status: error.response?.status,
-//           });
-//           if (attempts === maxAttempts) {
-//             throw new Error('Failed to retrieve Paystack balance after retries');
-//           }
-//           await new Promise(resolve => setTimeout(resolve, delay));
-//         }
-//       }
-
-//       // Handle malformed balance response
-//       if (!balanceResponse.data?.status || !Array.isArray(balanceResponse.data.data)) {
-//         logger.error('Invalid Paystack balance response', { response: balanceResponse.data });
-//         throw new Error('Invalid response from Paystack balance check');
-//       }
-
-//       const transferBalance = balanceResponse.data.data.find(b => b.balance_type === 'transfers')?.balance / 100 || 0;
-//       const revenueBalance = balanceResponse.data.data.find(b => b.balance_type === 'revenue')?.balance / 100 || 0;
-//       const transferFee = amount > 5000 ? 10 + amount * 0.005 : amount > 500 ? 25 : 10;
-//       const totalAmount = amount + transferFee;
-
-//       logger.info('Paystack balance check', {
-//         transferBalance,
-//         revenueBalance,
-//         required: totalAmount,
-//         transferFee,
-//       });
-
-//       // Ensure sufficient funds in transfer balance or revenue balance
-//       if (totalAmount > transferBalance + revenueBalance) {
-//         throw new Error(
-//           `Insufficient Paystack balance. Transfer balance: ₦${transferBalance}, Revenue balance: ₦${revenueBalance}, Required: ₦${totalAmount} (including ₦${transferFee} fee)`
-//         );
-//       }
-
-//       // Validate bank details
-//       const banksResponse = await retryAsync(() =>
-//         axios.get('https://api.paystack.co/bank', {
-//           headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
-//           timeout: 10000,
-//         })
-//       );
-//       const validBank = banksResponse.data.data.find((bank) => bank.code === bankCode);
-//       if (!validBank) {
-//         throw new Error(`Invalid bank code: ${bankCode}`);
-//       }
-
-//       const verifyResponse = await retryAsync(() =>
-//         axios.get(`https://api.paystack.co/bank/resolve?account_number=${accountNumber}&bank_code=${bankCode}`, {
-//           headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
-//           timeout: 10000,
-//         })
-//       );
-//       if (!verifyResponse.data.status || verifyResponse.data.data.account_name.toUpperCase() !== accountName.toUpperCase()) {
-//         throw new Error('Account verification failed or name mismatch');
-//       }
-
-//       // Create transfer recipient
-//       let recipientCode;
-//       try {
-//         const recipientResponse = await retryAsync(() =>
-//           axios.post(
-//             'https://api.paystack.co/transferrecipient',
-//             {
-//               type: 'nuban',
-//               name: accountName,
-//               account_number: accountNumber,
-//               bank_code: bankCode,
-//               currency: 'NGN',
-//             },
-//             { headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` }, timeout: 10000 }
-//           )
-//         );
-//         recipientCode = recipientResponse.data.data.recipient_code;
-//       } catch (error) {
-//         throw new Error(`Failed to create transfer recipient: ${error.response?.data?.message || error.message}`);
-//       }
-
-//       // Record transaction
-//       const reference = `WDR_${userId}_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
-//       const transaction = {
-//         type: 'withdrawal',
-//         amount,
-//         reference,
-//         status: 'pending',
-//         metadata: {
-//           paymentGateway: 'Paystack',
-//           bankCode,
-//           accountNumber: accountNumber.slice(-4),
-//           accountName,
-//           recipientCode,
-//         },
-//         createdAt: new Date(),
-//       };
-//       wallet.transactions.push(transaction);
-//       wallet.balance -= amount;
-//       await wallet.save({ session });
-
-//       // Create notification
-//       await Notification.create(
-//         [
-//           {
-//             userId,
-//             title: 'Withdrawal Initiated',
-//             message: `Withdrawal request of ₦${amount.toFixed(2)} to ${accountName} initiated.`,
-//             transactionId: reference,
-//             type: 'withdrawal',
-//             status: 'pending',
-//             createdAt: new Date(),
-//           },
-//         ],
-//         { session }
-//       );
-
-//       // Initiate transfer
-//       const transferResponse = await retryAsync(() =>
-//         axios.post(
-//           'https://api.paystack.co/transfer',
-//           {
-//             source: 'balance',
-//             amount: Math.round(amount * 100), // Convert to kobo
-//             recipient: recipientCode,
-//             reason: `Withdrawal from wallet (Ref: ${reference})`,
-//           },
-//           { headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` }, timeout: 10000 }
-//         )
-//       );
-
-//       if (!transferResponse.data.status) {
-//         throw new Error(transferResponse.data.message || 'Failed to initiate transfer');
-//       }
-
-//       // Update transaction status
-//       wallet.transactions = wallet.transactions.map((tx) =>
-//         tx.reference === reference ? { ...tx, status: 'completed', updatedAt: new Date() } : tx
-//       );
-//       await wallet.save({ session });
-
-//       // Emit balance update
-//       const { emitBalanceUpdate } = require('../utils/socket');
-//       emitBalanceUpdate(userId, {
-//         balance: wallet.balance,
-//         reference,
-//         transaction,
-//       });
-
-//       res.status(200).json({
-//         success: true,
-//         message: `Withdrawal of ₦${amount.toFixed(2)} initiated`,
-//         data: { reference, amount, bankCode, accountName, status: 'completed' },
-//       });
-//     });
-//   } catch (error) {
-//     logger.error('Withdraw funds error', {
-//       userId: req.user?.id,
-//       message: error.message,
-//       stack: error.stack,
-//     });
-//     res.status(400).json({ success: false, error: error.message });
-//   } finally {
-//     await session.endSession();
-//   }
-// };
+export default DisplayTransaction;

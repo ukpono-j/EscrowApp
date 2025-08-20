@@ -5,11 +5,11 @@ import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import {
   Box, Flex, Text, Button, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter,
-  Grid, Stack, Input, IconButton, Image, Spinner, Skeleton, useDisclosure, useColorModeValue
+  Grid, Stack, Input, IconButton, Image, Circle, Spinner, Skeleton, useDisclosure, useColorModeValue
 } from '@chakra-ui/react';
 import { FiSearch, FiEdit } from 'react-icons/fi';
 import { BsChatFill } from 'react-icons/bs';
-import { MdClose, MdContentCopy } from 'react-icons/md';
+import { MdClose, MdCheckCircle, MdPendingActions, MdHourglassEmpty, MdContentCopy } from 'react-icons/md';
 import { useSelector, useDispatch } from 'react-redux';
 import {
   fetchInitialData, fetchSingleTransaction, updateTransaction, confirmTransaction, fundTransaction, cancelTransaction
@@ -88,6 +88,30 @@ const TransactionCard = React.memo(({ transaction, currentUser, isConfirming, ha
   const subtleTextColor = useColorModeValue('gray.500', 'gray.400');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
 
+  // Step Progress Logic
+  const getTransactionSteps = () => {
+    const steps = [];
+
+    if (isBuyer) {
+      steps.push(
+        { id: 1, title: "Fund Transaction", description: "Secure your payment in escrow", completed: transaction.locked, current: !transaction.locked && transaction.status === "pending" },
+        { id: 2, title: "Seller Delivers", description: "Wait for seller to ship and provide waybill", completed: transaction.status === "funded" || transaction.status === "completed", current: transaction.locked && transaction.status === "funded" },
+        { id: 3, title: "Confirm Receipt", description: "Confirm you received the item", completed: transaction.status === "completed", current: transaction.status === "funded" && !hasConfirmed }
+      );
+    } else {
+      steps.push(
+        { id: 1, title: "Wait for Payment", description: "Buyer needs to fund the transaction", completed: transaction.locked, current: !transaction.locked && transaction.status === "pending" },
+        { id: 2, title: "Ship & Submit Waybill", description: "Ship item and provide tracking details", completed: transaction.status === "funded" || transaction.status === "completed", current: transaction.locked && transaction.status !== "completed" },
+        { id: 3, title: "Transaction Complete", description: "Funds released when buyer confirms", completed: transaction.status === "completed", current: transaction.status === "funded" && !hasConfirmed }
+      );
+    }
+
+    return steps;
+  };
+
+  const steps = getTransactionSteps();
+  const currentStep = steps.find(step => step.current)?.id || (transaction.status === "completed" ? steps.length : 1);
+
   if (!currentUserId) {
     console.warn('TransactionCard: currentUserId is empty, currentUser:', currentUser);
     return (
@@ -136,7 +160,12 @@ const TransactionCard = React.memo(({ transaction, currentUser, isConfirming, ha
     >
       <Flex justify="space-between" align="center" mb={3}>
         <Box>
-          <Text fontSize="sm" fontWeight="600" color={textColor}>{headerText}</Text>
+          <Text fontSize="sm" fontWeight="600" color={textColor}>
+            {transaction.selectedUserType.charAt(0).toUpperCase() + transaction.selectedUserType.slice(1)}: {creatorName}{isCreator ? ' (You)' : ''}
+          </Text>
+          <Text fontSize="sm" fontWeight="600" color={textColor}>
+            {transaction.selectedUserType === 'buyer' ? 'Seller' : 'Buyer'}: {participantName}{isParticipant ? ' (You)' : ''}
+          </Text>
         </Box>
         <Flex gap={2}>
           <IconButton
@@ -161,6 +190,29 @@ const TransactionCard = React.memo(({ transaction, currentUser, isConfirming, ha
           />
         </Flex>
       </Flex>
+
+      {/* Compact Step Progress */}
+      {!isCanceled && (
+        <Flex align="center" justify="space-between" mb={3} p={2} bg={useColorModeValue('#BB954D10', '#BB954D20')} rounded="md">
+          <Flex align="center" gap={2}>
+            {steps.map((step) => (
+              <Circle
+                key={step.id}
+                size="18px"
+                bg={step.completed ? "#22c55e" : step.current ? "#BB954D" : subtleTextColor}
+                color="white"
+                fontSize="10px"
+                fontWeight="600"
+              >
+                {step.completed ? "✓" : step.id}
+              </Circle>
+            ))}
+          </Flex>
+          <Text fontSize="xs" color="#BB954D" fontWeight="500">
+            Step {currentStep}/3: {steps.find(step => step.current)?.title || "Complete"}
+          </Text>
+        </Flex>
+      )}
 
       <Flex justify="space-between" align="center" mb={3}>
         <Box>
@@ -223,6 +275,8 @@ const TransactionCard = React.memo(({ transaction, currentUser, isConfirming, ha
           </Text>
         )}
       </Box>
+
+
 
       {!isCanceled && (
         <Stack spacing={2}>
