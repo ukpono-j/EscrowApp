@@ -355,6 +355,7 @@ const WaybillModal = React.memo(({ isOpen, onClose, transactionId, isBuyer, deta
   const subtleTextColor = useColorModeValue('gray.500', 'gray.400');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   const inputBg = useColorModeValue('gray.50', '#051E2F');
+  const [isImageLoading, setIsImageLoading] = useState(true); // New state for image loading
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -372,6 +373,11 @@ const WaybillModal = React.memo(({ isOpen, onClose, transactionId, isBuyer, deta
   const handleImageError = (e) => {
     console.error('WaybillModal - Failed to load image:', details.image, e);
     setErrors(prev => ({ ...prev, image: 'Failed to load image. It may not exist or is inaccessible.' }));
+    setIsImageLoading(false); // Stop loading on error
+  };
+
+  const handleImageLoad = () => {
+    setIsImageLoading(false); // Stop loading when image loads successfully
   };
 
   return (
@@ -407,13 +413,20 @@ const WaybillModal = React.memo(({ isOpen, onClose, transactionId, isBuyer, deta
                   <Text fontSize="xs" color={subtleTextColor}>Image</Text>
                   {details.image ? (
                     <Flex direction="column" gap={2}>
+                      {isImageLoading && (
+                        <Flex align="center" justify="center" h="200px" bg={inputBg} rounded="md">
+                          <Spinner color="#BB954D" size="md" />
+                        </Flex>
+                      )}
                       <Image
                         src={details.image}
                         alt="Waybill"
                         maxW="100%"
                         rounded="md"
+                        onLoad={handleImageLoad}
                         onError={handleImageError}
                         fallback={<Text fontSize="sm" color="red.400">Image not available</Text>}
+                        display={isImageLoading ? "none" : "block"} // Hide image while loading
                       />
                       <Button size="sm" bg="#8a6d27" color="white" _hover={{ bg: "#b38939" }} onClick={() => downloadImage(details.image)} isDisabled={!details.image}>
                         Download Image
