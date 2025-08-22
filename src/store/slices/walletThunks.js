@@ -112,6 +112,13 @@ export const checkFundingStatus = createAsyncThunk(
           totalDeposits: response.data.data.totalDeposits || 0,
           transaction: response.data.data.transaction,
         }));
+      } else if (response.data.success && response.data.data.transaction?.status === 'pending') {
+        // Handle pending case
+        dispatch(setPaymentDetails({
+          reference,
+          amount: response.data.data.transaction.amount,
+          virtualAccount: response.data.data.transaction.metadata?.virtualAccount,
+        }));
       }
 
       return response.data;
