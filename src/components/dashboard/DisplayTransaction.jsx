@@ -355,7 +355,8 @@ const WaybillModal = React.memo(({ isOpen, onClose, transactionId, isBuyer, deta
   const subtleTextColor = useColorModeValue('gray.500', 'gray.400');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   const inputBg = useColorModeValue('gray.50', '#051E2F');
-  const [isImageLoading, setIsImageLoading] = useState(true); // New state for image loading
+  const [isImageLoading, setIsImageLoading] = useState(true); // State for image loading
+  const [hasImageError, setHasImageError] = useState(false); // State to track image load errors
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -373,11 +374,13 @@ const WaybillModal = React.memo(({ isOpen, onClose, transactionId, isBuyer, deta
   const handleImageError = (e) => {
     console.error('WaybillModal - Failed to load image:', details.image, e);
     setErrors(prev => ({ ...prev, image: 'Failed to load image. It may not exist or is inaccessible.' }));
-    setIsImageLoading(false); // Stop loading on error
+    setIsImageLoading(false);
+    setHasImageError(true); // Mark image as failed
   };
 
   const handleImageLoad = () => {
     setIsImageLoading(false); // Stop loading when image loads successfully
+    setHasImageError(false); // Ensure no error state
   };
 
   return (
@@ -411,9 +414,9 @@ const WaybillModal = React.memo(({ isOpen, onClose, transactionId, isBuyer, deta
                 ))}
                 <Box>
                   <Text fontSize="xs" color={subtleTextColor}>Image</Text>
-                  {details.image ? (
+                  {details.image && !hasImageError ? (
                     <Flex direction="column" gap={2}>
-                      {isImageLoading && (
+                      {(isFetching || isImageLoading) && (
                         <Flex align="center" justify="center" h="200px" bg={inputBg} rounded="md">
                           <Spinner color="#BB954D" size="md" />
                         </Flex>
@@ -425,17 +428,16 @@ const WaybillModal = React.memo(({ isOpen, onClose, transactionId, isBuyer, deta
                         rounded="md"
                         onLoad={handleImageLoad}
                         onError={handleImageError}
-                        fallback={<Text fontSize="sm" color="red.400">Image not available</Text>}
-                        display={isImageLoading ? "none" : "block"} // Hide image while loading
+                        display={(isFetching || isImageLoading) ? "none" : "block"} // Hide image while loading or fetching
                       />
-                      <Button size="sm" bg="#8a6d27" color="white" _hover={{ bg: "#b38939" }} onClick={() => downloadImage(details.image)} isDisabled={!details.image}>
+                      <Button size="sm" bg="#8a6d27" color="white" _hover={{ bg: "#b38939" }} onClick={() => downloadImage(details.image)} isDisabled={!details.image || hasImageError}>
                         Download Image
                       </Button>
                     </Flex>
                   ) : (
                     <Text fontSize="sm" color={subtleTextColor}>No image uploaded</Text>
                   )}
-                  {errors.image && <Text fontSize="xs" color="red.400">{errors.image}</Text>}
+                  {errors.image && hasImageError && <Text fontSize="xs" color="red.400">{errors.image}</Text>}
                 </Box>
               </Stack>
             )
