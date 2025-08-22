@@ -59,18 +59,13 @@ const MessageBox = () => {
       axios.defaults.headers.common["access-token"] = token;
 
       try {
-        // Fetch current user details
         const userResponse = await axios.get(`${BASE_URL}/api/users/user-details`);
-        console.log("User details response:", userResponse.data);
         setUserDetails(userResponse.data.data.user);
 
-        // Fetch transaction details
         const transactionResponse = await axios.get(`${BASE_URL}/api/transactions/chatroom/${chatroomId}`);
-        console.log("Transaction response:", transactionResponse.data);
         const transactionData = transactionResponse.data.data;
         setTransactionDetails(transactionData);
 
-        // Use populated creator details
         if (!transactionData.userId?._id) {
           throw new Error("Creator ID not found in transaction data");
         }
@@ -82,7 +77,6 @@ const MessageBox = () => {
           avatarSeed: transactionData.userId.avatarSeed || transactionData.userId._id,
         });
 
-        // Use populated participant details
         const participantDetails = (transactionData.participants || []).map((p) => ({
           userId: p.userId?._id || p.userId,
           role: p.role,
@@ -93,7 +87,6 @@ const MessageBox = () => {
         })).filter(p => p.userId);
         setParticipants(participantDetails);
 
-        // Verify chatroomId
         if (!transactionData.chatroomId || transactionData.chatroomId.toString() !== chatroomId) {
           setError("Invalid chatroom ID for this transaction.");
           toast({
@@ -107,9 +100,7 @@ const MessageBox = () => {
           return;
         }
 
-        // Fetch messages
         const messagesResponse = await axios.get(`${BASE_URL}/api/messages/${chatroomId}`);
-        console.log("Messages response:", JSON.stringify(messagesResponse.data, null, 2));
         let fetchedMessages = [];
         if (Array.isArray(messagesResponse.data)) {
           fetchedMessages = messagesResponse.data;
@@ -120,12 +111,11 @@ const MessageBox = () => {
         }
         fetchedMessages = fetchedMessages.map((msg) => ({
           ...msg,
-          userId: msg.userId?._id || msg.userId, // Normalize userId to string
+          userId: msg.userId?._id || msg.userId,
         })).filter((msg) => msg.message?.trim() && msg.userId)
           .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
         setMessages(fetchedMessages);
       } catch (error) {
-        console.error("Fetch data error:", error.response?.data || error.message);
         setError(error.response?.data?.error || "Failed to load transaction or messages.");
         toast({
           title: "Error",
@@ -142,24 +132,6 @@ const MessageBox = () => {
 
     fetchData();
   }, [chatroomId, navigate, toast]);
-
-  // Log header-related data for debugging
-  useEffect(() => {
-    console.log("Header Debug Info:", {
-      participants: participants,
-      creatorDetails: creatorDetails,
-      userDetails: userDetails,
-      transactionDetails: {
-        selectedUserType: transactionDetails.selectedUserType,
-        _id: transactionDetails._id,
-      },
-      headerText: `${transactionDetails.selectedUserType
-          ? transactionDetails.selectedUserType.charAt(0).toUpperCase() + transactionDetails.selectedUserType.slice(1)
-          : "Unknown Role"
-        }: ${isCreator ? `${userDetails?.firstName || ''} ${userDetails?.lastName || ''}`.trim() || userDetails?.email || 'You' : `${creatorDetails?.firstName || ''} ${creatorDetails?.lastName || ''}`.trim() || creatorDetails?.email || 'Unknown'}${isCreator ? ' (You)' : ''}  ${transactionDetails.selectedUserType === 'buyer' ? 'Seller' : transactionDetails.selectedUserType === 'seller' ? 'Buyer' : 'Other'
-        }: ${participants?.length > 0 ? `${participants[0]?.firstName || ''} ${participants[0]?.lastName || ''}`.trim() || participants[0]?.email || 'Unknown' : 'No participant'}${participants?.length > 0 && participants[0]?.userId === userDetails._id ? ' (You)' : ''}`,
-    });
-  }, [participants, creatorDetails, userDetails, transactionDetails]);
 
   // Socket setup
   useEffect(() => {
@@ -181,11 +153,9 @@ const MessageBox = () => {
     });
 
     socketRef.current.on("connect", () => {
-      console.log("Socket connected:", socketRef.current.id);
       socketRef.current.emit("join-room", `transaction_${chatroomId}`, userDetails._id);
       setSocketConnected(true);
 
-      // Process pending messages
       if (pendingMessages.length > 0) {
         const messagesToSend = [...pendingMessages];
         setPendingMessages([]);
@@ -221,11 +191,9 @@ const MessageBox = () => {
         });
       }
 
-      // Refetch messages on connect
       const refetchMessages = async () => {
         try {
           const response = await axios.get(`${BASE_URL}/api/messages/${chatroomId}`);
-          console.log("Refetched messages on socket connect:", JSON.stringify(response.data, null, 2));
           let fetchedMessages = [];
           if (Array.isArray(response.data)) {
             fetchedMessages = response.data;
@@ -236,7 +204,7 @@ const MessageBox = () => {
           }
           fetchedMessages = fetchedMessages.map((msg) => ({
             ...msg,
-            userId: msg.userId?._id || msg.userId, // Normalize userId to string
+            userId: msg.userId?._id || msg.userId,
           })).filter((msg) => msg.message?.trim() && msg.userId)
             .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
           setMessages(fetchedMessages);
@@ -258,39 +226,33 @@ const MessageBox = () => {
     });
 
     socketRef.current.on("message", (message) => {
-      console.log("Received socket message:", JSON.stringify(message, null, 2));
       if (
         !message.message?.trim() ||
         !message.userId ||
         message.chatroomId !== chatroomId
       ) {
-        console.log("Ignoring invalid or irrelevant message:", JSON.stringify(message, null, 2));
         return;
       }
 
       setMessages((prevMessages) => {
-        // Check if the message exists by _id or tempId
         const existingMessage = prevMessages.find(
           (msg) => msg._id === message._id || (msg.tempId && msg.tempId === message.tempId)
         );
 
         if (existingMessage) {
-          console.log("Updating existing message:", existingMessage._id || existingMessage.tempId);
           return prevMessages.map((msg) =>
             (msg._id && msg._id === message._id) || (msg.tempId && msg.tempId === message.tempId)
               ? {
                   ...message,
                   userId: message.userId?._id || message.userId,
-                  tempId: msg.tempId || message.tempId, // Preserve tempId if it exists
+                  tempId: msg.tempId || message.tempId,
                 }
               : msg
           ).filter((m) => m.message?.trim() && m.userId)
             .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
         }
 
-        // Only add if the message is from another user
         if ((message.userId?._id || message.userId) !== userDetails._id) {
-          console.log("Adding new message from other user:", message._id || message.tempId);
           const updatedMessage = {
             ...message,
             userId: message.userId?._id || message.userId,
@@ -300,7 +262,6 @@ const MessageBox = () => {
             .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
         }
 
-        console.log("Ignoring own message to prevent duplication:", message._id || message.tempId);
         return prevMessages;
       });
     });
@@ -349,7 +310,6 @@ const MessageBox = () => {
       const refetchMessages = async () => {
         try {
           const response = await axios.get(`${BASE_URL}/api/messages/${chatroomId}`);
-          console.log("Refetched messages on reconnect:", JSON.stringify(response.data, null, 2));
           let fetchedMessages = [];
           if (Array.isArray(response.data)) {
             fetchedMessages = response.data;
@@ -360,8 +320,8 @@ const MessageBox = () => {
           }
           fetchedMessages = fetchedMessages.map((msg) => ({
             ...msg,
-            userId: msg.userId?._id || msg.userId, // Normalize userId to string
-          })).filter((msg) => m.message?.trim() && m.userId)
+            userId: msg.userId?._id || msg.userId,
+          })).filter((msg) => msg.message?.trim() && msg.userId)
             .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
           setMessages(fetchedMessages);
         } catch (error) {
@@ -382,9 +342,8 @@ const MessageBox = () => {
       socketRef.current.disconnect();
       setSocketConnected(false);
     };
-  }, [chatroomId, userDetails._id, toast]); // Removed pendingMessages from dependencies
+  }, [chatroomId, userDetails._id, toast]);
 
-  // Handle typing events
   const handleTyping = () => {
     if (socketRef.current && socketConnected) {
       socketRef.current.emit("typing", {
@@ -412,7 +371,6 @@ const MessageBox = () => {
       const svg = multiavatar(seed);
       return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
     } catch (error) {
-      console.error("Error generating Multiavatar:", error);
       return `data:image/svg+xml;utf8,${encodeURIComponent(
         `<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
           <circle cx="16" cy="16" r="15" fill="#B38939" />
@@ -463,11 +421,8 @@ const MessageBox = () => {
       messageInputRef.current.focus();
     }
 
-    // Optimistic update
     setMessages((prevMessages) => {
-      // Ensure no duplicate tempId
       if (prevMessages.some((msg) => msg.tempId === tempId)) {
-        console.log("Duplicate tempId detected, skipping optimistic update:", tempId);
         return prevMessages;
       }
       return [...prevMessages, newMessage]
@@ -492,7 +447,6 @@ const MessageBox = () => {
     const sendMessageWithRetry = async () => {
       try {
         const response = await axios.post(`${BASE_URL}/api/messages/send-message`, newMessage);
-        console.log("Send message response:", JSON.stringify(response.data, null, 2));
         setMessages((prevMessages) => {
           const serverMessage = response.data._doc || response.data.data || response.data;
           if (!serverMessage.message?.trim() || !serverMessage.userId) {
@@ -508,7 +462,6 @@ const MessageBox = () => {
             .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
         });
       } catch (error) {
-        console.error("Message send attempt failed:", { attempt, error: error.message });
         if (attempt < maxRetries) {
           attempt++;
           setTimeout(sendMessageWithRetry, 2000 * attempt);
@@ -555,23 +508,14 @@ const MessageBox = () => {
     }
   };
 
-  const getInitials = (firstName, lastName) => {
-    if (!firstName && !lastName) return "?";
-    return `${firstName?.charAt(0) || ""}${lastName?.charAt(0) || ""}`.toUpperCase();
-  };
-
-  // Construct header text similar to TransactionCard
   const creatorName = isCreator
     ? `${userDetails?.firstName || ''} ${userDetails?.lastName || ''}`.trim() || userDetails?.email || 'You'
     : `${creatorDetails?.firstName || ''} ${creatorDetails?.lastName || ''}`.trim() || creatorDetails?.email || 'Unknown';
   const participantName = participants?.length > 0
     ? `${participants[0]?.firstName || ''} ${participants[0]?.lastName || ''}`.trim() || participants[0]?.email || 'Unknown'
     : 'No participant';
-  const headerText = `${transactionDetails.selectedUserType
-      ? transactionDetails.selectedUserType.charAt(0).toUpperCase() + transactionDetails.selectedUserType.slice(1)
-      : 'Unknown Role'
-    }: ${creatorName}${isCreator ? ' (You)' : ''}  ${transactionDetails.selectedUserType === 'buyer' ? 'Seller' : transactionDetails.selectedUserType === 'seller' ? 'Buyer' : 'Other'
-    }: ${participantName}${participants?.length > 0 && participants[0]?.userId === userDetails._id ? ' (You)' : ''}`;
+  const buyerLabel = transactionDetails.selectedUserType === 'buyer' ? 'Buyer' : 'Seller';
+  const sellerLabel = transactionDetails.selectedUserType === 'buyer' ? 'Seller' : 'Buyer';
 
   if (error) {
     return (
@@ -616,7 +560,14 @@ const MessageBox = () => {
               <BsChatLeftText size={18} />
             </div>
             <div className="ml-3">
-              <p className="font-bold text-sm">{headerText}</p>
+              <p className="text-sm font-medium">
+                {buyerLabel}: {transactionDetails.selectedUserType === 'buyer' ? creatorName : participantName}
+                {transactionDetails.selectedUserType === 'buyer' && isCreator ? ' (You)' : transactionDetails.selectedUserType !== 'buyer' && participants[0]?.userId === userDetails._id ? ' (You)' : ''}
+              </p>
+              <p className="text-sm font-medium">
+                {sellerLabel}: {transactionDetails.selectedUserType === 'buyer' ? participantName : creatorName}
+                {transactionDetails.selectedUserType === 'buyer' && participants[0]?.userId === userDetails._id ? ' (You)' : transactionDetails.selectedUserType !== 'buyer' && isCreator ? ' (You)' : ''}
+              </p>
             </div>
           </div>
         </div>

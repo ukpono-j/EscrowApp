@@ -349,12 +349,30 @@ const TransactionCard = React.memo(({ transaction, currentUser, isConfirming, ha
   );
 });
 
-const WaybillModal = React.memo(({ isOpen, onClose, transactionId, isBuyer, details, setDetails, errors, handleSubmit, downloadImage, isFunded }) => {
+const WaybillModal = React.memo(({ isOpen, onClose, transactionId, isBuyer, details, setDetails, errors, setErrors, handleSubmit, downloadImage, isFunded, isSubmitting, setIsSubmitting, isFetching }) => {
   const bgColor = useColorModeValue('white', '#1A202C');
   const textColor = useColorModeValue('#051E2F', 'white');
   const subtleTextColor = useColorModeValue('gray.500', 'gray.400');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   const inputBg = useColorModeValue('gray.50', '#051E2F');
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        setErrors(prev => ({ ...prev, image: 'Image size must be less than 5MB' }));
+        return;
+      }
+      const imageUrl = URL.createObjectURL(file);
+      setDetails({ ...details, image: file, imagePreview: imageUrl });
+      setErrors(prev => ({ ...prev, image: undefined }));
+    }
+  };
+
+  const handleImageError = (e) => {
+    console.error('WaybillModal - Failed to load image:', details.image, e);
+    setErrors(prev => ({ ...prev, image: 'Failed to load image. It may not exist or is inaccessible.' }));
+  };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} isCentered size={{ base: "full", sm: "md" }}>
@@ -363,7 +381,12 @@ const WaybillModal = React.memo(({ isOpen, onClose, transactionId, isBuyer, deta
         <ModalHeader fontSize="lg" fontWeight="600">{isBuyer ? "Waybill Details" : "Submit Waybill"}</ModalHeader>
         <ModalBody>
           {isBuyer ? (
-            !details || Object.keys(details).length === 0 ? (
+            isFetching ? (
+              <Flex align="center" justify="center" direction="column" gap={4} py={8}>
+                <Spinner color="#BB954D" size="lg" />
+                <Text color={textColor} fontSize="md">Loading waybill details...</Text>
+              </Flex>
+            ) : !details || Object.keys(details).length === 0 ? (
               <Text fontSize="sm" color={textColor} textAlign="center">
                 No waybill details uploaded yet
               </Text>
@@ -384,12 +407,22 @@ const WaybillModal = React.memo(({ isOpen, onClose, transactionId, isBuyer, deta
                   <Text fontSize="xs" color={subtleTextColor}>Image</Text>
                   {details.image ? (
                     <Flex direction="column" gap={2}>
-                      <Image src={details.image} alt="Waybill" maxW="100%" rounded="md" />
-                      <Button size="sm" bg="#8a6d27" color="white" _hover={{ bg: "#b38939" }} onClick={() => downloadImage(details.image)}>Download Image</Button>
+                      <Image
+                        src={details.image}
+                        alt="Waybill"
+                        maxW="100%"
+                        rounded="md"
+                        onError={handleImageError}
+                        fallback={<Text fontSize="sm" color="red.400">Image not available</Text>}
+                      />
+                      <Button size="sm" bg="#8a6d27" color="white" _hover={{ bg: "#b38939" }} onClick={() => downloadImage(details.image)} isDisabled={!details.image}>
+                        Download Image
+                      </Button>
                     </Flex>
                   ) : (
                     <Text fontSize="sm" color={subtleTextColor}>No image uploaded</Text>
                   )}
+                  {errors.image && <Text fontSize="xs" color="red.400">{errors.image}</Text>}
                 </Box>
               </Stack>
             )
@@ -428,14 +461,8 @@ const WaybillModal = React.memo(({ isOpen, onClose, transactionId, isBuyer, deta
                     <Input
                       type="file"
                       id={`waybill-image-${transactionId}`}
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files[0];
-                        if (file) {
-                          const imageUrl = URL.createObjectURL(file);
-                          setDetails({ ...details, image: file, imagePreview: imageUrl });
-                        }
-                      }}
+                      accept="image/jpeg,image/png"
+                      onChange={handleFileChange}
                       display="none"
                     />
                     <label htmlFor={`waybill-image-${transactionId}`} style={{ cursor: 'pointer' }}>
@@ -460,7 +487,17 @@ const WaybillModal = React.memo(({ isOpen, onClose, transactionId, isBuyer, deta
           <Flex gap={3} w="full">
             <Button size="sm" bg={useColorModeValue('gray.200', 'gray.600')} color={textColor} _hover={{ bg: useColorModeValue('gray.300', 'gray.700') }} onClick={onClose}>Close</Button>
             {!isBuyer && isFunded && (
-              <Button size="sm" bg="#BB954D" color="white" _hover={{ bg: "#8a6d2f" }} onClick={() => handleSubmit(transactionId)}>Submit</Button>
+              <Button
+                size="sm"
+                bg="#BB954D"
+                color="white"
+                _hover={{ bg: "#8a6d2f" }}
+                onClick={() => handleSubmit(transactionId)}
+                isLoading={isSubmitting}
+                isDisabled={isSubmitting}
+              >
+                Submit
+              </Button>
             )}
           </Flex>
         </ModalFooter>
@@ -635,6 +672,8 @@ const DisplayTransaction = () => {
   const subtleTextColor = useColorModeValue('gray.500', 'gray.400');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   const inputBg = useColorModeValue('gray.50', '#051E2F');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isFetchingWaybill, setIsFetchingWaybill] = useState({});
 
   useEffect(() => {
     const token = localStorage.getItem('access-token');
@@ -998,6 +1037,7 @@ const DisplayTransaction = () => {
     }
     if (isBuyer) {
       setBuyerShowWaybillPopup(prev => ({ ...prev, [transactionId]: true }));
+      setIsFetchingWaybill(prev => ({ ...prev, [transactionId]: true })); // Initialize loading state
       fetchBuyerWaybillDetails(transactionId);
     } else {
       setShowWaybillPopup(prev => ({ ...prev, [transactionId]: true }));
@@ -1009,6 +1049,7 @@ const DisplayTransaction = () => {
   };
 
   const fetchBuyerWaybillDetails = async (transactionId) => {
+    setIsFetchingWaybill(prev => ({ ...prev, [transactionId]: true }));
     try {
       const res = await axios.get(`${BASE_URL}/api/transactions/waybill-details/${transactionId}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("access-token")}` },
@@ -1019,8 +1060,17 @@ const DisplayTransaction = () => {
         setBuyerWaybillDetails(prev => ({ ...prev, [transactionId]: {} }));
       }
     } catch (error) {
-      managedToast({ id: `waybill-fetch-error-${transactionId}`, title: "Error", description: "Failed to retrieve waybill details", status: "error", duration: 5000, isClosable: true });
+      managedToast({
+        id: `waybill-fetch-error-${transactionId}`,
+        title: "Error",
+        description: "Failed to retrieve waybill details",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
       setBuyerWaybillDetails(prev => ({ ...prev, [transactionId]: {} }));
+    } finally {
+      setIsFetchingWaybill(prev => ({ ...prev, [transactionId]: false }));
     }
   };
 
@@ -1036,6 +1086,7 @@ const DisplayTransaction = () => {
       return;
     }
     setErrors({});
+
     const formData = new FormData();
     formData.append("transactionId", transactionId);
     formData.append("item", waybillDetails.item);
@@ -1044,12 +1095,18 @@ const DisplayTransaction = () => {
     formData.append("deliveryDate", waybillDetails.deliveryDate);
     if (waybillDetails.image) formData.append("image", waybillDetails.image);
 
+    console.log('Submitting FormData for waybill:');
+    for (const [key, value] of formData.entries()) {
+      console.log(`${key}: ${typeof value === 'object' ? value.name || 'File object' : value}`);
+    }
+
     try {
+      setIsSubmitting(true);
       const response = await axios.post(`${BASE_URL}/api/transactions/submit-waybill`, formData, {
         headers: { "Content-Type": "multipart/form-data", Authorization: `Bearer ${localStorage.getItem("access-token")}` },
       });
       if (response.data.success) {
-        managedToast({ id: `waybill-success-${transactionId}`, title: "Waybill Submitted", status: "success", duration: 3000, isClosable: true });
+        managedToast({ id: `waybill-success-${transactionId}`, title: "Waybill Submitted", description: "Waybill details submitted successfully.", status: "success", duration: 3000, isClosable: true });
         setShowWaybillPopup(prev => ({ ...prev, [transactionId]: false }));
         setWaybillDetails({ item: "", image: null, imagePreview: null, shippingAddress: "", trackingNumber: "", deliveryDate: "" });
         dispatch(fetchSingleTransaction(transactionId)).unwrap().catch(err => {
@@ -1059,18 +1116,59 @@ const DisplayTransaction = () => {
         throw new Error(response.data.error || "Failed to submit waybill");
       }
     } catch (error) {
-      managedToast({ id: `waybill-error-${transactionId}`, title: "Error", description: error.response?.data?.error || error.message, status: "error", duration: 5000, isClosable: true });
+      console.error('Waybill submit error:', error);
+      const errorMessage = error.response?.data?.error || error.message;
+      let displayMessage = errorMessage;
+      if (error.response?.status === 400) {
+        if (errorMessage.includes("Invalid transaction ID")) {
+          displayMessage = "Invalid transaction ID. Please try again.";
+        } else if (errorMessage.includes("All fields are required")) {
+          displayMessage = "Please fill in all required fields.";
+        } else if (errorMessage.includes("Image is required")) {
+          displayMessage = "An image is required for the waybill.";
+        } else if (errorMessage.includes("Unauthorized")) {
+          displayMessage = "You are not authorized to submit waybill details.";
+        } else if (errorMessage.includes("Transaction must be funded")) {
+          displayMessage = "The transaction must be funded before submitting waybill details.";
+        }
+      } else if (error.response?.status === 500) {
+        displayMessage = errorMessage.includes("upload directory")
+          ? "Server error: Unable to save waybill image. Please try again."
+          : "Service temporarily unavailable. Please try again later.";
+      }
+      managedToast({
+        id: `waybill-error-${transactionId}`,
+        title: "Error",
+        description: displayMessage,
+        status: "error",
+        duration: 5000,
+        isClosable: true
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const downloadImage = (url) => {
+  const downloadImage = async (url) => {
     if (!url) return;
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = url.split("/").pop() || "waybill-image";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        console.error('Failed to fetch image for download:', response.statusText);
+        return;
+      }
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = url.split("/").pop() || "waybill-image";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl); // Clean up
+    } catch (error) {
+      console.error('Error downloading image:', error);
+    }
   };
 
   const openCancelModal = (transactionId) => {
@@ -1522,9 +1620,13 @@ const DisplayTransaction = () => {
             details={waybillDetails}
             setDetails={setWaybillDetails}
             errors={errors}
+            setErrors={setErrors}
             handleSubmit={handleWaybillSubmit}
             downloadImage={downloadImage}
             isFunded={transactions.find(t => t._id === transactionId)?.locked}
+            isSubmitting={isSubmitting}
+            setIsSubmitting={setIsSubmitting}
+            isFetching={isFetchingWaybill[transactionId] || false}
           />
         ))}
 
@@ -1541,6 +1643,9 @@ const DisplayTransaction = () => {
             handleSubmit={() => { }}
             downloadImage={downloadImage}
             isFunded={true}
+            isSubmitting={isSubmitting}
+            setIsSubmitting={setIsSubmitting}
+            isFetching={isFetchingWaybill[transactionId] || false}
           />
         ))}
 
