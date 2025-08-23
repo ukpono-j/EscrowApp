@@ -1,6 +1,8 @@
 .sidebar {
   transition: width 0.3s ease-in-out;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  -webkit-transition: width 0.3s ease-in-out;
+  -webkit-box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .active-link {
@@ -17,6 +19,7 @@
   display: flex;
   align-items: center;
   transition: all 0.2s ease-in-out;
+  -webkit-transition: all 0.2s ease-in-out;
 }
 
 .side_links:hover {
@@ -26,6 +29,7 @@
 .logo-responsive {
   display: block;
   transition: all 0.2s ease-in-out;
+  -webkit-transition: all 0.2s ease-in-out;
 }
 
 .logo-responsive-container {
@@ -34,7 +38,7 @@
   align-items: center;
   justify-content: flex-start;
   max-width: 100%;
-  width: 100%; /* Ensure container takes full available width */
+  width: 100%;
 }
 
 /* Very small screens (below 320px) */
@@ -46,12 +50,12 @@
     height: auto;
   }
   .logo-responsive-container {
-    padding-left: 0; /* Remove padding for consistent left alignment */
-    justify-content: flex-start; /* Explicitly enforce left alignment */
+    padding-left: 0;
+    justify-content: flex-start;
   }
   .side_links {
     justify-content: flex-start;
-    padding-left: 1rem; /* Consistent left padding for links */
+    padding-left: 1rem;
   }
 }
 
@@ -64,12 +68,15 @@
     height: auto;
   }
   .logo-responsive-container {
-    padding-left: 0; /* Remove padding to align logo to the left */
-    justify-content: flex-start; /* Ensure logo stays left-aligned */
+    padding-left: 0;
+    justify-content: flex-start;
   }
   .side_links {
     justify-content: flex-start;
-    padding-left: 1rem; /* Consistent padding for links */
+    padding-left: 1rem;
+  }
+  .sidebar {
+    z-index: 50;
   }
 }
 
@@ -82,7 +89,7 @@
     height: auto;
   }
   .logo-responsive-container {
-    padding-left: 0; /* Ensure no padding interferes */
+    padding-left: 0;
     justify-content: flex-start;
   }
   .side_links {
@@ -104,7 +111,7 @@
     max-height: 32px;
   }
   .logo-responsive-container {
-    padding-left: 0; /* Consistent left alignment */
+    padding-left: 0;
     justify-content: flex-start;
   }
   .side_links {
@@ -134,4 +141,18 @@
 
 .scrollbar-thin::-webkit-scrollbar-track {
   background: transparent;
+}
+
+/* Ensure logout button is visible on all browsers */
+.footer {
+  z-index: 10;
+  position: relative;
+  -webkit-transform: translateZ(0); /* Force hardware acceleration for Safari */
+}
+
+button {
+  -webkit-appearance: none; /* Remove default Safari styling */
+  appearance: none;
+  outline: none;
+  border: none;
 }

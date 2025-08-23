@@ -192,7 +192,7 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
     <div className="group relative">
       {children}
       {isCollapsed && !isMobile && (
-        <div className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-xs rounded-md whitespace-nowrap opacity-0 invisible transition-all duration-200 z-50 group-hover:opacity-100 group-hover:visible">
+        <div className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-xs rounded-md whitespace-nowrap opacity-0 invisible transition-opacity duration-200 z-50 group-hover:opacity-100 group-hover:visible">
           {label}
         </div>
       )}
@@ -223,7 +223,7 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
               initial={{ x: isMobile ? "-100%" : 0 }}
               animate={{ x: 0 }}
               exit={{ x: isMobile ? "-100%" : 0 }}
-              transition={{ duration: 0.2 }}
+              transition={{ duration: 0.2, ease: "easeInOut" }}
               style={{ position: "fixed", top: 0, left: 0, height: "100vh", zIndex: 40 }}
             >
               <Box
@@ -445,18 +445,19 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
                     </div>
                   </div>
                   {/* Footer */}
-                  <div className="flex-shrink-0 mt-auto border-t" borderColor={borderColor}>
+                  <div className="flex-shrink-0 mt-auto border-t" borderColor={borderColor} style={{ zIndex: 10 }}>
                     {(!isCollapsed || isMobile) ? (
-                      <div className="p-5">
-                        <div className="flex items-center justify-between mb-4">
+                      <div className="p-5 flex flex-col gap-4">
+                        <Flex align="center" justify="space-between">
                           <Text fontSize="xs" color="gray.500">© 2025 Sylo</Text>
                           <ThemeToggle />
-                        </div>
+                        </Flex>
                         <button
                           onClick={handleLogout}
                           className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-red-600/10 to-red-700/10 hover:from-red-600/20 hover:to-red-700/20 transition-all duration-200 text-sm font-medium"
+                          style={{ minHeight: "48px" }}
                         >
-                          <MdLogout className="text-red-500" />
+                          <MdLogout className="text-red-500 text-xl" />
                           <Text className="text-red-500">Logout</Text>
                         </button>
                       </div>
@@ -466,6 +467,7 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
                           <button
                             onClick={handleLogout}
                             className="flex items-center justify-center w-12 h-12 rounded-xl bg-red-500/10 hover:bg-red-500/20 transition-all duration-200"
+                            style={{ minHeight: "48px" }}
                           >
                             <MdLogout className="text-red-500 text-xl" />
                           </button>
