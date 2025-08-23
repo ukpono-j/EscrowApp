@@ -7,12 +7,12 @@ const theme = extendTheme({
   },
   colors: {
     brand: {
-      500: "#B38939", // Primary brand color (used in sidebar)
-      600: "#8A6D2F", // Secondary brand color (gradient)
+      500: "#B38939",
+      600: "#8A6D2F",
     },
     gray: {
-      800: "#051E2F", // Dark background for sidebar and body
-      100: "#FAFAFA", // Light background
+      800: "#051E2F",
+      100: "#FAFAFA",
     },
   },
   styles: {
