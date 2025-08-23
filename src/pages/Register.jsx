@@ -696,13 +696,13 @@ const Register = () => {
                       size={{ base: "md", md: "lg" }}
                       width="full"
                       mt={5}
-                      bg={buttonBgColor}
+                      bg={accentColor}
                       color="white"
                       fontWeight="medium"
                       borderWidth="2px"
                       borderColor={accentColor}
                       _hover={{
-                        bg: buttonHoverBgColor,
+                        bg: "#A47F35",
                         transform: "translateY(-2px)",
                         boxShadow: "lg"
                       }}
@@ -742,7 +742,7 @@ const Register = () => {
               <Text fontSize={{ base: "sm", md: "md" }} color="gray.600">
                 Already have an account?{" "}
                 <Link to="/login">
-                  <Text 
+                  <Text
                     as="span"
                     color={accentColor}
                     fontWeight="bold"

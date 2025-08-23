@@ -433,13 +433,13 @@ const Login = () => {
                       size={{ base: "md", md: "lg" }}
                       width="full"
                       mt={3}
-                      bg={buttonBgColor}
+                   bg={accentColor} 
                       color="white"
                       fontWeight="medium"
                       borderWidth="2px"
                       borderColor={accentColor}
                       _hover={{
-                        bg: buttonHoverBgColor,
+                         bg: "#A47F35",
                         transform: "translateY(-2px)",
                         boxShadow: "lg"
                       }}
