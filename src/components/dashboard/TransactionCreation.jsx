@@ -254,181 +254,180 @@ const TransactionCreation = () => {
     [formValid, toast]
   );
 
-const createNewTransaction = useCallback(
-  (e) => {
-    e.preventDefault();
-    if (!formValid) {
-      toast({
-        title: "Please fill all required fields",
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
-      return;
-    }
-    const requestData = {
-      paymentName: userDetails.fullName || "User",
-      email: email || userDetails.email || "",
-      paymentAmount: parseFloat(paymentAmount),
-      paymentDescription,
-      selectedUserType,
-      paymentBank: "Pending",
-      paymentBankCode: "000",
-      paymentAccountNumber: "0",
-    };
-    console.log("Sending create transaction request:", requestData); // Add logging
-    if (!requestData.email || !requestData.paymentAmount || !requestData.paymentDescription || !requestData.selectedUserType) {
-      toast({
-        title: "Invalid input",
-        description: "Please ensure all required fields are filled correctly.",
-        status: "error",
-        duration: 5000,
-        isClosable: true,
-      });
-      return;
-    }
-    axios
-      .post(`${BASE_URL}/api/transactions/create-transaction`, requestData)
-      .then(async (response) => {
-        console.log("Create transaction response:", response.data);
-        const responseData = validateApiResponse(response.data, "/api/transactions/create-transaction");
-        const transactionId = responseData.transactionId || "Unknown";
-
-        try {
-          const verifyResponse = await axios.get(`${BASE_URL}/api/transactions/${transactionId}`);
-          console.log("Transaction verification response:", verifyResponse.data);
-          const verifiedData = validateApiResponse(verifyResponse.data, `/api/transactions/${transactionId}`);
-          if (!verifiedData._id) {
-            throw new Error("Transaction not found after creation");
-          }
-        } catch (verifyError) {
-          console.error("Error verifying transaction:", verifyError);
-          toast({
-            title: "Transaction created but not found",
-            description: "The transaction was created but could not be retrieved. Please check the transaction list manually.",
-            status: "warning",
-            duration: 5000,
-            isClosable: true,
-          });
-        }
-
+  const createNewTransaction = useCallback(
+    (e) => {
+      e.preventDefault();
+      if (!formValid) {
         toast({
-          title: "Successfully created a transaction",
-          description: `Transaction ID: ${transactionId}`,
-          status: "success",
+          title: "Please fill all required fields",
+          status: "error",
           duration: 3000,
           isClosable: true,
         });
-        navigate("/transactions/tab");
-      })
-      .catch((error) => {
-        console.error("Transaction creation error:", {
-          message: error.message,
-          response: error.response?.data,
-          status: error.response?.status,
-          requestData, // Log the request data for debugging
-        });
-        const errorMessage = error.response?.data?.error || error.message || "Unknown error";
+        return;
+      }
+      const requestData = {
+        paymentName: userDetails.fullName || "User",
+        email: email || userDetails.email || "",
+        paymentAmount: parseFloat(paymentAmount),
+        paymentDescription,
+        selectedUserType,
+        paymentBank: "Pending",
+        paymentBankCode: "000",
+        paymentAccountNumber: "0",
+      };
+      console.log("Sending create transaction request:", requestData);
+      if (!requestData.email || !requestData.paymentAmount || !requestData.paymentDescription || !requestData.selectedUserType) {
         toast({
-          title: "Error occurred during transaction",
-          description: errorMessage,
+          title: "Invalid input",
+          description: "Please ensure all required fields are filled correctly.",
           status: "error",
           duration: 5000,
           isClosable: true,
         });
-      });
-  },
-  [
-    formValid,
-    userDetails.fullName,
-    userDetails.email,
-    email,
-    paymentAmount,
-    paymentDescription,
-    selectedUserType,
-    navigate,
-    toast,
-  ]
-);
+        return;
+      }
+      axios
+        .post(`${BASE_URL}/api/transactions/create-transaction`, requestData)
+        .then(async (response) => {
+          console.log("Create transaction response:", response.data);
+          const responseData = validateApiResponse(response.data, "/api/transactions/create-transaction");
+          const transactionId = responseData.transactionId || "Unknown";
 
-const createNewTransactionForBuyer = useCallback(
-  (e) => {
-    if (e) e.preventDefault();
-    const requestData = {
-      paymentName: userDetails.fullName || "Buyer",
-      email: userDetails.email || email || "",
-      paymentAmount: parseFloat(paymentAmount),
-      paymentDescription,
-      selectedUserType: "buyer",
-      paymentBank: "Pending",
-      paymentBankCode: "000",
-      paymentAccountNumber: "0",
-    };
-    console.log("Sending create buyer transaction request:", requestData); // Add logging
-    if (!requestData.email || !requestData.paymentAmount || !requestData.paymentDescription) {
-      toast({
-        title: "Invalid input",
-        description: "Please ensure all required fields are filled correctly.",
-        status: "error",
-        duration: 5000,
-        isClosable: true,
-      });
-      return;
-    }
-    axios
-      .post(`${BASE_URL}/api/transactions/create-transaction`, requestData)
-      .then(async (response) => {
-        console.log("Create buyer transaction response:", response.data);
-        const responseData = validateApiResponse(response.data, "/api/transactions/create-transaction");
-        const transactionId = responseData.transactionId || "Unknown";
-
-        try {
-          const verifyResponse = await axios.get(`${BASE_URL}/api/transactions/${transactionId}`);
-          console.log("Transaction verification response:", verifyResponse.data);
-          const verifiedData = validateApiResponse(verifyResponse.data, `/api/transactions/${transactionId}`);
-          if (!verifiedData._id) {
-            throw new Error("Transaction not found after creation");
+          try {
+            const verifyResponse = await axios.get(`${BASE_URL}/api/transactions/${transactionId}`);
+            console.log("Transaction verification response:", verifyResponse.data);
+            const verifiedData = validateApiResponse(verifyResponse.data, `/api/transactions/${transactionId}`);
+            if (!verifiedData._id) {
+              throw new Error("Transaction not found after creation");
+            }
+          } catch (verifyError) {
+            console.error("Error verifying transaction:", verifyError);
+            toast({
+              title: "Transaction created but not found",
+              description: "The transaction was created but could not be retrieved. Please check the transaction list manually.",
+              status: "warning",
+              duration: 5000,
+              isClosable: true,
+            });
           }
-        } catch (verifyError) {
-          console.error("Error verifying transaction:", verifyError);
+
           toast({
-            title: "Transaction created but not found",
-            description: "The transaction was created but could not be retrieved. Please check the transaction list manually.",
-            status: "warning",
+            title: "Successfully created a transaction",
+            description: `Transaction ID: ${transactionId}`,
+            status: "success",
+            duration: 3000,
+            isClosable: true,
+          });
+          navigate("/transactions/tab");
+        })
+        .catch((error) => {
+          console.error("Transaction creation error:", {
+            message: error.message,
+            response: error.response?.data,
+            status: error.response?.status,
+            requestData,
+          });
+          const errorMessage = error.response?.data?.error || "Too much traffic at the moment. Please try again later.";
+          toast({
+            title: "Error creating transaction",
+            description: errorMessage,
+            status: "error",
             duration: 5000,
             isClosable: true,
           });
-        }
+        });
+    },
+    [
+      formValid,
+      userDetails.fullName,
+      userDetails.email,
+      email,
+      paymentAmount,
+      paymentDescription,
+      selectedUserType,
+      navigate,
+      toast,
+    ]
+  );
 
+  const createNewTransactionForBuyer = useCallback(
+    (e) => {
+      if (e) e.preventDefault();
+      const requestData = {
+        paymentName: userDetails.fullName || "Buyer",
+        email: userDetails.email || email || "",
+        paymentAmount: parseFloat(paymentAmount),
+        paymentDescription,
+        selectedUserType: "buyer",
+        paymentBank: "Pending",
+        paymentBankCode: "000",
+        paymentAccountNumber: "0",
+      };
+      console.log("Sending create buyer transaction request:", requestData);
+      if (!requestData.email || !requestData.paymentAmount || !requestData.paymentDescription) {
         toast({
-          title: "Successfully created a transaction",
-          description: `Your transaction ID: ${transactionId}. Share this with the seller.`,
-          status: "success",
-          duration: 5000,
-          isClosable: true,
-        });
-        navigate("/transactions/tab");
-      })
-      .catch((error) => {
-        console.error("Transaction creation error:", {
-          message: error.message,
-          response: error.response?.data,
-          status: error.response?.status,
-          requestData, // Log the request data for debugging
-        });
-        const errorMessages =
-          error.response?.data?.errors?.map((err) => err.msg).join(", ") || error.response?.data?.error || error.message || "Unknown error";
-        toast({
-          title: "Error occurred during transaction",
-          description: errorMessages,
+          title: "Invalid input",
+          description: "Please ensure all required fields are filled correctly.",
           status: "error",
           duration: 5000,
           isClosable: true,
         });
-      });
-  },
-  [userDetails.fullName, userDetails.email, email, paymentAmount, paymentDescription, navigate, toast]
-);
+        return;
+      }
+      axios
+        .post(`${BASE_URL}/api/transactions/create-transaction`, requestData)
+        .then(async (response) => {
+          console.log("Create buyer transaction response:", response.data);
+          const responseData = validateApiResponse(response.data, "/api/transactions/create-transaction");
+          const transactionId = responseData.transactionId || "Unknown";
+
+          try {
+            const verifyResponse = await axios.get(`${BASE_URL}/api/transactions/${transactionId}`);
+            console.log("Transaction verification response:", verifyResponse.data);
+            const verifiedData = validateApiResponse(verifyResponse.data, `/api/transactions/${transactionId}`);
+            if (!verifiedData._id) {
+              throw new Error("Transaction not found after creation");
+            }
+          } catch (verifyError) {
+            console.error("Error verifying transaction:", verifyError);
+            toast({
+              title: "Transaction created but not found",
+              description: "The transaction was created but could not be retrieved. Please check the transaction list manually.",
+              status: "warning",
+              duration: 5000,
+              isClosable: true,
+            });
+          }
+
+          toast({
+            title: "Successfully created a transaction",
+            description: `Your transaction ID: ${transactionId}. Share this with the seller.`,
+            status: "success",
+            duration: 5000,
+            isClosable: true,
+          });
+          navigate("/transactions/tab");
+        })
+        .catch((error) => {
+          console.error("Transaction creation error:", {
+            message: error.message,
+            response: error.response?.data,
+            status: error.response?.status,
+            requestData,
+          });
+          const errorMessage = error.response?.data?.error || "Too much traffic at the moment. Please try again later.";
+          toast({
+            title: "Error creating transaction",
+            description: errorMessage,
+            status: "error",
+            duration: 5000,
+            isClosable: true,
+          });
+        });
+    },
+    [userDetails.fullName, userDetails.email, email, paymentAmount, paymentDescription, navigate, toast]
+  );
 
   const handleRadioClick = useCallback((userType) => {
     setSelectedUserType(userType);
