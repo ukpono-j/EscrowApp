@@ -69,3 +69,66 @@ self.addEventListener('fetch', (event) => {
       })
   );
 });
+
+self.addEventListener('push', async (event) => {
+  let data = {};
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch (error) {
+      console.error('Error parsing push data:', error);
+      return;
+    }
+  }
+
+  const options = {
+    body: data.body || 'New notification received',
+    icon: data.icon || '/icons/android-chrome-192x192.png',
+    badge: '/icons/badge.png', // Optional: Add a badge image
+    data: {
+      url: data.url || '/', // Default to home if no URL provided
+      notificationId: data.notificationId || null,
+    },
+    actions: [
+      { action: 'view', title: 'View Transaction' },
+      { action: 'dismiss', title: 'Dismiss' },
+    ],
+    vibrate: [200, 100, 200], // Vibration pattern
+    tag: data.notificationId || 'notification', // Prevent duplicate notifications
+    renotify: true, // Renotify if tag is reused
+  };
+
+  try {
+    await self.registration.showNotification(data.title || 'New Notification', options);
+  } catch (error) {
+    console.error('Error showing notification:', error);
+  }
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close(); // Close the notification
+
+  const { action, notification } = event;
+  const { url, notificationId } = notification.data;
+
+  if (action === 'view' && url) {
+    event.waitUntil(
+      clients.openWindow(url).catch((error) => {
+        console.error('Error opening URL:', error);
+      })
+    );
+  } else if (action === 'dismiss') {
+    // Optionally track dismissal
+    console.log('Notification dismissed:', notificationId);
+  }
+});
+
+self.addEventListener('install', (event) => {
+  console.log('Service Worker installing');
+  event.waitUntil(self.skipWaiting()); // Activate new service worker immediately
+});
+
+self.addEventListener('activate', (event) => {
+  console.log('Service Worker activated');
+  event.waitUntil(self.clients.claim()); // Take control of clients immediately
+});

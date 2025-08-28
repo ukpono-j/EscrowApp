@@ -48,17 +48,39 @@ class AppErrorBoundary extends React.Component {
   }
 }
 
-// Register service worker
+// Register service worker with update handling
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker
-      .register('/service-worker.js')
-      .then((reg) => console.log('Service Worker registered:', reg))
-      .catch((err) => console.error('Service Worker registration failed:', err));
+  window.addEventListener('load', async () => {
+    try {
+      const registration = await navigator.serviceWorker.register('/service-worker.js', {
+        scope: '/',
+        updateViaCache: 'none', // Ensure fresh service worker updates
+      });
+      console.log('Service Worker registered:', registration);
+
+      // Handle service worker updates
+      registration.addEventListener('updatefound', () => {
+        const newWorker = registration.installing;
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            // New service worker is installed and waiting
+            console.log('New Service Worker available, prompting for update');
+            // Optionally notify user or auto-activate
+            newWorker.postMessage({ action: 'skipWaiting' });
+          }
+        });
+      });
+
+      // Ensure service worker is activated
+      await navigator.serviceWorker.ready;
+      console.log('Service Worker is active');
+    } catch (err) {
+      console.error('Service Worker registration failed:', err);
+    }
   });
 }
 
-// Initialize ethereum object
+// Initialize ethereum object (unchanged)
 if (typeof window !== 'undefined' && !window.ethereum) {
   try {
     Object.defineProperty(window, 'ethereum', {

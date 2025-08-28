@@ -23,6 +23,7 @@ import { MdDelete, MdOutlineReportGmailerrorred, MdCheck, MdClose, MdOutlinePaym
 import { motion } from "framer-motion";
 import axios from "../../utils/axiosConfig";
 import { formatCreatedAt } from "../../utils/DateTimeStramp";
+import { io } from 'socket.io-client';
 
 const MotionBox = motion(Box);
 
@@ -33,6 +34,12 @@ const NotificationComponent = () => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const toast = useToast();
+  const socket = io(BASE_URL, {
+    auth: { token: localStorage.getItem('access-token') },
+    reconnection: true,
+    reconnectionAttempts: 5,
+    reconnectionDelay: 1000,
+  });
 
   const bgCard = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.700");
@@ -71,6 +78,8 @@ const NotificationComponent = () => {
       const newToken = res.data.token;
       localStorage.setItem('access-token', newToken);
       console.log('Token refreshed successfully');
+      socket.auth.token = newToken; // Update socket token
+      socket.disconnect().connect(); // Reconnect socket with new token
       return newToken;
     } catch (err) {
       console.error('Token refresh failed:', err.response?.data || err.message);
@@ -141,8 +150,54 @@ const NotificationComponent = () => {
 
   useEffect(() => {
     fetchData();
+
+    // Set up WebSocket listeners
+    socket.on('connect', () => {
+      console.log('WebSocket connected for notifications');
+      socket.emit('join-room', `user_${localStorage.getItem('userId')}`);
+    });
+
+    socket.on('newNotification', (notification) => {
+      setNotifications(prev => {
+        const updated = [notification, ...prev.filter(n => n._id !== notification._id)];
+        return updated.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      });
+      toast({
+        title: notification.title,
+        description: notification.message,
+        status: "info",
+        duration: 5000,
+        isClosable: true,
+      });
+    });
+
+    socket.on('notificationDeleted', ({ id }) => {
+      setNotifications(prev => prev.filter(n => n._id !== id));
+    });
+
+    socket.on('notificationUpdated', ({ id, status, isRead }) => {
+      setNotifications(prev => {
+        const updated = prev.map(n => (n._id === id ? { ...n, status, isRead } : n));
+        return updated.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      });
+    });
+
+    socket.on('connect_error', async (error) => {
+      console.error('WebSocket connection error:', error);
+      if (error.message.includes('Authentication error')) {
+        try {
+          await refreshToken();
+        } catch (err) {
+          console.error('WebSocket reconnect failed:', err);
+        }
+      }
+    });
+
     const interval = setInterval(fetchData, 60000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      socket.disconnect();
+    };
   }, [toast]);
 
   const getFilteredNotifications = () => {
@@ -214,7 +269,7 @@ const NotificationComponent = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setNotifications(prev => {
-        const updated = prev.map(n => (n._id === id ? { ...n, status: newStatus } : n));
+        const updated = prev.map(n => (n._id === id ? { ...n, status: newStatus, isRead: true } : n));
         return updated.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
       });
       toast({
@@ -234,7 +289,7 @@ const NotificationComponent = () => {
             { headers: { Authorization: `Bearer ${newToken}` } }
           );
           setNotifications(prev => {
-            const updated = prev.map(n => (n._id === id ? { ...n, status: newStatus } : n));
+            const updated = prev.map(n => (n._id === id ? { ...n, status: newStatus, isRead: true } : n));
             return updated.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
           });
           toast({
@@ -474,6 +529,12 @@ const NotificationComponent = () => {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 whileHover={{ scale: 1.01 }}
+                onClick={() => {
+                  if (notification.transactionId?._id) {
+                    window.location.href = `/transactions/tab?transactionId=${notification.transactionId._id}`;
+                  }
+                }}
+                cursor={notification.transactionId?._id ? "pointer" : "default"}
               >
                 <Grid
                   templateColumns={{ base: "auto 1fr auto", md: "auto 1fr auto" }}
@@ -507,7 +568,7 @@ const NotificationComponent = () => {
                     >
                       {notification.message || 'No message'}
                     </Text>
-                    {notification.transactionId && notification.transactionId._id && (
+                    {notification.transactionId?._id && (
                       <Tooltip label="Transaction ID">
                         <Text
                           as="span"
@@ -553,7 +614,10 @@ const NotificationComponent = () => {
                               size="xs"
                               colorScheme="blue"
                               icon={<MdCheck size={12} />}
-                              onClick={() => handleMarkAsRead(notification._id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleMarkAsRead(notification._id);
+                              }}
                               borderRadius="full"
                               variant="ghost"
                               _hover={{ transform: "scale(1.1)" }}
@@ -567,7 +631,10 @@ const NotificationComponent = () => {
                                 size="xs"
                                 colorScheme="green"
                                 icon={<MdCheck size={12} />}
-                                onClick={() => handleUpdateStatus(notification._id, "accepted")}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleUpdateStatus(notification._id, "accepted");
+                                }}
                                 borderRadius="full"
                                 variant="ghost"
                                 _hover={{ transform: "scale(1.1)" }}
@@ -578,7 +645,10 @@ const NotificationComponent = () => {
                                 size="xs"
                                 colorScheme="red"
                                 icon={<MdClose size={12} />}
-                                onClick={() => handleUpdateStatus(notification._id, "declined")}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleUpdateStatus(notification._id, "declined");
+                                }}
                                 borderRadius="full"
                                 variant="ghost"
                                 _hover={{ transform: "scale(1.1)" }}
@@ -595,6 +665,7 @@ const NotificationComponent = () => {
                             colorScheme="gray"
                             _hover={{ bg: hoverBg, transform: "scale(1.1)" }}
                             borderRadius="full"
+                            onClick={(e) => e.stopPropagation()}
                           />
                           <MenuList
                             bg={menuBg}
@@ -604,14 +675,20 @@ const NotificationComponent = () => {
                           >
                             <MenuItem
                               icon={<MdDelete size={12} />}
-                              onClick={() => handleRemoveNotification(notification._id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveNotification(notification._id);
+                              }}
                               fontSize="xs"
                             >
                               Remove
                             </MenuItem>
                             <MenuItem
                               icon={<MdOutlineReportGmailerrorred size={12} />}
-                              onClick={() => handleReportNotification(notification._id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleReportNotification(notification._id);
+                              }}
                               fontSize="xs"
                             >
                               Report issue
@@ -629,6 +706,7 @@ const NotificationComponent = () => {
                             colorScheme="gray"
                             _hover={{ bg: hoverBg, transform: "scale(1.1)" }}
                             borderRadius="full"
+                            onClick={(e) => e.stopPropagation()}
                           />
                           <MenuList
                             bg={menuBg}
@@ -639,7 +717,10 @@ const NotificationComponent = () => {
                             {!notification.isRead && (
                               <MenuItem
                                 icon={<MdCheck size={12} />}
-                                onClick={() => handleMarkAsRead(notification._id)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleMarkAsRead(notification._id);
+                                }}
                                 fontSize="xs"
                               >
                                 Mark as Read
@@ -649,14 +730,20 @@ const NotificationComponent = () => {
                               <>
                                 <MenuItem
                                   icon={<MdCheck size={12} />}
-                                  onClick={() => handleUpdateStatus(notification._id, "accepted")}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleUpdateStatus(notification._id, "accepted");
+                                  }}
                                   fontSize="xs"
                                 >
                                   Accept
                                 </MenuItem>
                                 <MenuItem
                                   icon={<MdClose size={12} />}
-                                  onClick={() => handleUpdateStatus(notification._id, "declined")}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleUpdateStatus(notification._id, "declined");
+                                  }}
                                   fontSize="xs"
                                 >
                                   Decline
@@ -665,14 +752,20 @@ const NotificationComponent = () => {
                             )}
                             <MenuItem
                               icon={<MdDelete size={12} />}
-                              onClick={() => handleRemoveNotification(notification._id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveNotification(notification._id);
+                              }}
                               fontSize="xs"
                             >
                               Remove
                             </MenuItem>
                             <MenuItem
                               icon={<MdOutlineReportGmailerrorred size={12} />}
-                              onClick={() => handleReportNotification(notification._id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleReportNotification(notification._id);
+                              }}
                               fontSize="xs"
                             >
                               Report issue
