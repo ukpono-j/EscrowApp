@@ -5,6 +5,7 @@ import { ChakraProvider, ColorModeScript } from '@chakra-ui/react';
 import { HashRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { store } from './store';
+import { NotificationProvider } from './components/NotificationProvider'; // Add this import
 import theme from './ThemeContext.jsx';
 import './index.css';
 
@@ -113,7 +114,9 @@ root.render(
         <React.StrictMode>
           <ChakraProvider theme={theme}>
             <ColorModeScript initialColorMode={theme.config.initialColorMode} />
-            <App />
+            <NotificationProvider> {/* Wrap App with NotificationProvider */}
+              <App />
+            </NotificationProvider>
           </ChakraProvider>
         </React.StrictMode>
       </HashRouter>

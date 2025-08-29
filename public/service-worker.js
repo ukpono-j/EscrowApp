@@ -24,7 +24,6 @@ self.addEventListener('install', (event) => {
       })
       .catch(err => {
         console.error('Cache addAll error:', err);
-        // Continue despite errors
         return Promise.resolve();
       })
   );
@@ -56,11 +55,9 @@ self.addEventListener('fetch', (event) => {
             if (cachedResponse) {
               return cachedResponse;
             }
-            // If both network and cache fail, return cached homepage as fallback
             if (event.request.mode === 'navigate') {
               return caches.match('/');
             }
-            // Otherwise, just fail
             return new Response('Network error occurred', {
               status: 408,
               headers: { 'Content-Type': 'text/plain' }
@@ -84,51 +81,53 @@ self.addEventListener('push', async (event) => {
   const options = {
     body: data.body || 'New notification received',
     icon: data.icon || '/icons/android-chrome-192x192.png',
-    badge: '/icons/badge.png', // Optional: Add a badge image
+    badge: '/icons/badge.png',
     data: {
-      url: data.url || '/', // Default to home if no URL provided
+      url: data.type === 'message' ? `/chat/${data.chatroomId}` : (data.url || '/'),
       notificationId: data.notificationId || null,
+      chatroomId: data.chatroomId || null,
     },
     actions: [
-      { action: 'view', title: 'View Transaction' },
+      { action: 'view', title: data.type === 'message' ? 'View Message' : 'View Transaction' },
       { action: 'dismiss', title: 'Dismiss' },
     ],
-    vibrate: [200, 100, 200], // Vibration pattern
-    tag: data.notificationId || 'notification', // Prevent duplicate notifications
-    renotify: true, // Renotify if tag is reused
+    vibrate: [200, 100, 200],
+    tag: data.notificationId || 'notification',
+    renotify: true,
+    title: `Sylo: ${data.title || 'New Notification'}`, // Include site name in title
   };
 
   try {
-    await self.registration.showNotification(data.title || 'New Notification', options);
+    await self.registration.showNotification(options.title, options);
   } catch (error) {
     console.error('Error showing notification:', error);
   }
 });
 
 self.addEventListener('notificationclick', (event) => {
-  event.notification.close(); // Close the notification
+  event.notification.close();
 
   const { action, notification } = event;
-  const { url, notificationId } = notification.data;
+  const { url, notificationId, chatroomId } = notification.data;
 
   if (action === 'view' && url) {
     event.waitUntil(
-      clients.openWindow(url).catch((error) => {
-        console.error('Error opening URL:', error);
-      })
+      clients.matchAll({ type: 'window', includeUncontrolled: true })
+        .then(clientList => {
+          // Check if a window is already open
+          for (const client of clientList) {
+            if (client.url.includes(url) && 'focus' in client) {
+              return client.focus();
+            }
+          }
+          // If no matching window, open a new one
+          return clients.openWindow(url);
+        })
+        .catch((error) => {
+          console.error('Error handling notification click:', error);
+        })
     );
   } else if (action === 'dismiss') {
-    // Optionally track dismissal
     console.log('Notification dismissed:', notificationId);
   }
-});
-
-self.addEventListener('install', (event) => {
-  console.log('Service Worker installing');
-  event.waitUntil(self.skipWaiting()); // Activate new service worker immediately
-});
-
-self.addEventListener('activate', (event) => {
-  console.log('Service Worker activated');
-  event.waitUntil(self.clients.claim()); // Take control of clients immediately
 });

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import io from "socket.io-client";
@@ -115,6 +116,9 @@ const MessageBox = () => {
         })).filter((msg) => msg.message?.trim() && msg.userId)
           .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
         setMessages(fetchedMessages);
+
+        // Mark all message notifications for this chatroom as read
+        await markNotificationsAsRead();
       } catch (error) {
         setError(error.response?.data?.error || "Failed to load transaction or messages.");
         toast({
@@ -132,6 +136,35 @@ const MessageBox = () => {
 
     fetchData();
   }, [chatroomId, navigate, toast]);
+
+  // Function to mark notifications as read for the current chatroom
+  const markNotificationsAsRead = async () => {
+    try {
+      const token = localStorage.getItem("access-token");
+      const response = await axios.get(`${BASE_URL}/api/notifications/notifications`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const notifications = response.data.data || [];
+      const messageNotifications = notifications.filter(
+        (n) => n.type === "message" && n.chatroomId === chatroomId && !n.isRead
+      );
+
+      for (const notification of messageNotifications) {
+        try {
+          await axios.patch(
+            `${BASE_URL}/api/notifications/notifications/${notification._id}`,
+            { isRead: true },
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          console.log(`Marked notification as read: ${notification._id}`);
+        } catch (error) {
+          console.error(`Error marking notification ${notification._id} as read:`, error.response?.data || error.message);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching notifications to mark as read:", error.response?.data || error.message);
+    }
+  };
 
   // Socket setup
   useEffect(() => {
@@ -154,7 +187,9 @@ const MessageBox = () => {
 
     socketRef.current.on("connect", () => {
       socketRef.current.emit("join-room", `transaction_${chatroomId}`, userDetails._id);
+      socketRef.current.emit("join-room", `user_${userDetails._id}`);
       setSocketConnected(true);
+      console.log('Socket connected:', socketRef.current.id);
 
       if (pendingMessages.length > 0) {
         const messagesToSend = [...pendingMessages];
@@ -243,10 +278,10 @@ const MessageBox = () => {
           return prevMessages.map((msg) =>
             (msg._id && msg._id === message._id) || (msg.tempId && msg.tempId === message.tempId)
               ? {
-                  ...message,
-                  userId: message.userId?._id || message.userId,
-                  tempId: msg.tempId || message.tempId,
-                }
+                ...message,
+                userId: message.userId?._id || message.userId,
+                tempId: msg.tempId || message.tempId,
+              }
               : msg
           ).filter((m) => m.message?.trim() && m.userId)
             .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
@@ -264,6 +299,11 @@ const MessageBox = () => {
 
         return prevMessages;
       });
+
+      // Mark notification as read when message is received in the active chatroom
+      if ((message.userId?._id || message.userId) !== userDetails._id) {
+        markNotificationsAsRead();
+      }
     });
 
     socketRef.current.on("typing", (data) => {
@@ -329,6 +369,15 @@ const MessageBox = () => {
         }
       };
       refetchMessages();
+      markNotificationsAsRead();
+    });
+
+    socketRef.current.on("newNotification", (notification) => {
+      console.log("MessageBox received newNotification:", JSON.stringify(notification, null, 2));
+      // Only mark notifications as read if they are for the current chatroom
+      if (notification.type === "message" && notification.chatroomId === chatroomId) {
+        markNotificationsAsRead();
+      }
     });
 
     return () => {
@@ -339,6 +388,7 @@ const MessageBox = () => {
       socketRef.current.off("error");
       socketRef.current.off("pong");
       socketRef.current.off("reconnect");
+      socketRef.current.off("newNotification");
       socketRef.current.disconnect();
       setSocketConnected(false);
     };
@@ -670,6 +720,7 @@ const MessageBox = () => {
                 placeholder="Type a message..."
                 className="flex-1 px-4 py-3 bg-transparent outline-none text-white text-sm"
                 disabled={participants.length === 0 && !isCreator}
+                data-quillbot-ignore="true" // Prevent Quillbot interference
               />
               <button
                 onClick={sendMessage}

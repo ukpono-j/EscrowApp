@@ -19,11 +19,12 @@ import {
   Grid,
 } from "@chakra-ui/react";
 import { BsThreeDots, BsClock, BsBell } from "react-icons/bs";
-import { MdDelete, MdOutlineReportGmailerrorred, MdCheck, MdClose, MdOutlinePayment, MdNotifications } from "react-icons/md";
+import { MdDelete, MdOutlineReportGmailerrorred, MdCheck, MdClose, MdOutlinePayment, MdNotifications, MdMessage } from "react-icons/md";
 import { motion } from "framer-motion";
 import axios from "../../utils/axiosConfig";
 import { formatCreatedAt } from "../../utils/DateTimeStramp";
 import { io } from 'socket.io-client';
+import { useLocation } from "react-router-dom"; // Add useLocation
 
 const MotionBox = motion(Box);
 
@@ -34,6 +35,7 @@ const NotificationComponent = () => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const toast = useToast();
+  const location = useLocation(); // Add useLocation to get current URL
   const socket = io(BASE_URL, {
     auth: { token: localStorage.getItem('access-token') },
     reconnection: true,
@@ -64,6 +66,7 @@ const NotificationComponent = () => {
     payment: "pink",
     waybill: "yellow",
     registration: "blue",
+    message: "indigo",
   };
 
   const filterOptions = ["all", "pending", "accepted", "declined", "completed", "canceled", "failed"];
@@ -78,8 +81,8 @@ const NotificationComponent = () => {
       const newToken = res.data.token;
       localStorage.setItem('access-token', newToken);
       console.log('Token refreshed successfully');
-      socket.auth.token = newToken; // Update socket token
-      socket.disconnect().connect(); // Reconnect socket with new token
+      socket.auth.token = newToken;
+      socket.disconnect().connect();
       return newToken;
     } catch (err) {
       console.error('Token refresh failed:', err.response?.data || err.message);
@@ -120,7 +123,7 @@ const NotificationComponent = () => {
 
         const notificationsArray = Array.isArray(res.data.data) ? res.data.data : [];
         const sortedNotifications = notificationsArray
-          .filter(n => n._id && n.message && n.userId) // Basic validation
+          .filter(n => n._id && n.message && n.userId)
           .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
         setNotifications(sortedNotifications);
         return;
@@ -151,7 +154,6 @@ const NotificationComponent = () => {
   useEffect(() => {
     fetchData();
 
-    // Set up WebSocket listeners
     socket.on('connect', () => {
       console.log('WebSocket connected for notifications');
       socket.emit('join-room', `user_${localStorage.getItem('userId')}`);
@@ -162,13 +164,18 @@ const NotificationComponent = () => {
         const updated = [notification, ...prev.filter(n => n._id !== notification._id)];
         return updated.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
       });
-      toast({
-        title: notification.title,
-        description: notification.message,
-        status: "info",
-        duration: 5000,
-        isClosable: true,
-      });
+
+      // Check if the user is in the relevant chatroom
+      const isInChatroom = notification.type === 'message' && location.pathname === `/chat/${notification.chatroomId}`;
+      if (!isInChatroom) {
+        toast({
+          title: notification.title,
+          description: notification.message,
+          status: "info",
+          duration: 5000,
+          isClosable: true,
+        });
+      }
     });
 
     socket.on('notificationDeleted', ({ id }) => {
@@ -198,7 +205,7 @@ const NotificationComponent = () => {
       clearInterval(interval);
       socket.disconnect();
     };
-  }, [toast]);
+  }, [toast, location.pathname]); // Add location.pathname to dependencies
 
   const getFilteredNotifications = () => {
     if (!Array.isArray(notifications)) {
@@ -403,6 +410,8 @@ const NotificationComponent = () => {
         return <BsBell size={14} />;
       case "registration":
         return <MdNotifications size={14} />;
+      case "message":
+        return <MdMessage size={14} />;
       default:
         return <BsBell size={14} />;
     }
@@ -530,11 +539,13 @@ const NotificationComponent = () => {
                 animate={{ opacity: 1, y: 0 }}
                 whileHover={{ scale: 1.01 }}
                 onClick={() => {
-                  if (notification.transactionId?._id) {
+                  if (notification.type === 'message' && notification.chatroomId) {
+                    window.location.href = `/chat/${notification.chatroomId}`;
+                  } else if (notification.transactionId?._id) {
                     window.location.href = `/transactions/tab?transactionId=${notification.transactionId._id}`;
                   }
                 }}
-                cursor={notification.transactionId?._id ? "pointer" : "default"}
+                cursor={notification.transactionId?._id || notification.chatroomId ? "pointer" : "default"}
               >
                 <Grid
                   templateColumns={{ base: "auto 1fr auto", md: "auto 1fr auto" }}
