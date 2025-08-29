@@ -8,7 +8,7 @@ import {
 } from "@chakra-ui/react";
 import { motion } from "framer-motion";
 import { FiArrowRight, FiArrowLeft } from "react-icons/fi";
-import "./VerifyEmail.css"; // Create this file if you want custom styles
+import "./VerifyEmail.css";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 
@@ -79,12 +79,16 @@ const VerifyEmail = () => {
       return;
     }
 
+    if (isLoading) return; // Prevent multiple submissions
+
     setIsLoading(true);
 
     try {
       const response = await axios.post(`${BASE_URL}/api/auth/verify-email`, {
         email,
         otp,
+      }, {
+        timeout: 30000,
       });
 
       if (response.data.success) {
@@ -110,8 +114,16 @@ const VerifyEmail = () => {
       }
     } catch (error) {
       console.error("Verification error:", error);
-      const errorMessage = error.response?.data?.error || "Failed to verify OTP. Please try again.";
+      let errorMessage = error.response?.data?.error || "Failed to verify OTP. Please try again.";
       
+      if (error.response?.status === 400) {
+        errorMessage = "Invalid OTP. Please check and try again.";
+      } else if (error.response?.status === 429) {
+        errorMessage = "Too many attempts. Please try again later.";
+      } else if (error.response?.status === 500) {
+        errorMessage = "Server error. Please try again later.";
+      }
+
       toast({
         title: "Verification Failed",
         description: errorMessage,
@@ -126,10 +138,14 @@ const VerifyEmail = () => {
   };
 
   const handleResendOtp = async () => {
+    if (isLoading) return; // Prevent multiple resend requests
+
     setIsLoading(true);
 
     try {
-      const response = await axios.post(`${BASE_URL}/api/auth/resend-verification`, { email });
+      const response = await axios.post(`${BASE_URL}/api/auth/resend-verification`, { email }, {
+        timeout: 30000,
+      });
 
       if (response.data.success) {
         toast({
@@ -145,8 +161,14 @@ const VerifyEmail = () => {
       }
     } catch (error) {
       console.error("Resend OTP error:", error);
-      const errorMessage = error.response?.data?.error || "Failed to resend OTP. Please try again.";
+      let errorMessage = error.response?.data?.error || "Failed to resend OTP. Please try again.";
       
+      if (error.response?.status === 429) {
+        errorMessage = "Too many OTP requests. Please wait and try again.";
+      } else if (error.response?.status === 500) {
+        errorMessage = "Server error. Please try again later.";
+      }
+
       toast({
         title: "Resend OTP Failed",
         description: errorMessage,
@@ -250,7 +272,7 @@ const VerifyEmail = () => {
                     Verify Email
                   </Heading>
                   <Text fontSize="sm" color="gray.300">
-                    Enter the 6-digit code sent to {email}
+                    Enter the 6-digit code sent to {email || "your email"}
                   </Text>
                 </VStack>
 
@@ -268,6 +290,7 @@ const VerifyEmail = () => {
                           onChange={handleOtpChange}
                           focusBorderColor={accentColor}
                           otp
+                          autoFocus
                         >
                           {[...Array(6)].map((_, i) => (
                             <PinInputField
@@ -276,7 +299,7 @@ const VerifyEmail = () => {
                               bg="gray.700"
                               borderColor="gray.600"
                               _hover={{ bg: "gray.600" }}
-                              _focus={{ bg: "gray.600" }}
+                              _focus={{ bg: "gray.600", borderColor: accentColor }}
                             />
                           ))}
                         </PinInput>
@@ -296,25 +319,28 @@ const VerifyEmail = () => {
                         onClick={() => navigate("/login")}
                         _hover={{ color: "white" }}
                         size={{ base: "sm", md: "md" }}
+                        isDisabled={isLoading}
                       >
                         Back to Login
                       </Button>
                       <Button
                         type="submit"
-                        bg={buttonBgColor}
+                        bg={accentColor}
                         color="white"
                         borderWidth="2px"
                         borderColor={accentColor}
                         _hover={{
                           bg: buttonHoverBgColor,
                           transform: "translateY(-2px)",
+                          boxShadow: "lg"
                         }}
                         _active={{
                           transform: "translateY(0)",
+                          boxShadow: "md"
                         }}
                         rightIcon={<FiArrowRight />}
                         size={{ base: "sm", md: "md" }}
-                        isDisabled={otp.length !== 6}
+                        isDisabled={otp.length !== 6 || isLoading}
                         isLoading={isLoading}
                         loadingText="Verifying"
                       >
