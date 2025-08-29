@@ -2,12 +2,12 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import axios from "../utils/axiosConfig";
 import {
-  useToast, Box, Text, Button, FormControl, FormLabel,
-  VStack, Flex, Container, Heading, ScaleFade,
-  PinInput, PinInputField, HStack, useColorModeValue
+  useToast, Box, Text, Input, Button, FormControl, FormLabel,
+  VStack, Flex, Container, Heading, ScaleFade, FormErrorMessage,
+  InputGroup, InputLeftElement
 } from "@chakra-ui/react";
 import { motion } from "framer-motion";
-import { FiArrowRight, FiArrowLeft } from "react-icons/fi";
+import { FiMail, FiLock, FiArrowRight } from "react-icons/fi";
 import "./VerifyEmail.css";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
@@ -19,31 +19,33 @@ const MotionContainer = motion(Container);
 const VerifyEmail = () => {
   const [otp, setOtp] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [otpError, setOtpError] = useState("");
+  const [resendLoading, setResendLoading] = useState(false);
+  const [error, setError] = useState("");
   const [mounted, setMounted] = useState(false);
   const navigate = useNavigate();
   const toast = useToast();
   const location = useLocation();
-  const email = location.state?.email || "";
+
+  const { userId, email } = location.state || {};
 
   useEffect(() => {
     setMounted(true);
-    if (!email) {
+    if (!userId || !email) {
       toast({
-        title: "No Email Provided",
-        description: "Please go back to login and try again.",
+        title: "Invalid Access",
+        description: "Please register first to verify your email.",
         status: "error",
         duration: 5000,
         isClosable: true,
         position: "top",
       });
-      navigate("/login");
+      navigate("/register");
     }
     return () => setMounted(false);
-  }, [email, navigate, toast]);
+  }, [userId, email, navigate, toast]);
 
   const accentColor = "#B38939";
-  const buttonBgColor = useColorModeValue("#031420", "#051e2f");
+  const buttonBgColor = "#031420";
   const buttonHoverBgColor = "#B38939";
 
   const containerVariants = {
@@ -66,45 +68,37 @@ const VerifyEmail = () => {
     },
   };
 
-  const handleOtpChange = (value) => {
-    setOtp(value);
-    setOtpError("");
-  };
-
-  const handleOtpSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
+    setError("");
 
-    if (otp.length !== 6) {
-      setOtpError("Please enter the complete 6-digit OTP");
+    if (!otp || otp.length !== 6 || !/^\d{6}$/.test(otp)) {
+      setError("Please enter a valid 6-digit OTP");
+      setIsLoading(false);
       return;
     }
 
-    if (isLoading) return; // Prevent multiple submissions
-
-    setIsLoading(true);
-
     try {
       const response = await axios.post(`${BASE_URL}/api/auth/verify-email`, {
-        email,
+        userId,
         otp,
-      }, {
-        timeout: 30000,
       });
 
       if (response.data.success) {
-        localStorage.setItem("access-token", response.data.accessToken);
-        localStorage.setItem("refresh-token", response.data.refreshToken);
-        localStorage.setItem("userId", response.data.user.id);
-        axios.defaults.headers.common["Authorization"] = `Bearer ${response.data.accessToken}`;
-
         toast({
-          title: "Verification Successful",
-          description: "Your email is verified. Welcome!",
+          title: "Email Verified",
+          description: "Your email has been verified successfully. Logging you in...",
           status: "success",
           duration: 5000,
           isClosable: true,
           position: "top",
         });
+
+        localStorage.setItem("access-token", response.data.accessToken);
+        localStorage.setItem("refresh-token", response.data.refreshToken);
+        localStorage.setItem("userId", response.data.user.id);
+        axios.defaults.headers.common["Authorization"] = `Bearer ${response.data.accessToken}`;
 
         setTimeout(() => {
           navigate("/dashboard");
@@ -113,17 +107,33 @@ const VerifyEmail = () => {
         throw new Error(response.data?.error || "Unexpected response format");
       }
     } catch (error) {
-      console.error("Verification error:", error);
-      let errorMessage = error.response?.data?.error || "Failed to verify OTP. Please try again.";
-      
-      if (error.response?.status === 400) {
-        errorMessage = "Invalid OTP. Please check and try again.";
-      } else if (error.response?.status === 429) {
-        errorMessage = "Too many attempts. Please try again later.";
+      let errorMessage = "Unable to verify OTP. Please try again.";
+
+      if (error.response?.data?.error) {
+        switch (error.response.data.error) {
+          case "Invalid user ID":
+            errorMessage = "Invalid user ID. Please register again.";
+            break;
+          case "User not found":
+            errorMessage = "User not found. Please register again.";
+            break;
+          case "Email already verified":
+            errorMessage = "Email is already verified. Please log in.";
+            break;
+          case "Invalid OTP":
+            errorMessage = "Invalid OTP. Please check and try again.";
+            break;
+          case "OTP has expired. Please register again.":
+            errorMessage = "OTP has expired. Please register again.";
+            break;
+          default:
+            errorMessage = error.response.data.error;
+        }
       } else if (error.response?.status === 500) {
         errorMessage = "Server error. Please try again later.";
       }
 
+      setError(errorMessage);
       toast({
         title: "Verification Failed",
         description: errorMessage,
@@ -132,19 +142,29 @@ const VerifyEmail = () => {
         isClosable: true,
         position: "top",
       });
+
+      if (errorMessage.includes("register again")) {
+        setTimeout(() => {
+          navigate("/register");
+        }, 2000);
+      } else if (errorMessage.includes("already verified")) {
+        setTimeout(() => {
+          navigate("/login");
+        }, 2000);
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleResendOtp = async () => {
-    if (isLoading) return; // Prevent multiple resend requests
-
-    setIsLoading(true);
+  const handleResendOTP = async () => {
+    setResendLoading(true);
+    setError("");
 
     try {
-      const response = await axios.post(`${BASE_URL}/api/auth/resend-verification`, { email }, {
-        timeout: 30000,
+      const response = await axios.post(`${BASE_URL}/api/auth/register`, {
+        email,
+        resendOtp: true,
       });
 
       if (response.data.success) {
@@ -160,17 +180,16 @@ const VerifyEmail = () => {
         throw new Error(response.data?.error || "Unexpected response format");
       }
     } catch (error) {
-      console.error("Resend OTP error:", error);
-      let errorMessage = error.response?.data?.error || "Failed to resend OTP. Please try again.";
-      
-      if (error.response?.status === 429) {
-        errorMessage = "Too many OTP requests. Please wait and try again.";
+      let errorMessage = "Unable to resend OTP. Please try again.";
+
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
       } else if (error.response?.status === 500) {
         errorMessage = "Server error. Please try again later.";
       }
 
       toast({
-        title: "Resend OTP Failed",
+        title: "Resend Failed",
         description: errorMessage,
         status: "error",
         duration: 5000,
@@ -178,12 +197,13 @@ const VerifyEmail = () => {
         position: "top",
       });
     } finally {
-      setIsLoading(false);
+      setResendLoading(false);
     }
   };
 
   return (
     <Box
+      className="verify-email-page"
       minHeight="100vh"
       bgGradient="linear(to-br, #1A202C, #1A202C, #1A202C)"
       position="relative"
@@ -192,7 +212,7 @@ const VerifyEmail = () => {
       <Box className="background-shapes">
         <MotionBox
           position="absolute"
-          top="15%"
+          top={{ base: "5%", md: "15%" }}
           right={{ base: "-5%", md: "10%" }}
           width={{ base: "200px", md: "300px" }}
           height={{ base: "200px", md: "300px" }}
@@ -208,13 +228,13 @@ const VerifyEmail = () => {
           transition={{
             y: { repeat: Infinity, duration: 10, ease: "easeInOut" },
             opacity: { duration: 1.5 },
-            scale: { duration: 1.5 }
+            scale: { duration: 1.5 },
           }}
         />
         <MotionBox
           position="absolute"
           bottom="5%"
-          left={{ base: "-5%", md: "5%" }}
+          left={{ base: "-10%", md: "5%" }}
           width={{ base: "150px", md: "200px" }}
           height={{ base: "150px", md: "200px" }}
           borderRadius="full"
@@ -229,14 +249,35 @@ const VerifyEmail = () => {
           transition={{
             y: { repeat: Infinity, duration: 12, ease: "easeInOut" },
             opacity: { duration: 1.5, delay: 0.5 },
-            scale: { duration: 1.5, delay: 0.5 }
+            scale: { duration: 1.5, delay: 0.5 },
+          }}
+        />
+        <MotionBox
+          position="absolute"
+          top="60%"
+          right={{ base: "5%", md: "20%" }}
+          width={{ base: "100px", md: "150px" }}
+          height={{ base: "100px", md: "150px" }}
+          borderRadius="full"
+          background={`${buttonBgColor}15`}
+          filter="blur(40px)"
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{
+            scale: mounted ? 1 : 0.8,
+            opacity: mounted ? 0.5 : 0,
+            x: [0, 15, 0],
+          }}
+          transition={{
+            x: { repeat: Infinity, duration: 15, ease: "easeInOut" },
+            opacity: { duration: 1.5, delay: 0.8 },
+            scale: { duration: 1.5, delay: 0.8 },
           }}
         />
       </Box>
 
       <MotionContainer
         maxW="container.xl"
-        height="100vh"
+        minHeight="100vh"
         display="flex"
         alignItems="center"
         justifyContent="center"
@@ -245,18 +286,20 @@ const VerifyEmail = () => {
         variants={containerVariants}
         pt={{ base: "80px", md: "0" }}
         px={{ base: 4, md: 6 }}
+        py={{ base: 8, md: 12 }}
       >
         <MotionFlex
           direction="column"
           width="full"
-          maxWidth="450px"
+          maxWidth={{ base: "100%", sm: "90%", md: "450px" }}
           align="center"
           justify="center"
           variants={itemVariants}
         >
           <MotionBox
-            width="100%"
+            width="full"
             variants={itemVariants}
+            className="verify-email-form-wrapper"
           >
             <ScaleFade initialScale={0.9} in={true}>
               <Box
@@ -266,95 +309,85 @@ const VerifyEmail = () => {
                 p={{ base: 5, sm: 6, md: 8 }}
                 position="relative"
                 overflow="hidden"
+                className="form-container"
               >
                 <VStack spacing={1} mb={6} align="flex-start">
                   <Heading size="lg" color="white" fontWeight="semibold">
-                    Verify Email
+                    Verify Your Email
                   </Heading>
                   <Text fontSize="sm" color="gray.300">
-                    Enter the 6-digit code sent to {email || "your email"}
+                    Enter the 6-digit OTP sent to {email}
                   </Text>
                 </VStack>
 
-                <form onSubmit={handleOtpSubmit}>
+                <form onSubmit={handleSubmit}>
                   <VStack spacing={5}>
-                    <FormControl isRequired isInvalid={!!otpError}>
-                      <FormLabel fontSize="sm" color="gray.300" textAlign="center">
-                        Enter OTP
+                    <FormControl isRequired isInvalid={!!error}>
+                      <FormLabel fontSize="sm" color="gray.300">
+                        OTP Code
                       </FormLabel>
-                      <HStack justify="center" spacing={{ base: 2, md: 4 }}>
-                        <PinInput
-                          size={{ base: "md", md: "lg" }}
-                          type="number"
+                      <InputGroup size={{ base: "md", md: "lg" }}>
+                        <InputLeftElement
+                          pointerEvents="none"
+                          color="gray.400"
+                          children={<FiLock />}
+                        />
+                        <Input
+                          type="text"
+                          placeholder="Enter 6-digit OTP"
                           value={otp}
-                          onChange={handleOtpChange}
+                          onChange={(e) => {
+                            setOtp(e.target.value);
+                            setError("");
+                          }}
                           focusBorderColor={accentColor}
-                          otp
-                          autoFocus
-                        >
-                          {[...Array(6)].map((_, i) => (
-                            <PinInputField
-                              key={i}
-                              color="white"
-                              bg="gray.700"
-                              borderColor="gray.600"
-                              _hover={{ bg: "gray.600" }}
-                              _focus={{ bg: "gray.600", borderColor: accentColor }}
-                            />
-                          ))}
-                        </PinInput>
-                      </HStack>
-                      {otpError && (
-                        <Text color="red.300" fontSize="sm" mt={2} textAlign="center">
-                          {otpError}
-                        </Text>
-                      )}
+                          color="white"
+                          fontSize={{ base: "sm", md: "md" }}
+                          borderRadius="md"
+                          maxLength={6}
+                          _hover={{ bg: "gray.600" }}
+                          _focus={{ bg: "gray.600" }}
+                        />
+                      </InputGroup>
+                      <FormErrorMessage>{error}</FormErrorMessage>
                     </FormControl>
 
-                    <Flex width="full" justifyContent="space-between" mt={4}>
-                      <Button
-                        variant="ghost"
-                        color="gray.300"
-                        leftIcon={<FiArrowLeft />}
-                        onClick={() => navigate("/login")}
-                        _hover={{ color: "white" }}
-                        size={{ base: "sm", md: "md" }}
-                        isDisabled={isLoading}
-                      >
-                        Back to Login
-                      </Button>
-                      <Button
-                        type="submit"
-                        bg={accentColor}
-                        color="white"
-                        borderWidth="2px"
-                        borderColor={accentColor}
-                        _hover={{
-                          bg: buttonHoverBgColor,
-                          transform: "translateY(-2px)",
-                          boxShadow: "lg"
-                        }}
-                        _active={{
-                          transform: "translateY(0)",
-                          boxShadow: "md"
-                        }}
-                        rightIcon={<FiArrowRight />}
-                        size={{ base: "sm", md: "md" }}
-                        isDisabled={otp.length !== 6 || isLoading}
-                        isLoading={isLoading}
-                        loadingText="Verifying"
-                      >
-                        Verify
-                      </Button>
-                    </Flex>
+                    <Button
+                      type="submit"
+                      size={{ base: "md", md: "lg" }}
+                      width="full"
+                      bg={accentColor}
+                      color="white"
+                      fontWeight="medium"
+                      borderWidth="2px"
+                      borderColor={accentColor}
+                      _hover={{
+                        bg: "#A47F35",
+                        transform: "translateY(-2px)",
+                        boxShadow: "lg",
+                      }}
+                      _active={{
+                        transform: "translateY(0)",
+                        boxShadow: "md",
+                      }}
+                      isLoading={isLoading}
+                      loadingText="Verifying"
+                      borderRadius="lg"
+                      fontSize={{ base: "md", md: "md" }}
+                      rightIcon={<FiArrowRight />}
+                      transition="all 0.3s ease"
+                    >
+                      Verify Email
+                    </Button>
 
                     <Button
                       variant="link"
+                      size="sm"
                       color="gray.300"
-                      fontSize="sm"
-                      onClick={handleResendOtp}
-                      isDisabled={isLoading}
-                      _hover={{ color: accentColor }}
+                      _hover={{ color: accentColor, textDecoration: "underline" }}
+                      onClick={handleResendOTP}
+                      isLoading={resendLoading}
+                      loadingText="Resending OTP"
                     >
                       Resend OTP
                     </Button>
@@ -371,6 +404,27 @@ const VerifyEmail = () => {
                 />
               </Box>
             </ScaleFade>
+
+            <MotionBox
+              textAlign="center"
+              mt={6}
+              variants={itemVariants}
+            >
+              <Text fontSize={{ base: "sm", md: "md" }} color="gray.600">
+                Already verified?{" "}
+                <Link to="/login">
+                  <Text
+                    as="span"
+                    color={accentColor}
+                    fontWeight="bold"
+                    _hover={{ textDecoration: "underline" }}
+                    className="login-link"
+                  >
+                    Log In
+                  </Text>
+                </Link>
+              </Text>
+            </MotionBox>
           </MotionBox>
         </MotionFlex>
       </MotionContainer>

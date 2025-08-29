@@ -1,0 +1,17 @@
+.verify-email-page {
+  position: relative;
+  overflow: hidden;
+}
+
+.form-container {
+  background: #031420;
+  border-radius: 12px;
+}
+
+.input-field {
+  transition: all 0.3s ease;
+}
+
+.input-field:focus {
+  box-shadow: 0 0 0 2px #B38939;
+}

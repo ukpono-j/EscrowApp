@@ -8,6 +8,7 @@ import {
 } from "@chakra-ui/react";
 import { motion } from "framer-motion";
 import { FiEye, FiEyeOff, FiArrowRight, FiMail, FiLock } from "react-icons/fi";
+import Logo from "../assets/logo1.png";
 import "./Login.css";
 import { useDispatch } from 'react-redux';
 import { setUserDetails } from '../store/slices/userSlice';
@@ -66,7 +67,7 @@ const Login = () => {
 
     if (!email || !password) {
       toast({
-        title: "Missing Fields",
+        title: "Missing fields",
         description: "Please fill in all required fields",
         status: "warning",
         duration: 3000,
@@ -77,74 +78,104 @@ const Login = () => {
       return;
     }
 
-    try {
-      console.log(`Login attempt for email: ${email}`);
-      const response = await axios.post(`${BASE_URL}/api/auth/login`, {
-        email,
-        password,
-      }, {
-        timeout: 30000,
-      });
-
-      console.log("Login response:", response.data);
-
-      if (response.data.success) {
-        const { accessToken, refreshToken, user } = response.data;
-        console.log("Storing tokens:", { accessToken, refreshToken });
-        localStorage.setItem("access-token", accessToken);
-        localStorage.setItem("refresh-token", refreshToken);
-        localStorage.setItem("userId", user.id);
-        axios.defaults.headers.common["Authorization"] = `Bearer ${accessToken}`;
-        dispatch(setUserDetails(user));
-
-        toast({
-          title: "Login Successful",
-          description: "Welcome back!",
-          status: "success",
-          duration: 5000,
-          isClosable: true,
-          position: "top",
+    const maxRetries = 2;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`Login attempt ${attempt} for email: ${email}`);
+        const response = await axios.post(`${BASE_URL}/api/auth/login`, {
+          email,
+          password,
+        }, {
+          timeout: 30000,
         });
 
-        console.log("Navigating to /dashboard");
-        navigate("/dashboard");
-      } else {
-        throw new Error(response.data?.error || "Unexpected response format");
-      }
-    } catch (error) {
-      console.error("Login error:", error);
-      let errorMessage = "Unable to log in. Please try again.";
-      
-      if (error.response?.status === 403 && error.response?.data?.error === "Please verify your email first") {
-        toast({
-          title: "Email Not Verified",
-          description: "Please verify your email to log in. Redirecting to verification...",
-          status: "warning",
-          duration: 5000,
-          isClosable: true,
-          position: "top",
-        });
-        setTimeout(() => {
-          navigate("/verify-email", { state: { email } });
-        }, 2000);
-      } else if (error.response?.status === 401) {
-        errorMessage = "Invalid email or password.";
-      } else if (error.response?.status === 500) {
-        errorMessage = "Server error. Please try again later.";
-      } else if (error.response?.data?.error) {
-        errorMessage = error.response.data.error;
-      }
+        console.log("Login response:", response.data);
 
-      toast({
-        title: "Login Failed",
-        description: errorMessage,
-        status: "error",
-        duration: 5000,
-        isClosable: true,
-        position: "top",
-      });
-    } finally {
-      setIsLoading(false);
+        if (response.data?.success && response.data?.message === "Login successful") {
+          const { accessToken, refreshToken, user } = response.data;
+          console.log("Storing tokens:", { accessToken, refreshToken });
+          localStorage.setItem("access-token", accessToken);
+          localStorage.setItem("refresh-token", refreshToken);
+          axios.defaults.headers.common["Authorization"] = `Bearer ${accessToken}`; // Use Bearer standard
+          dispatch(setUserDetails(user));
+
+          toast({
+            title: "Login Successful",
+            description: "Welcome back!",
+            status: "success",
+            duration: 5000,
+            isClosable: true,
+            position: "top",
+          });
+
+          console.log("Navigating to /dashboard");
+          navigate("/dashboard");
+          break;
+        } else {
+          throw new Error(response.data?.error || "Unexpected response format");
+        }
+      } catch (error) {
+        console.error(`Login error (Attempt ${attempt}):`, error);
+        if (attempt === maxRetries) {
+          let errorTitle = "Login Failed";
+          let errorMessage = "An unexpected error occurred. Please try again.";
+
+          if (error.response) {
+            if (error.response.status === 400) {
+              errorTitle = "Invalid Input";
+              errorMessage = "Please provide both email and password.";
+            } else if (error.response.status === 404) {
+              errorTitle = "User Not Found";
+              errorMessage = "No account exists with this email. Would you like to register?";
+              navigate("/register", { state: { email } });
+            } else if (error.response.status === 401) {
+              errorTitle = "Invalid Credentials";
+              errorMessage = "Incorrect email or password. Try resetting your password if you forgot it.";
+            } else if (error.response.status === 500) {
+              errorTitle = "Server Error";
+              errorMessage = "Something went wrong on the server. Please try again later.";
+            } else {
+              errorMessage = error.response.data?.error || errorMessage;
+            }
+          } else if (error.code === "ECONNABORTED") {
+            errorTitle = "Connection Timeout";
+            errorMessage = "The server took too long to respond. Please check your connection and try again.";
+          } else if (error.request) {
+            errorTitle = "Connection Error";
+            errorMessage = "Unable to connect to the server. Please check your internet connection or try again later.";
+          } else {
+            errorMessage = error.message || errorMessage;
+          }
+
+          toast({
+            title: errorTitle,
+            description: (
+              <>
+                {errorMessage}
+                {error.response?.status === 401 && (
+                  <>
+                    {" "}
+                    <Link to="/forgot-password" style={{ color: "#B38939", textDecoration: "underline" }}>
+                      Reset Password
+                    </Link>
+                  </>
+                )}
+              </>
+            ),
+            status: "error",
+            duration: 7000,
+            isClosable: true,
+            position: "top",
+          });
+        }
+        if (attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+        }
+      } finally {
+        if (attempt === maxRetries) {
+          setIsLoading(false);
+        }
+      }
     }
   };
 
@@ -269,6 +300,7 @@ const Login = () => {
               >
                 Welcome Back!
               </Heading>
+
               <Text
                 fontSize="lg"
                 color="#fff"
@@ -280,6 +312,7 @@ const Login = () => {
                 Sign in to continue your journey with our secure escrow service.
                 Protecting your transactions every step of the way.
               </Text>
+
               <Box
                 width="100px"
                 height="4px"
@@ -339,7 +372,6 @@ const Login = () => {
                           pl={10}
                           _hover={{ bg: "gray.600" }}
                           _focus={{ bg: "gray.600" }}
-                          data-no-quillbot="true"
                         />
                         <Box position="absolute" left="3" top="50%" transform="translateY(-50%)" color="gray.400" zIndex="1">
                           <FiMail />
@@ -364,7 +396,6 @@ const Login = () => {
                           pl={10}
                           _hover={{ bg: "gray.600" }}
                           _focus={{ bg: "gray.600" }}
-                          data-no-quillbot="true"
                         />
                         <Box position="absolute" left="3" top="50%" transform="translateY(-50%)" color="gray.400" zIndex="1">
                           <FiLock />
@@ -402,13 +433,13 @@ const Login = () => {
                       size={{ base: "md", md: "lg" }}
                       width="full"
                       mt={3}
-                      bg={accentColor}
+                   bg={accentColor} 
                       color="white"
                       fontWeight="medium"
                       borderWidth="2px"
                       borderColor={accentColor}
                       _hover={{
-                        bg: "#A47F35",
+                         bg: "#A47F35",
                         transform: "translateY(-2px)",
                         boxShadow: "lg"
                       }}

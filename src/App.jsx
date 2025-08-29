@@ -21,6 +21,7 @@ import PrivateRoute from './components/PrivateRoute';
 import PublicRoute from './components/PublicRoute';
 import ForgotPassword from './pages/ForgotPassword';
 import { Box, Button, useColorModeValue } from '@chakra-ui/react';
+import VerifyEmail from './pages/VerifyEmail';
 
 const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:3001';
 
@@ -164,6 +165,7 @@ function App() {
         <Route path="/" element={<PublicRoute><Home /></PublicRoute>} />
         <Route path="/login" element={<PublicRoute><LogIn /></PublicRoute>} />
         <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+        <Route path="/verify-email" element={<PublicRoute><VerifyEmail /></PublicRoute>} />        
         <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
         <Route path="/dashboard" element={<PrivateRoute><UserDashboard /></PrivateRoute>} />
         <Route path="/create-transaction" element={<PrivateRoute><CreateTransaction /></PrivateRoute>} />
