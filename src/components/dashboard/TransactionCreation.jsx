@@ -63,6 +63,7 @@ const AcceptTransactionModal = ({
   modalButtonHoverBg,
   createNewTransaction,
   createNewTransactionForBuyer,
+  isCreating, // New prop for loading state
 }) => {
   const formatCurrency = (amount) =>
     parseFloat(amount || 0).toLocaleString("en-NG", {
@@ -147,10 +148,12 @@ const AcceptTransactionModal = ({
               }
               bg={accentColor}
               color="white"
-              _hover={{ bg: accentHoverColor }}
+              _hover={{ bg: isCreating ? accentColor : accentHoverColor }}
               borderRadius="full"
               size="lg"
               w="full"
+              isLoading={isCreating} // Add loading state
+              isDisabled={isCreating} // Disable button during loading
             >
               Confirm Transaction
             </Button>
@@ -162,6 +165,7 @@ const AcceptTransactionModal = ({
               borderRadius="full"
               size="lg"
               w="full"
+              isDisabled={isCreating} // Disable Cancel button during loading
             >
               Cancel
             </Button>
@@ -210,6 +214,7 @@ const TransactionCreation = () => {
   const [formValid, setFormValid] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const [isCreating, setIsCreating] = useState(false); // New state for transaction creation
 
   console.log("State: isLoading =", isLoading, "userDetails =", userDetails);
 
@@ -257,7 +262,7 @@ const TransactionCreation = () => {
   const createNewTransaction = useCallback(
     (e) => {
       e.preventDefault();
-      if (!formValid) {
+      if (!formValid || isCreating) {
         toast({
           title: "Please fill all required fields",
           status: "error",
@@ -266,6 +271,7 @@ const TransactionCreation = () => {
         });
         return;
       }
+      setIsCreating(true); // Set loading state
       const requestData = {
         paymentName: userDetails.fullName || "User",
         email: email || userDetails.email || "",
@@ -285,6 +291,7 @@ const TransactionCreation = () => {
           duration: 5000,
           isClosable: true,
         });
+        setIsCreating(false); // Reset loading state
         return;
       }
       axios
@@ -336,6 +343,10 @@ const TransactionCreation = () => {
             duration: 5000,
             isClosable: true,
           });
+        })
+        .finally(() => {
+          setIsCreating(false); // Reset loading state
+          setAcceptTransactionModel(false); // Close modal
         });
     },
     [
@@ -348,12 +359,24 @@ const TransactionCreation = () => {
       selectedUserType,
       navigate,
       toast,
+      isCreating, // Add dependency
     ]
   );
 
   const createNewTransactionForBuyer = useCallback(
     (e) => {
       if (e) e.preventDefault();
+      if (isCreating) {
+        toast({
+          title: "Transaction in progress",
+          description: "Please wait while the transaction is being created.",
+          status: "warning",
+          duration: 3000,
+          isClosable: true,
+        });
+        return;
+      }
+      setIsCreating(true); // Set loading state
       const requestData = {
         paymentName: userDetails.fullName || "Buyer",
         email: userDetails.email || email || "",
@@ -373,6 +396,7 @@ const TransactionCreation = () => {
           duration: 5000,
           isClosable: true,
         });
+        setIsCreating(false); // Reset loading state
         return;
       }
       axios
@@ -424,9 +448,13 @@ const TransactionCreation = () => {
             duration: 5000,
             isClosable: true,
           });
+        })
+        .finally(() => {
+          setIsCreating(false); // Reset loading state
+          setAcceptTransactionModel(false); // Close modal
         });
     },
-    [userDetails.fullName, userDetails.email, email, paymentAmount, paymentDescription, navigate, toast]
+    [userDetails.fullName, userDetails.email, email, paymentAmount, paymentDescription, navigate, toast, isCreating] // Add dependency
   );
 
   const handleRadioClick = useCallback((userType) => {
@@ -881,6 +909,7 @@ const TransactionCreation = () => {
         modalButtonHoverBg={modalButtonHoverBg}
         createNewTransaction={createNewTransaction}
         createNewTransactionForBuyer={createNewTransactionForBuyer}
+        isCreating={isCreating} // Pass loading state
       />
     </Box>
   );

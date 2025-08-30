@@ -7,6 +7,7 @@ import {
   Box, Flex, Text, Button, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter,
   Grid, Stack, Input, IconButton, Image, Circle, Spinner, Skeleton, useDisclosure, useColorModeValue
 } from '@chakra-ui/react';
+import imageCompression from 'browser-image-compression';
 import { FiSearch, FiEdit } from 'react-icons/fi';
 import { BsChatFill } from 'react-icons/bs';
 import { MdClose, MdCheckCircle, MdPendingActions, MdHourglassEmpty, MdContentCopy } from 'react-icons/md';
@@ -355,39 +356,76 @@ const WaybillModal = React.memo(({ isOpen, onClose, transactionId, isBuyer, deta
   const subtleTextColor = useColorModeValue('gray.500', 'gray.400');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   const inputBg = useColorModeValue('gray.50', '#051E2F');
-  const [isImageLoading, setIsImageLoading] = useState(true); // State for image loading
-  const [hasImageError, setHasImageError] = useState(false); // State to track image load errors
+  const [isImageLoading, setIsImageLoading] = useState(true);
+  const [hasImageError, setHasImageError] = useState(false);
+  const [imageRetryCount, setImageRetryCount] = useState(0);
+  const maxRetries = 3;
+  const retryDelay = 1000;
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        setErrors(prev => ({ ...prev, image: 'Image size must be less than 5MB' }));
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      setErrors(prev => ({ ...prev, image: 'Image size must be less than 5MB before compression' }));
+      return;
+    }
+
+    try {
+      const options = {
+        maxSizeMB: 0.5,
+        maxWidthOrHeight: 1024,
+        useWebWorker: true,
+      };
+      const compressedFile = await imageCompression(file, options);
+      console.log(`Original file size: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
+      console.log(`Compressed file size: ${(compressedFile.size / 1024 / 1024).toFixed(2)} MB`);
+
+      if (compressedFile.size > 2 * 1024 * 1024) {
+        setErrors(prev => ({ ...prev, image: 'Compressed image size must be less than 2MB' }));
         return;
       }
-      const imageUrl = URL.createObjectURL(file);
-      setDetails({ ...details, image: file, imagePreview: imageUrl });
+
+      const compressedFileWithName = new File([compressedFile], file.name, {
+        type: file.type,
+        lastModified: Date.now(),
+      });
+      const imageUrl = URL.createObjectURL(compressedFileWithName);
+      setDetails({ ...details, image: compressedFileWithName, imagePreview: imageUrl });
       setErrors(prev => ({ ...prev, image: undefined }));
+    } catch (error) {
+      console.error('WaybillModal - Image compression failed:', error);
+      setErrors(prev => ({ ...prev, image: 'Failed to compress image. Please try another image.' }));
     }
   };
 
   const handleImageError = (e) => {
     console.error('WaybillModal - Failed to load image:', details.image, e);
-    setErrors(prev => ({ ...prev, image: 'Failed to load image. It may not exist or is inaccessible.' }));
-    setIsImageLoading(false);
-    setHasImageError(true); // Mark image as failed
+    if (imageRetryCount < maxRetries) {
+      console.log(`Retrying image load (${imageRetryCount + 1}/${maxRetries}) for URL:`, details.image);
+      setTimeout(() => {
+        setImageRetryCount(prev => prev + 1);
+        setIsImageLoading(true); // Reset loading state to retry
+      }, retryDelay);
+    } else {
+      setErrors(prev => ({ ...prev, image: 'Failed to load image. It may not exist or is inaccessible.' }));
+      setIsImageLoading(false);
+      setHasImageError(true);
+    }
   };
 
   const handleImageLoad = () => {
-    setIsImageLoading(false); // Stop loading when image loads successfully
-    setHasImageError(false); // Ensure no error state
+    console.log('WaybillModal - Image loaded successfully:', details.image);
+    setIsImageLoading(false);
+    setHasImageError(false);
+    setImageRetryCount(0); // Reset retry count on success
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} isCentered size={{ base: "full", sm: "md" }}>
+    <Modal isOpen={isOpen} onClose={onClose} isCentered size={{ base: 'full', sm: 'md' }}>
       <ModalOverlay />
       <ModalContent bg={bgColor} color={textColor} p={4} rounded="lg" border="1px" borderColor={borderColor}>
-        <ModalHeader fontSize="lg" fontWeight="600">{isBuyer ? "Waybill Details" : "Submit Waybill"}</ModalHeader>
+        <ModalHeader fontSize="lg" fontWeight="600">{isBuyer ? 'Waybill Details' : 'Submit Waybill'}</ModalHeader>
         <ModalBody>
           {isBuyer ? (
             isFetching ? (
@@ -402,10 +440,10 @@ const WaybillModal = React.memo(({ isOpen, onClose, transactionId, isBuyer, deta
             ) : (
               <Stack spacing={3}>
                 {[
-                  { label: "Item", value: details.item || "N/A" },
-                  { label: "Shipping/Arrival Address", value: details.shippingAddress || "N/A" },
-                  { label: "Tracking Number", value: details.trackingNumber || "N/A" },
-                  { label: "Delivery/Arrival Date", value: details.deliveryDate ? format(new Date(details.deliveryDate), "MMM dd, yyyy") : "N/A" },
+                  { label: 'Item', value: details.item || 'N/A' },
+                  { label: 'Shipping/Arrival Address', value: details.shippingAddress || 'N/A' },
+                  { label: 'Tracking Number', value: details.trackingNumber || 'N/A' },
+                  { label: 'Delivery/Arrival Date', value: details.deliveryDate ? format(new Date(details.deliveryDate), 'MMM dd, yyyy') : 'N/A' },
                 ].map(({ label, value }, idx) => (
                   <Box key={idx}>
                     <Text fontSize="xs" color={subtleTextColor}>{label}</Text>
@@ -414,28 +452,39 @@ const WaybillModal = React.memo(({ isOpen, onClose, transactionId, isBuyer, deta
                 ))}
                 <Box>
                   <Text fontSize="xs" color={subtleTextColor}>Image</Text>
+
                   {details.image && !hasImageError ? (
-                    <Flex direction="column" gap={2}>
+                    <Flex direction="column" mt={4} gap={2}>
                       {(isFetching || isImageLoading) && (
                         <Flex align="center" justify="center" h="200px" bg={inputBg} rounded="md">
                           <Spinner color="#BB954D" size="md" />
                         </Flex>
                       )}
                       <Image
-                        src={details.image}
+                        src={`${details.image}?cache=${Date.now()}`} // Add cache-busting query
                         alt="Waybill"
                         maxW="100%"
+                        maxH="300px"
                         rounded="md"
+                        objectFit="contain"
                         onLoad={handleImageLoad}
                         onError={handleImageError}
-                        display={(isFetching || isImageLoading) ? "none" : "block"} // Hide image while loading or fetching
+                        display={(isFetching || isImageLoading) ? 'none' : 'block'}
+                        fallbackSrc="/fallback-image.png" // Add a fallback image
                       />
-                      <Button size="sm" bg="#8a6d27" color="white" _hover={{ bg: "#b38939" }} onClick={() => downloadImage(details.image)} isDisabled={!details.image || hasImageError}>
+                      <Button
+                        size="sm"
+                        bg="#8a6d27"
+                        color="white"
+                        _hover={{ bg: '#b38939' }}
+                        onClick={() => downloadImage(details.image)}
+                        isDisabled={!details.image || hasImageError}
+                      >
                         Download Image
                       </Button>
                     </Flex>
                   ) : (
-                    <Text fontSize="sm" color={subtleTextColor}>No image uploaded</Text>
+                    <Text fontSize="sm" color={subtleTextColor}>No image available</Text>
                   )}
                   {errors.image && hasImageError && <Text fontSize="xs" color="red.400">{errors.image}</Text>}
                 </Box>
@@ -449,22 +498,22 @@ const WaybillModal = React.memo(({ isOpen, onClose, transactionId, isBuyer, deta
             <form onSubmit={(e) => { e.preventDefault(); handleSubmit(transactionId); }}>
               <Stack spacing={3}>
                 {[
-                  { label: "Item", key: "item", type: "text", isReadOnly: true },
-                  { label: "Shipping/Arrival Address", key: "shippingAddress", type: "text" },
-                  { label: "Tracking Number", key: "trackingNumber", type: "text" },
-                  { label: "Delivery/Arrival Date", key: "deliveryDate", type: "date" },
+                  { label: 'Item', key: 'item', type: 'text', isReadOnly: true },
+                  { label: 'Shipping/Arrival Address', key: 'shippingAddress', type: 'text' },
+                  { label: 'Tracking Number', key: 'trackingNumber', type: 'text' },
+                  { label: 'Delivery/Arrival Date', key: 'deliveryDate', type: 'date' },
                 ].map(({ label, key, type, isReadOnly }) => (
                   <Box key={key}>
                     <Text fontSize="xs" color={subtleTextColor}>{label}</Text>
                     <Input
                       type={type}
-                      value={details[key] || ""}
+                      value={details[key] || ''}
                       onChange={(e) => setDetails({ ...details, [key]: e.target.value })}
                       bg={inputBg}
                       borderColor={borderColor}
                       color={textColor}
                       size="sm"
-                      _focus={{ borderColor: "#BB954D" }}
+                      _focus={{ borderColor: '#BB954D' }}
                       isReadOnly={isReadOnly}
                     />
                     {errors[key] && <Text color="red.400" fontSize="xs">{errors[key]}</Text>}
@@ -482,12 +531,12 @@ const WaybillModal = React.memo(({ isOpen, onClose, transactionId, isBuyer, deta
                     />
                     <label htmlFor={`waybill-image-${transactionId}`} style={{ cursor: 'pointer' }}>
                       <Text fontSize="sm" color={subtleTextColor}>
-                        {details.image ? "Change Image" : "Upload Image"}
+                        {details.image ? 'Change Image' : 'Upload Image'}
                       </Text>
                     </label>
                     {details.imagePreview && (
                       <Box mt={2}>
-                        <Image src={details.imagePreview} alt="Waybill preview" maxW="100%" maxH="200px" rounded="md" />
+                        <Image src={details.imagePreview} alt="Waybill preview" maxW="100%" maxH="200px" rounded="md" objectFit="contain" />
                         <Text fontSize="xs" color={subtleTextColor} mt={1}>{details.image.name}</Text>
                       </Box>
                     )}
@@ -500,13 +549,15 @@ const WaybillModal = React.memo(({ isOpen, onClose, transactionId, isBuyer, deta
         </ModalBody>
         <ModalFooter>
           <Flex gap={3} w="full">
-            <Button size="sm" bg={useColorModeValue('gray.200', 'gray.600')} color={textColor} _hover={{ bg: useColorModeValue('gray.300', 'gray.700') }} onClick={onClose}>Close</Button>
+            <Button size="sm" bg={useColorModeValue('gray.200', 'gray.600')} color={textColor} _hover={{ bg: useColorModeValue('gray.300', 'gray.700') }} onClick={onClose}>
+              Close
+            </Button>
             {!isBuyer && isFunded && (
               <Button
                 size="sm"
                 bg="#BB954D"
                 color="white"
-                _hover={{ bg: "#8a6d2f" }}
+                _hover={{ bg: '#8a6d2f' }}
                 onClick={() => handleSubmit(transactionId)}
                 isLoading={isSubmitting}
                 isDisabled={isSubmitting}
@@ -1590,7 +1641,25 @@ const DisplayTransaction = () => {
             ) : !Array.isArray(transactions) || transactions.length === 0 ? (
               <Flex direction="column" align="center" justify="center" py={8}>
                 <Text fontSize="2xl" color={subtleTextColor}>📭</Text>
-                <Text color={subtleTextColor} fontSize="md" textAlign="center">{searchQuery ? "No matches found." : "No transactions available."}</Text>
+                <Text color={subtleTextColor} fontSize="md" textAlign="center">
+                  No transactions available.
+                </Text>
+                <Button mt={4} size="md" bg="#BB954D" color="white" _hover={{ bg: "#967532" }} onClick={() => dispatch(fetchInitialData())}>Retry</Button>
+              </Flex>
+            ) : filteredTransactions.length === 0 ? (
+              <Flex direction="column" align="center" justify="center" py={8}>
+                <Text fontSize="2xl" color={subtleTextColor}>📭</Text>
+                <Text color={subtleTextColor} fontSize="md" textAlign="center">
+                  {searchQuery
+                    ? "No matches found."
+                    : activeTab === "active"
+                      ? "No active transactions at the moment."
+                      : activeTab === "completed"
+                        ? "No completed transactions at the moment."
+                        : activeTab === "canceled"
+                          ? "No canceled transactions at the moment."
+                          : "No transactions available at the moment."}
+                </Text>
                 <Button mt={4} size="md" bg="#BB954D" color="white" _hover={{ bg: "#967532" }} onClick={() => dispatch(fetchInitialData())}>Retry</Button>
               </Flex>
             ) : (
