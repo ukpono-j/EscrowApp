@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import axios from "../../utils/axiosConfig";
 import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Box,
   Button,
@@ -11,10 +12,7 @@ import {
   Heading,
   Text,
   VStack,
-  useToast,
   useColorMode,
-  useColorModeValue,
-  Flex,
   Stack,
   Alert,
   AlertIcon,
@@ -25,422 +23,585 @@ import {
   ModalHeader,
   ModalBody,
   ModalFooter,
+  Badge,
+  HStack,
+  Icon,
+  InputGroup,
+  InputLeftElement,
+  Spinner,
+  SimpleGrid,
 } from "@chakra-ui/react";
+import {
+  FaHandshake,
+  FaEye,
+  FaEdit,
+  FaTimes,
+  FaCheck,
+  FaIdCard,
+  FaMoneyBillWave,
+  FaFileAlt,
+  FaShieldAlt,
+} from "react-icons/fa";
+import "./MainJoinTransaction.css"
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
+
+// Simplified animation variants
+const variants = {
+  container: {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } },
+  },
+  modal: {
+    hidden: { opacity: 0, scale: 0.97 },
+    visible: { opacity: 1, scale: 1, transition: { duration: 0.3 } },
+    exit: { opacity: 0, scale: 0.97, transition: { duration: 0.2 } },
+  },
+  card: {
+    hidden: { opacity: 0, y: 10 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
+  },
+};
 
 const MainJoinTransaction = () => {
   const [transactionId, setTransactionId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [responseMessage, setResponseMessage] = useState("");
-  const [messageType, setMessageType] = useState("");
+  const [alert, setAlert] = useState({ message: "", type: "" });
   const [transactionDetails, setTransactionDetails] = useState(null);
-  const [showPreviewModal, setShowPreviewModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editDetails, setEditDetails] = useState({ description: "", price: "" });
+  const [showPreview, setShowPreview] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
+  const [editData, setEditData] = useState({ description: "", price: "" });
   const [editErrors, setEditErrors] = useState({});
+
   const navigate = useNavigate();
-  const toast = useToast();
   const { colorMode } = useColorMode();
 
-  const boxBg = useColorModeValue("white", "gray.800");
-  const headingColor = useColorModeValue("gray.800", "white");
-  const textColor = useColorModeValue("gray.600", "gray.300");
-  const borderColor = useColorModeValue("#A27D35", "#A27D35");
-  const buttonBg = useColorModeValue("#AD8537", "#A27D35");
-  const buttonHoverBg = useColorModeValue("#AD8537", "#AD8537");
-  const inputBg = useColorModeValue("white", "gray.700");
-  const shadowColor = useColorModeValue("rgba(0, 0, 0, 0.1)", "rgba(0, 0, 0, 0.3)");
+  // Memoized theme colors
+  const theme = useMemo(
+    () => ({
+      bg: colorMode === "light" ? "white" : "gray.800",
+      text: colorMode === "light" ? "gray.600" : "gray.200",
+      textMuted: colorMode === "light" ? "gray.400" : "gray.500",
+      accent: "#B8974A",
+      accentHover: "#C4A360",
+      cardBg: colorMode === "light" ? "gray.50" : "gray.700",
+      border: colorMode === "light" ? "#373B32" : "#373B32",
+      pageBg: colorMode === "light" ? "#152830" : "#152830",
+      shadow: colorMode === "light" ? "0 8px 24px rgba(0,0,0,0.05)" : "0 8px 24px rgba(0,0,0,0.3)",
+    }),
+    [colorMode]
+  );
 
   useEffect(() => {
-    if (responseMessage) {
-      const timeoutId = setTimeout(() => {
-        setResponseMessage("");
-        setMessageType("");
-      }, 5000);
-      return () => clearTimeout(timeoutId);
-    }
-  }, [responseMessage]);
+    if (!alert.message) return;
+    const timer = setTimeout(() => setAlert({ message: "", type: "" }), 3000);
+    return () => clearTimeout(timer);
+  }, [alert.message]);
 
-const fetchTransactionDetails = async (e) => {
-  e.preventDefault();
-  try {
-    setIsLoading(true);
+  const handleError = useCallback((error) => {
+    const errorMsg = error.response?.data?.error;
+    const errorMap = {
+      "Transaction not found": "Transaction ID not found. Please verify and try again.",
+      "Unauthorized to view this transaction": "Access denied. Transaction may be closed or restricted.",
+      "You cannot join your own transaction": "Cannot join your own transaction.",
+      "You are already a participant": "Already participating in this transaction.",
+      "Only pending transactions can be joined": "Transaction no longer available.",
+      "You cannot reject your own transaction": "Cannot reject your own transaction.",
+    };
+    return errorMap[errorMsg] || errorMsg || "Connection error. Please try again.";
+  }, []);
+
+  const apiCall = useCallback(async (endpoint, data = null) => {
     const token = localStorage.getItem("access-token");
+    if (!token) throw new Error("Authentication required");
+    const config = { headers: { "access-token": token } };
+    return data ? axios.post(endpoint, data, config) : axios.get(endpoint, config);
+  }, []);
 
-    if (!token) {
-      setResponseMessage("You must be logged in to join a transaction");
-      setMessageType("error");
-      setIsLoading(false);
-      return;
-    }
+  const fetchDetails = useCallback(
+    async (e) => {
+      e.preventDefault();
+      if (!transactionId.trim()) return;
+      try {
+        setIsLoading(true);
+        const response = await apiCall(`${BASE_URL}/api/transactions/${transactionId}`);
+        if (response.data.success) {
+          setTransactionDetails(response.data.data);
+          setShowPreview(true);
+        } else {
+          setAlert({ message: response.data.error, type: "error" });
+        }
+      } catch (error) {
+        setAlert({ message: handleError(error), type: "error" });
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [transactionId, apiCall, handleError]
+  );
 
-    const response = await axios.get(`${BASE_URL}/api/transactions/${transactionId}`, {
-      headers: { "access-token": token },
+  const handleAction = useCallback(
+    async (action, payload = {}) => {
+      try {
+        setIsLoading(true);
+        const endpoint = `${BASE_URL}/api/transactions/${action}`;
+        const response = await apiCall(endpoint, { id: transactionId, ...payload });
+        if (response.data.success) {
+          const messages = {
+            "join-transaction": `Joined as ${response.data.data.role}! Redirecting...`,
+            "accept-and-update": `Joined as ${response.data.role}! Redirecting...`,
+            "reject-transaction": "Transaction rejected successfully.",
+          };
+          setAlert({ message: messages[action], type: action === "reject-transaction" ? "info" : "success" });
+          setShowPreview(false);
+          setShowEdit(false);
+          if (action !== "reject-transaction") {
+            setTimeout(() => navigate("/transactions/tab"), 1500);
+          }
+        } else {
+          setAlert({ message: response.data.error, type: "error" });
+        }
+      } catch (error) {
+        setAlert({ message: handleError(error), type: "error" });
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [transactionId, apiCall, handleError, navigate]
+  );
+
+  const openEdit = useCallback(() => {
+    setEditData({
+      description: transactionDetails?.productDetails.description || "",
+      price: transactionDetails?.paymentAmount || "",
     });
+    setShowEdit(true);
+  }, [transactionDetails]);
 
-    if (!response.data.success) {
-      setResponseMessage(response.data.error || "Error fetching transaction details");
-      setMessageType("error");
-    } else {
-      setTransactionDetails(response.data.data);
-      setShowPreviewModal(true);
-    }
-  } catch (error) {
-    console.error("Error fetching transaction details:", error);
-    if (error.response?.data?.error === "Transaction not found") {
-      setResponseMessage("Invalid transaction ID. Please check and try again.");
-    } else if (error.response?.data?.error.includes("Unauthorized to view this transaction")) {
-      setResponseMessage(
-        error.response.data.error || "You cannot view this transaction. It may already have a participant or is not in a pending state."
-      );
-    } else {
-      setResponseMessage("Network error. Please try again.");
-    }
-    setMessageType("error");
-  } finally {
-    setIsLoading(false);
-  }
-};
-
-  const handleAccept = async () => {
-    try {
-      setIsLoading(true);
-      const token = localStorage.getItem("access-token");
-      const response = await axios.post(
-        `${BASE_URL}/api/transactions/join-transaction`,
-        { id: transactionId },
-        { headers: { "access-token": token } }
-      );
-
-      if (!response.data.success) {
-        setResponseMessage(response.data.error || "Error joining transaction");
-        setMessageType("error");
-      } else {
-        setResponseMessage(`Successfully joined as ${response.data.data.role}. Redirecting...`);
-        setMessageType("success");
-        setShowPreviewModal(false);
-
-        setTimeout(() => {
-          navigate("/transactions/tab");
-        }, 2000);
-      }
-    } catch (error) {
-      console.error("Error joining transaction:", error);
-      if (error.response?.data?.error === "You cannot join your own transaction") {
-        setResponseMessage("You cannot join a transaction you created.");
-      } else if (error.response?.data?.error === "You are already a participant") {
-        setResponseMessage("You are already part of this transaction.");
-      } else if (error.response?.data?.error === "Only pending transactions can be joined") {
-        setResponseMessage("This transaction is no longer available to join.");
-      } else {
-        setResponseMessage("Network error. Please try again.");
-      }
-      setMessageType("error");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleAcceptAndChange = async () => {
-    const newErrors = {};
-    if (!editDetails.description) newErrors.description = "Description is required";
-    if (!editDetails.price || editDetails.price <= 0) newErrors.price = "Price must be a positive number";
-    if (Object.keys(newErrors).length) {
-      setEditErrors(newErrors);
+  const handleEdit = useCallback(async () => {
+    const errors = {};
+    if (!editData.description) errors.description = "Description required";
+    if (!editData.price || editData.price <= 0) errors.price = "Valid price required";
+    if (Object.keys(errors).length) {
+      setEditErrors(errors);
       return;
     }
+    await handleAction("accept-and-update", editData);
+  }, [editData, handleAction]);
 
-    try {
-      setIsLoading(true);
-      const token = localStorage.getItem("access-token");
-      const response = await axios.post(
-        `${BASE_URL}/api/transactions/accept-and-update`,
-        {
-          id: transactionId,
-          description: editDetails.description,
-          price: editDetails.price,
-        },
-        { headers: { "access-token": token } }
-      );
+  const formattedAmount = useMemo(() => {
+    return transactionDetails?.paymentAmount
+      ? `₦${parseFloat(transactionDetails.paymentAmount).toLocaleString("en-NG", {
+          minimumFractionDigits: 2,
+        })}`
+      : "N/A";
+  }, [transactionDetails?.paymentAmount]);
 
-      if (!response.data.success) {
-        setResponseMessage(response.data.error || "Error updating transaction");
-        setMessageType("error");
-      } else {
-        setResponseMessage(`Successfully joined as ${response.data.role}. Redirecting...`);
-        setMessageType("success");
-        setShowPreviewModal(false);
-        setShowEditModal(false);
-
-        setTimeout(() => {
-          navigate("/transactions/tab");
-        }, 2000);
-      }
-    } catch (error) {
-      console.error("Error accepting and updating transaction:", error);
-      if (error.response?.data?.error === "You cannot join your own transaction") {
-        setResponseMessage("You cannot join a transaction you created.");
-      } else if (error.response?.data?.error === "You are already a participant") {
-        setResponseMessage("You are already part of this transaction.");
-      } else if (error.response?.data?.error === "Only pending transactions can be joined") {
-        setResponseMessage("This transaction is no longer available to join.");
-      } else {
-        setResponseMessage("Network error. Please try again.");
-      }
-      setMessageType("error");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleReject = async () => {
-    try {
-      setIsLoading(true);
-      const token = localStorage.getItem("access-token");
-      const response = await axios.post(
-        `${BASE_URL}/api/transactions/reject-transaction`,
-        { id: transactionId },
-        { headers: { "access-token": token } }
-      );
-
-      if (!response.data.success) {
-        setResponseMessage(response.data.error || "Error rejecting transaction");
-        setMessageType("error");
-      } else {
-        setResponseMessage("Transaction rejected.");
-        setMessageType("info");
-        setShowPreviewModal(false);
-      }
-    } catch (error) {
-      console.error("Error rejecting transaction:", error);
-      if (error.response?.data?.error === "You cannot reject your own transaction") {
-        setResponseMessage("You cannot reject a transaction you created.");
-      } else if (error.response?.data?.error === "You are already a participant") {
-        setResponseMessage("You are already part of this transaction.");
-      } else {
-        setResponseMessage("Network error. Please try again.");
-      }
-      setMessageType("error");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const creatorName = useMemo(() => {
+    const user = transactionDetails?.userId;
+    return user ? `${user.firstName} ${user.lastName || ""}`.trim() : "N/A";
+  }, [transactionDetails?.userId]);
 
   return (
-    <Flex 
-      minHeight="100vh" 
-      width="100%" 
-      align="center" 
-      justify="center"
-      p={4}
-    >
-      <Box
-        w="100%"
-        mt={20}
-        maxW="450px"
-        bg={boxBg}
-        boxShadow={`0 4px 20px ${shadowColor}`}
-        borderRadius="lg"
-        overflow="hidden"
-        borderTop="4px solid"
-        borderColor={borderColor}
+    <Box minH="calc(100vh - 100px)" fontSize={{ base: "clamp(12px, 3vw, 14px)", md: "16px" }} position="relative">
+      <style>
+        {`
+          @media (max-width: 360px) {
+            .responsive-container { padding: 3vw; }
+            .responsive-button { font-size: clamp(11px, 3vw, 13px); height: clamp(36px, 9vw, 44px); }
+            .responsive-input { font-size: clamp(11px, 3vw, 13px); height: clamp(36px, 9vw, 44px); }
+            .responsive-heading { font-size: clamp(18px, 4.5vw, 22px); }
+            .responsive-text { font-size: clamp(11px, 2.8vw, 13px); }
+            .responsive-modal { margin: 1vw; max-width: 95vw; }
+            .responsive-icon { width: clamp(14px, 3.5vw, 18px); height: clamp(14px, 3.5vw, 18px); }
+          }
+          @media (min-width: 361px) and (max-width: 480px) {
+            .responsive-container { padding: 4vw; }
+            .responsive-button { font-size: clamp(12px, 3.5vw, 14px); height: clamp(40px, 10vw, 48px); }
+            .responsive-input { font-size: clamp(12px, 3.5vw, 14px); height: clamp(40px, 10vw, 48px); }
+            .responsive-heading { font-size: clamp(20px, 5vw, 24px); }
+            .responsive-text { font-size: clamp(12px, 3vw, 14px); }
+            .responsive-modal { margin: 2vw; max-width: 90vw; }
+            .responsive-icon { width: clamp(16px, 4vw, 20px); height: clamp(16px, 4vw, 20px); }
+          }
+          @media (min-width: 1200px) {
+            .responsive-container { max-width: 480px; }
+          }
+        `}
+      </style>
+
+      <Container
+        maxW={{ base: "95%", sm: "90%", md: "480px" }}
+        centerContent
+        pt={{ base: "110px", sm: "120px", md: "130px" }} // Adjusted for 100px navbar
+        pb={{ base: 4, md: 6 }}
+        px={{ base: 3, sm: 4, md: 5 }}
+        className="responsive-container"
       >
-        <Box p={8}>
-          <Stack spacing={6}>
-            <Heading 
-              as="h1"
-              fontSize="2xl"
-              textAlign="center"
-              color={headingColor}
-              fontWeight="bold"
+        <motion.div variants={variants.container} initial="hidden" animate="visible" style={{ width: "100%" }}>
+          {/* Header Section */}
+          <Box textAlign="center" mb={{ base: 3, md: 5 }}>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
             >
-              Join Transaction
-            </Heading>
-            
-            <Text textAlign="center" color={textColor}>
-              Please enter the Transaction ID you received from the person you are transacting with.
-            </Text>
-            
-            <form onSubmit={fetchTransactionDetails}>
-              <Stack spacing={6}>
-                <FormControl isRequired>
-                  <FormLabel htmlFor="transactionId" fontSize="sm" color={textColor}>
-                    Transaction ID
-                  </FormLabel>
-                  <Input
-                    id="transactionId"
-                    type="text"
-                    value={transactionId}
-                    onChange={(e) => setTransactionId(e.target.value)}
-                    placeholder="Enter transaction ID"
-                    size="lg"
-                    bg={inputBg}
-                    borderColor={useColorModeValue("gray.300", "gray.600")}
-                    _hover={{ borderColor: borderColor }}
-                    _focus={{ 
-                      borderColor: borderColor, 
-                      boxShadow: `0 0 0 1px ${borderColor}` 
-                    }}
-                  />
-                </FormControl>
+              <Heading
+                fontSize={{ base: "clamp(18px, 4.5vw, 22px)", sm: "clamp(20px, 5vw, 24px)", md: "26px" }}
+                fontWeight="700"
+                color={theme.text}
+                mb={{ base: 2, md: 3 }}
+                className="responsive-heading md:mt-0 mt-32"
+              >
+                <span>Join a Transaction</span>
+              </Heading>
+              <Text
+                fontSize={{ base: "clamp(11px, 2.8vw, 13px)", md: "14px" }}
+                color={theme.textMuted}
+                maxW={{ base: "95%", sm: "80%", md: "400px" }}
+                mx="auto"
+                className="responsive-text"
+              >
+                Enter a transaction ID to preview and join securely
+              </Text>
+            </motion.div>
 
-                {responseMessage && (
-                  <Alert 
-                    status={messageType} 
-                    variant="subtle"
-                    borderRadius="md"
-                  >
-                    <AlertIcon />
-                    <AlertTitle fontSize="sm">{responseMessage}</AlertTitle>
-                  </Alert>
-                )}
+            {/* Single trust indicator */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4, duration: 0.3 }}
+            >
+              <HStack justify="center" mt={{ base: 3, md: 4 }}>
+                <HStack spacing={1} color={theme.textMuted}>
+                  <Icon as={FaShieldAlt} color={theme.accent} w={{ base: 3, md: 4 }} h={{ base: 3, md: 4 }} className="responsive-icon" />
+                  <Text fontSize={{ base: "xs", md: "sm" }}>Secure Transactions</Text>
+                </HStack>
+              </HStack>
+            </motion.div>
+          </Box>
 
-                <Button
-                  type="submit"
-                  isLoading={isLoading}
-                  loadingText="Processing..."
-                  bg={buttonBg}
-                  color="white"
-                  _hover={{ bg: buttonHoverBg }}
-                  width="full"
-                  size="lg"
-                  borderRadius="md"
-                  fontWeight="medium"
-                  mt={2}
-                >
-                  Join Transaction
-                </Button>
-              </Stack>
-            </form>
-          </Stack>
-        </Box>
-      </Box>
+          {/* Main Card */}
+          <motion.div variants={variants.card} initial="hidden" animate="visible">
+            <Box
+            //  bg={theme.pageBg}
+              borderRadius="md"
+              p={{ base: 3, md: 5 }}
+              boxShadow={theme.shadow}
+              border="1px solid"
+              borderColor={theme.border}
+            >
+              <Box h="2px" bg={theme.accent} />
+              <Box mt={3} >
+                <form onSubmit={fetchDetails}>
+                  <VStack spacing={{ base: 3, md: 5 }}>
+                    <FormControl isRequired>
+                      <FormLabel fontSize={{ base: "xs", md: "sm" }} fontWeight="600" color={theme.text}>
+                        Transaction ID
+                      </FormLabel>
+                      <InputGroup size={{ base: "sm", md: "md" }}>
+                        <InputLeftElement h="full">
+                          <Icon as={FaIdCard} color={theme.accent} w={{ base: 3, md: 4 }} h={{ base: 3, md: 4 }} className="responsive-icon" />
+                        </InputLeftElement>
+                        <Input
+                          value={transactionId}
+                          onChange={(e) => setTransactionId(e.target.value)}
+                          placeholder="Enter transaction ID"
+                          bg={theme.cardBg}
+                          border="1px solid"
+                          borderColor={theme.border}
+                          _hover={{ borderColor: theme.accent }}
+                          _focus={{ borderColor: theme.accent, boxShadow: `0 0 0 2px ${theme.accent}33` }}
+                          borderRadius="md"
+                          fontSize={{ base: "xs", md: "sm" }}
+                          h={{ base: "36px", md: "44px" }}
+                          pl={{ base: 8, md: 10 }}
+                          className="responsive-input"
+                        />
+                      </InputGroup>
+                    </FormControl>
 
-      <Modal isOpen={showPreviewModal} onClose={() => setShowPreviewModal(false)} isCentered size="md">
-        <ModalOverlay />
-        <ModalContent bg={boxBg} color={textColor}>
-          <ModalHeader>
-            <Text fontSize="lg" fontWeight="bold" color={headingColor}>Transaction Preview</Text>
-          </ModalHeader>
-          <ModalBody>
-            {transactionDetails && (
-              <VStack spacing={4} align="start">
-                <Box>
-                  <Text fontSize="sm" fontWeight="bold">Creator:</Text>
-                  <Text>{`${transactionDetails.userId.firstName} ${transactionDetails.userId.lastName || ""}`}</Text>
-                </Box>
-                <Box>
-                  <Text fontSize="sm" fontWeight="bold">Description:</Text>
-                  <Text>{transactionDetails.productDetails.description || "N/A"}</Text>
-                </Box>
-                <Box>
-                  <Text fontSize="sm" fontWeight="bold">Price:</Text>
-                  <Text>₦{parseFloat(transactionDetails.paymentAmount).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
-                </Box>
-              </VStack>
-            )}
-          </ModalBody>
-          <ModalFooter>
-            <Button
-              onClick={handleAccept}
-              isLoading={isLoading}
-              bg="green.500"
-              color="white"
-              _hover={{ bg: "green.600" }}
-              mr={3}
-            >
-              Accept
-            </Button>
-            {/* <Button
-              onClick={() => {
-                setEditDetails({
-                  description: transactionDetails?.productDetails.description || "",
-                  price: transactionDetails?.paymentAmount || "",
-                });
-                setShowEditModal(true);
-              }}
-              isLoading={isLoading}
-              bg="blue.500"
-              color="white"
-              _hover={{ bg: "blue.600" }}
-              mr={3}
-            >
-              Accept and Change Details
-            </Button> */}
-            <Button
-              onClick={handleReject}
-              isLoading={isLoading}
-              bg="red.500"
-              color="white"
-              _hover={{ bg: "red.600" }}
-            >
-              Reject
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+                    <AnimatePresence>
+                      {alert.message && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          transition={{ duration: 0.2 }}
+                          style={{ width: "100%" }}
+                        >
+                          <Alert
+                            status={alert.type}
+                            borderRadius="md"
+                            fontSize={{ base: "xs", md: "sm" }}
+                            p={{ base: 2, md: 3 }}
+                          >
+                            <AlertIcon />
+                            <AlertTitle>{alert.message}</AlertTitle>
+                          </Alert>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
 
-      <Modal isOpen={showEditModal} onClose={() => { setShowEditModal(false); setEditErrors({}); }} isCentered size="md">
-        <ModalOverlay />
-        <ModalContent bg={boxBg} color={textColor}>
-          <ModalHeader>
-            <Text fontSize="lg" fontWeight="bold" color={headingColor}>Edit Transaction Details</Text>
-          </ModalHeader>
-          <ModalBody>
-            <VStack spacing={4}>
-              <FormControl isRequired isInvalid={editErrors.description}>
-                <FormLabel fontSize="sm">Description</FormLabel>
-                <Input
-                  value={editDetails.description}
-                  onChange={(e) => setEditDetails({ ...editDetails, description: e.target.value })}
-                  placeholder="Enter new description"
-                  bg={inputBg}
-                  borderColor={useColorModeValue("gray.300", "gray.600")}
-                  _hover={{ borderColor: borderColor }}
-                  _focus={{ borderColor: borderColor, boxShadow: `0 0 0 1px ${borderColor}` }}
-                />
-                {editErrors.description && <Text color="red.500" fontSize="xs">{editErrors.description}</Text>}
-              </FormControl>
-              <FormControl isRequired isInvalid={editErrors.price}>
-                <FormLabel fontSize="sm">Price</FormLabel>
-                <Input
-                  type="number"
-                  value={editDetails.price}
-                  onChange={(e) => setEditDetails({ ...editDetails, price: e.target.value })}
-                  placeholder="Enter new price"
-                  bg={inputBg}
-                  borderColor={useColorModeValue("gray.300", "gray.600")}
-                  _hover={{ borderColor: borderColor }}
-                  _focus={{ borderColor: borderColor, boxShadow: `0 0 0 1px ${borderColor}` }}
-                />
-                {editErrors.price && <Text color="red.500" fontSize="xs">{editErrors.price}</Text>}
-              </FormControl>
-            </VStack>
-          </ModalBody>
-          <ModalFooter>
-            <Button
-              onClick={() => { setShowEditModal(false); setEditErrors({}); }}
-              bg="gray.500"
-              color="white"
-              _hover={{ bg: "gray.600" }}
-              mr={3}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleAcceptAndChange}
-              isLoading={isLoading}
-              bg="blue.500"
-              color="white"
-              _hover={{ bg: "blue.600" }}
-            >
-              Save and Join
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-    </Flex>
+                    <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }} style={{ width: "100%" }}>
+                      <Button
+                        type="submit"
+                        isLoading={isLoading}
+                        loadingText="Verifying..."
+                        w="full"
+                        h={{ base: "36px", md: "44px" }}
+                        borderRadius="md"
+                        fontWeight="600"
+                        fontSize={{ base: "xs", md: "sm" }}
+                        bg={theme.accent}
+                        color="white"
+                        _hover={{ bg: theme.accentHover }}
+                        _active={{ transform: "scale(0.98)" }}
+                        leftIcon={<Icon as={FaHandshake} w={{ base: 3, md: 4 }} h={{ base: 3, md: 4 }} className="responsive-icon" />}
+                        disabled={!transactionId.trim() || isLoading}
+                        className="responsive-button"
+                      >
+                        {isLoading ? <Spinner size={{ base: "xs", md: "sm" }} /> : "Preview"}
+                      </Button>
+                    </motion.div>
+                  </VStack>
+                </form>
+              </Box>
+            </Box>
+          </motion.div>
+        </motion.div>
+      </Container>
+
+      {/* Preview Modal */}
+      <AnimatePresence>
+        {showPreview && (
+          <Modal
+            isOpen
+            onClose={() => setShowPreview(false)}
+            isCentered
+            size={{ base: "xs", sm: "sm", md: "md" }}
+            className="responsive-modal"
+            scrollBehavior="inside"
+          >
+            <ModalOverlay bg="blackAlpha.600" />
+            <motion.div variants={variants.modal} initial="hidden" animate="visible" exit="exit">
+              <ModalContent bg={theme.bg} borderRadius="md" boxShadow={theme.shadow} mt={{ base: "110px", sm: "120px" }}>
+                <ModalHeader p={{ base: 2, md: 3 }}>
+                  <HStack spacing={2}>
+                    <Icon as={FaEye} color={theme.accent} w={{ base: 4, md: 5 }} h={{ base: 4, md: 5 }} className="responsive-icon" />
+                    <Box>
+                      <Text fontSize={{ base: "sm", md: "md" }} fontWeight="bold" color={theme.text}>
+                        Transaction Details
+                      </Text>
+                      <Text fontSize={{ base: "xs", md: "xs" }} color={theme.textMuted} className="responsive-text">
+                        Review before proceeding
+                      </Text>
+                    </Box>
+                  </HStack>
+                </ModalHeader>
+
+                <ModalBody p={{ base: 2, md: 3 }}>
+                  {transactionDetails && (
+                    <Box bg={theme.cardBg} borderRadius="md" p={{ base: 2, md: 3 }} border="1px solid" borderColor={theme.border}>
+                      <SimpleGrid columns={{ base: 1, md: 2 }} spacing={{ base: 2, md: 3 }}>
+                        <VStack align="start" spacing={2}>
+                          <HStack spacing={2}>
+                            <Icon as={FaFileAlt} color={theme.accent} w={{ base: 3, md: 4 }} h={{ base: 3, md: 4 }} className="responsive-icon" />
+                            <Box>
+                              <Text fontSize="xs" fontWeight="bold" color={theme.textMuted}>
+                                Description
+                              </Text>
+                              <Text fontSize={{ base: "xs", md: "sm" }} color={theme.text}>
+                                {transactionDetails.productDetails.description || "No description"}
+                              </Text>
+                            </Box>
+                          </HStack>
+                        </VStack>
+                        <VStack align="start" spacing={2}>
+                          <HStack spacing={2}>
+                            <Icon as={FaMoneyBillWave} color={theme.accent} w={{ base: 3, md: 4 }} h={{ base: 3, md: 4 }} className="responsive-icon" />
+                            <Box>
+                              <Text fontSize="xs" fontWeight="bold" color={theme.textMuted}>
+                                Amount
+                              </Text>
+                              <Text fontSize={{ base: "sm", md: "md" }} fontWeight="bold" color={theme.text}>
+                                {formattedAmount}
+                              </Text>
+                            </Box>
+                          </HStack>
+                          <Badge colorScheme="green" fontSize="xs" px={2} borderRadius="full">
+                            Pending
+                          </Badge>
+                        </VStack>
+                      </SimpleGrid>
+                    </Box>
+                  )}
+                </ModalBody>
+
+                <ModalFooter p={{ base: 2, md: 3 }}>
+                  <Stack direction={{ base: "column", sm: "row" }} spacing={{ base: 2, md: 3 }} w="full" justify="flex-end">
+                    <Button
+                      onClick={() => handleAction("reject-transaction")}
+                      colorScheme="red"
+                      size={{ base: "sm", md: "md" }}
+                      borderRadius="md"
+                      w={{ base: "full", sm: "auto" }}
+                      className="responsive-button"
+                    >
+                      Reject
+                    </Button>
+                    <Button
+                      onClick={openEdit}
+                      colorScheme="blue"
+                      size={{ base: "sm", md: "md" }}
+                      borderRadius="md"
+                      w={{ base: "full", sm: "auto" }}
+                      className="responsive-button"
+                    >
+                      Edit & Join
+                    </Button>
+                    <Button
+                      onClick={() => handleAction("join-transaction")}
+                      colorScheme="green"
+                      size={{ base: "sm", md: "md" }}
+                      borderRadius="md"
+                      w={{ base: "full", sm: "auto" }}
+                      className="responsive-button"
+                    >
+                      Accept
+                    </Button>
+                  </Stack>
+                </ModalFooter>
+              </ModalContent>
+            </motion.div>
+          </Modal>
+        )}
+      </AnimatePresence>
+
+      {/* Edit Modal */}
+      <AnimatePresence>
+        {showEdit && (
+          <Modal
+            isOpen
+            onClose={() => {
+              setShowEdit(false);
+              setEditErrors({});
+            }}
+            isCentered
+            size={{ base: "xs", sm: "sm", md: "md" }}
+            className="responsive-modal"
+            scrollBehavior="inside"
+          >
+            <ModalOverlay bg="blackAlpha.600" />
+            <motion.div variants={variants.modal} initial="hidden" animate="visible" exit="exit">
+              <ModalContent bg={theme.bg} borderRadius="md" boxShadow={theme.shadow} mt={{ base: "110px", sm: "120px" }}>
+                <ModalHeader p={{ base: 2, md: 3 }}>
+                  <HStack spacing={2}>
+                    <Icon as={FaEdit} color={theme.accent} w={{ base: 4, md: 5 }} h={{ base: 4, md: 5 }} className="responsive-icon" />
+                    <Box>
+                      <Text fontSize={{ base: "sm", md: "md" }} fontWeight="bold" color={theme.text}>
+                        Edit Transaction
+                      </Text>
+                      <Text fontSize={{ base: "xs", md: "xs" }} color={theme.textMuted} className="responsive-text">
+                        Modify details
+                      </Text>
+                    </Box>
+                  </HStack>
+                </ModalHeader>
+
+                <ModalBody p={{ base: 2, md: 3 }}>
+                  <VStack spacing={{ base: 3, md: 4 }}>
+                    <FormControl isRequired isInvalid={editErrors.description}>
+                      <FormLabel fontWeight="600" fontSize={{ base: "xs", md: "sm" }} color={theme.text}>
+                        Description
+                      </FormLabel>
+                      <Input
+                        value={editData.description}
+                        onChange={(e) => setEditData((prev) => ({ ...prev, description: e.target.value }))}
+                        placeholder="Enter description"
+                        bg={theme.cardBg}
+                        borderColor={theme.border}
+                        _hover={{ borderColor: theme.accent }}
+                        _focus={{ borderColor: theme.accent, boxShadow: `0 0 0 2px ${theme.accent}33` }}
+                        borderRadius="md"
+                        size={{ base: "sm", md: "md" }}
+                        fontSize={{ base: "xs", md: "sm" }}
+                        className="responsive-input"
+                      />
+                      {editErrors.description && (
+                        <Text color="red.500" fontSize={{ base: "xs", md: "xs" }} mt={1}>
+                          {editErrors.description}
+                        </Text>
+                      )}
+                    </FormControl>
+
+                    <FormControl isRequired isInvalid={editErrors.price}>
+                      <FormLabel fontWeight="600" fontSize={{ base: "xs", md: "sm" }} color={theme.text}>
+                        Amount (₦)
+                      </FormLabel>
+                      <InputGroup size={{ base: "sm", md: "md" }}>
+                        <InputLeftElement h="full">
+                          <Icon as={FaMoneyBillWave} color={theme.accent} w={{ base: 3, md: 4 }} h={{ base: 3, md: 4 }} className="responsive-icon" />
+                        </InputLeftElement>
+                        <Input
+                          type="number"
+                          value={editData.price}
+                          onChange={(e) => setEditData((prev) => ({ ...prev, price: e.target.value }))}
+                          placeholder="Enter amount"
+                          bg={theme.cardBg}
+                          borderColor={theme.border}
+                          _hover={{ borderColor: theme.accent }}
+                          _focus={{ borderColor: theme.accent, boxShadow: `0 0 0 2px ${theme.accent}33` }}
+                          borderRadius="md"
+                          size={{ base: "sm", md: "md" }}
+                          fontSize={{ base: "xs", md: "sm" }}
+                          pl={{ base: 8, md: 10 }}
+                          className="responsive-input"
+                        />
+                      </InputGroup>
+                      {editErrors.price && (
+                        <Text color="red.500" fontSize={{ base: "xs", md: "xs" }} mt={1}>
+                          {editErrors.price}
+                        </Text>
+                      )}
+                    </FormControl>
+                  </VStack>
+                </ModalBody>
+
+                <ModalFooter p={{ base: 2, md: 3 }}>
+                  <Stack direction={{ base: "column", sm: "row" }} spacing={{ base: 2, md: 3 }} w="full" justify="flex-end">
+                    <Button
+                      onClick={() => {
+                        setShowEdit(false);
+                        setEditErrors({});
+                      }}
+                      colorScheme="gray"
+                      size={{ base: "sm", md: "md" }}
+                      borderRadius="md"
+                      w={{ base: "full", sm: "auto" }}
+                      className="responsive-button"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleEdit}
+                      isLoading={isLoading}
+                      colorScheme="blue"
+                      size={{ base: "sm", md: "md" }}
+                      borderRadius="md"
+                      w={{ base: "full", sm: "auto" }}
+                      className="responsive-button"
+                    >
+                      Save & Join
+                    </Button>
+                  </Stack>
+                </ModalFooter>
+              </ModalContent>
+            </motion.div>
+          </Modal>
+        )}
+      </AnimatePresence>
+    </Box>
   );
 };
 

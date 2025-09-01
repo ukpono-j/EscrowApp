@@ -34,7 +34,7 @@ const Navbar = () => {
     "rgba(255, 255, 255, 0.98)",
     "rgba(26, 32, 44, 0.98)"
   );
-  const mobileMenuBg = useColorModeValue("#FAFAFA", "#1A202C");
+  const mobileMenuBg = useColorModeValue("#fff", "#1A202C");
   const textColor = useColorModeValue("#2D3748", "#E2E8F0");
   const textHoverColor = useColorModeValue("#B38939", "#E2C07C");
   const accentColor = "#B38939";

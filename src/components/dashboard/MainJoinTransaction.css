@@ -1,27 +1,26 @@
-.join_btn:before{
-    transition: all 0.3s ease;
-    z-index: -1;
-  }
-  .join_btn:hover{
-    display: inline-block;
-    position: relative;
-    overflow: hidden;
-    border-radius: 50px;
-    border: 1.5px solid rgba(219, 155, 30, 1);
-    color: #fff;
-    z-index: 1;
-    background: linear-gradient(60deg, rgba(37, 137, 172, 1) 0%, rgba(219, 155, 30, 1) 100%);
-    padding: 8px 38px 8px 38px !important;
-    transition: all 0.3s ease;
-    text-align: center;
-  }
-  .join{
-    background: linear-gradient(-40deg, #db9b1e 0%, #C0D4C9 100%);
-    background-clip: text;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    font-weight: bold;
-  }
-  .join_Component{
-    text-align: center !important;
-  }
+/* Ensure sidebar links are stable and have no animation */
+.sidebar {
+  position: sticky; /* Prevent repositioning issues */
+  top: 0; /* Adjust based on your layout */
+  overflow: hidden; /* Prevent content overflow causing glitches */
+}
+
+.sidebar a,
+.sidebar .nav-link {
+  transition: none !important; /* Remove all transitions/animations */
+  animation: none !important; /* Explicitly disable animations */
+  background: none !important; /* Remove any background effects */
+}
+
+.sidebar a.active,
+.sidebar .nav-link.active {
+  background-color: #f0f0f0 !important; /* Example stable background for active link */
+  color: #000 !important; /* Example text color for active link */
+  animation: none !important; /* Ensure no white drop animation */
+  transition: none !important; /* Ensure no transition effects */
+}
+
+/* Prevent flickering due to re-renders */
+.sidebar * {
+  will-change: none; /* Disable GPU acceleration for stability */
+}

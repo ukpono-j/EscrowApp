@@ -6,7 +6,7 @@ import { useColorModeValue } from "@chakra-ui/react";
 
 
 const NewsLetter = () => {
-    const mobileNewsLetterBg = useColorModeValue("#FAFAFA", "#1A202C");
+    const mobileNewsLetterBg = useColorModeValue("#fff", "#1A202C");
 
 
   return (

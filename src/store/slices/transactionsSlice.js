@@ -102,7 +102,7 @@ const transactionSlice = createSlice({
         state.error = null;
       })
       .addCase(confirmTransaction.fulfilled, (state, action) => {
-        const updatedTransaction = action.payload;
+        const updatedTransaction = action.payload.transaction;
         if (updatedTransaction && updatedTransaction._id) {
           state.transactions = state.transactions
             .filter(t => t && t._id)

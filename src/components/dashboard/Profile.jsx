@@ -448,6 +448,11 @@ const Profile = () => {
 
   const FALLBACK_AVATAR = 'https://via.placeholder.com/100?text=Avatar';
 
+  // Sort transactions by createdAt in descending order (newest first)
+  const sortedTransactions = [...transactions].sort((a, b) => 
+    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+
   useEffect(() => {
     if (user?.avatarImage) {
       logger.info('Avatar URL:', { url: `${BASE_URL}${user.avatarImage}` });
@@ -900,9 +905,9 @@ const Profile = () => {
       _hover={{ boxShadow: 'lg', transform: 'translateY(-2px)' }}
       transition="all 0.3s"
     >
-      <Flex className="transaction-details">
+      <Flex className="transaction-details p-2">
         <VStack align="start" spacing={1}>
-          <Flex align="center">
+          <Flex align="center" clas>
             <Text fontWeight="bold" color={textColor} className="transaction-text">
               {tx.type ? (tx.type.charAt(0).toUpperCase() + tx.type.slice(1)) : 'Unknown'}: ₦{(tx.amount || 0).toFixed(2)}
             </Text>
@@ -1231,17 +1236,17 @@ const Profile = () => {
                       </TabList>
                       <TabPanels>
                         <TabPanel className="transaction-card-container">
-                          {Array.isArray(transactions) && transactions.length > 0 ? (
+                          {Array.isArray(sortedTransactions) && sortedTransactions.length > 0 ? (
                             <>
                               <VStack spacing={4}>
-                                {transactions
+                                {sortedTransactions
                                   .slice((allPage - 1) * itemsPerPage, allPage * itemsPerPage)
                                   .map(renderTransaction)}
                               </VStack>
                               <PaginationControls
                                 currentPage={allPage}
                                 setCurrentPage={setAllPage}
-                                totalItems={transactions.length}
+                                totalItems={sortedTransactions.length}
                               />
                             </>
                           ) : (
@@ -1249,10 +1254,10 @@ const Profile = () => {
                           )}
                         </TabPanel>
                         <TabPanel className="transaction-card-container">
-                          {Array.isArray(transactions) && transactions.some(tx => tx.status === 'pending') ? (
+                          {Array.isArray(sortedTransactions) && sortedTransactions.some(tx => tx.status === 'pending') ? (
                             <>
                               <VStack spacing={4}>
-                                {transactions
+                                {sortedTransactions
                                   .filter(tx => tx.status === 'pending')
                                   .slice((pendingPage - 1) * itemsPerPage, pendingPage * itemsPerPage)
                                   .map(renderTransaction)}
@@ -1260,7 +1265,7 @@ const Profile = () => {
                               <PaginationControls
                                 currentPage={pendingPage}
                                 setCurrentPage={setPendingPage}
-                                totalItems={transactions.filter(tx => tx.status === 'pending').length}
+                                totalItems={sortedTransactions.filter(tx => tx.status === 'pending').length}
                               />
                             </>
                           ) : (
@@ -1268,10 +1273,10 @@ const Profile = () => {
                           )}
                         </TabPanel>
                         <TabPanel className="transaction-card-container">
-                          {Array.isArray(transactions) && transactions.some(tx => tx.status === 'completed') ? (
+                          {Array.isArray(sortedTransactions) && sortedTransactions.some(tx => tx.status === 'completed') ? (
                             <>
                               <VStack spacing={4}>
-                                {transactions
+                                {sortedTransactions
                                   .filter(tx => tx.status === 'completed')
                                   .slice((completedPage - 1) * itemsPerPage, completedPage * itemsPerPage)
                                   .map(renderTransaction)}
@@ -1279,7 +1284,7 @@ const Profile = () => {
                               <PaginationControls
                                 currentPage={completedPage}
                                 setCurrentPage={setCompletedPage}
-                                totalItems={transactions.filter(tx => tx.status === 'completed').length}
+                                totalItems={sortedTransactions.filter(tx => tx.status === 'completed').length}
                               />
                             </>
                           ) : (
@@ -1287,10 +1292,10 @@ const Profile = () => {
                           )}
                         </TabPanel>
                         <TabPanel className="transaction-card-container">
-                          {Array.isArray(transactions) && transactions.some(tx => tx.status === 'failed') ? (
+                          {Array.isArray(sortedTransactions) && sortedTransactions.some(tx => tx.status === 'failed') ? (
                             <>
                               <VStack spacing={4}>
-                                {transactions
+                                {sortedTransactions
                                   .filter(tx => tx.status === 'failed')
                                   .slice((failedPage - 1) * itemsPerPage, failedPage * itemsPerPage)
                                   .map(renderTransaction)}
@@ -1298,7 +1303,7 @@ const Profile = () => {
                               <PaginationControls
                                 currentPage={failedPage}
                                 setCurrentPage={setFailedPage}
-                                totalItems={transactions.filter(tx => tx.status === 'failed').length}
+                                totalItems={sortedTransactions.filter(tx => tx.status === 'failed').length}
                               />
                             </>
                           ) : (
@@ -1327,7 +1332,7 @@ const Profile = () => {
             paymentDetails={paymentDetails}
             userName={`${user.firstName} ${user.lastName}`}
             amount={fundingAmount}
-            pendingTransactions={transactions.filter(tx => tx.status === 'pending')}
+            pendingTransactions={sortedTransactions.filter(tx => tx.status === 'pending')}
             handleRefresh={handleCheckStatus}
           />
           <WithdrawalModal

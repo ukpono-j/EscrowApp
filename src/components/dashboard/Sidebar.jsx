@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useEffect, useState, useCallback, memo } from "react";
 import {
   MdLogout,
   MdDashboard,
@@ -24,10 +23,10 @@ import { BsChevronDown } from "react-icons/bs";
 import axios from "../../utils/axiosConfig";
 import Logo from "../../assets/logo1.png";
 import ThemeToggle from "../../ThemeToggle";
-import "./Sidebar.css";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 
+// Error Boundary
 class SidebarErrorBoundary extends React.Component {
   state = { hasError: false };
 
@@ -48,16 +47,22 @@ class SidebarErrorBoundary extends React.Component {
 }
 
 const validateUserResponse = (responseData) => {
-  if (responseData.success && responseData.data?.user) {
+  if (
+    responseData.success &&
+    responseData.data?.user &&
+    Object.keys(responseData.data.user).length > 0 &&
+    responseData.data.user.firstName
+  ) {
     return responseData.data.user;
   }
   console.error("Invalid user data structure:", responseData);
   throw new Error(responseData.error || "Invalid user data received");
 };
 
-const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => {
+// Optimized Sidebar Component
+const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }) => {
   const location = useLocation();
-  const [activeLink, setActiveLink] = useState(location.pathname);
+  const [activeLink, setActiveLink] = useState(location.pathname === "/" ? "/dashboard" : location.pathname);
   const toast = useToast();
   const navigate = useNavigate();
   const [userName, setUserName] = useState("");
@@ -67,29 +72,31 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
   const [isMobile, setIsMobile] = useState(false);
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
 
-  const bgColor = useColorModeValue("white", "#051E2F");
-  const borderColor = useColorModeValue("whiteAlpha.100", "whiteAlpha.100");
+  // Color mode values
+  const bgColor = useColorModeValue("#FFFFFF", "#051E2F");
+  const borderColor = useColorModeValue("#E2E8F0", "rgba(179, 137, 57, 0.1)");
 
-  useEffect(() => {
-    const checkScreenSize = () => {
-      const mobileView = window.innerWidth < 768;
-      setIsMobile(mobileView);
-      if (mobileView) {
-        setIsSidebarVisible(false);
-        setIsCollapsed(false);
-      } else {
-        setIsSidebarVisible(true);
-        setIsCollapsed(window.innerWidth < 1024);
-      }
-    };
-
-    checkScreenSize();
-    window.addEventListener("resize", checkScreenSize);
-    return () => window.removeEventListener("resize", checkScreenSize);
+  const checkScreenSize = useCallback(() => {
+    const mobileView = window.innerWidth < 768;
+    setIsMobile(mobileView);
+    if (mobileView) {
+      setIsSidebarVisible(false);
+      setIsCollapsed(false);
+    } else {
+      setIsSidebarVisible(true);
+      setIsCollapsed(window.innerWidth < 1024);
+    }
   }, []);
 
   useEffect(() => {
-    setActiveLink(location.pathname);
+    checkScreenSize();
+    window.addEventListener("resize", checkScreenSize);
+    return () => window.removeEventListener("resize", checkScreenSize);
+  }, [checkScreenSize]);
+
+  useEffect(() => {
+    const currentPath = location.pathname === "/" ? "/dashboard" : location.pathname;
+    setActiveLink(currentPath);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -97,6 +104,13 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
       const token = localStorage.getItem("access-token");
       if (!token) {
         console.warn("No access token found, redirecting to login");
+        toast({
+          title: "Session expired",
+          description: "Please log in again.",
+          status: "error",
+          duration: 3000,
+          isClosable: true,
+        });
         handleLogout();
         return;
       }
@@ -115,7 +129,7 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
         });
         toast({
           title: "Error fetching user details",
-          description: error.response?.data?.error || "An error occurred",
+          description: error.message || "An error occurred while fetching user details.",
           status: "error",
           duration: 3000,
           isClosable: true,
@@ -135,13 +149,13 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
     onCollapseChange?.(isMobile ? isSidebarVisible : isCollapsed);
   }, [isCollapsed, isSidebarVisible, isMobile, onCollapseChange]);
 
-  const toggleSidebar = () => {
+  const toggleSidebar = useCallback(() => {
     if (isMobile) {
-      setIsSidebarVisible(!isSidebarVisible);
+      setIsSidebarVisible((prev) => !prev);
     } else {
-      setIsCollapsed(!isCollapsed);
+      setIsCollapsed((prev) => !prev);
     }
-  };
+  }, [isMobile]);
 
   const links = [
     { to: "/dashboard", label: "Dashboard", icon: <MdDashboard className="text-xl" /> },
@@ -159,20 +173,20 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
     { to: "/security-settings/kyc", label: "KYC", icon: <FaUserShield className="text-lg" /> },
   ];
 
-  const handleLinkClick = (to) => {
+  const handleLinkClick = useCallback((to) => {
     setActiveLink(to);
     setSettingLinks(false);
     if (isMobile) {
       setIsSidebarVisible(false);
     }
-  };
+  }, [isMobile]);
 
-  const handleSettingLinkClick = (to) => {
+  const handleSettingLinkClick = useCallback((to) => {
     setActiveLink(to);
-    setSettingLinks(!settingLinks);
-  };
+    setSettingLinks((prev) => !prev);
+  }, []);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     localStorage.removeItem("access-token");
     localStorage.removeItem("refresh-token");
     toast({
@@ -182,29 +196,29 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
       isClosable: true,
     });
     navigate("/login");
-  };
+  }, [navigate, toast]);
 
-  const getInitials = (name) => {
-    return name ? name.charAt(0).toUpperCase() : "U";
-  };
-
+  // Simple tooltip without animations
   const Tooltip = ({ children, label }) => (
     <div className="group relative">
       {children}
       {isCollapsed && !isMobile && (
-        <div className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-xs rounded-md whitespace-nowrap opacity-0 invisible transition-opacity duration-200 z-50 group-hover:opacity-100 group-hover:visible">
+        <div className="absolute left-full ml-3 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity duration-200 z-50 shadow-lg">
           {label}
+          <div className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-1 w-2 h-2 bg-gray-900 rotate-45"></div>
         </div>
       )}
     </div>
   );
 
+  // Mobile toggle button
   const MobileToggle = () => {
     if (!isMobile || isSidebarVisible) return null;
     return (
       <button
         onClick={toggleSidebar}
-        className="fixed top-4 left-4 z-50 flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-[#B38939] to-[#8A6D2F] shadow-lg"
+        className="fixed top-4 left-4 z-50 flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-[#B38939] to-[#BB954D] shadow-lg hover:shadow-xl transition-shadow duration-200"
+        style={{ willChange: 'auto' }}
         aria-label="Toggle Sidebar"
       >
         <MdMenu className="text-white text-xl" />
@@ -212,277 +226,279 @@ const Sidebar = ({ onShowProfile, onShowToggleComponent, onCollapseChange }) => 
     );
   };
 
+  // Calculate sidebar width without animations
+  const sidebarWidth = isMobile ? (isSidebarVisible ? "260px" : "0px") : (isCollapsed ? "80px" : "260px");
+  const sidebarOpacity = isMobile ? (isSidebarVisible ? 1 : 0) : 1;
+
   return (
     <SidebarErrorBoundary>
       <>
         <MobileToggle />
-        <AnimatePresence>
-          {(!isMobile || isSidebarVisible) && (
-            <motion.div
-              key="sidebar"
-              initial={{ x: isMobile ? "-100%" : 0 }}
-              animate={{ x: 0 }}
-              exit={{ x: isMobile ? "-100%" : 0 }}
-              transition={{ duration: 0.2, ease: "easeInOut" }}
-              style={{ position: "fixed", top: 0, left: 0, height: "100vh", zIndex: 40 }}
-            >
-              <Box
-                className="h-full flex flex-col shadow-xl sidebar"
-                bg={bgColor}
-                borderRight="1px"
-                borderColor={borderColor}
-                width={isMobile ? "280px" : isCollapsed ? "80px" : "280px"}
-              >
-                <div className="flex flex-col h-full overflow-hidden">
-                  {/* Header */}
-                  <div className="flex-shrink-0 border-b" borderColor={borderColor}>
-                    <div className="flex items-center justify-between p-5">
+        <div
+          className="fixed top-0 left-0 h-full z-40 transition-all duration-150 ease-out"
+          style={{
+            width: sidebarWidth,
+            opacity: sidebarOpacity,
+            minWidth: isMobile ? "0px" : "80px",
+            transform: 'translate3d(0, 0, 0)',
+            willChange: 'width, opacity',
+            overflowX: 'hidden', // Enforce no horizontal scrolling
+          }}
+        >
+          <Box
+            className="h-full flex flex-col shadow-2xl"
+            bg={bgColor}
+            borderRight="1px"
+            borderColor={borderColor}
+            position="relative"
+            style={{
+              background: useColorModeValue(
+                "linear-gradient(180deg, #FFFFFF 0%, #fff 100%)",
+                "linear-gradient(180deg, #051E2F 0%, #041924 100%)"
+              ),
+              boxShadow: useColorModeValue(
+                "0 8px 32px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(179, 137, 57, 0.08)",
+                "0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(179, 137, 57, 0.15)"
+              ),
+              overflowX: 'hidden', // Enforce no horizontal scrolling on Box
+            }}
+          >
+            {/* Header Section */}
+            <div className="flex-shrink-0 border-b border-opacity-20" style={{ height: "100px", borderColor, overflowX: 'hidden' }}>
+              <div className="flex items-center justify-between p-4 h-full">
+                {/* Logo */}
+                <div
+                  className="flex items-center justify-center overflow-hidden transition-opacity duration-150"
+                  style={{ 
+                    width: (!isCollapsed || isMobile) ? "180px" : "0px",
+                    opacity: (!isCollapsed || isMobile) ? 1 : 0,
+                    height: "48px",
+                    overflowX: 'hidden',
+                  }}
+                >
+                  <Link to="/dashboard" className="block">
+                    <Image
+                      src={Logo}
+                      alt="Sylo"
+                      style={{
+                        maxHeight: "40px",
+                        maxWidth: "160px",
+                        width: "auto",
+                        height: "auto",
+                        objectFit: "contain",
+                      }}
+                      filter="drop-shadow(0 2px 4px rgba(179, 137, 57, 0.1))"
+                    />
+                  </Link>
+                </div>
+                
+                {/* Toggle Button - Always visible */}
+                <button
+                  onClick={toggleSidebar}
+                  className="flex items-center justify-center rounded-xl bg-gradient-to-br from-[#B38939]/10 to-[#BB954D]/10 hover:from-[#B38939]/20 hover:to-[#BB954D]/20 transition-colors duration-200 border border-[#B38939]/20"
+                  style={{ 
+                    width: "40px", 
+                    height: "40px",
+                    minWidth: "40px",
+                    flexShrink: 0
+                  }}
+                >
+                  {isMobile ? (
+                    <MdClose className="text-[#B38939] text-xl" />
+                  ) : (
+                    isCollapsed ? (
+                      <MdMenu className="text-[#B38939] text-xl" />
+                    ) : (
+                      <MdClose className="text-[#B38939] text-xl" />
+                    )
+                  )}
+                </button>
+              </div>
+            </div>
+            
+            {/* Navigation Section */}
+            <div className="flex-1 overflow-y-auto" style={{ 
+              scrollbarWidth: "thin",
+              scrollbarColor: "rgba(179, 137, 57, 0.3) transparent",
+              overflowX: 'hidden', // Enforce no horizontal scrolling
+            }}>
+              <div className="p-4 space-y-2" style={{ overflowX: 'hidden' }}>
+                {links.map((link, index) => (
+                  <Tooltip key={link.to} label={isCollapsed && !isMobile ? link.label : ""}>
+                    <Link
+                      to={link.to}
+                      onClick={() => handleLinkClick(link.to)}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors duration-200 relative ${
+                        isCollapsed && !isMobile ? "justify-center" : ""
+                      } ${
+                        activeLink === link.to
+                          ? "bg-gradient-to-r from-[#B38939] to-[#BB954D] text-white shadow-lg"
+                          : "hover:bg-gray-100 dark:hover:bg-gray-800/50"
+                      }`}
+                      style={{
+                        width: isCollapsed && !isMobile ? "48px" : "100%",
+                        maxWidth: isCollapsed && !isMobile ? "48px" : "100%", // Prevent overflow
+                        height: "48px",
+                        minWidth: isCollapsed && !isMobile ? "48px" : "auto",
+                        overflowX: 'hidden',
+                      }}
+                    >
+                      <span className={`${activeLink === link.to ? "text-white" : "text-[#B38939]"}`}>
+                        {link.icon}
+                      </span>
+                      
                       {(!isCollapsed || isMobile) && (
-                        <motion.div
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ duration: 0.2 }}
-                        >
-                          <Link to="/dashboard" className="block">
-                            <Image
-                              src={Logo}
-                              alt="Sylo"
-                              maxH={["28px", "32px", "36px", "40px"]}
-                              maxW="160px"
-                              objectFit="contain"
-                              className="logo-responsive"
-                            />
-                          </Link>
-                        </motion.div>
+                        <span className="text-sm font-medium whitespace-nowrap">
+                          {link.label}
+                        </span>
                       )}
+                    </Link>
+                  </Tooltip>
+                ))}
+                
+                {/* Settings Section */}
+                {(!isCollapsed || isMobile) && (
+                  <div className="mt-8">
+                    <div className="flex items-center gap-2 px-4 mb-3">
+                      <div className="w-8 h-px bg-gradient-to-r from-[#B38939]/50 to-transparent" />
+                      <Text fontSize="xs" textTransform="uppercase" fontWeight="bold" color="gray.500" letterSpacing="wider">
+                        Settings
+                      </Text>
+                      <div className="flex-1 h-px bg-gradient-to-r from-transparent to-[#B38939]/20" />
+                    </div>
+                  </div>
+                )}
+                
+                {/* Settings Links */}
+                {setting_links.map((link, index) => (
+                  <Tooltip key={index} label={isCollapsed && !isMobile ? link.label : ""}>
+                    <div className="relative" style={{ overflowX: 'hidden' }}>
                       <button
-                        onClick={toggleSidebar}
-                        className={`flex items-center justify-center w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 transition-colors duration-200 ${
-                          isCollapsed && !isMobile ? "mx-auto" : ""
+                        onClick={() => handleSettingLinkClick(link.to)}
+                        className={`flex items-center px-4 py-3 rounded-xl transition-colors duration-200 relative ${
+                          isCollapsed && !isMobile ? "justify-center w-12" : "justify-between w-full"
+                        } ${
+                          activeLink === link.to
+                            ? "bg-gradient-to-r from-[#B38939] to-[#BB954D] text-white"
+                            : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/50"
                         }`}
+                        style={{
+                          width: isCollapsed && !isMobile ? "48px" : "100%",
+                          maxWidth: isCollapsed && !isMobile ? "48px" : "100%", // Prevent overflow
+                          height: "48px",
+                          minWidth: isCollapsed && !isMobile ? "48px" : "auto",
+                          overflowX: 'hidden',
+                        }}
                       >
-                        {isMobile ? (
-                          <MdClose className="text-[#9C7933]" />
-                        ) : (
-                          isCollapsed ? (
-                            <MdMenu className="text-[#9C7933]" />
-                          ) : (
-                            <MdClose className="text-[#9C7933]" />
-                          )
+                        <div className={`flex items-center gap-3 ${isCollapsed && !isMobile ? "justify-center" : ""}`}>
+                          <span className={`${activeLink === link.to ? "text-white" : "text-[#B38939]"}`}>
+                            {link.icon}
+                          </span>
+                          {(!isCollapsed || isMobile) && (
+                            <span className="text-sm font-medium whitespace-nowrap">
+                              {link.label}
+                            </span>
+                          )}
+                        </div>
+                        
+                        {(!isCollapsed || isMobile) && (
+                          <div
+                            className="w-6 h-6 rounded-full flex items-center justify-center bg-white/10 transition-transform duration-200"
+                            style={{
+                              transform: settingLinks ? "rotate(180deg)" : "rotate(0deg)"
+                            }}
+                          >
+                            <BsChevronDown size={12} className={activeLink === link.to ? "text-white" : "text-[#B38939]"} />
+                          </div>
                         )}
                       </button>
-                    </div>
-                    <div className={`px-5 pb-5 ${isCollapsed && !isMobile ? "flex justify-center" : ""}`}>
-                      <AnimatePresence>
-                        {(!isCollapsed || isMobile) ? (
-                          <motion.div
-                            key="expanded-profile"
-                            initial={{ opacity: 0, y: -20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -20 }}
-                            transition={{ duration: 0.2 }}
-                            className="flex items-center gap-3"
-                          >
-                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#B38939] to-[#8A6D2F] flex items-center justify-center text-lg font-bold text-white shadow-lg ring-2 ring-[#B38939]/20">
-                              {isUserLoading ? <Spinner size="sm" color="white" /> : getInitials(userName)}
-                            </div>
-                            <div className="flex-grow">
-                              <Text fontSize="sm" color="gray.500">Welcome back</Text>
-                              {isUserLoading ? (
-                                <Flex align="center">
-                                  <Spinner size="xs" color="gray.500" mr={2} />
-                                  <Text fontSize="md" color={bgColor === "white" ? "gray.800" : "white"}>
-                                    Loading...
-                                  </Text>
-                                </Flex>
-                              ) : (
-                                <Text fontSize="md" fontWeight="bold" color={bgColor === "white" ? "gray.800" : "white"}>
-                                  {userName}
-                                </Text>
-                              )}
-                            </div>
-                          </motion.div>
-                        ) : (
-                          <motion.div
-                            key="collapsed-profile"
-                            initial={{ scale: 0.8, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.8, opacity: 0 }}
-                            transition={{ duration: 0.2 }}
-                          >
-                            <Tooltip label={isUserLoading ? "Loading..." : userName}>
-                              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#B38939] to-[#8A6D2F] flex items-center justify-center text-lg font-bold text-white shadow-lg ring-2 ring-[#B38939]/20">
-                                {isUserLoading ? <Spinner size="sm" color="white" /> : getInitials(userName)}
-                              </div>
-                            </Tooltip>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  </div>
-                  {/* Navigation */}
-                  <div className="flex-grow font-[500] overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-[#B38939]/20 scrollbar-track-transparent">
-                    <div className={`px-3 py-5 ${isCollapsed && !isMobile ? "flex flex-col items-center" : ""}`}>
-                      <div className="space-y-1">
-                        {links.map((link, index) => (
-                          <Tooltip key={index} label={isCollapsed && !isMobile ? link.label : ""}>
-                            <motion.div
-                              whileHover={{ x: isCollapsed && !isMobile ? 0 : 4 }}
-                              whileTap={{ scale: 0.98 }}
-                              transition={{ duration: 0.1 }}
-                            >
-                              <Link
-                                to={link.to}
-                                onClick={() => handleLinkClick(link.to)}
-                                className={`flex items-center gap-3 px-4 side_links py-3 rounded-xl transition-all duration-200 ${
-                                  isCollapsed && !isMobile ? "justify-center" : ""
-                                } ${
-                                  activeLink === link.to
-                                    ? "bg-gradient-to-r from-[#B38939] to-[#8A6D2F] font-medium shadow-lg text-white"
-                                    : "font-[500] hover:bg-white/5 text-[#B38939]"
-                                }`}
-                              >
-                                <span className={activeLink === link.to ? "text-white" : "text-[#B38939]"}>
-                                  {link.icon}
-                                </span>
-                                {(!isCollapsed || isMobile) && (
-                                  <span className="text-sm whitespace-nowrap">{link.label}</span>
-                                )}
-                                {(!isCollapsed || isMobile) && activeLink === link.to && (
-                                  <motion.div
-                                    layoutId="active-pill"
-                                    className="absolute right-3 w-1.5 h-1.5 rounded-full bg-white"
-                                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                                  />
-                                )}
-                              </Link>
-                            </motion.div>
-                          </Tooltip>
-                        ))}
-                      </div>
+                      
+                      {/* Submenu */}
                       {(!isCollapsed || isMobile) && (
-                        <div className="mt-8 mb-2">
-                          <Text px={4} fontSize="xs" textTransform="uppercase" fontWeight="bold" color="gray.500">
-                            Settings
-                          </Text>
+                        <div
+                          className="overflow-hidden transition-all duration-200 ease-out"
+                          style={{
+                            maxHeight: settingLinks ? "60px" : "0px",
+                            opacity: settingLinks ? 1 : 0,
+                            overflowX: 'hidden',
+                          }}
+                        >
+                          <div className="pl-12 pr-4 py-2" style={{ overflowX: 'hidden' }}>
+                            {securitySettingLinks.map((settingLink, settingIndex) => (
+                              <Link
+                                key={settingIndex}
+                                to={settingLink.to}
+                                onClick={() => handleLinkClick(settingLink.to)}
+                                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors duration-200 ${
+                                  activeLink === settingLink.to 
+                                    ? "bg-gradient-to-r from-[#B38939] to-[#BB954D] text-white shadow-md" 
+                                    : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/30"
+                                }`}
+                                style={{ overflowX: 'hidden' }}
+                              >
+                                <span className={`${activeLink === settingLink.to ? "text-white" : "text-[#B38939]"}`}>
+                                  {settingLink.icon}
+                                </span>
+                                <span className="text-sm font-medium">{settingLink.label}</span>
+                              </Link>
+                            ))}
+                          </div>
                         </div>
                       )}
-                      {isCollapsed && !isMobile && <div className="my-8 w-8 h-px bg-gray-700/30" />}
-                      {setting_links.map((link, index) => (
-                        <Tooltip key={index} label={isCollapsed && !isMobile ? link.label : ""}>
-                          <div className="relative">
-                            <motion.div
-                              whileHover={{ x: isCollapsed && !isMobile ? 0 : 4 }}
-                              whileTap={{ scale: 0.98 }}
-                              transition={{ duration: 0.1 }}
-                            >
-                              <button
-                                onClick={() => handleSettingLinkClick(link.to)}
-                                className={`w-full flex items-center ${
-                                  isCollapsed && !isMobile ? "justify-center" : "justify-between"
-                                } px-4 py-3 rounded-xl transition-all duration-200 ${
-                                  activeLink === link.to
-                                    ? "bg-gradient-to-r from-[#B38939] to-[#8A6D2F] font-medium shadow-lg text-white"
-                                    : "hover:bg-white/5 text-[#B38939]"
-                                }`}
-                              >
-                                <div className={`flex items-center gap-3 ${isCollapsed && !isMobile ? "justify-center" : ""}`}>
-                                  <span className={activeLink === link.to ? "text-white" : "text-[#B38939]"}>
-                                    {link.icon}
-                                  </span>
-                                  {(!isCollapsed || isMobile) && (
-                                    <span className="text-sm whitespace-nowrap">{link.label}</span>
-                                  )}
-                                </div>
-                                {(!isCollapsed || isMobile) && (
-                                  <motion.div
-                                    animate={{ rotate: settingLinks ? 180 : 0 }}
-                                    transition={{ duration: 0.2 }}
-                                    className="w-5 h-5 rounded-full flex items-center justify-center bg-white/10"
-                                  >
-                                    <BsChevronDown size={10} className="text-[#A47F35]" />
-                                  </motion.div>
-                                )}
-                              </button>
-                            </motion.div>
-                            {(!isCollapsed || isMobile) && (
-                              <motion.div
-                                initial={false}
-                                animate={{ height: settingLinks ? "auto" : 0, opacity: settingLinks ? 1 : 0 }}
-                                transition={{ duration: 0.2 }}
-                                className="overflow-hidden"
-                              >
-                                <div className="pl-12 pr-4 py-2 space-y-1">
-                                  {securitySettingLinks.map((settingLink, settingIndex) => (
-                                    <motion.div
-                                      key={settingIndex}
-                                      whileHover={{ x: 4 }}
-                                      whileTap={{ scale: 0.98 }}
-                                      transition={{ duration: 0.1 }}
-                                    >
-                                      <Link
-                                        to={settingLink.to}
-                                        onClick={() => handleLinkClick(settingLink.to)}
-                                        className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 ${
-                                          activeLink === settingLink.to ? "bg-[#B38939]/30 font-medium text-[#B38939]" : "text-[#A88136]"
-                                        }`}
-                                      >
-                                        <span
-                                          className={activeLink === settingLink.to ? "text-[#B38939]" : "text-[#A88136]"}
-                                        >
-                                          {settingLink.icon}
-                                        </span>
-                                        <span className="text-sm">{settingLink.label}</span>
-                                      </Link>
-                                    </motion.div>
-                                  ))}
-                                </div>
-                              </motion.div>
-                            )}
-                          </div>
-                        </Tooltip>
-                      ))}
                     </div>
-                  </div>
-                  {/* Footer */}
-                  <div className="flex-shrink-0 mt-auto border-t" borderColor={borderColor} style={{ zIndex: 10 }}>
-                    {(!isCollapsed || isMobile) ? (
-                      <div className="p-5 flex flex-col gap-4">
-                        <Flex align="center" justify="space-between">
-                          <Text fontSize="xs" color="gray.500">© 2025 Sylo</Text>
-                          <ThemeToggle />
-                        </Flex>
-                        <button
-                          onClick={handleLogout}
-                          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-red-600/10 to-red-700/10 hover:from-red-600/20 hover:to-red-700/20 transition-all duration-200 text-sm font-medium"
-                          style={{ minHeight: "48px" }}
-                        >
-                          <MdLogout className="text-red-500 text-xl" />
-                          <Text className="text-red-500">Logout</Text>
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="p-5 flex justify-center">
-                        <Tooltip label="Logout">
-                          <button
-                            onClick={handleLogout}
-                            className="flex items-center justify-center w-12 h-12 rounded-xl bg-red-500/10 hover:bg-red-500/20 transition-all duration-200"
-                            style={{ minHeight: "48px" }}
-                          >
-                            <MdLogout className="text-red-500 text-xl" />
-                          </button>
-                        </Tooltip>
-                      </div>
-                    )}
-                  </div>
+                  </Tooltip>
+                ))}
+              </div>
+            </div>
+            
+            {/* Footer Section - Always visible and properly sized */}
+            <div className="flex-shrink-0 border-t border-opacity-20 p-4" style={{ borderColor, minHeight: "80px", overflowX: 'hidden' }}>
+              {isCollapsed && !isMobile ? (
+                // Collapsed footer with centered logout
+                <div className="flex items-center justify-center">
+                  <Tooltip label="Logout">
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center justify-center rounded-xl bg-red-500/10 hover:bg-red-500/20 transition-colors duration-200 border border-red-500/20"
+                      style={{
+                        width: "48px",
+                        height: "48px",
+                        minWidth: "48px",
+                        overflowX: 'hidden',
+                      }}
+                    >
+                      <MdLogout className="text-red-500 text-xl" />
+                    </button>
+                  </Tooltip>
                 </div>
-              </Box>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              ) : (
+                // Expanded footer
+                <div className="flex flex-col gap-3">
+                  <Flex align="center" justify="space-between">
+                    <Text fontSize="xs" color="gray.500" fontWeight="medium">
+                      © 2025 Sylo
+                    </Text>
+                    <ThemeToggle />
+                  </Flex>
+                  
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center justify-center gap-3 py-3 rounded-xl bg-red-500/10 hover:bg-red-500/15 transition-colors duration-200 font-medium border border-red-500/20 text-red-500"
+                    style={{ overflowX: 'hidden' }}
+                  >
+                    <MdLogout className="text-xl" />
+                    <span>Logout</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </Box>
+        </div>
       </>
     </SidebarErrorBoundary>
   );
-};
+});
+
+Sidebar.displayName = 'Sidebar';
 
 export default Sidebar;

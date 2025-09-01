@@ -12,7 +12,7 @@ const theme = extendTheme({
     },
     gray: {
       800: "#051E2F",
-      100: "#FAFAFA",
+      100: "#fff",
     },
   },
   styles: {

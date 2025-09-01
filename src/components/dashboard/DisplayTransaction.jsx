@@ -740,6 +740,12 @@ const DisplayTransaction = () => {
   const inputBg = useColorModeValue('gray.50', '#051E2F');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFetchingWaybill, setIsFetchingWaybill] = useState({});
+  const [socketErrorShown, setSocketErrorShown] = useState(false);
+
+   useEffect(() => {
+    // Trigger fetchInitialData on component mount to ensure latest transactions are loaded
+    debouncedFetchInitialData();
+  }, []); // Empty dependency array ensures this runs only on mount
 
   useEffect(() => {
     const token = localStorage.getItem('access-token');
@@ -880,6 +886,35 @@ const DisplayTransaction = () => {
     //   reconnectionAttempts: 5,
     //   reconnectionDelay: 1000,
     // });
+
+    const refreshAccessToken = async () => {
+      try {
+        const refreshToken = localStorage.getItem('refresh-token');
+        if (!refreshToken) {
+          throw new Error('No refresh token available');
+        }
+        const response = await axios.post(`${BASE_URL}/api/auth/refreshToken`, { refreshToken });
+        const newAccessToken = response.data.accessToken;
+        if (!newAccessToken) {
+          throw new Error('No access token returned from refresh');
+        }
+        localStorage.setItem('access-token', newAccessToken);
+        return newAccessToken;
+      } catch (error) {
+        console.error('Token refresh failed:', error);
+        managedToast({
+          id: 'session-expired',
+          title: 'Session Expired',
+          description: 'Please log in again.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+        navigate('/login');
+        return null;
+      }
+    };
+
     const socket = io(BASE_URL, {
       auth: { token },
       reconnection: true,
@@ -909,36 +944,64 @@ const DisplayTransaction = () => {
           }
         });
       }
+      setSocketErrorShown(false);
     });
 
-    socket.on('connect_error', (err) => {
+    socket.on('connect_error', async (err) => {
       console.error('WebSocket connection error:', err);
-      managedToast({
-        id: 'socket-error',
-        title: 'Connection Error',
-        description: 'Failed to connect to real-time updates. Please check your network or try again later.',
-        status: 'warning',
-        duration: 5000,
-        isClosable: true,
-      });
+      if (err.message.includes('jwt expired')) {
+        const newToken = await refreshAccessToken();
+        if (newToken) {
+          socket.auth.token = newToken;
+          socket.connect();
+        }
+      } else {
+        if (!socketErrorShown) {
+          managedToast({
+            id: 'socket-error',
+            title: 'Connection Error',
+            description: 'Failed to connect to real-time updates. Please check your network or try again later.',
+            status: 'warning',
+            duration: 5000,
+            isClosable: true,
+          });
+          setSocketErrorShown(true);
+        }
+      }
     });
 
     socket.on('transactionCreated', (data) => {
-      const userId = userDetails?.id || userDetails?.user?.id || 'unknown';
-      if (data?.userId === userId || data?.participants?.some((p) => p.userId === userId)) {
-        managedToast({
-          id: `transaction-created-${Date.now()}`,
-          title: 'New Transaction',
-          description: 'A new transaction was created.',
-          status: 'success',
-          duration: 5000,
-          isClosable: true,
-        });
-        if (data?.transactionId) {
-          dispatch(fetchSingleTransaction(data.transactionId)).unwrap().catch((err) => {
-            console.error('Failed to fetch new transaction:', err);
-          });
-        }
+      managedToast({
+        id: `transaction-created-${Date.now()}`,
+        title: 'New Transaction',
+        description: 'A new transaction was created.',
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+      });
+      if (data?.transactionId) {
+        let attempts = 0;
+        const maxAttempts = 5;
+        const baseDelay = 2000;
+
+        const fetchWithRetry = async () => {
+          while (attempts < maxAttempts) {
+            try {
+              await dispatch(fetchSingleTransaction(data.transactionId)).unwrap();
+              return;
+            } catch (err) {
+              attempts++;
+              if (err === 'Transaction not found' && attempts < maxAttempts) {
+                await new Promise(resolve => setTimeout(resolve, baseDelay * Math.pow(2, attempts)));
+                continue;
+              }
+              console.error('Failed to fetch new transaction:', err);
+              break;
+            }
+          }
+        };
+
+        fetchWithRetry();
       }
     });
 
@@ -952,9 +1015,36 @@ const DisplayTransaction = () => {
           duration: 5000,
           isClosable: true,
         });
-        dispatch(fetchSingleTransaction(data.transactionId)).unwrap().catch((err) => {
-          console.error('Failed to fetch updated transaction:', err);
-        });
+        let attempts = 0;
+        const maxAttempts = 5;
+        const baseDelay = 2000;
+
+        const fetchWithRetry = async () => {
+          while (attempts < maxAttempts) {
+            try {
+              await dispatch(fetchSingleTransaction(data.transactionId)).unwrap();
+              return;
+            } catch (err) {
+              attempts++;
+              if (err === 'Transaction not found' && attempts < maxAttempts) {
+                await new Promise(resolve => setTimeout(resolve, baseDelay * Math.pow(2, attempts)));
+                continue;
+              }
+              console.warn('Failed to fetch updated transaction:', err);
+              managedToast({
+                id: `fetch-transaction-error-${data.transactionId}`,
+                title: 'Error',
+                description: typeof err === 'string' ? err : err?.error || 'Failed to refresh transaction data.',
+                status: 'error',
+                duration: 5000,
+                isClosable: true,
+              });
+              break;
+            }
+          }
+        };
+
+        fetchWithRetry();
       }
     });
 
@@ -984,31 +1074,35 @@ const DisplayTransaction = () => {
           isClosable: true,
         });
         let attempts = 0;
-        const maxAttempts = 3;
-        const baseDelay = 1000;
+        const maxAttempts = 5;
+        const baseDelay = 2000;
 
-        while (attempts < maxAttempts) {
-          try {
-            await dispatch(fetchSingleTransaction(data.transactionId)).unwrap();
-            return;
-          } catch (err) {
-            attempts++;
-            if (err === 'Transaction not found' && attempts < maxAttempts) {
-              await new Promise(resolve => setTimeout(resolve, baseDelay * Math.pow(2, attempts)));
-              continue;
+        const fetchWithRetry = async () => {
+          while (attempts < maxAttempts) {
+            try {
+              await dispatch(fetchSingleTransaction(data.transactionId)).unwrap();
+              return;
+            } catch (err) {
+              attempts++;
+              if (err === 'Transaction not found' && attempts < maxAttempts) {
+                await new Promise(resolve => setTimeout(resolve, baseDelay * Math.pow(2, attempts)));
+                continue;
+              }
+              console.warn('Failed to fetch updated transaction:', err);
+              managedToast({
+                id: `fetch-transaction-error-${data.transactionId}`,
+                title: 'Error',
+                description: typeof err === 'string' ? err : err?.error || 'Failed to refresh transaction data.',
+                status: 'error',
+                duration: 5000,
+                isClosable: true,
+              });
+              break;
             }
-            console.warn('Failed to fetch updated transaction:', err);
-            managedToast({
-              id: `fetch-transaction-error-${data.transactionId}`,
-              title: 'Error',
-              description: typeof err === 'string' ? err : err?.error || 'Failed to refresh transaction data.',
-              status: 'error',
-              duration: 5000,
-              isClosable: true,
-            });
-            break;
           }
-        }
+        };
+
+        fetchWithRetry();
       } else {
         console.warn('Transaction not found or invalid:', data.transactionId);
       }
