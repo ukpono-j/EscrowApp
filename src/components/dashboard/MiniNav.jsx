@@ -8,15 +8,18 @@ import Logo2 from "../../assets/logo-m.png";
 import Menu from "./Menu";
 import { motion, AnimatePresence } from "framer-motion";
 import { Box, Text, Flex, ScaleFade, useColorModeValue, Avatar, SkeletonCircle, useToast } from "@chakra-ui/react";
-import multiavatar from "@multiavatar/multiavatar/esm";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
+const FALLBACK_AVATAR = `${BASE_URL}/assests/default-avatar.png`;
 
 const MiniNav = () => {
   const [notificationCount, setNotificationCount] = useState(0);
   const [menu, setMenu] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [userData, setUserData] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState(null);
+  const [avatarError, setAvatarError] = useState(false);
+  const [isAvatarLoading, setIsAvatarLoading] = useState(true);
   const toast = useToast();
 
   useEffect(() => {
@@ -102,6 +105,46 @@ const MiniNav = () => {
     return () => clearInterval(interval);
   }, [toast]);
 
+  // Avatar handling effect - similar to Profile component
+  useEffect(() => {
+    setIsAvatarLoading(true);
+    setAvatarError(false);
+
+    if (userData?.avatarImage) {
+      const avatarUrl = `${BASE_URL}${userData.avatarImage}?t=${Date.now()}`;
+      console.log('Loading avatar in MiniNav:', { url: avatarUrl });
+      setAvatarPreview(avatarUrl);
+    } else {
+      console.warn('No avatarImage found in userData, using fallback');
+      setAvatarPreview(FALLBACK_AVATAR);
+    }
+
+    setIsAvatarLoading(false);
+  }, [userData?.avatarImage, userData?._id]);
+
+  const handleAvatarLoad = () => {
+    console.log('MiniNav avatar loaded successfully');
+    setAvatarError(false);
+    setIsAvatarLoading(false);
+  };
+
+  const handleAvatarError = (e) => {
+    console.error('MiniNav avatar load error:', e);
+    
+    // Don't retry if we're already using the fallback
+    if (avatarPreview === FALLBACK_AVATAR) {
+      setAvatarError(true);
+      setIsAvatarLoading(false);
+      return;
+    }
+
+    // Fall back to default avatar
+    console.log('MiniNav falling back to default avatar:', FALLBACK_AVATAR);
+    setAvatarPreview(FALLBACK_AVATAR);
+    setAvatarError(true);
+    setIsAvatarLoading(false);
+  };
+
   const handleMenuToggle = () => setMenu(!menu);
 
   const bgColor = useColorModeValue("white", "#051E2F");
@@ -109,22 +152,6 @@ const MiniNav = () => {
   const shadowColor = useColorModeValue("rgba(0,0,0,0.05)", "rgba(0,0,0,0.2)");
 
   const userName = userData ? `${userData.firstName || ''} ${userData.lastName || ''}`.trim() : "";
-  const avatarSeed = userData?.avatarSeed || userData?._id || "default-user";
-
-  const getAvatarSvg = () => {
-    try {
-      const svg = multiavatar(avatarSeed);
-      return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
-    } catch (error) {
-      console.error("Error generating Multiavatar:", error);
-      return `data:image/svg+xml;utf8,${encodeURIComponent(
-        `<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="16" cy="16" r="15" fill="#B38939" />
-          <text x="50%" y="50%" font-size="12" fill="white" text-anchor="middle" dominant-baseline="middle">${avatarSeed.slice(0, 2)}</text>
-        </svg>`
-      )}`;
-    }
-  };
 
   return (
     <Box
@@ -183,26 +210,31 @@ const MiniNav = () => {
           whileTap={{ scale: 0.95 }}
         >
           {userData ? (
-            <Box
-              as="div"
-              width="32px"
-              height="32px"
-              borderRadius="full"
-              overflow="hidden"
-              className="cursor-pointer border-2 border-white dark:border-gray-800"
-            >
-             <Link to= "/profile">
-              <img
-                src={getAvatarSvg()}
-                alt={`${userData.firstName || 'User'}'s avatar`}
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                onError={(e) => {
-                  e.target.onerror = null;
-                  e.target.src = getAvatarSvg();
-                }}
-              />
-             </Link>
-            </Box>
+            <Link to="/profile">
+              <Box
+                as="div"
+                width="32px"
+                height="32px"
+                borderRadius="full"
+                overflow="hidden"
+                className="cursor-pointer border-2 border-white dark:border-gray-800"
+              >
+                {isAvatarLoading ? (
+                  <SkeletonCircle size="32px" />
+                ) : (
+                  <Avatar
+                    size="sm"
+                    src={avatarPreview || FALLBACK_AVATAR}
+                    onLoad={handleAvatarLoad}
+                    onError={handleAvatarError}
+                    name={`${userData.firstName || 'User'}'s avatar`}
+                    bg="linear-gradient(to bottom right, #B38939, #8A6D2F)"
+                    color="white"
+                    key={avatarPreview} // Force re-render when preview changes
+                  />
+                )}
+              </Box>
+            </Link>
           ) : (
             <Avatar
               size="sm"

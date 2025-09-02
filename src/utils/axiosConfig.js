@@ -2,26 +2,11 @@ import axios from 'axios';
 import { navigateTo } from './navigate';
 import { toast } from 'react-toastify';
 
-// Create Axios instance
 const instance = axios.create({
   baseURL: import.meta.env.VITE_BASE_URL || 'http://localhost:3001',
   timeout: 15000,
 });
 
-// Sanitize request body for logging
-const sanitizeRequestBody = (body) => {
-  try {
-    const parsed = JSON.parse(body);
-    const sanitized = { ...parsed };
-    if (sanitized.password) sanitized.password = '[REDACTED]';
-    if (sanitized.confirmPassword) sanitized.confirmPassword = '[REDACTED]';
-    return sanitized;
-  } catch {
-    return body;
-  }
-};
-
-// Track offline status
 let isOffline = !navigator.onLine;
 
 window.addEventListener('online', () => {
@@ -37,7 +22,6 @@ window.addEventListener('offline', () => {
 let isRefreshing = false;
 let failedQueue = [];
 
-// Process failed queue
 const processQueue = (error, token = null) => {
   failedQueue.forEach(prom => {
     if (error) {
@@ -49,12 +33,21 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
-// Debounce token refresh to prevent multiple simultaneous attempts
-let refreshTimeout = null;
+// Helper function to check if user should be logged out
+const shouldLogOut = (error, config) => {
+  // Don't log out for auth endpoints
+  if (config.url?.includes('/api/auth/')) {
+    return false;
+  }
+  
+  // Only log out for explicit authentication failures, not network issues
+  return error.response?.status === 401 && 
+         error.response?.data?.tokenExpired === true;
+};
 
 instance.interceptors.request.use(
   (config) => {
-    // Skip auth header for login/register/refresh endpoints
+    // Skip auth header for public endpoints
     if (
       config.url?.includes('/api/auth/login') ||
       config.url?.includes('/api/auth/register') ||
@@ -70,11 +63,8 @@ instance.interceptors.request.use(
       console.log('Authorization header set for URL:', config.url);
     } else {
       console.warn('No access token found for URL:', config.url);
-      toast.warn('Authentication required. Redirecting to login...', { autoClose: 3000 });
-      localStorage.removeItem('access-token');
-      localStorage.removeItem('refresh-token');
-      navigateTo('/login');
-      return Promise.reject(new Error('No access token available'));
+      // DON'T immediately redirect here - let the response interceptor handle it
+      // This prevents premature logouts during token refresh
     }
     return config;
   },
@@ -104,11 +94,11 @@ instance.interceptors.response.use(
       method: originalRequest.method || 'Unknown method',
       message: error.message,
       code: error.code,
-      requestBody: originalRequest.data ? sanitizeRequestBody(originalRequest.data) : undefined,
     });
 
-    // Handle 401 errors (token expiry)
+    // Handle 401 errors with token refresh
     if (status === 401 && !originalRequest._retry && !originalRequest.url?.includes('/api/auth/refreshToken')) {
+      // Check if we're already refreshing
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -126,65 +116,76 @@ instance.interceptors.response.use(
       const refreshToken = localStorage.getItem('refresh-token');
       if (!refreshToken) {
         console.warn('No refresh token available, logging out');
-        toast.warn('Your session has expired. Redirecting to login...', { autoClose: 3000 });
-        localStorage.removeItem('access-token');
-        localStorage.removeItem('refresh-token');
-        navigateTo('/login');
-        processQueue(new Error('No refresh token available'));
-        isRefreshing = false;
-        return Promise.reject(new Error('No refresh token available'));
-      }
-
-      // Debounce token refresh
-      if (refreshTimeout) clearTimeout(refreshTimeout);
-      refreshTimeout = setTimeout(async () => {
-        try {
-          console.log('Attempting to refresh token for URL:', originalRequest.url);
-          const response = await axios.post(
-            `${import.meta.env.VITE_BASE_URL}/api/auth/refreshToken`,
-            { refreshToken }
-          );
-          const newAccessToken = response.data.accessToken;
-          if (!newAccessToken) {
-            throw new Error('No access token returned from refresh');
-          }
-          localStorage.setItem('access-token', newAccessToken);
-          originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
-          console.log('Token refreshed, retrying request:', originalRequest.url);
-          processQueue(null, newAccessToken);
-          isRefreshing = false;
-          return instance(originalRequest);
-        } catch (refreshError) {
-          console.error('Token refresh failed:', {
-            message: refreshError.response?.data?.error || refreshError.message,
-            url: originalRequest.url || 'Unknown URL',
-          });
-          toast.warn('Your session has expired. Redirecting to login...', { autoClose: 3000 });
+        // Only show toast and logout if we're sure the session is invalid
+        if (error.response?.data?.tokenExpired === true) {
+          toast.warn('Your session has expired. Please log in again.', { autoClose: 3000 });
           localStorage.removeItem('access-token');
           localStorage.removeItem('refresh-token');
           navigateTo('/login');
-          processQueue(new Error('Session expired'));
-          isRefreshing = false;
-          return Promise.reject(new Error('Session expired'));
         }
-      }, 100); // 100ms debounce
-      return new Promise((resolve) => {
-        failedQueue.push({
-          resolve: (token) => {
-            originalRequest.headers['Authorization'] = `Bearer ${token}`;
-            resolve(instance(originalRequest));
-          },
-          reject: (err) => Promise.reject(err),
+        processQueue(new Error('No refresh token available'));
+        isRefreshing = false;
+        return Promise.reject(error);
+      }
+
+      try {
+        console.log('Attempting to refresh token for URL:', originalRequest.url);
+        const response = await axios.post(
+          `${import.meta.env.VITE_BASE_URL}/api/auth/refreshToken`,
+          { refreshToken }
+        );
+        
+        const newAccessToken = response.data.accessToken;
+        if (!newAccessToken) {
+          throw new Error('No access token returned from refresh');
+        }
+        
+        localStorage.setItem('access-token', newAccessToken);
+        originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
+        console.log('Token refreshed successfully, retrying request:', originalRequest.url);
+        processQueue(null, newAccessToken);
+        isRefreshing = false;
+        return instance(originalRequest);
+      } catch (refreshError) {
+        console.error('Token refresh failed:', {
+          message: refreshError.response?.data?.error || refreshError.message,
+          url: originalRequest.url || 'Unknown URL',
         });
-      });
+        
+        // Only logout if refresh explicitly failed due to invalid refresh token
+        if (refreshError.response?.status === 401 || refreshError.response?.data?.tokenExpired === true) {
+          toast.warn('Your session has expired. Please log in again.', { autoClose: 3000 });
+          localStorage.removeItem('access-token');
+          localStorage.removeItem('refresh-token');
+          navigateTo('/login');
+        } else {
+          // For network errors during refresh, don't logout - just show error
+          toast.error('Connection error. Please try again.', { autoClose: 3000 });
+        }
+        
+        processQueue(refreshError);
+        isRefreshing = false;
+        return Promise.reject(refreshError);
+      }
     }
 
-    // Skip fallback for login/register endpoints
+    // Don't interfere with auth endpoint errors
     if (originalRequest.url?.includes('/api/auth/login') || originalRequest.url?.includes('/api/auth/register')) {
       return Promise.reject(error);
     }
 
-    // Provide fallback data for specific endpoints
+    // Handle network errors gracefully without logging out
+    if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT' || error.code === 'ECONNRESET') {
+      toast.warn('Connection timeout. Please try again.', { autoClose: 3000 });
+    } else if (status === 500) {
+      toast.warn('Service temporarily unavailable. Please try again later.', { autoClose: 3000 });
+    } else if (status === 404) {
+      toast.error('Resource not found. Please try again or contact support.', { autoClose: 3000 });
+    } else if (status === 503) {
+      toast.warn('Service temporarily unavailable. Please try again later.', { autoClose: 3000 });
+    }
+
+    // Provide fallback data for specific endpoints to prevent app crashes
     const fallbackData = {
       success: false,
       error: errorMessage,
@@ -198,18 +199,6 @@ instance.interceptors.response.use(
               ? { user: {} }
               : null,
     };
-
-    // Enhanced error handling
-    if (status === 500) {
-      fallbackData.error = 'Service temporarily unavailable. Please try again later.';
-      toast.warn(fallbackData.error, { autoClose: 3000 });
-    } else if (status === 404) {
-      fallbackData.error = 'Resource not found. Please try again or contact support.';
-      toast.error(fallbackData.error, { autoClose: 3000 });
-    } else if (status === 503 || error.code === 'ETIMEDOUT' || error.code === 'ECONNRESET') {
-      fallbackData.error = 'Service temporarily unavailable. Please try again later.';
-      toast.warn(fallbackData.error, { autoClose: 3000 });
-    }
 
     return Promise.resolve({ data: fallbackData });
   }

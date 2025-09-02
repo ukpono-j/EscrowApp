@@ -68,7 +68,10 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
   const [userName, setUserName] = useState("");
   const [isUserLoading, setIsUserLoading] = useState(true);
   const [settingLinks, setSettingLinks] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    const saved = localStorage.getItem('sidebarCollapsed');
+    return saved !== null ? JSON.parse(saved) : window.innerWidth < 1024;
+  });
   const [isMobile, setIsMobile] = useState(false);
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
 
@@ -84,7 +87,9 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
       setIsCollapsed(false);
     } else {
       setIsSidebarVisible(true);
-      setIsCollapsed(window.innerWidth < 1024);
+      // Use saved collapsed state from localStorage or default to collapsed for < 1024px
+      const savedCollapsed = JSON.parse(localStorage.getItem('sidebarCollapsed'));
+      setIsCollapsed(savedCollapsed !== null ? savedCollapsed : window.innerWidth < 1024);
     }
   }, []);
 
@@ -96,7 +101,12 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
 
   useEffect(() => {
     const currentPath = location.pathname === "/" ? "/dashboard" : location.pathname;
-    setActiveLink(currentPath);
+    setActiveLink((prev) => {
+      if (prev !== currentPath) {
+        return currentPath;
+      }
+      return prev;
+    });
   }, [location.pathname]);
 
   useEffect(() => {
@@ -146,14 +156,20 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
   }, [toast, navigate]);
 
   useEffect(() => {
+    localStorage.setItem('sidebarCollapsed', JSON.stringify(isCollapsed));
     onCollapseChange?.(isMobile ? isSidebarVisible : isCollapsed);
   }, [isCollapsed, isSidebarVisible, isMobile, onCollapseChange]);
+
 
   const toggleSidebar = useCallback(() => {
     if (isMobile) {
       setIsSidebarVisible((prev) => !prev);
     } else {
-      setIsCollapsed((prev) => !prev);
+      setIsCollapsed((prev) => {
+        const newState = !prev;
+        localStorage.setItem('sidebarCollapsed', JSON.stringify(newState));
+        return newState;
+      });
     }
   }, [isMobile]);
 
@@ -163,21 +179,18 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
     { to: "/join-transaction", label: "Join Transaction", icon: <FaHandshake className="text-xl" /> },
     { to: "/transactions/tab", label: "My Transactions", icon: <FaExchangeAlt className="text-xl" /> },
     { to: "/profile", label: "My Profile", icon: <MdPerson className="text-xl" /> },
+    { to: "/security-settings/kyc", label: "KYC Verification", icon: <FaUserShield className="text-lg" /> },
   ];
-
-  const setting_links = [
-    { to: "#", label: "Security Settings", icon: <MdSecurity className="text-xl" /> },
-  ];
-
-  const securitySettingLinks = [
-    { to: "/security-settings/kyc", label: "KYC", icon: <FaUserShield className="text-lg" /> },
-  ];
-
   const handleLinkClick = useCallback((to) => {
     setActiveLink(to);
     setSettingLinks(false);
     if (isMobile) {
       setIsSidebarVisible(false);
+    }
+    // Ensure sidebar remains collapsed if it was collapsed
+    const savedCollapsed = JSON.parse(localStorage.getItem('sidebarCollapsed'));
+    if (!isMobile && savedCollapsed) {
+      setIsCollapsed(true);
     }
   }, [isMobile]);
 
@@ -269,7 +282,7 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
                 {/* Logo */}
                 <div
                   className="flex items-center justify-center overflow-hidden transition-opacity duration-150"
-                  style={{ 
+                  style={{
                     width: (!isCollapsed || isMobile) ? "180px" : "0px",
                     opacity: (!isCollapsed || isMobile) ? 1 : 0,
                     height: "48px",
@@ -291,13 +304,13 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
                     />
                   </Link>
                 </div>
-                
+
                 {/* Toggle Button - Always visible */}
                 <button
                   onClick={toggleSidebar}
                   className="flex items-center justify-center rounded-xl bg-gradient-to-br from-[#B38939]/10 to-[#BB954D]/10 hover:from-[#B38939]/20 hover:to-[#BB954D]/20 transition-colors duration-200 border border-[#B38939]/20"
-                  style={{ 
-                    width: "40px", 
+                  style={{
+                    width: "40px",
                     height: "40px",
                     minWidth: "40px",
                     flexShrink: 0
@@ -315,9 +328,9 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
                 </button>
               </div>
             </div>
-            
+
             {/* Navigation Section */}
-            <div className="flex-1 overflow-y-auto" style={{ 
+            <div className="flex-1 overflow-y-auto" style={{
               scrollbarWidth: "thin",
               scrollbarColor: "rgba(179, 137, 57, 0.3) transparent",
               overflowX: 'hidden', // Enforce no horizontal scrolling
@@ -328,25 +341,23 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
                     <Link
                       to={link.to}
                       onClick={() => handleLinkClick(link.to)}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors duration-200 relative ${
-                        isCollapsed && !isMobile ? "justify-center" : ""
-                      } ${
-                        activeLink === link.to
+                      className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors duration-200 relative ${isCollapsed && !isMobile ? "justify-center" : ""
+                        } ${activeLink === link.to
                           ? "bg-gradient-to-r from-[#B38939] to-[#BB954D] text-white shadow-lg"
                           : "hover:bg-gray-100 dark:hover:bg-gray-800/50"
-                      }`}
+                        }`}
                       style={{
-                        width: isCollapsed && !isMobile ? "48px" : "100%",
-                        maxWidth: isCollapsed && !isMobile ? "48px" : "100%", // Prevent overflow
-                        height: "48px",
-                        minWidth: isCollapsed && !isMobile ? "48px" : "auto",
+                        width: isCollapsed && !isMobile ? "43px" : "100%",
+                        maxWidth: isCollapsed && !isMobile ? "43px" : "100%", // Prevent overflow
+                        height: "44px",
+                        minWidth: isCollapsed && !isMobile ? "43px" : "auto",
                         overflowX: 'hidden',
                       }}
                     >
                       <span className={`${activeLink === link.to ? "text-white" : "text-[#B38939]"}`}>
                         {link.icon}
                       </span>
-                      
+
                       {(!isCollapsed || isMobile) && (
                         <span className="text-sm font-medium whitespace-nowrap">
                           {link.label}
@@ -355,102 +366,9 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
                     </Link>
                   </Tooltip>
                 ))}
-                
-                {/* Settings Section */}
-                {(!isCollapsed || isMobile) && (
-                  <div className="mt-8">
-                    <div className="flex items-center gap-2 px-4 mb-3">
-                      <div className="w-8 h-px bg-gradient-to-r from-[#B38939]/50 to-transparent" />
-                      <Text fontSize="xs" textTransform="uppercase" fontWeight="bold" color="gray.500" letterSpacing="wider">
-                        Settings
-                      </Text>
-                      <div className="flex-1 h-px bg-gradient-to-r from-transparent to-[#B38939]/20" />
-                    </div>
-                  </div>
-                )}
-                
-                {/* Settings Links */}
-                {setting_links.map((link, index) => (
-                  <Tooltip key={index} label={isCollapsed && !isMobile ? link.label : ""}>
-                    <div className="relative" style={{ overflowX: 'hidden' }}>
-                      <button
-                        onClick={() => handleSettingLinkClick(link.to)}
-                        className={`flex items-center px-4 py-3 rounded-xl transition-colors duration-200 relative ${
-                          isCollapsed && !isMobile ? "justify-center w-12" : "justify-between w-full"
-                        } ${
-                          activeLink === link.to
-                            ? "bg-gradient-to-r from-[#B38939] to-[#BB954D] text-white"
-                            : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/50"
-                        }`}
-                        style={{
-                          width: isCollapsed && !isMobile ? "48px" : "100%",
-                          maxWidth: isCollapsed && !isMobile ? "48px" : "100%", // Prevent overflow
-                          height: "48px",
-                          minWidth: isCollapsed && !isMobile ? "48px" : "auto",
-                          overflowX: 'hidden',
-                        }}
-                      >
-                        <div className={`flex items-center gap-3 ${isCollapsed && !isMobile ? "justify-center" : ""}`}>
-                          <span className={`${activeLink === link.to ? "text-white" : "text-[#B38939]"}`}>
-                            {link.icon}
-                          </span>
-                          {(!isCollapsed || isMobile) && (
-                            <span className="text-sm font-medium whitespace-nowrap">
-                              {link.label}
-                            </span>
-                          )}
-                        </div>
-                        
-                        {(!isCollapsed || isMobile) && (
-                          <div
-                            className="w-6 h-6 rounded-full flex items-center justify-center bg-white/10 transition-transform duration-200"
-                            style={{
-                              transform: settingLinks ? "rotate(180deg)" : "rotate(0deg)"
-                            }}
-                          >
-                            <BsChevronDown size={12} className={activeLink === link.to ? "text-white" : "text-[#B38939]"} />
-                          </div>
-                        )}
-                      </button>
-                      
-                      {/* Submenu */}
-                      {(!isCollapsed || isMobile) && (
-                        <div
-                          className="overflow-hidden transition-all duration-200 ease-out"
-                          style={{
-                            maxHeight: settingLinks ? "60px" : "0px",
-                            opacity: settingLinks ? 1 : 0,
-                            overflowX: 'hidden',
-                          }}
-                        >
-                          <div className="pl-12 pr-4 py-2" style={{ overflowX: 'hidden' }}>
-                            {securitySettingLinks.map((settingLink, settingIndex) => (
-                              <Link
-                                key={settingIndex}
-                                to={settingLink.to}
-                                onClick={() => handleLinkClick(settingLink.to)}
-                                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors duration-200 ${
-                                  activeLink === settingLink.to 
-                                    ? "bg-gradient-to-r from-[#B38939] to-[#BB954D] text-white shadow-md" 
-                                    : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/30"
-                                }`}
-                                style={{ overflowX: 'hidden' }}
-                              >
-                                <span className={`${activeLink === settingLink.to ? "text-white" : "text-[#B38939]"}`}>
-                                  {settingLink.icon}
-                                </span>
-                                <span className="text-sm font-medium">{settingLink.label}</span>
-                              </Link>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </Tooltip>
-                ))}
               </div>
             </div>
-            
+
             {/* Footer Section - Always visible and properly sized */}
             <div className="flex-shrink-0 border-t border-opacity-20 p-4" style={{ borderColor, minHeight: "80px", overflowX: 'hidden' }}>
               {isCollapsed && !isMobile ? (
@@ -461,9 +379,9 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
                       onClick={handleLogout}
                       className="flex items-center justify-center rounded-xl bg-red-500/10 hover:bg-red-500/20 transition-colors duration-200 border border-red-500/20"
                       style={{
-                        width: "48px",
-                        height: "48px",
-                        minWidth: "48px",
+                        width: "43px",
+                        height: "43px",
+                        minWidth: "43px",
                         overflowX: 'hidden',
                       }}
                     >
@@ -480,7 +398,7 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
                     </Text>
                     <ThemeToggle />
                   </Flex>
-                  
+
                   <button
                     onClick={handleLogout}
                     className="w-full flex items-center justify-center gap-3 py-3 rounded-xl bg-red-500/10 hover:bg-red-500/15 transition-colors duration-200 font-medium border border-red-500/20 text-red-500"

@@ -48,65 +48,155 @@ self.addEventListener('activate', (event) => {
   return self.clients.claim();
 });
 
-// Fetch event - cache-first for static assets, stale-while-revalidate for API calls
+// Helper function to check if request can be cached
+function canCacheRequest(request) {
+  return request.method === 'GET' && !request.url.includes('auth');
+}
+
+// Helper function to create fallback API response
+function createFallbackApiResponse(requestUrl) {
+  const pathname = requestUrl.pathname;
+  let fallbackData = null;
+  
+  if (pathname.includes('transactions/get-transaction')) {
+    fallbackData = [];
+  } else if (pathname.match(/transactions\/[0-9a-fA-F]{24}$/)) {
+    fallbackData = {};
+  } else if (pathname.includes('wallet/balance')) {
+    fallbackData = { balance: 0 };
+  } else if (pathname.includes('user-details')) {
+    fallbackData = { user: {} };
+  }
+  
+  return new Response(
+    JSON.stringify({
+      success: false,
+      error: 'You are offline. Displaying cached data.',
+      data: fallbackData
+    }),
+    {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    }
+  );
+}
+
+// Fetch event - cache-first for static assets, network-first for API calls
 self.addEventListener('fetch', (event) => {
   const requestUrl = new URL(event.request.url);
   const isApiRequest = requestUrl.pathname.startsWith('/api/');
 
   if (isApiRequest) {
-    // Stale-while-revalidate for API requests
-    event.respondWith(
-      caches.open(DYNAMIC_CACHE_NAME).then(cache => {
-        return cache.match(event.request).then(cachedResponse => {
-          const fetchPromise = fetch(event.request)
+    // Handle API requests
+    if (canCacheRequest(event.request)) {
+      // Network-first strategy for cacheable GET requests
+      event.respondWith(
+        caches.open(DYNAMIC_CACHE_NAME).then(cache => {
+          return fetch(event.request)
             .then(networkResponse => {
-              // Only cache successful responses (status 200)
-              if (networkResponse.ok) {
-                cache.put(event.request, networkResponse.clone());
+              // Check if response is valid and can be cached
+              if (networkResponse && networkResponse.ok && event.request.method === 'GET') {
+                try {
+                  // Clone BEFORE any other operations that might consume the body
+                  const responseToCache = networkResponse.clone();
+                  
+                  // Cache asynchronously without blocking the response
+                  cache.put(event.request, responseToCache).catch(err => {
+                    console.warn('Failed to cache API response:', err);
+                  });
+                } catch (cloneError) {
+                  console.warn('Failed to clone response for caching:', cloneError);
+                  // Continue without caching if clone fails
+                }
               }
               return networkResponse;
             })
-            .catch(() => {
-              // If network fails and cache exists, return cached response
-              if (cachedResponse) {
-                return cachedResponse;
-              }
-              // Fallback response for API when offline and no cache
-              return new Response(
-                JSON.stringify({
-                  success: false,
-                  error: 'You are offline. Displaying cached data.',
-                  data: requestUrl.pathname.includes('transactions/get-transaction')
-                    ? []
-                    : requestUrl.pathname.match(/transactions\/[0-9a-fA-F]{24}$/)
-                      ? {}
-                      : requestUrl.pathname.includes('wallet/balance')
-                        ? { balance: 0 }
-                        : requestUrl.pathname.includes('user-details')
-                          ? { user: {} }
-                          : null
-                }),
-                {
-                  status: 200,
-                  headers: { 'Content-Type': 'application/json' }
+            .catch((fetchError) => {
+              console.warn('Network request failed, trying cache:', fetchError);
+              // Network failed, try cache
+              return cache.match(event.request).then(cachedResponse => {
+                if (cachedResponse) {
+                  console.log('Serving from cache:', event.request.url);
+                  return cachedResponse;
                 }
-              );
+                // No cache available, return fallback
+                console.log('No cache available, returning fallback for:', event.request.url);
+                return createFallbackApiResponse(requestUrl);
+              });
             });
-          // Return cached response immediately (if available) while fetching new data
-          return cachedResponse || fetchPromise;
-        });
-      })
-    );
+        }).catch(cacheError => {
+          console.error('Cache operation failed:', cacheError);
+          // If cache operations fail, try direct fetch
+          return fetch(event.request).catch(() => {
+            return createFallbackApiResponse(requestUrl);
+          });
+        })
+      );
+    } else {
+      // For non-cacheable requests (POST, PUT, DELETE), just try network
+      event.respondWith(
+        fetch(event.request).catch(() => {
+          // Return appropriate error response for failed non-cacheable requests
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: 'Network unavailable. Please try again when online.',
+            }),
+            {
+              status: 503,
+              headers: { 'Content-Type': 'application/json' }
+            }
+          );
+        })
+      );
+    }
   } else {
-    // Cache-first for static assets
+    // Cache-first strategy for static assets
     event.respondWith(
       caches.match(event.request).then(cachedResponse => {
         if (cachedResponse) {
           return cachedResponse;
         }
-        return fetch(event.request).catch(() => {
+        
+        return fetch(event.request).then(response => {
+          // Cache successful responses for static assets
+          if (response && response.ok && event.request.method === 'GET') {
+            try {
+              // Clone immediately before any operations that might consume the body
+              const responseToCache = response.clone();
+              
+              // Cache asynchronously
+              caches.open(CACHE_NAME).then(cache => {
+                cache.put(event.request, responseToCache).catch(err => {
+                  console.warn('Failed to cache static asset:', err);
+                });
+              }).catch(err => {
+                console.warn('Failed to open cache for static asset:', err);
+              });
+            } catch (cloneError) {
+              console.warn('Failed to clone response for static asset caching:', cloneError);
+              // Continue without caching if clone fails
+            }
+          }
+          return response;
+        }).catch(() => {
+          // Handle navigation requests when offline
           if (event.request.mode === 'navigate') {
             return caches.match('/index.html');
+          }
+          return new Response('Resource not available offline', {
+            status: 404,
+            headers: { 'Content-Type': 'text/plain' }
+          });
+        });
+      }).catch(cacheError => {
+        console.error('Cache match failed:', cacheError);
+        // If cache operations fail, try direct fetch
+        return fetch(event.request).catch(() => {
+          if (event.request.mode === 'navigate') {
+            return new Response('<!DOCTYPE html><html><head><title>Offline</title></head><body><h1>You are offline</h1><p>Please check your internet connection.</p></body></html>', {
+              headers: { 'Content-Type': 'text/html' }
+            });
           }
           return new Response('Resource not available offline', {
             status: 404,
@@ -181,4 +271,18 @@ self.addEventListener('notificationclick', (event) => {
   } else if (action === 'dismiss') {
     console.log('Notification dismissed:', notificationId);
   }
+});
+
+// Background sync event (if you want to add offline form submissions)
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'background-sync') {
+    console.log('Background sync triggered');
+    // Handle background sync for offline actions
+  }
+});
+
+// Handle unhandled promise rejections
+self.addEventListener('unhandledrejection', (event) => {
+  console.error('Unhandled promise rejection in service worker:', event.reason);
+  event.preventDefault();
 });

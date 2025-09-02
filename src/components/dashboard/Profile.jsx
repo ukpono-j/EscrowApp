@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import jwtDecode from 'jwt-decode';
@@ -8,18 +8,18 @@ import {
   Box, Text, Button, Flex, Heading, Input, Grid, FormControl, FormLabel, Icon, Avatar, Spinner,
   Container, useToast, useDisclosure, NumberInput, NumberInputField, NumberInputStepper,
   NumberIncrementStepper, NumberDecrementStepper, Divider, Select, useColorModeValue,
-  Tabs, TabList, Tab, TabPanels, TabPanel, Badge, VStack, Progress, HStack, Card, CardBody,
-  CardHeader, SimpleGrid, Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton,
-  ModalBody, ModalFooter
+  Tabs, TabList, Tab, TabPanels, TabPanel, Badge, VStack, Progress, HStack, Card, CardHeader, CardBody,
+  Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, ModalFooter, SimpleGrid
 } from '@chakra-ui/react';
-import { FaEdit, FaWallet, FaTimes, FaCreditCard, FaSync, FaMoneyBillWave, FaSave } from 'react-icons/fa';
+import { FaEdit, FaWallet, FaTimes, FaCreditCard, FaSync, FaMoneyBillWave, FaSave, FaUpload } from 'react-icons/fa';
 import io from 'socket.io-client';
 import moment from 'moment-timezone';
 import axios from '../../utils/axiosConfig';
 import { fetchInitialData, fundWallet, checkFundingStatus, manualReconcileTransaction, fetchPendingWithdrawals } from '../../store/slices/walletThunks';
 import { setWallet, setPaymentDetails, clearPaymentDetails } from '../../store/slices/walletSlice';
-import PaymentInfoModal from './PaymentInfoModal'; // Import the new component
+import PaymentInfoModal from './PaymentInfoModal';
 import './Profile.css';
+import { fetchTransactions } from '../../store/slices/walletThunks';
 
 const PAYSTACK_BANKS = [
   { name: 'Access Bank', code: '044' },
@@ -428,17 +428,24 @@ const Profile = () => {
   const transactions = wallet?.transactions || [];
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({ firstName: '', lastName: '', phoneNumber: '' });
+  const [avatarFile, setAvatarFile] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [authError, setAuthError] = useState(null);
   const [fundingAmount, setFundingAmount] = useState(null);
   const [avatarError, setAvatarError] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState(null);
+  const [avatarRetryCount, setAvatarRetryCount] = useState(0); // Add retry logic
+  const [isAvatarLoading, setIsAvatarLoading] = useState(false); // Track loading state
+  const maxRetries = 3;
+  const retryDelay = 1000;
+  const fileInputRef = useRef(null);
   const bgColor = useColorModeValue('gray.100', '#1A202C');
   const cardBg = useColorModeValue('white', '#051E2F');
   const textColor = useColorModeValue('#051E2F', 'white');
   const subtleTextColor = useColorModeValue('gray.500', 'gray.400');
   const borderColor = useColorModeValue('gray.200', '#051E2F');
-
+  const [isAvatarUploading, setIsAvatarUploading] = useState(false);
   // Pagination states for each tab
   const [allPage, setAllPage] = useState(1);
   const [pendingPage, setPendingPage] = useState(1);
@@ -446,22 +453,85 @@ const Profile = () => {
   const [failedPage, setFailedPage] = useState(1);
   const itemsPerPage = 5;
 
-  const FALLBACK_AVATAR = 'https://via.placeholder.com/100?text=Avatar';
+  // Hoisted color mode values to avoid conditional hook calls (fixes the hooks order warning)
+  const editPanelBg = useColorModeValue('gray.50', '#2D3748');
+  const inputFieldBg = useColorModeValue('white', '#2D3748');
+
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    if (typeof window !== "undefined") {
+      const isMobile = window.innerWidth < 768;
+      const savedSidebarState = localStorage.getItem("sidebarCollapsed");
+      return isMobile ? true : savedSidebarState ? JSON.parse(savedSidebarState) : false;
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    const checkScreenSize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsSidebarCollapsed((prev) => {
+        const savedSidebarState = localStorage.getItem("sidebarCollapsed");
+        return mobile ? true : savedSidebarState ? JSON.parse(savedSidebarState) : prev;
+      });
+    };
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
+
+  const FALLBACK_AVATAR = `${BASE_URL}/assests/default-avatar.png`;
 
   // Sort transactions by createdAt in descending order (newest first)
-  const sortedTransactions = [...transactions].sort((a, b) => 
+  const sortedTransactions = [...transactions].sort((a, b) =>
     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 
   useEffect(() => {
-    if (user?.avatarImage) {
-      logger.info('Avatar URL:', { url: `${BASE_URL}${user.avatarImage}` });
+    setIsAvatarLoading(true);
+    setAvatarError(false);
+    setAvatarRetryCount(0);
+
+    if (avatarFile) {
+      const previewUrl = URL.createObjectURL(avatarFile);
+      setAvatarPreview(previewUrl);
+    } else if (user?.avatarImage) {
+      const avatarUrl = `${BASE_URL}${user.avatarImage}?t=${Date.now()}`;
+      logger.info('Attempting to load avatar:', { url: avatarUrl });
+      setAvatarPreview(avatarUrl);
     } else {
       logger.warn('No avatarImage found in user object');
+      setAvatarPreview(FALLBACK_AVATAR);
     }
-  }, [user]);
+
+    setIsAvatarLoading(false);
+  }, [user?.avatarImage, user?._id, avatarFile]);
+
+  const handleAvatarLoad = () => {
+    logger.info('Avatar loaded successfully');
+    setAvatarError(false);
+    setAvatarRetryCount(0);
+    // Don't manage loading state here since we removed the spinner
+  };
+
+  const handleAvatarError = (e) => {
+    logger.error('Failed to load avatar');
+    console.error('Avatar load error:', e);
+
+    // Don't retry if we're already using the fallback
+    if (avatarPreview === FALLBACK_AVATAR) {
+      setAvatarError(true);
+      return;
+    }
+
+    // For uploaded files or user avatars, fall back to default immediately
+    console.log('Falling back to default avatar:', FALLBACK_AVATAR);
+    setAvatarPreview(FALLBACK_AVATAR);
+    setAvatarError(true);
+    setAvatarRetryCount(0);
+  };
 
   const [socket, setSocket] = useState(null);
+
   useEffect(() => {
     const token = localStorage.getItem('access-token');
     if (!token) {
@@ -486,7 +556,7 @@ const Profile = () => {
         logger.info('WebSocket connected', { socketId: socketInstance.id });
       });
 
-      socketInstance.on('balanceUpdate', (data) => {
+      socketInstance.on('balanceUpdate', async (data) => {
         if (data.status === 'completed') {
           toast({
             title: 'Success',
@@ -497,7 +567,13 @@ const Profile = () => {
           });
           localStorage.removeItem(`pendingFunding_${data.reference}`);
           dispatch(clearPaymentDetails());
-          dispatch(fetchInitialData());
+          // Force fetch with cache-busting
+          await dispatch(fetchInitialData({ noCache: Date.now() })).unwrap();
+          // Reset pagination to trigger UI update
+          setAllPage(1);
+          setPendingPage(1);
+          setCompletedPage(1);
+          setFailedPage(1);
         } else if (data.withdrawalRequest) {
           toast({
             title: 'Withdrawal Request',
@@ -506,7 +582,8 @@ const Profile = () => {
             duration: 5000,
             isClosable: true,
           });
-          dispatch(fetchPendingWithdrawals());
+          await dispatch(fetchPendingWithdrawals()).unwrap();
+          await dispatch(fetchInitialData({ noCache: Date.now() })).unwrap();
         }
       });
 
@@ -569,45 +646,64 @@ const Profile = () => {
         const decoded = jwtDecode(token);
         const isExpired = decoded.exp * 1000 < Date.now();
         if (isExpired) {
-          setAuthError('Your session has expired. Please log in again.');
+          logger.warn('Access token expired', { userId: decoded.id });
           localStorage.removeItem('access-token');
+          localStorage.removeItem('refresh-token');
+          setAuthError('Your session has expired. Please log in again.');
           setIsAuthLoading(false);
           navigate('/login');
           return;
         }
 
         axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        const result = await retryAsync(() => dispatch(fetchInitialData()).unwrap());
-        if (!result.success) {
-          let errorMessage = result.error || 'Failed to authenticate. Please log in again.';
-          if (result.status === 401) {
-            errorMessage = 'Session invalid or expired. Please log in again.';
-            localStorage.removeItem('access-token');
-            navigate('/login');
-          } else if (result.status === 404) {
-            errorMessage = 'User account not found. Please contact support.';
-          } else if (result.status === 503) {
-            errorMessage = 'Database unavailable. Please try again later.';
-          }
-          setAuthError(errorMessage);
-          setIsAuthLoading(false);
-          return;
+        // Fetch initial data and transactions concurrently
+        const [initialDataResult, transactionsResult] = await Promise.allSettled([
+          dispatch(fetchInitialData()).unwrap(),
+          dispatch(fetchTransactions()).unwrap(),
+        ]);
+
+        if (initialDataResult.status === 'rejected') {
+          logger.error('Initial data fetch failed', { error: initialDataResult.reason });
+          throw initialDataResult.reason;
+        }
+
+        if (transactionsResult.status === 'rejected') {
+          logger.warn('Transactions fetch failed, continuing with initial data', { error: transactionsResult.reason });
         }
 
         setIsAuthLoading(false);
+        // Log transaction data for debugging
+        console.log('Transactions data:', {
+          transactions: wallet.transactions,
+          sortedTransactions: sortedTransactions,
+          transactionsLength: wallet.transactions.length,
+          walletObject: wallet,
+        });
       } catch (err) {
-        logger.error({ message: 'Authentication error', error: err.message, stack: err.stack });
-        let errorMessage = 'Authentication failed. Please log in again.';
-        if (err.response?.status === 401) {
+        logger.error('Authentication error', {
+          message: err.message,
+          status: err.status,
+          data: err,
+        });
+        let errorMessage = err.error || 'Authentication failed. Please log in again.';
+        if (err.status === 401) {
           localStorage.removeItem('access-token');
+          localStorage.removeItem('refresh-token');
           navigate('/login');
-        } else if (err.response?.status === 404) {
+        } else if (err.status === 404) {
           errorMessage = 'User account not found. Please contact support.';
-        } else if (err.response?.status === 503) {
+        } else if (err.status === 503) {
           errorMessage = 'Database unavailable. Please try again later.';
         }
         setAuthError(errorMessage);
         setIsAuthLoading(false);
+        toast({
+          title: 'Error',
+          description: errorMessage,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
       }
     };
 
@@ -623,6 +719,24 @@ const Profile = () => {
       });
     }
   }, [user]);
+
+  useEffect(() => {
+    console.log('Transactions data:', {
+      transactions: transactions,
+      sortedTransactions: sortedTransactions,
+      transactionsLength: transactions?.length,
+      walletObject: wallet
+    });
+  }, [transactions, wallet]);
+
+
+  useEffect(() => {
+    // Reset pagination when transactions change
+    setAllPage(1);
+    setPendingPage(1);
+    setCompletedPage(1);
+    setFailedPage(1);
+  }, [transactions.length]);
 
   const handleCheckFundingReadiness = async () => {
     if (isSubmitting) {
@@ -816,13 +930,68 @@ const Profile = () => {
     }
   };
 
+  const handleAvatarChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (!file.type.match('image/(jpeg|png)')) {
+        toast({
+          title: 'Error',
+          description: 'Please upload a valid image file (JPEG or PNG).',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+        console.error('Invalid file type:', file.type);
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: 'Error',
+          description: 'Image size must be less than 5MB.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+        console.error('File size too large:', file.size);
+        return;
+      }
+      setAvatarFile(file);
+      console.log('Avatar file selected:', { name: file.name, size: file.size, type: file.type });
+      const previewUrl = URL.createObjectURL(file);
+      setAvatarPreview(previewUrl);
+      console.log('Avatar preview URL:', previewUrl);
+      setAvatarError(false); // Reset error on new file selection
+      setAvatarRetryCount(0); // Reset retry count
+      setIsAvatarLoading(false); // No loading needed for preview
+    } else {
+      console.warn('No file selected for avatar upload');
+    }
+  };
+
   const handleUpdateProfile = async () => {
     setIsSubmitting(true);
+    setIsAvatarUploading(true); // Set uploading state
     try {
-      const response = await retryAsync(() => axios.put('/api/users/update-user-details', formData));
+      const formDataToSend = new FormData();
+      formDataToSend.append('firstName', formData.firstName);
+      formDataToSend.append('lastName', formData.lastName);
+      formDataToSend.append('phoneNumber', formData.phoneNumber);
+      if (avatarFile) {
+        formDataToSend.append('avatarImage', avatarFile);
+        console.log('Uploading avatar file:', { name: avatarFile.name, size: avatarFile.size });
+      }
+
+      const token = localStorage.getItem('access-token');
+      const response = await retryAsync(() =>
+        axios.put(`${BASE_URL}/api/users/update-user-details`, formDataToSend, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            Authorization: `Bearer ${token}`,
+          },
+        })
+      );
+
       if (response.data.success) {
-        dispatch(setWallet({ ...user, ...formData }));
-        setIsEditing(false);
         toast({
           title: 'Success',
           description: 'Profile updated successfully.',
@@ -830,7 +999,33 @@ const Profile = () => {
           duration: 5000,
           isClosable: true,
         });
+
+        // Clear edit state and reset avatar states
+        setIsEditing(false);
+        setAvatarFile(null);
+        setIsAvatarUploading(false); // Reset uploading state
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+
+        // Reset avatar states before fetching new data
+        setAvatarError(false);
+        setAvatarRetryCount(0);
+
+        // Force refresh the user data to get updated avatar
+        const result = await dispatch(fetchInitialData()).unwrap();
+
+        // Set the new avatar URL immediately after successful update
+        if (result.user?.avatarImage) {
+          const newAvatarUrl = `${BASE_URL}${result.user.avatarImage}?t=${Date.now()}`;
+          setAvatarPreview(newAvatarUrl);
+          setIsAvatarLoading(false); // Ensure loading is reset
+        } else {
+          setAvatarPreview(FALLBACK_AVATAR);
+          setIsAvatarLoading(false);
+        }
       } else {
+        console.error('Profile update failed:', response.data.error);
         toast({
           title: 'Error',
           description: response.data.error || 'Failed to update profile.',
@@ -838,8 +1033,10 @@ const Profile = () => {
           duration: 5000,
           isClosable: true,
         });
+        setIsAvatarUploading(false);
       }
     } catch (error) {
+      console.error('Error updating profile:', error);
       toast({
         title: 'Error',
         description: error.response?.data?.error || 'Failed to update profile. Please check your network and try again.',
@@ -847,45 +1044,100 @@ const Profile = () => {
         duration: 5000,
         isClosable: true,
       });
+      setIsAvatarUploading(false);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleRefresh = async () => {
-    try {
-      const result = await retryAsync(() => dispatch(fetchInitialData()).unwrap());
-      if (result.success) {
-        toast({
-          title: 'Success',
-          description: `Wallet balance refreshed. New balance: ₦${result.data.wallet.balance.toFixed(2)}`,
-          status: 'success',
-          duration: 5000,
-          isClosable: true,
-        });
-      } else {
-        toast({
-          title: 'Error',
-          description: result.error || 'Failed to refresh wallet balance.',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
+const handleRefresh = async () => {
+  try {
+    // Clear any cached responses if Cache API is available
+    if (window.caches) {
+      try {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map(name => caches.delete(name)));
+      } catch (cacheError) {
+        logger.warn('Failed to clear browser cache', { message: cacheError.message });
       }
-    } catch (error) {
+    }
+
+    const result = await retryAsync(() => dispatch(fetchInitialData()).unwrap());
+    toast({
+      title: 'Success',
+      description: `Wallet balance refreshed. New balance: ₦${(result.wallet?.balance || 0).toFixed(2)}`,
+      status: 'success',
+      duration: 5000,
+      isClosable: true,
+    });
+    if (result.user?.avatarImage) {
+      const avatarUrl = `${BASE_URL}${result.user.avatarImage}?t=${Date.now()}`;
+      setAvatarPreview(avatarUrl);
+      setIsAvatarLoading(false);
+      setAvatarError(false);
+      setAvatarRetryCount(0);
+    } else {
+      setAvatarPreview(FALLBACK_AVATAR);
+      setIsAvatarLoading(false);
+    }
+    // Force re-render by updating pagination states
+    setAllPage(1);
+    setPendingPage(1);
+    setCompletedPage(1);
+    setFailedPage(1);
+    console.log('Refresh wallet result:', {
+      balance: result.wallet?.balance,
+      transactions: result.transactions,
+      transactionCount: result.transactions?.length,
+    });
+  } catch (error) {
+    logger.error('Refresh wallet balance error', {
+      message: error.message,
+      status: error.status,
+      data: error,
+    });
+    let errorMessage = error.error || 'Failed to refresh wallet balance. Please try again.';
+    let action = null;
+    if (error.status === 401) {
+      errorMessage = 'Session expired. Please log in again.';
+      action = { label: 'Log In', onClick: () => navigate('/login') };
+      localStorage.removeItem('access-token');
+      localStorage.removeItem('refresh-token');
+    } else if (error.status === 404) {
+      errorMessage = 'User account not found. Please contact support.';
+    } else if (error.status === 503) {
+      errorMessage = 'Database unavailable. Please try again later.';
+    }
+    toast({
+      title: 'Error',
+      description: errorMessage,
+      status: 'error',
+      duration: 5000,
+      isClosable: true,
+      action,
+    });
+    // Attempt fallback fetchTransactions
+    try {
+      const txResult = await dispatch(fetchTransactions()).unwrap();
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to refresh wallet balance. Please check your network and try again.',
-        status: 'error',
+        title: 'Partial Success',
+        description: 'Wallet balance refresh failed, but transactions were updated.',
+        status: 'info',
         duration: 5000,
         isClosable: true,
-        action: error.response?.status === 401 ? {
-          label: 'Log In',
-          onClick: () => navigate('/login'),
-        } : null,
+      });
+      console.log('Fallback fetchTransactions result:', {
+        transactions: txResult.transactions,
+        wallet: txResult.wallet,
+      });
+    } catch (txError) {
+      logger.error('Fallback fetchTransactions failed', {
+        message: txError.message,
+        status: txError.status,
       });
     }
-  };
+  }
+};
 
   const handleRetryAuth = async () => {
     setIsAuthLoading(true);
@@ -896,102 +1148,181 @@ const Profile = () => {
 
   const renderTransaction = (tx) => (
     <Card
-      key={tx.reference || Math.random()}
-      className="transaction-card"
+      key={tx.reference || tx._id || Math.random()}
       bg={cardBg}
       borderRadius="lg"
       border="1px"
       borderColor={borderColor}
       _hover={{ boxShadow: 'lg', transform: 'translateY(-2px)' }}
       transition="all 0.3s"
+      p={4}
     >
-      <Flex className="transaction-details p-2">
-        <VStack align="start" spacing={1}>
-          <Flex align="center" clas>
-            <Text fontWeight="bold" color={textColor} className="transaction-text">
-              {tx.type ? (tx.type.charAt(0).toUpperCase() + tx.type.slice(1)) : 'Unknown'}: ₦{(tx.amount || 0).toFixed(2)}
+      <Flex justify="space-between" align="flex-start" w="100%">
+        <VStack align="start" spacing={2} flex="1">
+          <Flex align="center" wrap="wrap" gap={2}>
+            <Text fontWeight="bold" color={textColor} fontSize="md">
+              {tx.type ? (tx.type.charAt(0).toUpperCase() + tx.type.slice(1)) : 'Transaction'}
             </Text>
             <Badge
-              ml={2}
-              colorScheme={tx.status === 'completed' ? 'green' : tx.status === 'pending' ? 'yellow' : 'red'}
-              className="transaction-badge"
+              colorScheme={
+                tx.status === 'completed' || tx.status === 'success' ? 'green' :
+                  tx.status === 'pending' ? 'yellow' : 'red'
+              }
+              fontSize="xs"
             >
               {tx.status ? (tx.status.charAt(0).toUpperCase() + tx.status.slice(1)) : 'Unknown'}
             </Badge>
           </Flex>
-          <Text fontSize="sm" color={subtleTextColor} className="transaction-text">
-            Ref: {tx.reference || 'N/A'}
+          <Text fontSize="lg" fontWeight="semibold" color={textColor}>
+            ₦{(tx.amount || 0).toFixed(2)}
+          </Text>
+          {tx.reference && (
+            <Text fontSize="xs" color={subtleTextColor} fontFamily="mono">
+              Ref: {tx.reference}
+            </Text>
+          )}
+        </VStack>
+        <VStack align="end" spacing={1}>
+          <Text fontSize="xs" color={subtleTextColor}>
+            {tx.createdAt ? new Date(tx.createdAt).toLocaleDateString() : 'N/A'}
+          </Text>
+          <Text fontSize="xs" color={subtleTextColor}>
+            {tx.createdAt ? new Date(tx.createdAt).toLocaleTimeString() : ''}
           </Text>
         </VStack>
-        <Text fontSize="sm" color={subtleTextColor} className="transaction-date">
-          {tx.createdAt ? new Date(tx.createdAt).toLocaleString() : 'N/A'}
-        </Text>
       </Flex>
     </Card>
   );
 
   const PaginationControls = ({ currentPage, setCurrentPage, totalItems }) => {
     const totalPages = Math.ceil(totalItems / itemsPerPage);
-    const pageNumbers = [];
 
-    for (let i = 1; i <= totalPages; i++) {
-      if (
-        i === 1 ||
-        i === totalPages ||
-        (i >= currentPage - 1 && i <= currentPage + 1)
-      ) {
-        pageNumbers.push(i);
-      } else if (
-        (i === currentPage - 2 && currentPage > 3) ||
-        (i === currentPage + 2 && currentPage < totalPages - 2)
-      ) {
-        pageNumbers.push('...');
-      }
+    if (totalPages <= 1) return null; // Don't show pagination if only one page
+
+    const pageNumbers = [];
+    const maxVisiblePages = 5;
+
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
     }
 
     return (
-      <HStack spacing={2} justify="center" mt={4} className="pagination-controls">
+      <Flex justify="center" align="center" mt={6} gap={2} wrap="wrap">
         <Button
           size="sm"
-          bg="#B38939"
-          _hover={{ bg: "#BB954D" }}
-          color="white"
-          onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+          bg={currentPage === 1 ? "gray.300" : "#B38939"}
+          _hover={{ bg: currentPage === 1 ? "gray.300" : "#BB954D" }}
+          color={currentPage === 1 ? "gray.500" : "white"}
+          onClick={() => setCurrentPage(1)}
           isDisabled={currentPage === 1}
-          className="pagination-button"
+          cursor={currentPage === 1 ? "not-allowed" : "pointer"}
+        >
+          First
+        </Button>
+
+        <Button
+          size="sm"
+          bg={currentPage === 1 ? "gray.300" : "#B38939"}
+          _hover={{ bg: currentPage === 1 ? "gray.300" : "#BB954D" }}
+          color={currentPage === 1 ? "gray.500" : "white"}
+          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+          isDisabled={currentPage === 1}
+          cursor={currentPage === 1 ? "not-allowed" : "pointer"}
         >
           Previous
         </Button>
-        {pageNumbers.map((page, index) =>
-          page === '...' ? (
-            <Text key={index} color={textColor}>...</Text>
-          ) : (
+
+        {startPage > 1 && (
+          <>
             <Button
-              key={index}
               size="sm"
-              bg={currentPage === page ? "#B38939" : cardBg}
-              color={currentPage === page ? "white" : textColor}
+              bg={cardBg}
+              color={textColor}
               _hover={{ bg: "#BB954D", color: "white" }}
-              onClick={() => setCurrentPage(page)}
-              className="pagination-button"
+              onClick={() => setCurrentPage(1)}
             >
-              {page}
+              1
             </Button>
-          )
+            {startPage > 2 && <Text color={textColor}>...</Text>}
+          </>
         )}
+
+        {pageNumbers.map((page) => (
+          <Button
+            key={page}
+            size="sm"
+            bg={currentPage === page ? "#B38939" : cardBg}
+            color={currentPage === page ? "white" : textColor}
+            _hover={{ bg: "#BB954D", color: "white" }}
+            onClick={() => setCurrentPage(page)}
+            fontWeight={currentPage === page ? "bold" : "normal"}
+          >
+            {page}
+          </Button>
+        ))}
+
+        {endPage < totalPages && (
+          <>
+            {endPage < totalPages - 1 && <Text color={textColor}>...</Text>}
+            <Button
+              size="sm"
+              bg={cardBg}
+              color={textColor}
+              _hover={{ bg: "#BB954D", color: "white" }}
+              onClick={() => setCurrentPage(totalPages)}
+            >
+              {totalPages}
+            </Button>
+          </>
+        )}
+
         <Button
           size="sm"
-          bg="#B38939"
-          _hover={{ bg: "#BB954D" }}
-          color="white"
-          onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+          bg={currentPage === totalPages ? "gray.300" : "#B38939"}
+          _hover={{ bg: currentPage === totalPages ? "gray.300" : "#BB954D" }}
+          color={currentPage === totalPages ? "gray.500" : "white"}
+          onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
           isDisabled={currentPage === totalPages}
-          className="pagination-button"
+          cursor={currentPage === totalPages ? "not-allowed" : "pointer"}
         >
           Next
         </Button>
-      </HStack>
+
+        <Button
+          size="sm"
+          bg={currentPage === totalPages ? "gray.300" : "#B38939"}
+          _hover={{ bg: currentPage === totalPages ? "gray.300" : "#BB954D" }}
+          color={currentPage === totalPages ? "gray.500" : "white"}
+          onClick={() => setCurrentPage(totalPages)}
+          isDisabled={currentPage === totalPages}
+          cursor={currentPage === totalPages ? "not-allowed" : "pointer"}
+        >
+          Last
+        </Button>
+
+        <Text color={subtleTextColor} fontSize="sm" ml={4}>
+          Page {currentPage} of {totalPages} ({totalItems} total)
+        </Text>
+      </Flex>
     );
+  };
+
+  const handleTransactionError = (error) => {
+    console.error('Transaction error:', error);
+    toast({
+      title: 'Transaction Error',
+      description: 'Failed to load transaction history. Please refresh the page.',
+      status: 'error',
+      duration: 5000,
+      isClosable: true,
+    });
   };
 
   if (isAuthLoading) {
@@ -1062,17 +1393,22 @@ const Profile = () => {
                 <Card bg={cardBg} borderRadius="xl" className="wallet-profile-card" border="1px" borderColor={borderColor} boxShadow="lg">
                   <CardHeader>
                     <Flex align="center" justify="center" flexDir="column">
-                      <Avatar
-                        size="2xl"
-                        src={avatarError ? FALLBACK_AVATAR : `${BASE_URL}${user.avatarImage || '/api/avatar/default'}`}
-                        onError={() => {
-                          logger.error('Failed to load avatar', { url: `${BASE_URL}${user.avatarImage || '/api/avatar/default'}` });
-                          setAvatarError(true);
-                        }}
-                        mb={4}
-                        border="2px"
-                        borderColor="#B38939"
-                      />
+                      {isAvatarLoading || isAvatarUploading ? (
+                        <Flex align="center" justify="center" h="120px" w="120px" mb={4}>
+                          <Spinner color="#B38939" size="lg" />
+                        </Flex>
+                      ) : (
+                        <Avatar
+                          size="2xl"
+                          src={avatarPreview || FALLBACK_AVATAR}
+                          onLoad={handleAvatarLoad}
+                          onError={handleAvatarError}
+                          mb={4}
+                          border="2px"
+                          borderColor="#B38939"
+                          key={avatarPreview} // Force re-render when preview changes
+                        />
+                      )}
                       <Heading size="lg" color={textColor} textAlign="center">
                         <span>{user.firstName} {user.lastName}</span>
                       </Heading>
@@ -1083,42 +1419,100 @@ const Profile = () => {
                   </CardHeader>
                   <CardBody>
                     {isEditing ? (
-                      <VStack spacing={4}>
+                      <VStack spacing={6} align="stretch" p={4} bg={editPanelBg} borderRadius="lg" boxShadow="md" border="1px" borderColor={borderColor}>
+                        <Text fontSize="lg" fontWeight="semibold" color={textColor} textAlign="center">
+                          Edit Your Profile
+                        </Text>
                         <FormControl>
-                          <FormLabel color={textColor}>First Name</FormLabel>
+                          <FormLabel color={textColor} fontWeight="medium">First Name</FormLabel>
                           <Input
                             value={formData.firstName}
                             onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                            placeholder="First Name"
-                            bg={useColorModeValue('gray.50', '#051E2F')}
+                            placeholder="Enter first name"
+                            bg={inputFieldBg}
                             borderColor={borderColor}
                             color={textColor}
+                            borderRadius="md"
+                            _focus={{ borderColor: '#B38939', boxShadow: '0 0 0 1px #B38939' }}
+                            _hover={{ borderColor: '#BB954D' }}
+                            transition="all 0.3s"
                           />
                         </FormControl>
                         <FormControl>
-                          <FormLabel color={textColor}>Last Name</FormLabel>
+                          <FormLabel color={textColor} fontWeight="medium">Last Name</FormLabel>
                           <Input
                             value={formData.lastName}
                             onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                            placeholder="Last Name"
-                            bg={useColorModeValue('gray.50', '#051E2F')}
+                            placeholder="Enter last name"
+                            bg={inputFieldBg}
                             borderColor={borderColor}
                             color={textColor}
+                            borderRadius="md"
+                            _focus={{ borderColor: '#B38939', boxShadow: '0 0 0 1px #B38939' }}
+                            _hover={{ borderColor: '#BB954D' }}
+                            transition="all 0.3s"
                           />
                         </FormControl>
                         <FormControl>
-                          <FormLabel color={textColor}>Phone Number</FormLabel>
+                          <FormLabel color={textColor} fontWeight="medium">Phone Number</FormLabel>
                           <Input
                             value={formData.phoneNumber}
                             onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-                            placeholder="Phone Number"
+                            placeholder="Enter phone number"
                             type="tel"
-                            bg={useColorModeValue('gray.50', '#051E2F')}
+                            bg={inputFieldBg}
                             borderColor={borderColor}
                             color={textColor}
+                            borderRadius="md"
+                            _focus={{ borderColor: '#B38939', boxShadow: '0 0 0 1px #B38939' }}
+                            _hover={{ borderColor: '#BB954D' }}
+                            transition="all 0.3s"
                           />
                         </FormControl>
-                        <HStack spacing={4} justify="center" mt={4}>
+                        <FormControl>
+                          <FormLabel color={textColor} fontWeight="medium">Profile Picture</FormLabel>
+                          <Box position="relative" bg={inputFieldBg} borderRadius="md" border="1px" borderColor={borderColor} p={3} _hover={{ borderColor: '#BB954D', boxShadow: '0 0 0 1px #BB954D' }} transition="all 0.3s">
+                            <Input
+                              type="file"
+                              accept="image/jpeg,image/png"
+                              ref={fileInputRef}
+                              onChange={handleAvatarChange}
+                              bg="transparent"
+                              border="none"
+                              p={1}
+                              _focus={{ outline: 'none' }}
+                              sx={{
+                                '::file-selector-button': {
+                                  bg: '#B38939',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: 'md',
+                                  px: 4,
+                                  py: 2,
+                                  cursor: 'pointer',
+                                  _hover: { bg: '#BB954D' },
+                                  fontSize: 'sm',
+                                  fontWeight: 'medium'
+                                }
+                              }}
+                            />
+                            {avatarFile && (
+                              <VStack spacing={3} mt={4} align="center">
+                                <Avatar
+                                  size="lg"
+                                  src={avatarPreview}
+                                  border="2px"
+                                  borderColor="#B38939"
+                                  boxShadow="md"
+                                />
+                                <Text fontSize="sm" color={subtleTextColor} textAlign="center">
+                                  Preview: {avatarFile.name}
+                                </Text>
+                              </VStack>
+                            )}
+                          </Box>
+                        </FormControl>
+                        <HStack spacing={4} justify="center" mt={6}>
                           <Button
                             leftIcon={<FaSave />}
                             bg="#B38939"
@@ -1127,16 +1521,36 @@ const Profile = () => {
                             onClick={handleUpdateProfile}
                             isLoading={isSubmitting}
                             size="md"
+                            borderRadius="md"
+                            px={6}
+                            _focus={{ boxShadow: '0 0 0 3px rgba(179, 137, 57, 0.3)' }}
+                            transition="all 0.3s"
                           >
-                            Save
+                            Save Changes
                           </Button>
                           <Button
                             leftIcon={<FaTimes />}
-                            variant="ghost"
-                            color={textColor}
-                            _hover={{ bg: useColorModeValue('gray.100', '#051E2F') }}
-                            onClick={() => setIsEditing(false)}
+                            variant="outline"
+                            borderColor="#B38939"
+                            color="#B38939"
+                            _hover={{ bg: '#BB954D', color: 'white' }}
+                            onClick={() => {
+                              setIsEditing(false);
+                              setAvatarFile(null);
+                              if (user?.avatarImage) {
+                                setAvatarPreview(`${BASE_URL}${user.avatarImage}?t=${Date.now()}`);
+                              } else {
+                                setAvatarPreview(FALLBACK_AVATAR);
+                              }
+                              if (fileInputRef.current) {
+                                fileInputRef.current.value = '';
+                              }
+                            }}
                             size="md"
+                            borderRadius="md"
+                            px={6}
+                            _focus={{ boxShadow: '0 0 0 3px rgba(179, 137, 57, 0.3)' }}
+                            transition="all 0.3s"
                           >
                             Cancel
                           </Button>
@@ -1171,7 +1585,7 @@ const Profile = () => {
                     </Flex>
                   </CardHeader>
                   <CardBody>
-                    <Text color={textColor} fontSize="3xl" fontWeight="bold">
+                    <Text color={textColor} fontSize="3xl" fontWeight="bold" key={`balance-${wallet?.balance}-${Date.now()}`}>
                       ₦{(wallet?.balance || 0).toFixed(2)}
                     </Text>
                     {error && (
@@ -1221,94 +1635,218 @@ const Profile = () => {
                   </CardBody>
                 </Card>
                 <Card bg={cardBg} borderRadius="xl" border="1px" borderColor={borderColor} boxShadow="lg" className="transaction-history-card">
-                  <CardHeader>
-                    <Heading size="md" color={textColor}>
-                      <span>Transaction History</span>
-                    </Heading>
-                  </CardHeader>
                   <CardBody>
+                    <Flex justify="space-between" align="center" mb={4}>
+                      <Heading size="md" color={textColor}>
+                        <span>Transaction History</span>
+                      </Heading>
+                      <Button
+                        leftIcon={<FaSync />}
+                        bg="#B38939"
+                        _hover={{ bg: "#BB954D" }}
+                        color="white"
+                        onClick={async () => {
+                          try {
+                            const result = await dispatch(fetchTransactions()).unwrap();
+                            toast({
+                              title: 'Success',
+                              description: 'Wallet data refreshed successfully.',
+                              status: 'success',
+                              duration: 5000,
+                              isClosable: true,
+                            });
+                            console.log('Refresh result:', {
+                              transactions: result.transactions,
+                              wallet: result.wallet,
+                            });
+                          } catch (error) {
+                            toast({
+                              title: 'Error',
+                              description: error.error || 'Failed to refresh wallet data.',
+                              status: 'error',
+                              duration: 5000,
+                              isClosable: true,
+                            });
+                            console.error('Refresh error:', error);
+                          }
+                        }}
+                        isLoading={loading}
+                        size="sm"
+                      >
+                        Refresh Wallet Data
+                      </Button>
+                    </Flex>
                     <Tabs variant="soft-rounded" colorScheme="yellow" className="transaction-tabs">
                       <TabList mb={4} flexWrap="wrap" justifyContent="start" className="tab-list">
-                        <Tab _selected={{ bg: "#B38939", color: "white" }} color={textColor} className="tab">All</Tab>
-                        <Tab _selected={{ bg: "#B38939", color: "white" }} color={textColor} className="tab">Pending</Tab>
-                        <Tab _selected={{ bg: "#B38939", color: "white" }} color={textColor} className="tab">Completed</Tab>
-                        <Tab _selected={{ bg: "#B38939", color: "white" }} color={textColor} className="tab">Failed</Tab>
+                        <Tab
+                          _selected={{ bg: "#B38939", color: "white" }}
+                          color={textColor}
+                          className="tab"
+                          fontSize="sm"
+                          px={3}
+                          py={1}
+                          mr={2}
+                        >
+                          <Icon as={FaWallet} boxSize={4} mr={2} />
+                          All
+                        </Tab>
+                        <Tab
+                          _selected={{ bg: "#B38939", color: "white" }}
+                          color={textColor}
+                          className="tab"
+                          fontSize="sm"
+                          px={3}
+                          py={1}
+                          mr={2}
+                        >
+                          <Icon as={FaSync} boxSize={4} mr={2} />
+                          Pending
+                        </Tab>
+                        <Tab
+                          _selected={{ bg: "#B38939", color: "white" }}
+                          color={textColor}
+                          className="tab"
+                          fontSize="sm"
+                          px={3}
+                          py={1}
+                          mr={2}
+                        >
+                          <Icon as={FaMoneyBillWave} boxSize={4} mr={2} />
+                          Completed
+                        </Tab>
+                        <Tab
+                          _selected={{ bg: "#B38939", color: "white" }}
+                          color={textColor}
+                          className="tab"
+                          fontSize="sm"
+                          px={3}
+                          py={1}
+                          mr={2}
+                        >
+                          <Icon as={FaTimes} boxSize={4} mr={2} />
+                          Failed
+                        </Tab>
                       </TabList>
                       <TabPanels>
-                        <TabPanel className="transaction-card-container">
+                        <TabPanel p={0} className="transaction-card-container">
                           {Array.isArray(sortedTransactions) && sortedTransactions.length > 0 ? (
                             <>
-                              <VStack spacing={4}>
+                              <VStack spacing={3} align="stretch">
                                 {sortedTransactions
                                   .slice((allPage - 1) * itemsPerPage, allPage * itemsPerPage)
                                   .map(renderTransaction)}
                               </VStack>
-                              <PaginationControls
-                                currentPage={allPage}
-                                setCurrentPage={setAllPage}
-                                totalItems={sortedTransactions.length}
-                              />
+                              {sortedTransactions.length > itemsPerPage && (
+                                <PaginationControls
+                                  currentPage={allPage}
+                                  setCurrentPage={setAllPage}
+                                  totalItems={sortedTransactions.length}
+                                />
+                              )}
                             </>
                           ) : (
-                            <Text color={subtleTextColor} textAlign="center">No transactions available.</Text>
+                            <Flex justify="center" align="center" minH="200px">
+                              <VStack spacing={3}>
+                                <Icon as={FaWallet} color={subtleTextColor} boxSize={8} />
+                                <Text color={subtleTextColor} textAlign="center" fontSize="md">
+                                  No transactions yet
+                                </Text>
+                                <Text color={subtleTextColor} textAlign="center" fontSize="sm">
+                                  Your transaction history will appear here
+                                </Text>
+                              </VStack>
+                            </Flex>
                           )}
                         </TabPanel>
-                        <TabPanel className="transaction-card-container">
-                          {Array.isArray(sortedTransactions) && sortedTransactions.some(tx => tx.status === 'pending') ? (
-                            <>
-                              <VStack spacing={4}>
-                                {sortedTransactions
-                                  .filter(tx => tx.status === 'pending')
-                                  .slice((pendingPage - 1) * itemsPerPage, pendingPage * itemsPerPage)
-                                  .map(renderTransaction)}
-                              </VStack>
-                              <PaginationControls
-                                currentPage={pendingPage}
-                                setCurrentPage={setPendingPage}
-                                totalItems={sortedTransactions.filter(tx => tx.status === 'pending').length}
-                              />
-                            </>
-                          ) : (
-                            <Text color={subtleTextColor} textAlign="center">No pending transactions.</Text>
-                          )}
+                        <TabPanel p={0} className="transaction-card-container">
+                          {(() => {
+                            const pendingTx = sortedTransactions.filter(tx => tx.status === 'pending');
+                            return pendingTx.length > 0 ? (
+                              <>
+                                <VStack spacing={3} align="stretch">
+                                  {pendingTx
+                                    .slice((pendingPage - 1) * itemsPerPage, pendingPage * itemsPerPage)
+                                    .map(renderTransaction)}
+                                </VStack>
+                                {pendingTx.length > itemsPerPage && (
+                                  <PaginationControls
+                                    currentPage={pendingPage}
+                                    setCurrentPage={setPendingPage}
+                                    totalItems={pendingTx.length}
+                                  />
+                                )}
+                              </>
+                            ) : (
+                              <Flex justify="center" align="center" minH="200px">
+                                <VStack spacing={3}>
+                                  <Icon as={FaSync} color={subtleTextColor} boxSize={8} />
+                                  <Text color={subtleTextColor} textAlign="center" fontSize="md">
+                                    No pending transactions
+                                  </Text>
+                                </VStack>
+                              </Flex>
+                            );
+                          })()}
                         </TabPanel>
-                        <TabPanel className="transaction-card-container">
-                          {Array.isArray(sortedTransactions) && sortedTransactions.some(tx => tx.status === 'completed') ? (
-                            <>
-                              <VStack spacing={4}>
-                                {sortedTransactions
-                                  .filter(tx => tx.status === 'completed')
-                                  .slice((completedPage - 1) * itemsPerPage, completedPage * itemsPerPage)
-                                  .map(renderTransaction)}
-                              </VStack>
-                              <PaginationControls
-                                currentPage={completedPage}
-                                setCurrentPage={setCompletedPage}
-                                totalItems={sortedTransactions.filter(tx => tx.status === 'completed').length}
-                              />
-                            </>
-                          ) : (
-                            <Text color={subtleTextColor} textAlign="center">No completed transactions.</Text>
-                          )}
+                        <TabPanel p={0} className="transaction-card-container">
+                          {(() => {
+                            const completedTx = sortedTransactions.filter(tx => tx.status === 'completed' || tx.status === 'success');
+                            return completedTx.length > 0 ? (
+                              <>
+                                <VStack spacing={3} align="stretch">
+                                  {completedTx
+                                    .slice((completedPage - 1) * itemsPerPage, completedPage * itemsPerPage)
+                                    .map(renderTransaction)}
+                                </VStack>
+                                {completedTx.length > itemsPerPage && (
+                                  <PaginationControls
+                                    currentPage={completedPage}
+                                    setCurrentPage={setCompletedPage}
+                                    totalItems={completedTx.length}
+                                  />
+                                )}
+                              </>
+                            ) : (
+                              <Flex justify="center" align="center" minH="200px">
+                                <VStack spacing={3}>
+                                  <Icon as={FaMoneyBillWave} color={subtleTextColor} boxSize={8} />
+                                  <Text color={subtleTextColor} textAlign="center" fontSize="md">
+                                    No completed transactions
+                                  </Text>
+                                </VStack>
+                              </Flex>
+                            );
+                          })()}
                         </TabPanel>
-                        <TabPanel className="transaction-card-container">
-                          {Array.isArray(sortedTransactions) && sortedTransactions.some(tx => tx.status === 'failed') ? (
-                            <>
-                              <VStack spacing={4}>
-                                {sortedTransactions
-                                  .filter(tx => tx.status === 'failed')
-                                  .slice((failedPage - 1) * itemsPerPage, failedPage * itemsPerPage)
-                                  .map(renderTransaction)}
-                              </VStack>
-                              <PaginationControls
-                                currentPage={failedPage}
-                                setCurrentPage={setFailedPage}
-                                totalItems={sortedTransactions.filter(tx => tx.status === 'failed').length}
-                              />
-                            </>
-                          ) : (
-                            <Text color={subtleTextColor} textAlign="center">No failed transactions.</Text>
-                          )}
+                        <TabPanel p={0} className="transaction-card-container">
+                          {(() => {
+                            const failedTx = sortedTransactions.filter(tx => tx.status === 'failed' || tx.status === 'error');
+                            return failedTx.length > 0 ? (
+                              <>
+                                <VStack spacing={3} align="stretch">
+                                  {failedTx
+                                    .slice((failedPage - 1) * itemsPerPage, failedPage * itemsPerPage)
+                                    .map(renderTransaction)}
+                                </VStack>
+                                {failedTx.length > itemsPerPage && (
+                                  <PaginationControls
+                                    currentPage={failedPage}
+                                    setCurrentPage={setFailedPage}
+                                    totalItems={failedTx.length}
+                                  />
+                                )}
+                              </>
+                            ) : (
+                              <Flex justify="center" align="center" minH="200px">
+                                <VStack spacing={3}>
+                                  <Icon as={FaTimes} color={subtleTextColor} boxSize={8} />
+                                  <Text color={subtleTextColor} textAlign="center" fontSize="md">
+                                    No failed transactions
+                                  </Text>
+                                </VStack>
+                              </Flex>
+                            );
+                          })()}
                         </TabPanel>
                       </TabPanels>
                     </Tabs>

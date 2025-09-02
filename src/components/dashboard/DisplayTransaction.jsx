@@ -80,7 +80,12 @@ const TransactionCard = React.memo(({ transaction, currentUser, isConfirming, ha
   const participantName = transaction?.participants?.length > 0 && transaction.participants[0]?.userId
     ? `${transaction.participants[0].userId.firstName || ''} ${transaction.participants[0].userId.lastName || ''}`.trim() || transaction.participants[0].userId.email || 'Unknown'
     : 'No participant';
-  const headerText = `${transaction.selectedUserType.charAt(0).toUpperCase() + transaction.selectedUserType.slice(1)}: ${creatorName}${isCreator ? ' (You)' : ''}  ${transaction.selectedUserType === 'buyer' ? 'Seller' : 'Buyer'}: ${participantName}${isParticipant ? ' (You)' : ''}`;
+  const userType = transaction?.selectedUserType && typeof transaction.selectedUserType === 'string'
+    ? transaction.selectedUserType.toLowerCase()
+    : 'unknown';
+  const headerText = userType !== 'unknown'
+    ? `${userType.charAt(0).toUpperCase() + userType.slice(1)}: ${creatorName}${isCreator ? ' (You)' : ''}  ${userType === 'buyer' ? 'Seller' : userType === 'seller' ? 'Buyer' : 'Participant'}: ${participantName}${isParticipant ? ' (You)' : ''}`
+    : `Creator: ${creatorName}${isCreator ? ' (You)' : ''}  Participant: ${participantName}${isParticipant ? ' (You)' : ''}`;
   const description = transaction?.productDetails?.description || 'No description';
   const isExpanded = expandedDescriptions[transaction._id];
   const truncatedDescription = description.length > 80 && !isExpanded ? `${description.substring(0, 80)}...` : description;
@@ -162,10 +167,10 @@ const TransactionCard = React.memo(({ transaction, currentUser, isConfirming, ha
       <Flex justify="space-between" align="center" mb={3}>
         <Box>
           <Text fontSize="sm" fontWeight="600" color={textColor}>
-            {transaction.selectedUserType.charAt(0).toUpperCase() + transaction.selectedUserType.slice(1)}: {creatorName}{isCreator ? ' (You)' : ''}
+            {userType !== 'unknown' ? `${userType.charAt(0).toUpperCase() + userType.slice(1)}` : 'Creator'}: {creatorName}{isCreator ? ' (You)' : ''}
           </Text>
           <Text fontSize="sm" fontWeight="600" color={textColor}>
-            {transaction.selectedUserType === 'buyer' ? 'Seller' : 'Buyer'}: {participantName}{isParticipant ? ' (You)' : ''}
+            {userType !== 'unknown' ? (userType === 'buyer' ? 'Seller' : userType === 'seller' ? 'Buyer' : 'Participant') : 'Participant'}: {participantName}{isParticipant ? ' (You)' : ''}
           </Text>
         </Box>
         <Flex gap={2}>
@@ -705,7 +710,16 @@ const DisplayTransaction = () => {
   const { transactions, loading: transactionsLoading, error: transactionsError } = useSelector(state => state.transactions);
   const { wallet, transactions: walletTransactions, loading: walletLoading } = useSelector(state => state.wallet);
   const [walletBalance, setWalletBalance] = useState(null);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    // Check if window is defined (client-side) and initialize based on screen size
+    if (typeof window !== "undefined") {
+      const isMobile = window.innerWidth < 768;
+      // Optionally, check localStorage if you persist sidebar state
+      const savedSidebarState = localStorage.getItem("sidebarCollapsed");
+      return isMobile ? true : savedSidebarState ? JSON.parse(savedSidebarState) : false;
+    }
+    return false; // Default for server-side rendering
+  });
   const [isMobile, setIsMobile] = useState(false);
   const [activeTab, setActiveTab] = useState('active');
   const [searchQuery, setSearchQuery] = useState('');
@@ -742,7 +756,7 @@ const DisplayTransaction = () => {
   const [isFetchingWaybill, setIsFetchingWaybill] = useState({});
   const [socketErrorShown, setSocketErrorShown] = useState(false);
 
-   useEffect(() => {
+  useEffect(() => {
     // Trigger fetchInitialData on component mount to ensure latest transactions are loaded
     debouncedFetchInitialData();
   }, []); // Empty dependency array ensures this runs only on mount
@@ -869,7 +883,11 @@ const DisplayTransaction = () => {
     const checkScreenSize = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
-      if (mobile) setIsSidebarCollapsed(true);
+      setIsSidebarCollapsed((prev) => {
+        // Only set to true for mobile if not overridden by saved state
+        const savedSidebarState = localStorage.getItem("sidebarCollapsed");
+        return mobile ? true : savedSidebarState ? JSON.parse(savedSidebarState) : prev;
+      });
     };
     checkScreenSize();
     window.addEventListener('resize', checkScreenSize);
@@ -1124,6 +1142,7 @@ const DisplayTransaction = () => {
       fetchWalletBalance();
     }
   }, [isFundingModalOpen, fetchWalletBalance]);
+  
 
   const debouncedSearch = useCallback(debounce((value) => setSearchQuery(value), 300), []);
 
@@ -1725,7 +1744,11 @@ const DisplayTransaction = () => {
             </Flex>
 
             {transactionsLoading || walletLoading || userLoading ? (
-              <TransactionLoader />
+              <Grid templateColumns={{ base: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" }} gap={4}>
+                {Array.from({ length: 6 }).map((_, i) => (  // Adjust '6' to match typical number of items per page/viewport
+                  <TransactionSkeleton key={i} />
+                ))}
+              </Grid>
             ) : transactionsError ? (
               <Flex direction="column" align="center" justify="center" py={8}>
                 <Text fontSize="2xl" color={subtleTextColor}>⚠️</Text>
