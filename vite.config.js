@@ -48,11 +48,7 @@ export default defineConfig(({ mode }) => {
         transformMixedEsModules: true,
       },
       rollupOptions: {
-        external: ['pino'],
         output: {
-          globals: {
-            pino: 'pino',
-          },
           manualChunks: {
             vendor: ['react', 'react-dom', 'axios', '@chakra-ui/react', '@chakra-ui/icons'],
           },
