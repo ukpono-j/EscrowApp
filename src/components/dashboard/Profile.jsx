@@ -480,7 +480,7 @@ const Profile = () => {
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
 
-  const FALLBACK_AVATAR = `${BASE_URL}/assests/default-avatar.png`;
+const FALLBACK_AVATAR = `${BASE_URL}/assets/default-avatar.png`;
 
   // Sort transactions by createdAt in descending order (newest first)
   const sortedTransactions = [...transactions].sort((a, b) =>
