@@ -10,7 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Box, Text, Flex, ScaleFade, useColorModeValue, Avatar, SkeletonCircle, useToast } from "@chakra-ui/react";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
-const FALLBACK_AVATAR = `${BASE_URL}/assets/default-avatar.png`;
+const FALLBACK_AVATAR = `${BASE_URL}/Uploads/default-avatar.png`;
 
 const MiniNav = () => {
   const [notificationCount, setNotificationCount] = useState(0);
