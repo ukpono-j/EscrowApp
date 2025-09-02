@@ -111,7 +111,9 @@ const MiniNav = () => {
     setAvatarError(false);
 
     if (userData?.avatarImage) {
-      const avatarUrl = `${BASE_URL}${userData.avatarImage}?t=${Date.now()}`;
+      const avatarUrl = userData.avatarImage.startsWith('https://')
+        ? `${userData.avatarImage}?t=${Date.now()}`
+        : `${BASE_URL}${userData.avatarImage}?t=${Date.now()}`;
       console.log('Loading avatar in MiniNav:', { url: avatarUrl });
       setAvatarPreview(avatarUrl);
     } else {
@@ -130,7 +132,7 @@ const MiniNav = () => {
 
   const handleAvatarError = (e) => {
     console.error('MiniNav avatar load error:', e);
-    
+
     // Don't retry if we're already using the fallback
     if (avatarPreview === FALLBACK_AVATAR) {
       setAvatarError(true);

@@ -480,7 +480,7 @@ const Profile = () => {
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
 
-const FALLBACK_AVATAR = `${BASE_URL}/Uploads/default-avatar.png`;
+  const FALLBACK_AVATAR = `${BASE_URL}/Uploads/default-avatar.png`;
 
   // Sort transactions by createdAt in descending order (newest first)
   const sortedTransactions = [...transactions].sort((a, b) =>
@@ -496,7 +496,9 @@ const FALLBACK_AVATAR = `${BASE_URL}/Uploads/default-avatar.png`;
       const previewUrl = URL.createObjectURL(avatarFile);
       setAvatarPreview(previewUrl);
     } else if (user?.avatarImage) {
-      const avatarUrl = `${BASE_URL}${user.avatarImage}?t=${Date.now()}`;
+      const avatarUrl = user.avatarImage.startsWith('https://')
+        ? `${user.avatarImage}?t=${Date.now()}`
+        : `${BASE_URL}${user.avatarImage}?t=${Date.now()}`;
       logger.info('Attempting to load avatar:', { url: avatarUrl });
       setAvatarPreview(avatarUrl);
     } else {
@@ -545,7 +547,7 @@ const FALLBACK_AVATAR = `${BASE_URL}/Uploads/default-avatar.png`;
         logger.warn('Token expired for WebSocket connection');
         return;
       }
-      const socketInstance = io(BASE_URL, {
+      const socketInstance = io(BASE_URL.replace(/^http/, 'ws'), {
         auth: { token },
         transports: ['websocket', 'polling'],
         reconnection: true,
@@ -1018,8 +1020,10 @@ const FALLBACK_AVATAR = `${BASE_URL}/Uploads/default-avatar.png`;
 
         // Set the new avatar URL immediately after successful update
         if (result.user?.avatarImage) {
-          const newAvatarUrl = `${BASE_URL}${result.user.avatarImage}?t=${Date.now()}`;
-          setAvatarPreview(newAvatarUrl);
+          const newAvatarUrl = result.user.avatarImage.startsWith('https://')
+            ? result.user.avatarImage
+            : `${BASE_URL}${result.user.avatarImage}`;
+          setAvatarPreview(`${newAvatarUrl}?t=${Date.now()}`);
           setIsAvatarLoading(false); // Ensure loading is reset
         } else {
           setAvatarPreview(FALLBACK_AVATAR);
