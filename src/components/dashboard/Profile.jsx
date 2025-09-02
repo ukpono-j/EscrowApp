@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import jwtDecode from 'jwt-decode';
-import pino from 'pino';
+import { jwtDecode } from 'jwt-decode';
+import pino from 'pino/browser';
+const logger = typeof window !== 'undefined' ? pino({ level: 'info', browser: { asObject: true } }) : console;
 import { motion } from 'framer-motion';
 import {
   Box, Text, Button, Flex, Heading, Input, Grid, FormControl, FormLabel, Icon, Avatar, Spinner,
@@ -36,7 +37,7 @@ const PAYSTACK_BANKS = [
 ];
 
 const BASE_URL = (import.meta.env.VITE_BASE_URL || 'http://localhost:3001').replace(/\/$/, '');
-const logger = pino({ level: 'info', browser: { asObject: true } });
+
 
 const retryAsync = async (fn, maxRetries = 3, initialDelay = 1000) => {
   let lastError = null;
@@ -1050,94 +1051,94 @@ const Profile = () => {
     }
   };
 
-const handleRefresh = async () => {
-  try {
-    // Clear any cached responses if Cache API is available
-    if (window.caches) {
-      try {
-        const cacheNames = await caches.keys();
-        await Promise.all(cacheNames.map(name => caches.delete(name)));
-      } catch (cacheError) {
-        logger.warn('Failed to clear browser cache', { message: cacheError.message });
-      }
-    }
-
-    const result = await retryAsync(() => dispatch(fetchInitialData()).unwrap());
-    toast({
-      title: 'Success',
-      description: `Wallet balance refreshed. New balance: ₦${(result.wallet?.balance || 0).toFixed(2)}`,
-      status: 'success',
-      duration: 5000,
-      isClosable: true,
-    });
-    if (result.user?.avatarImage) {
-      const avatarUrl = `${BASE_URL}${result.user.avatarImage}?t=${Date.now()}`;
-      setAvatarPreview(avatarUrl);
-      setIsAvatarLoading(false);
-      setAvatarError(false);
-      setAvatarRetryCount(0);
-    } else {
-      setAvatarPreview(FALLBACK_AVATAR);
-      setIsAvatarLoading(false);
-    }
-    // Force re-render by updating pagination states
-    setAllPage(1);
-    setPendingPage(1);
-    setCompletedPage(1);
-    setFailedPage(1);
-    console.log('Refresh wallet result:', {
-      balance: result.wallet?.balance,
-      transactions: result.transactions,
-      transactionCount: result.transactions?.length,
-    });
-  } catch (error) {
-    logger.error('Refresh wallet balance error', {
-      message: error.message,
-      status: error.status,
-      data: error,
-    });
-    let errorMessage = error.error || 'Failed to refresh wallet balance. Please try again.';
-    let action = null;
-    if (error.status === 401) {
-      errorMessage = 'Session expired. Please log in again.';
-      action = { label: 'Log In', onClick: () => navigate('/login') };
-      localStorage.removeItem('access-token');
-      localStorage.removeItem('refresh-token');
-    } else if (error.status === 404) {
-      errorMessage = 'User account not found. Please contact support.';
-    } else if (error.status === 503) {
-      errorMessage = 'Database unavailable. Please try again later.';
-    }
-    toast({
-      title: 'Error',
-      description: errorMessage,
-      status: 'error',
-      duration: 5000,
-      isClosable: true,
-      action,
-    });
-    // Attempt fallback fetchTransactions
+  const handleRefresh = async () => {
     try {
-      const txResult = await dispatch(fetchTransactions()).unwrap();
+      // Clear any cached responses if Cache API is available
+      if (window.caches) {
+        try {
+          const cacheNames = await caches.keys();
+          await Promise.all(cacheNames.map(name => caches.delete(name)));
+        } catch (cacheError) {
+          logger.warn('Failed to clear browser cache', { message: cacheError.message });
+        }
+      }
+
+      const result = await retryAsync(() => dispatch(fetchInitialData()).unwrap());
       toast({
-        title: 'Partial Success',
-        description: 'Wallet balance refresh failed, but transactions were updated.',
-        status: 'info',
+        title: 'Success',
+        description: `Wallet balance refreshed. New balance: ₦${(result.wallet?.balance || 0).toFixed(2)}`,
+        status: 'success',
         duration: 5000,
         isClosable: true,
       });
-      console.log('Fallback fetchTransactions result:', {
-        transactions: txResult.transactions,
-        wallet: txResult.wallet,
+      if (result.user?.avatarImage) {
+        const avatarUrl = `${BASE_URL}${result.user.avatarImage}?t=${Date.now()}`;
+        setAvatarPreview(avatarUrl);
+        setIsAvatarLoading(false);
+        setAvatarError(false);
+        setAvatarRetryCount(0);
+      } else {
+        setAvatarPreview(FALLBACK_AVATAR);
+        setIsAvatarLoading(false);
+      }
+      // Force re-render by updating pagination states
+      setAllPage(1);
+      setPendingPage(1);
+      setCompletedPage(1);
+      setFailedPage(1);
+      console.log('Refresh wallet result:', {
+        balance: result.wallet?.balance,
+        transactions: result.transactions,
+        transactionCount: result.transactions?.length,
       });
-    } catch (txError) {
-      logger.error('Fallback fetchTransactions failed', {
-        message: txError.message,
-        status: txError.status,
+    } catch (error) {
+      logger.error('Refresh wallet balance error', {
+        message: error.message,
+        status: error.status,
+        data: error,
       });
+      let errorMessage = error.error || 'Failed to refresh wallet balance. Please try again.';
+      let action = null;
+      if (error.status === 401) {
+        errorMessage = 'Session expired. Please log in again.';
+        action = { label: 'Log In', onClick: () => navigate('/login') };
+        localStorage.removeItem('access-token');
+        localStorage.removeItem('refresh-token');
+      } else if (error.status === 404) {
+        errorMessage = 'User account not found. Please contact support.';
+      } else if (error.status === 503) {
+        errorMessage = 'Database unavailable. Please try again later.';
+      }
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+        action,
+      });
+      // Attempt fallback fetchTransactions
+      try {
+        const txResult = await dispatch(fetchTransactions()).unwrap();
+        toast({
+          title: 'Partial Success',
+          description: 'Wallet balance refresh failed, but transactions were updated.',
+          status: 'info',
+          duration: 5000,
+          isClosable: true,
+        });
+        console.log('Fallback fetchTransactions result:', {
+          transactions: txResult.transactions,
+          wallet: txResult.wallet,
+        });
+      } catch (txError) {
+        logger.error('Fallback fetchTransactions failed', {
+          message: txError.message,
+          status: txError.status,
+        });
+      }
     }
-  }
-};
+  };
 
   const handleRetryAuth = async () => {
     setIsAuthLoading(true);
