@@ -22,7 +22,7 @@ import {
   useColorModeValue,
 } from "@chakra-ui/react";
 import { motion } from "framer-motion";
-import { FaUpload, FaCheck, FaIdCard, FaUser, FaCalendarAlt, FaFileAlt, FaShieldAlt } from "react-icons/fa";
+import { FaCheck, FaIdCard, FaUser, FaCalendarAlt, FaFileAlt, FaShieldAlt } from "react-icons/fa";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3001";
 const MotionBox = motion(Box);
@@ -30,7 +30,7 @@ const MotionBox = motion(Box);
 const FileUploadCard = React.memo(({ label, previewSrc, onChange, name, error, icon }) => {
   const bgColor = useColorModeValue("white", "#051E2F");
   const textColor = useColorModeValue("#051E2F", "white");
-  const borderColor = useColorModeValue("gray.200", "#051E2F");
+  const borderColor = useColorModeValue("gray.300", "gray.600"); // Match inputStyles
   const subtleTextColor = useColorModeValue("gray.500", "gray.400");
 
   return (
@@ -44,51 +44,39 @@ const FileUploadCard = React.memo(({ label, previewSrc, onChange, name, error, i
         h="140px"
         w="100%"
         borderRadius="lg"
-        borderWidth="2px"
+        borderWidth="1px"
         borderColor={previewSrc ? "#B38939" : error ? "red.400" : borderColor}
         overflow="hidden"
         transition="all 0.2s"
         bg={bgColor}
+        cursor="pointer"
         _hover={{
           borderColor: error ? "red.500" : "#BB954D",
           transform: "translateY(-1px)",
           boxShadow: `0 4px 20px rgba(179, 137, 57, 0.2)`,
+          bg: useColorModeValue("gray.50", "rgba(179, 137, 57, 0.1)"),
         }}
       >
+        <Input
+          type="file"
+          name={name}
+          onChange={onChange}
+          position="absolute"
+          opacity="0"
+          w="100%"
+          h="100%"
+          cursor="pointer"
+          accept="image/jpeg,image/png"
+          zIndex={2}
+        />
         {previewSrc ? (
           <Image src={previewSrc} alt={`${label} Preview`} objectFit="cover" w="100%" h="100%" />
         ) : (
-          <Flex align="center" justify="center" h="100%" flexDirection="column">
+          <Flex align="center" justify="center" h="100%" flexDirection="column" zIndex={1}>
             <FaFileAlt size="20px" color="#B38939" />
-            <Text fontSize="xs" mt={2} color={subtleTextColor}>Click to upload</Text>
+            <Text fontSize="xs" mt={2} color={subtleTextColor}>Click anywhere to upload</Text>
           </Flex>
         )}
-        <Flex
-          position="absolute"
-          bottom="8px"
-          right="8px"
-          w="36px"
-          h="36px"
-          borderRadius="full"
-          bg="#B38939E6"
-          align="center"
-          justify="center"
-          cursor="pointer"
-          _hover={{ bg: "#B38939", transform: "scale(1.05)" }}
-        >
-          <Input
-            type="file"
-            name={name}
-            onChange={onChange}
-            position="absolute"
-            opacity="0"
-            w="36px"
-            h="36px"
-            cursor="pointer"
-            accept="image/jpeg,image/png"
-          />
-          <FaUpload color="white" size="14px" />
-        </Flex>
       </Box>
       {error && <FormErrorMessage>{error}</FormErrorMessage>}
     </FormControl>
@@ -306,7 +294,7 @@ const Kyc = () => {
       setFormData({ documentType: "", documentPhoto: null, personalPhoto: null, firstName: "", lastName: "", dateOfBirth: "" });
       setPreviews((prev) => {
         if (prev.documentPhoto) URL.revokeObjectURL(prev.documentPhoto);
-        if (prev.personalPhoto) URL.revokeObjectURL(prev.personalPhoto);
+        if (prev.personalPhoto) URL.revokeObjectURL(previews.personalPhoto);
         return { documentPhoto: null, personalPhoto: null };
       });
       setErrors({});
@@ -326,7 +314,8 @@ const Kyc = () => {
   const inputStyles = {
     bg: cardBg,
     color: textColor,
-    borderColor: borderColor,
+    borderWidth: "1px",
+    borderColor: useColorModeValue("gray.300", "gray.600"),
     _hover: { borderColor: "#B38939" },
     _focus: { borderColor: "#BB954D", boxShadow: `0 0 0 1px #B38939` },
     h: "44px",
