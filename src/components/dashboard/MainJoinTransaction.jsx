@@ -3,7 +3,7 @@ import {
   Stack, Alert, AlertIcon, AlertTitle, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody,
   ModalFooter, Badge, HStack, Icon, InputGroup, InputLeftElement, Spinner, SimpleGrid, Skeleton
 } from "@chakra-ui/react";
-import { FaHandshake, FaEye, FaEdit, FaTimes, FaCheck, FaIdCard, FaMoneyBillWave, FaFileAlt, FaShieldAlt } from "react-icons/fa";
+import { FaHandshake, FaEye, FaTimes, FaCheck, FaIdCard, FaMoneyBillWave, FaFileAlt, FaShieldAlt } from "react-icons/fa";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import axios from "../../utils/axiosConfig";
 import { useNavigate } from "react-router-dom";
@@ -35,11 +35,7 @@ const MainJoinTransaction = () => {
   const [alert, setAlert] = useState({ message: "", type: "" });
   const [transactionDetails, setTransactionDetails] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
-  const [showEdit, setShowEdit] = useState(false);
-  const [editData, setEditData] = useState({ description: "", price: "" });
-  const [editErrors, setEditErrors] = useState({});
   const [isInitialMount, setIsInitialMount] = useState(true);
-
 
   const navigate = useNavigate();
   const { colorMode } = useColorMode();
@@ -141,13 +137,11 @@ const MainJoinTransaction = () => {
         if (response.data.success) {
           const messages = {
             "join-transaction": `Joined as ${response.data.data.role}! Redirecting...`,
-            "accept-and-update": `Joined as ${response.data.data.role}! Redirecting...`,
             "reject-transaction": "Transaction rejected successfully.",
           };
           setAlert({ message: messages[action], type: action === "reject-transaction" ? "info" : "success" });
           setShowPreview(false);
-          setShowEdit(false);
-          if (action !== "reject-transaction") {
+          if (action === "join-transaction") {
             setTimeout(() => navigate("/transactions/tab"), 1500);
           }
         } else {
@@ -162,25 +156,6 @@ const MainJoinTransaction = () => {
     },
     [transactionId, apiCall, handleError, navigate]
   );
-
-  const openEdit = useCallback(() => {
-    setEditData({
-      description: transactionDetails?.productDetails.description || "",
-      price: transactionDetails?.paymentAmount || "",
-    });
-    setShowEdit(true);
-  }, [transactionDetails]);
-
-  const handleEdit = useCallback(async () => {
-    const errors = {};
-    if (!editData.description) errors.description = "Description required";
-    if (!editData.price || editData.price <= 0) errors.price = "Valid price required";
-    if (Object.keys(errors).length) {
-      setEditErrors(errors);
-      return;
-    }
-    await handleAction("accept-and-update", editData);
-  }, [editData, handleAction]);
 
   const formattedAmount = useMemo(() => {
     return transactionDetails?.paymentAmount
@@ -405,7 +380,6 @@ const MainJoinTransaction = () => {
             className="responsive-modal stable-modal"
             scrollBehavior="inside"
           >
-
             <ModalOverlay bg="blackAlpha.600" />
             <motion.div variants={variants.modal} initial="hidden" animate="visible" exit="exit">
               <ModalContent bg={theme.bg} borderRadius="md" boxShadow={theme.shadow} mt={{ base: "110px", sm: "120px" }}>
@@ -468,7 +442,10 @@ const MainJoinTransaction = () => {
                 <ModalFooter p={{ base: 2, md: 3 }}>
                   <Stack direction={{ base: "column", sm: "row" }} spacing={{ base: 2, md: 3 }} w="full" justify="flex-end">
                     <Button
-                      onClick={() => handleAction("reject-transaction")}
+                      onClick={() => {
+                        handleAction("reject-transaction");
+                        setShowPreview(false);
+                      }}
                       colorScheme="red"
                       size={{ base: "sm", md: "md" }}
                       borderRadius="md"
@@ -476,16 +453,6 @@ const MainJoinTransaction = () => {
                       className="responsive-button"
                     >
                       Reject
-                    </Button>
-                    <Button
-                      onClick={openEdit}
-                      colorScheme="blue"
-                      size={{ base: "sm", md: "md" }}
-                      borderRadius="md"
-                      w={{ base: "full", sm: "auto" }}
-                      className="responsive-button"
-                    >
-                      Edit & Join
                     </Button>
                     <Button
                       onClick={() => handleAction("join-transaction")}
@@ -496,132 +463,6 @@ const MainJoinTransaction = () => {
                       className="responsive-button"
                     >
                       Accept
-                    </Button>
-                  </Stack>
-                </ModalFooter>
-              </ModalContent>
-            </motion.div>
-          </Modal>
-        )}
-      </AnimatePresence>
-
-      {/* Edit Modal */}
-      <AnimatePresence>
-        {showEdit && (
-          <Modal
-            isOpen
-            onClose={() => {
-              setShowEdit(false);
-              setEditErrors({});
-            }}
-            isCentered
-            size={{ base: "xs", sm: "sm", md: "md" }}
-            className="responsive-modal stable-modal"
-            scrollBehavior="inside"
-          >
-            <ModalOverlay bg="blackAlpha.600" />
-            <motion.div variants={variants.modal} initial="hidden" animate="visible" exit="exit">
-              <ModalContent bg={theme.bg} borderRadius="md" boxShadow={theme.shadow} mt={{ base: "110px", sm: "120px" }}>
-                <ModalHeader p={{ base: 2, md: 3 }}>
-                  <HStack spacing={2}>
-                    <Icon as={FaEdit} color={theme.accent} w={{ base: 4, md: 5 }} h={{ base: 4, md: 5 }} className="responsive-icon" />
-                    <Box>
-                      <Text fontSize={{ base: "sm", md: "md" }} fontWeight="bold" color={theme.text}>
-                        Edit Transaction
-                      </Text>
-                      <Text fontSize={{ base: "xs", md: "xs" }} color={theme.textMuted} className="responsive-text">
-                        Modify details
-                      </Text>
-                    </Box>
-                  </HStack>
-                </ModalHeader>
-
-                <ModalBody p={{ base: 2, md: 3 }}>
-                  <Skeleton isLoaded={!isLoading} borderRadius="md" minH={{ base: "150px", md: "180px" }}>
-                    <VStack spacing={{ base: 3, md: 4 }}>
-                      <FormControl isRequired isInvalid={editErrors.description}>
-                        <FormLabel fontWeight="600" fontSize={{ base: "xs", md: "sm" }} color={theme.text}>
-                          Description
-                        </FormLabel>
-                        <Input
-                          value={editData.description}
-                          onChange={(e) => setEditData((prev) => ({ ...prev, description: e.target.value }))}
-                          placeholder="Enter description"
-                          bg={theme.cardBg}
-                          borderColor={theme.border}
-                          _hover={{ borderColor: theme.accent }}
-                          _focus={{ borderColor: theme.accent, boxShadow: `0 0 0 2px ${theme.accent}33` }}
-                          borderRadius="md"
-                          size={{ base: "sm", md: "md" }}
-                          fontSize={{ base: "xs", md: "sm" }}
-                          className="responsive-input"
-                        />
-                        {editErrors.description && (
-                          <Text color="red.500" fontSize={{ base: "xs", md: "xs" }} mt={1}>
-                            {editErrors.description}
-                          </Text>
-                        )}
-                      </FormControl>
-
-                      <FormControl isRequired isInvalid={editErrors.price}>
-                        <FormLabel fontWeight="600" fontSize={{ base: "xs", md: "sm" }} color={theme.text}>
-                          Amount (₦)
-                        </FormLabel>
-                        <InputGroup size={{ base: "sm", md: "md" }}>
-                          <InputLeftElement h="full">
-                            <Icon as={FaMoneyBillWave} color={theme.accent} w={{ base: 3, md: 4 }} h={{ base: 3, md: 4 }} className="responsive-icon" />
-                          </InputLeftElement>
-                          <Input
-                            type="number"
-                            value={editData.price}
-                            onChange={(e) => setEditData((prev) => ({ ...prev, price: e.target.value }))}
-                            placeholder="Enter amount"
-                            bg={theme.cardBg}
-                            borderColor={theme.border}
-                            _hover={{ borderColor: theme.accent }}
-                            _focus={{ borderColor: theme.accent, boxShadow: `0 0 0 2px ${theme.accent}33` }}
-                            borderRadius="md"
-                            size={{ base: "sm", md: "md" }}
-                            fontSize={{ base: "xs", md: "sm" }}
-                            pl={{ base: 8, md: 10 }}
-                            className="responsive-input"
-                          />
-                        </InputGroup>
-                        {editErrors.price && (
-                          <Text color="red.500" fontSize={{ base: "xs", md: "xs" }} mt={1}>
-                            {editErrors.price}
-                          </Text>
-                        )}
-                      </FormControl>
-                    </VStack>
-                  </Skeleton>
-                </ModalBody>
-
-                <ModalFooter p={{ base: 2, md: 3 }}>
-                  <Stack direction={{ base: "column", sm: "row" }} spacing={{ base: 2, md: 3 }} w="full" justify="flex-end">
-                    <Button
-                      onClick={() => {
-                        setShowEdit(false);
-                        setEditErrors({});
-                      }}
-                      colorScheme="gray"
-                      size={{ base: "sm", md: "md" }}
-                      borderRadius="md"
-                      w={{ base: "full", sm: "auto" }}
-                      className="responsive-button"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handleEdit}
-                      isLoading={isLoading}
-                      colorScheme="blue"
-                      size={{ base: "sm", md: "md" }}
-                      borderRadius="md"
-                      w={{ base: "full", sm: "auto" }}
-                      className="responsive-button"
-                    >
-                      Save & Join
                     </Button>
                   </Stack>
                 </ModalFooter>
