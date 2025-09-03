@@ -152,6 +152,7 @@ const Register = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  // Register.jsx (updated handleSubmit)
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -181,8 +182,8 @@ const Register = () => {
 
       // Show success message without storing token
       let successMessage = "Registration successful! Please log in to continue.";
-      if (response.data.wallet?.virtualAccountNumber && response.data.wallet?.bankName) {
-        successMessage += `\n\nFund your wallet using:\nAccount Number: ${response.data.wallet.virtualAccountNumber}\nBank: ${response.data.wallet.bankName}`;
+      if (response.data.walletId) {
+        successMessage += `\n\nYour wallet has been created with ID: ${response.data.walletId}`;
       }
 
       toast({
@@ -221,12 +222,6 @@ const Register = () => {
             break;
           case 'Wallet already exists for this user':
             errorMessage = 'An account with this email already has a wallet. Please contact support.';
-            break;
-          case 'Virtual account creation failed':
-            errorMessage = 'Failed to create a virtual account with Paystack. Please try again or contact support.';
-            break;
-          case 'Database error: Duplicate transaction reference':
-            errorMessage = 'A server error occurred with transaction references. Please try again or contact support.';
             break;
           case 'Database error: Duplicate key':
             errorMessage = `Registration failed due to duplicate data: ${JSON.stringify(error.response.data.details)}. Please contact support.`;
