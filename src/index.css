@@ -15,5 +15,5 @@
   margin: auto;
 }
 *{
-  font-family: "Bricolage Grotesque", sans-serif;
+  font-family: "Bricolage Grotesque", sans-serif !important;
 }

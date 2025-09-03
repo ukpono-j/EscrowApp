@@ -1,22 +1,83 @@
+// Enhanced axiosConfig.js with better user experience
 import axios from 'axios';
 import { navigateTo } from './navigate';
 import { toast } from 'react-toastify';
 
 const instance = axios.create({
   baseURL: import.meta.env.VITE_BASE_URL || 'http://localhost:3001',
-  timeout: 15000,
+  timeout: 25000,
 });
 
 let isOffline = !navigator.onLine;
+let pendingRequests = new Map();
+let lastConnectivityToast = 0; // Prevent spam toasts
+let networkIssueDetected = false;
 
+// Enhanced network connectivity detection
+const checkConnectivity = async () => {
+  try {
+    // Try to fetch a small resource to test real connectivity
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    
+    await fetch('/favicon.ico', { 
+      method: 'HEAD',
+      cache: 'no-cache',
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+// Debounce function to prevent duplicate requests
+const debounceRequest = (config) => {
+  const key = `${config.method}-${config.url}`;
+  
+  if (pendingRequests.has(key)) {
+    return pendingRequests.get(key);
+  }
+  
+  const request = axios(config);
+  pendingRequests.set(key, request);
+  
+  request.finally(() => {
+    setTimeout(() => {
+      pendingRequests.delete(key);
+    }, 1000);
+  });
+  
+  return request;
+};
+
+// Better connectivity event handlers
 window.addEventListener('online', () => {
   isOffline = false;
-  toast.info('Back online! Please try again.');
+  networkIssueDetected = false;
+  const now = Date.now();
+  if (now - lastConnectivityToast > 5000) { // Only show once every 5 seconds
+    toast.success('Connection restored', { 
+      autoClose: 2000,
+      toastId: 'online-status'
+    });
+    lastConnectivityToast = now;
+  }
 });
 
 window.addEventListener('offline', () => {
   isOffline = true;
-  toast.warn('You are offline. Please check your internet connection.');
+  networkIssueDetected = true;
+  const now = Date.now();
+  if (now - lastConnectivityToast > 5000) {
+    toast.warn('Connection lost. Working offline...', { 
+      autoClose: 3000,
+      toastId: 'offline-status'
+    });
+    lastConnectivityToast = now;
+  }
 });
 
 let isRefreshing = false;
@@ -33,72 +94,102 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
-// Helper function to check if user should be logged out
-const shouldLogOut = (error, config) => {
-  // Don't log out for auth endpoints
-  if (config.url?.includes('/api/auth/')) {
-    return false;
-  }
-  
-  // Only log out for explicit authentication failures, not network issues
-  return error.response?.status === 401 && 
-         error.response?.data?.tokenExpired === true;
+// Determine if endpoint is critical (affects user workflow)
+const isCriticalEndpoint = (url) => {
+  const criticalPaths = [
+    '/api/auth/login',
+    '/api/auth/register',
+    '/api/auth/refreshToken',
+    '/api/transactions/create',
+    '/api/wallet/transfer',
+    '/api/users/update-profile'
+  ];
+  return criticalPaths.some(path => url?.includes(path));
 };
 
 instance.interceptors.request.use(
   (config) => {
+    config.requestStartTime = Date.now();
+    
     // Skip auth header for public endpoints
     if (
       config.url?.includes('/api/auth/login') ||
       config.url?.includes('/api/auth/register') ||
       config.url?.includes('/api/auth/refreshToken')
     ) {
-      console.log('Skipping Authorization header for endpoint:', config.url);
       return config;
     }
 
     const token = localStorage.getItem('access-token');
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
-      console.log('Authorization header set for URL:', config.url);
-    } else {
-      console.warn('No access token found for URL:', config.url);
-      // DON'T immediately redirect here - let the response interceptor handle it
-      // This prevents premature logouts during token refresh
     }
     return config;
   },
   (error) => {
-    console.error('Request interceptor error:', {
-      message: error.message,
-      stack: error.stack,
-      config: error.config ? { url: error.config.url, method: error.config.method } : 'No config available',
-    });
+    // Only log in development
+    if (import.meta.env.DEV) {
+      console.error('Request interceptor error:', error.message);
+    }
     return Promise.reject(error);
   }
 );
 
 instance.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Reset network issue flag on successful response
+    if (networkIssueDetected) {
+      networkIssueDetected = false;
+    }
+    
+    const duration = Date.now() - response.config.requestStartTime;
+    // Only log slow responses in development
+    if (import.meta.env.DEV && duration > 10000) {
+      console.warn(`Slow response: ${response.config.url} (${duration}ms)`);
+    }
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config || {};
     const status = error.response?.status;
-    const errorMessage = isOffline
-      ? 'You are offline. Please check your internet connection.'
-      : error.response?.data?.error || error.message || 'Something went wrong. Please try again.';
+    const duration = Date.now() - (originalRequest.requestStartTime || Date.now());
+    const isTimeout = error.code === 'ECONNABORTED';
+    const isNetworkError = !error.response && (isTimeout || error.code === 'ERR_NETWORK');
+    const isCritical = isCriticalEndpoint(originalRequest.url);
 
-    console.error('API error details:', {
-      status,
-      data: error.response?.data,
-      url: originalRequest.url || 'Unknown URL',
-      method: originalRequest.method || 'Unknown method',
-      message: error.message,
-      code: error.code,
-    });
+    // Enhanced error logging (development only)
+    if (import.meta.env.DEV) {
+      console.error('API Error:', {
+        url: originalRequest.url,
+        status,
+        message: error.message,
+        duration: `${duration}ms`,
+        isTimeout,
+        isNetworkError,
+        isCritical
+      });
+    }
 
-    // Handle 401 errors with token refresh
+    // Handle network connectivity issues
+    if (isNetworkError && !networkIssueDetected) {
+      networkIssueDetected = true;
+      const isReallyOffline = await checkConnectivity();
+      
+      if (isReallyOffline) {
+        isOffline = true;
+        const now = Date.now();
+        if (now - lastConnectivityToast > 5000) {
+          toast.warn('Network connection issue. Please check your internet.', {
+            autoClose: 4000,
+            toastId: 'network-issue'
+          });
+          lastConnectivityToast = now;
+        }
+      }
+    }
+
+    // Handle 401 errors with token refresh (existing logic)
     if (status === 401 && !originalRequest._retry && !originalRequest.url?.includes('/api/auth/refreshToken')) {
-      // Check if we're already refreshing
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -115,10 +206,8 @@ instance.interceptors.response.use(
 
       const refreshToken = localStorage.getItem('refresh-token');
       if (!refreshToken) {
-        console.warn('No refresh token available, logging out');
-        // Only show toast and logout if we're sure the session is invalid
         if (error.response?.data?.tokenExpired === true) {
-          toast.warn('Your session has expired. Please log in again.', { autoClose: 3000 });
+          toast.warn('Session expired. Please sign in again.', { autoClose: 3000 });
           localStorage.removeItem('access-token');
           localStorage.removeItem('refresh-token');
           navigateTo('/login');
@@ -129,7 +218,6 @@ instance.interceptors.response.use(
       }
 
       try {
-        console.log('Attempting to refresh token for URL:', originalRequest.url);
         const response = await axios.post(
           `${import.meta.env.VITE_BASE_URL}/api/auth/refreshToken`,
           { refreshToken }
@@ -142,25 +230,15 @@ instance.interceptors.response.use(
         
         localStorage.setItem('access-token', newAccessToken);
         originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
-        console.log('Token refreshed successfully, retrying request:', originalRequest.url);
         processQueue(null, newAccessToken);
         isRefreshing = false;
         return instance(originalRequest);
       } catch (refreshError) {
-        console.error('Token refresh failed:', {
-          message: refreshError.response?.data?.error || refreshError.message,
-          url: originalRequest.url || 'Unknown URL',
-        });
-        
-        // Only logout if refresh explicitly failed due to invalid refresh token
         if (refreshError.response?.status === 401 || refreshError.response?.data?.tokenExpired === true) {
-          toast.warn('Your session has expired. Please log in again.', { autoClose: 3000 });
+          toast.warn('Session expired. Please sign in again.', { autoClose: 3000 });
           localStorage.removeItem('access-token');
           localStorage.removeItem('refresh-token');
           navigateTo('/login');
-        } else {
-          // For network errors during refresh, don't logout - just show error
-          toast.error('Connection error. Please try again.', { autoClose: 3000 });
         }
         
         processQueue(refreshError);
@@ -169,38 +247,66 @@ instance.interceptors.response.use(
       }
     }
 
-    // Don't interfere with auth endpoint errors
-    if (originalRequest.url?.includes('/api/auth/login') || originalRequest.url?.includes('/api/auth/register')) {
+    // Don't interfere with auth endpoint errors - let them bubble up
+    if (originalRequest.url?.includes('/api/auth/')) {
       return Promise.reject(error);
     }
 
-    // Handle network errors gracefully without logging out
-    if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT' || error.code === 'ECONNRESET') {
-      toast.warn('Connection timeout. Please try again.', { autoClose: 3000 });
-    } else if (status === 500) {
-      toast.warn('Service temporarily unavailable. Please try again later.', { autoClose: 3000 });
-    } else if (status === 404) {
-      toast.error('Resource not found. Please try again or contact support.', { autoClose: 3000 });
-    } else if (status === 503) {
-      toast.warn('Service temporarily unavailable. Please try again later.', { autoClose: 3000 });
+    // Handle different error types with better user experience
+    const now = Date.now();
+    
+    // Only show user-friendly messages for critical endpoints or specific conditions
+    if (isCritical && !networkIssueDetected) {
+      if (status === 500) {
+        toast.error('Server error. Please try again in a moment.', { 
+          autoClose: 4000,
+          toastId: 'server-error'
+        });
+      } else if (status === 404) {
+        toast.error('Service unavailable. Please try again.', { 
+          autoClose: 3000,
+          toastId: 'not-found'
+        });
+      } else if (isTimeout && now - lastConnectivityToast > 10000) {
+        toast.warn('Slow connection detected. Please wait...', { 
+          autoClose: 3000,
+          toastId: 'slow-connection'
+        });
+        lastConnectivityToast = now;
+      }
     }
 
-    // Provide fallback data for specific endpoints to prevent app crashes
+    // Enhanced fallback data with better structure
+    const errorMessage = isOffline 
+      ? 'You are offline. Some features may not work correctly.'
+      : isTimeout 
+        ? 'Request timed out. Please try again.'
+        : error.response?.data?.error || error.message || 'Something went wrong';
+
     const fallbackData = {
       success: false,
       error: errorMessage,
+      isTimeout,
+      isOffline,
+      networkIssue: isNetworkError,
+      duration,
       data: originalRequest.url?.includes('transactions/get-transaction')
         ? []
-        : originalRequest.url?.includes('transactions/') && originalRequest.url?.match(/transactions\/[0-9a-fA-F]{24}$/)
+        : originalRequest.url?.includes('/transactions/') && originalRequest.url?.match(/transactions\/[0-9a-fA-F]{24}$/)
           ? {}
           : originalRequest.url?.includes('wallet/balance')
-            ? { balance: 0 }
+            ? { balance: 0, currency: 'USD' }
             : originalRequest.url?.includes('user-details')
-              ? { user: {} }
+              ? { user: {}, profile: {} }
               : null,
     };
 
-    return Promise.resolve({ data: fallbackData });
+    // Return fallback data instead of rejecting for non-critical endpoints
+    return Promise.resolve({ 
+      data: fallbackData,
+      status: error.response?.status || 0,
+      config: originalRequest
+    });
   }
 );
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
@@ -16,11 +16,10 @@ import { FaEdit, FaWallet, FaTimes, FaCreditCard, FaSync, FaMoneyBillWave, FaSav
 import io from 'socket.io-client';
 import moment from 'moment-timezone';
 import axios from '../../utils/axiosConfig';
-import { fetchInitialData, fundWallet, checkFundingStatus, manualReconcileTransaction, fetchPendingWithdrawals } from '../../store/slices/walletThunks';
+import { fetchInitialData, fundWallet, checkFundingStatus, fetchPendingWithdrawals, fetchTransactions } from '../../store/slices/walletThunks';
 import { setWallet, setPaymentDetails, clearPaymentDetails } from '../../store/slices/walletSlice';
 import PaymentInfoModal from './PaymentInfoModal';
 import './Profile.css';
-import { fetchTransactions } from '../../store/slices/walletThunks';
 
 const PAYSTACK_BANKS = [
   { name: 'Access Bank', code: '044' },
@@ -37,7 +36,6 @@ const PAYSTACK_BANKS = [
 ];
 
 const BASE_URL = (import.meta.env.VITE_BASE_URL || 'http://localhost:3001').replace(/\/$/, '');
-
 
 const retryAsync = async (fn, maxRetries = 3, initialDelay = 1000) => {
   let lastError = null;
@@ -296,7 +294,7 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
         setAccountName('');
         setBankCode('');
         const updatedWithdrawals = await dispatch(fetchPendingWithdrawals()).unwrap();
-        setPendingWithdrawals(updatedWithdrawals.data.pendingWithdrawals || []);
+        setPendingWithdrawals(updatedWithdrawals.data?.pendingWithdrawals || []);
         onClose();
       }
     } catch (error) {
@@ -436,10 +434,8 @@ const Profile = () => {
   const [fundingAmount, setFundingAmount] = useState(null);
   const [avatarError, setAvatarError] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState(null);
-  const [avatarRetryCount, setAvatarRetryCount] = useState(0); // Add retry logic
-  const [isAvatarLoading, setIsAvatarLoading] = useState(false); // Track loading state
-  const maxRetries = 3;
-  const retryDelay = 1000;
+  const [avatarRetryCount, setAvatarRetryCount] = useState(0);
+  const [isAvatarLoading, setIsAvatarLoading] = useState(false);
   const fileInputRef = useRef(null);
   const bgColor = useColorModeValue('gray.100', '#1A202C');
   const cardBg = useColorModeValue('white', '#051E2F');
@@ -447,17 +443,16 @@ const Profile = () => {
   const subtleTextColor = useColorModeValue('gray.500', 'gray.400');
   const borderColor = useColorModeValue('gray.200', '#051E2F');
   const [isAvatarUploading, setIsAvatarUploading] = useState(false);
-  // Pagination states for each tab
   const [allPage, setAllPage] = useState(1);
   const [pendingPage, setPendingPage] = useState(1);
   const [completedPage, setCompletedPage] = useState(1);
   const [failedPage, setFailedPage] = useState(1);
   const itemsPerPage = 5;
-
-  // Hoisted color mode values to avoid conditional hook calls (fixes the hooks order warning)
+  const hasShownAvatarToast = useRef(false);
   const editPanelBg = useColorModeValue('gray.50', '#2D3748');
   const inputFieldBg = useColorModeValue('white', '#2D3748');
 
+  // Sidebar state (likely used in a parent component or layout)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     if (typeof window !== "undefined") {
       const isMobile = window.innerWidth < 768;
@@ -480,12 +475,15 @@ const Profile = () => {
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
 
-  const FALLBACK_AVATAR = `${BASE_URL}/Uploads/default-avatar.png`;
+  const FALLBACK_AVATAR = `${BASE_URL}/uploads/default-avatar.png`;
 
-  // Sort transactions by createdAt in descending order (newest first)
-  const sortedTransactions = [...transactions].sort((a, b) =>
-    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+  // Memoize sorted transactions to optimize performance
+  const sortedTransactions = useMemo(() => {
+    if (!Array.isArray(transactions)) return [];
+    return [...transactions].sort((a, b) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }, [transactions]);
 
   useEffect(() => {
     setIsAvatarLoading(true);
@@ -495,42 +493,49 @@ const Profile = () => {
     if (avatarFile) {
       const previewUrl = URL.createObjectURL(avatarFile);
       setAvatarPreview(previewUrl);
+      setIsAvatarLoading(false);
+      return () => URL.revokeObjectURL(previewUrl); // Cleanup to prevent memory leaks
     } else if (user?.avatarImage) {
       const avatarUrl = user.avatarImage.startsWith('https://')
         ? `${user.avatarImage}?t=${Date.now()}`
         : `${BASE_URL}${user.avatarImage}?t=${Date.now()}`;
       logger.info('Attempting to load avatar:', { url: avatarUrl });
       setAvatarPreview(avatarUrl);
+      setIsAvatarLoading(false);
     } else {
-      logger.warn('No avatarImage found in user object');
       setAvatarPreview(FALLBACK_AVATAR);
+      setIsAvatarLoading(false);
+      if (!hasShownAvatarToast.current && !localStorage.getItem('hasShownAvatarToast')) {
+        toast({
+          title: 'Complete Your Profile',
+          description: 'Upload a profile picture to personalize your account!',
+          status: 'info',
+          duration: 5000,
+          isClosable: true,
+          action: {
+            label: 'Upload Now',
+            onClick: () => setIsEditing(true),
+          },
+        });
+        hasShownAvatarToast.current = true;
+        localStorage.setItem('hasShownAvatarToast', 'true');
+      }
     }
-
-    setIsAvatarLoading(false);
-  }, [user?.avatarImage, user?._id, avatarFile]);
+  }, [user?.avatarImage, avatarFile, toast, setIsEditing]);
 
   const handleAvatarLoad = () => {
     logger.info('Avatar loaded successfully');
     setAvatarError(false);
     setAvatarRetryCount(0);
-    // Don't manage loading state here since we removed the spinner
   };
 
-  const handleAvatarError = (e) => {
-    logger.error('Failed to load avatar');
-    console.error('Avatar load error:', e);
-
-    // Don't retry if we're already using the fallback
-    if (avatarPreview === FALLBACK_AVATAR) {
+  const handleAvatarError = () => {
+    if (user?.avatarImage) {
+      logger.error('Failed to load avatar');
+      setAvatarPreview(FALLBACK_AVATAR);
       setAvatarError(true);
-      return;
+      setAvatarRetryCount(0);
     }
-
-    // For uploaded files or user avatars, fall back to default immediately
-    console.log('Falling back to default avatar:', FALLBACK_AVATAR);
-    setAvatarPreview(FALLBACK_AVATAR);
-    setAvatarError(true);
-    setAvatarRetryCount(0);
   };
 
   const [socket, setSocket] = useState(null);
@@ -570,9 +575,7 @@ const Profile = () => {
           });
           localStorage.removeItem(`pendingFunding_${data.reference}`);
           dispatch(clearPaymentDetails());
-          // Force fetch with cache-busting
           await dispatch(fetchInitialData({ noCache: Date.now() })).unwrap();
-          // Reset pagination to trigger UI update
           setAllPage(1);
           setPendingPage(1);
           setCompletedPage(1);
@@ -659,7 +662,6 @@ const Profile = () => {
         }
 
         axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        // Fetch initial data and transactions concurrently
         const [initialDataResult, transactionsResult] = await Promise.allSettled([
           dispatch(fetchInitialData()).unwrap(),
           dispatch(fetchTransactions()).unwrap(),
@@ -675,13 +677,6 @@ const Profile = () => {
         }
 
         setIsAuthLoading(false);
-        // Log transaction data for debugging
-        console.log('Transactions data:', {
-          transactions: wallet.transactions,
-          sortedTransactions: sortedTransactions,
-          transactionsLength: wallet.transactions.length,
-          walletObject: wallet,
-        });
       } catch (err) {
         logger.error('Authentication error', {
           message: err.message,
@@ -724,17 +719,6 @@ const Profile = () => {
   }, [user]);
 
   useEffect(() => {
-    console.log('Transactions data:', {
-      transactions: transactions,
-      sortedTransactions: sortedTransactions,
-      transactionsLength: transactions?.length,
-      walletObject: wallet
-    });
-  }, [transactions, wallet]);
-
-
-  useEffect(() => {
-    // Reset pagination when transactions change
     setAllPage(1);
     setPendingPage(1);
     setCompletedPage(1);
@@ -944,7 +928,6 @@ const Profile = () => {
           duration: 5000,
           isClosable: true,
         });
-        console.error('Invalid file type:', file.type);
         return;
       }
       if (file.size > 5 * 1024 * 1024) {
@@ -955,25 +938,20 @@ const Profile = () => {
           duration: 5000,
           isClosable: true,
         });
-        console.error('File size too large:', file.size);
         return;
       }
       setAvatarFile(file);
-      console.log('Avatar file selected:', { name: file.name, size: file.size, type: file.type });
       const previewUrl = URL.createObjectURL(file);
       setAvatarPreview(previewUrl);
-      console.log('Avatar preview URL:', previewUrl);
-      setAvatarError(false); // Reset error on new file selection
-      setAvatarRetryCount(0); // Reset retry count
-      setIsAvatarLoading(false); // No loading needed for preview
-    } else {
-      console.warn('No file selected for avatar upload');
+      setAvatarError(false);
+      setAvatarRetryCount(0);
+      setIsAvatarLoading(false);
     }
   };
 
   const handleUpdateProfile = async () => {
     setIsSubmitting(true);
-    setIsAvatarUploading(true); // Set uploading state
+    setIsAvatarUploading(true);
     try {
       const formDataToSend = new FormData();
       formDataToSend.append('firstName', formData.firstName);
@@ -981,7 +959,6 @@ const Profile = () => {
       formDataToSend.append('phoneNumber', formData.phoneNumber);
       if (avatarFile) {
         formDataToSend.append('avatarImage', avatarFile);
-        console.log('Uploading avatar file:', { name: avatarFile.name, size: avatarFile.size });
       }
 
       const token = localStorage.getItem('access-token');
@@ -1003,34 +980,29 @@ const Profile = () => {
           isClosable: true,
         });
 
-        // Clear edit state and reset avatar states
         setIsEditing(false);
         setAvatarFile(null);
-        setIsAvatarUploading(false); // Reset uploading state
+        setIsAvatarUploading(false);
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
         }
 
-        // Reset avatar states before fetching new data
         setAvatarError(false);
         setAvatarRetryCount(0);
 
-        // Force refresh the user data to get updated avatar
         const result = await dispatch(fetchInitialData()).unwrap();
 
-        // Set the new avatar URL immediately after successful update
         if (result.user?.avatarImage) {
           const newAvatarUrl = result.user.avatarImage.startsWith('https://')
             ? result.user.avatarImage
             : `${BASE_URL}${result.user.avatarImage}`;
           setAvatarPreview(`${newAvatarUrl}?t=${Date.now()}`);
-          setIsAvatarLoading(false); // Ensure loading is reset
+          setIsAvatarLoading(false);
         } else {
           setAvatarPreview(FALLBACK_AVATAR);
           setIsAvatarLoading(false);
         }
       } else {
-        console.error('Profile update failed:', response.data.error);
         toast({
           title: 'Error',
           description: response.data.error || 'Failed to update profile.',
@@ -1041,7 +1013,6 @@ const Profile = () => {
         setIsAvatarUploading(false);
       }
     } catch (error) {
-      console.error('Error updating profile:', error);
       toast({
         title: 'Error',
         description: error.response?.data?.error || 'Failed to update profile. Please check your network and try again.',
@@ -1057,7 +1028,6 @@ const Profile = () => {
 
   const handleRefresh = async () => {
     try {
-      // Clear any cached responses if Cache API is available
       if (window.caches) {
         try {
           const cacheNames = await caches.keys();
@@ -1085,16 +1055,10 @@ const Profile = () => {
         setAvatarPreview(FALLBACK_AVATAR);
         setIsAvatarLoading(false);
       }
-      // Force re-render by updating pagination states
       setAllPage(1);
       setPendingPage(1);
       setCompletedPage(1);
       setFailedPage(1);
-      console.log('Refresh wallet result:', {
-        balance: result.wallet?.balance,
-        transactions: result.transactions,
-        transactionCount: result.transactions?.length,
-      });
     } catch (error) {
       logger.error('Refresh wallet balance error', {
         message: error.message,
@@ -1121,7 +1085,6 @@ const Profile = () => {
         isClosable: true,
         action,
       });
-      // Attempt fallback fetchTransactions
       try {
         const txResult = await dispatch(fetchTransactions()).unwrap();
         toast({
@@ -1130,10 +1093,6 @@ const Profile = () => {
           status: 'info',
           duration: 5000,
           isClosable: true,
-        });
-        console.log('Fallback fetchTransactions result:', {
-          transactions: txResult.transactions,
-          wallet: txResult.wallet,
         });
       } catch (txError) {
         logger.error('Fallback fetchTransactions failed', {
@@ -1202,7 +1161,7 @@ const Profile = () => {
   const PaginationControls = ({ currentPage, setCurrentPage, totalItems }) => {
     const totalPages = Math.ceil(totalItems / itemsPerPage);
 
-    if (totalPages <= 1) return null; // Don't show pagination if only one page
+    if (totalPages <= 1) return null;
 
     const pageNumbers = [];
     const maxVisiblePages = 5;
@@ -1231,7 +1190,6 @@ const Profile = () => {
         >
           First
         </Button>
-
         <Button
           size="sm"
           bg={currentPage === 1 ? "gray.300" : "#B38939"}
@@ -1243,7 +1201,6 @@ const Profile = () => {
         >
           Previous
         </Button>
-
         {startPage > 1 && (
           <>
             <Button
@@ -1258,7 +1215,6 @@ const Profile = () => {
             {startPage > 2 && <Text color={textColor}>...</Text>}
           </>
         )}
-
         {pageNumbers.map((page) => (
           <Button
             key={page}
@@ -1272,7 +1228,6 @@ const Profile = () => {
             {page}
           </Button>
         ))}
-
         {endPage < totalPages && (
           <>
             {endPage < totalPages - 1 && <Text color={textColor}>...</Text>}
@@ -1287,7 +1242,6 @@ const Profile = () => {
             </Button>
           </>
         )}
-
         <Button
           size="sm"
           bg={currentPage === totalPages ? "gray.300" : "#B38939"}
@@ -1299,7 +1253,6 @@ const Profile = () => {
         >
           Next
         </Button>
-
         <Button
           size="sm"
           bg={currentPage === totalPages ? "gray.300" : "#B38939"}
@@ -1311,23 +1264,11 @@ const Profile = () => {
         >
           Last
         </Button>
-
         <Text color={subtleTextColor} fontSize="sm" ml={4}>
           Page {currentPage} of {totalPages} ({totalItems} total)
         </Text>
       </Flex>
     );
-  };
-
-  const handleTransactionError = (error) => {
-    console.error('Transaction error:', error);
-    toast({
-      title: 'Transaction Error',
-      description: 'Failed to load transaction history. Please refresh the page.',
-      status: 'error',
-      duration: 5000,
-      isClosable: true,
-    });
   };
 
   if (isAuthLoading) {
@@ -1411,11 +1352,11 @@ const Profile = () => {
                           mb={4}
                           border="2px"
                           borderColor="#B38939"
-                          key={avatarPreview} // Force re-render when preview changes
+                          key={avatarPreview}
                         />
                       )}
                       <Heading size="lg" color={textColor} textAlign="center">
-                        <span>{user.firstName} {user.lastName}</span>
+                        {user.firstName} {user.lastName}
                       </Heading>
                       <Text color={subtleTextColor} fontSize="sm" mt={2} textAlign="center">
                         {user.email}
@@ -1482,25 +1423,23 @@ const Profile = () => {
                               accept="image/jpeg,image/png"
                               ref={fileInputRef}
                               onChange={handleAvatarChange}
-                              bg="transparent"
-                              border="none"
-                              p={1}
-                              _focus={{ outline: 'none' }}
-                              sx={{
-                                '::file-selector-button': {
-                                  bg: '#B38939',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: 'md',
-                                  px: 4,
-                                  py: 2,
-                                  cursor: 'pointer',
-                                  _hover: { bg: '#BB954D' },
-                                  fontSize: 'sm',
-                                  fontWeight: 'medium'
-                                }
-                              }}
+                              display="none"
                             />
+                            <Button
+                              leftIcon={<FaUpload />}
+                              bg="#B38939"
+                              _hover={{ bg: "#BB954D" }}
+                              color="white"
+                              onClick={() => fileInputRef.current.click()}
+                              size="md"
+                              width="full"
+                              borderRadius="md"
+                              fontWeight="medium"
+                              _focus={{ boxShadow: '0 0 0 3px rgba(179, 137, 57, 0.3)' }}
+                              transition="all 0.3s"
+                            >
+                              Choose Profile Picture
+                            </Button>
                             {avatarFile && (
                               <VStack spacing={3} mt={4} align="center">
                                 <Avatar
@@ -1517,19 +1456,31 @@ const Profile = () => {
                             )}
                           </Box>
                         </FormControl>
-                        <HStack spacing={4} justify="center" mt={6}>
+                        <HStack
+                          spacing={{ base: 2, sm: 4 }}
+                          justify="center"
+                          mt={6}
+                          wrap="wrap"
+                          gap={{ base: 2, sm: 3 }}
+                        >
                           <Button
                             leftIcon={<FaSave />}
                             bg="#B38939"
-                            _hover={{ bg: "#BB954D" }}
+                            _hover={{ bg: "#BB954D", transform: "scale(1.05)" }}
+                            _active={{ transform: "scale(0.95)" }}
                             color="white"
                             onClick={handleUpdateProfile}
                             isLoading={isSubmitting}
-                            size="md"
+                            loadingText="Saving..."
+                            size={{ base: "sm", sm: "md" }}
                             borderRadius="md"
-                            px={6}
-                            _focus={{ boxShadow: '0 0 0 3px rgba(179, 137, 57, 0.3)' }}
-                            transition="all 0.3s"
+                            px={{ base: 4, sm: 6 }}
+                            py={{ base: 2, sm: 3 }}
+                            fontWeight="semibold"
+                            _focus={{ boxShadow: "0 0 0 3px rgba(179, 137, 57, 0.3)" }}
+                            transition="all 0.2s ease-in-out"
+                            width={{ base: "100%", sm: "auto" }}
+                            minW={{ sm: "120px" }}
                           >
                             Save Changes
                           </Button>
@@ -1538,7 +1489,8 @@ const Profile = () => {
                             variant="outline"
                             borderColor="#B38939"
                             color="#B38939"
-                            _hover={{ bg: '#BB954D', color: 'white' }}
+                            _hover={{ bg: "#BB954D", color: "white", transform: "scale(1.05)" }}
+                            _active={{ transform: "scale(0.95)" }}
                             onClick={() => {
                               setIsEditing(false);
                               setAvatarFile(null);
@@ -1551,11 +1503,17 @@ const Profile = () => {
                                 fileInputRef.current.value = '';
                               }
                             }}
-                            size="md"
+                            isLoading={isSubmitting}
+                            loadingText="Cancelling..."
+                            size={{ base: "sm", sm: "md" }}
                             borderRadius="md"
-                            px={6}
-                            _focus={{ boxShadow: '0 0 0 3px rgba(179, 137, 57, 0.3)' }}
-                            transition="all 0.3s"
+                            px={{ base: 4, sm: 6 }}
+                            py={{ base: 2, sm: 3 }}
+                            fontWeight="semibold"
+                            _focus={{ boxShadow: "0 0 0 3px rgba(179, 137, 57, 0.3)" }}
+                            transition="all 0.2s ease-in-out"
+                            width={{ base: "100%", sm: "auto" }}
+                            minW={{ sm: "120px" }}
                           >
                             Cancel
                           </Button>
@@ -1585,7 +1543,7 @@ const Profile = () => {
                     <Flex align="center">
                       <Icon as={FaWallet} color="#B38939" boxSize={6} mr={3} />
                       <Heading size="md" color={textColor}>
-                        <span>Wallet Overview</span>
+                        Wallet Overview
                       </Heading>
                     </Flex>
                   </CardHeader>
@@ -1643,7 +1601,7 @@ const Profile = () => {
                   <CardBody>
                     <Flex justify="space-between" align="center" mb={4}>
                       <Heading size="md" color={textColor}>
-                        <span>Transaction History</span>
+                        Transaction History
                       </Heading>
                       <Button
                         leftIcon={<FaSync />}
@@ -1660,10 +1618,6 @@ const Profile = () => {
                               duration: 5000,
                               isClosable: true,
                             });
-                            console.log('Refresh result:', {
-                              transactions: result.transactions,
-                              wallet: result.wallet,
-                            });
                           } catch (error) {
                             toast({
                               title: 'Error',
@@ -1672,7 +1626,6 @@ const Profile = () => {
                               duration: 5000,
                               isClosable: true,
                             });
-                            console.error('Refresh error:', error);
                           }
                         }}
                         isLoading={loading}
@@ -1734,7 +1687,7 @@ const Profile = () => {
                       </TabList>
                       <TabPanels>
                         <TabPanel p={0} className="transaction-card-container">
-                          {Array.isArray(sortedTransactions) && sortedTransactions.length > 0 ? (
+                          {sortedTransactions.length > 0 ? (
                             <>
                               <VStack spacing={3} align="stretch">
                                 {sortedTransactions

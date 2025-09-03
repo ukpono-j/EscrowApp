@@ -1142,7 +1142,7 @@ const DisplayTransaction = () => {
       fetchWalletBalance();
     }
   }, [isFundingModalOpen, fetchWalletBalance]);
-  
+
 
   const debouncedSearch = useCallback(debounce((value) => setSearchQuery(value), 300), []);
 
@@ -1305,15 +1305,21 @@ const DisplayTransaction = () => {
           displayMessage = "Please fill in all required fields.";
         } else if (errorMessage.includes("Image is required")) {
           displayMessage = "An image is required for the waybill.";
+        } else if (errorMessage.includes("Image size must be less than 2MB")) {
+          displayMessage = "The image size exceeds the 2MB limit.";
         } else if (errorMessage.includes("Unauthorized")) {
           displayMessage = "You are not authorized to submit waybill details.";
         } else if (errorMessage.includes("Transaction must be funded")) {
           displayMessage = "The transaction must be funded before submitting waybill details.";
         }
       } else if (error.response?.status === 500) {
-        displayMessage = errorMessage.includes("upload directory")
-          ? "Server error: Unable to save waybill image. Please try again."
-          : "Service temporarily unavailable. Please try again later.";
+        if (errorMessage.includes("Cloudinary")) {
+          displayMessage = "Failed to upload image to Cloudinary. Please try again.";
+        } else if (errorMessage.includes("Database")) {
+          displayMessage = "Database error. Please try again later.";
+        } else {
+          displayMessage = "Service temporarily unavailable. Please try again later.";
+        }
       }
       managedToast({
         id: `waybill-error-${transactionId}`,

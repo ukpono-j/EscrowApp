@@ -298,7 +298,7 @@ const Login = () => {
                 mb={6}
                 className="welcome-heading"
               >
-                Welcome Back!
+                <span>Welcome Back!</span>
               </Heading>
 
               <Text
@@ -433,13 +433,13 @@ const Login = () => {
                       size={{ base: "md", md: "lg" }}
                       width="full"
                       mt={3}
-                   bg={accentColor} 
+                      bg={accentColor}
                       color="white"
                       fontWeight="medium"
                       borderWidth="2px"
                       borderColor={accentColor}
                       _hover={{
-                         bg: "#A47F35",
+                        bg: "#A47F35",
                         transform: "translateY(-2px)",
                         boxShadow: "lg"
                       }}

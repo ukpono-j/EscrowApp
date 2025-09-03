@@ -95,7 +95,10 @@ const MainJoinTransaction = () => {
   const fetchDetails = useCallback(
     async (e) => {
       e.preventDefault();
-      if (!transactionId.trim()) return;
+      if (!transactionId.trim() || !/^[0-9a-fA-F]{24}$/.test(transactionId)) {
+        setAlert({ message: "Please enter a valid transaction ID", type: "error" });
+        return;
+      }
       try {
         setIsLoading(true);
         const response = await apiCall(`${BASE_URL}/api/transactions/${transactionId}`);
@@ -106,6 +109,7 @@ const MainJoinTransaction = () => {
           setAlert({ message: response.data.error, type: "error" });
         }
       } catch (error) {
+        console.error("API Error in fetchDetails:", error.response?.data || error.message);
         setAlert({ message: handleError(error), type: "error" });
       } finally {
         setIsLoading(false);
@@ -116,6 +120,20 @@ const MainJoinTransaction = () => {
 
   const handleAction = useCallback(
     async (action, payload = {}) => {
+      // Validate transactionId before making the request
+      if (!transactionId.trim() || !/^[0-9a-fA-F]{24}$/.test(transactionId)) {
+        setAlert({ message: "Please enter a valid transaction ID", type: "error" });
+        return;
+      }
+
+      // Ensure access token exists
+      const token = localStorage.getItem("access-token");
+      if (!token) {
+        setAlert({ message: "You must be logged in to perform this action", type: "error" });
+        setTimeout(() => navigate("/login"), 1500);
+        return;
+      }
+
       try {
         setIsLoading(true);
         const endpoint = `${BASE_URL}/api/transactions/${action}`;
@@ -123,7 +141,7 @@ const MainJoinTransaction = () => {
         if (response.data.success) {
           const messages = {
             "join-transaction": `Joined as ${response.data.data.role}! Redirecting...`,
-            "accept-and-update": `Joined as ${response.data.role}! Redirecting...`,
+            "accept-and-update": `Joined as ${response.data.data.role}! Redirecting...`,
             "reject-transaction": "Transaction rejected successfully.",
           };
           setAlert({ message: messages[action], type: action === "reject-transaction" ? "info" : "success" });
@@ -133,9 +151,10 @@ const MainJoinTransaction = () => {
             setTimeout(() => navigate("/transactions/tab"), 1500);
           }
         } else {
-          setAlert({ message: response.data.error, type: "error" });
+          setAlert({ message: response.data.error || "Action failed", type: "error" });
         }
       } catch (error) {
+        console.error("API Error in handleAction:", error.response?.data || error.message);
         setAlert({ message: handleError(error), type: "error" });
       } finally {
         setIsLoading(false);

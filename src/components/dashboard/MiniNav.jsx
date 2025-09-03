@@ -1,48 +1,93 @@
-import React, { useState, useEffect } from "react";
-import { AiFillMessage } from "react-icons/ai";
-import { MdClose, MdMenu, MdNotifications } from "react-icons/md";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { MdNotifications, MdNotificationsActive } from "react-icons/md";
 import { Link } from "react-router-dom";
 import axios from "../../utils/axiosConfig";
-import Logo from "../../assets/logo3.png";
-import Logo2 from "../../assets/logo-m.png";
-import Menu from "./Menu";
 import { motion, AnimatePresence } from "framer-motion";
-import { Box, Text, Flex, ScaleFade, useColorModeValue, Avatar, SkeletonCircle, useToast } from "@chakra-ui/react";
+import {
+  Box,
+  Text,
+  Flex,
+  useColorModeValue,
+  Avatar,
+  SkeletonCircle,
+  useToast,
+  Tooltip,
+  Badge,
+  HStack,
+} from "@chakra-ui/react";
+import { debounce } from "lodash";
 
-const BASE_URL = import.meta.env.VITE_BASE_URL;
-const FALLBACK_AVATAR = `${BASE_URL}/Uploads/default-avatar.png`;
+const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3001";
 
 const MiniNav = () => {
+  // All useState hooks first - always called in same order
   const [notificationCount, setNotificationCount] = useState(0);
-  const [menu, setMenu] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [userData, setUserData] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
   const [avatarError, setAvatarError] = useState(false);
   const [isAvatarLoading, setIsAvatarLoading] = useState(true);
+
+  // All useColorModeValue hooks - always called in same order
+  const bgColor = useColorModeValue("white", "#051E2F");
+  const textColor = useColorModeValue("#1A202C", "white");
+  const shadowColor = useColorModeValue("rgba(26, 32, 44, 0.08)", "rgba(0, 0, 0, 0.25)");
+  const borderColor = useColorModeValue("rgba(26, 32, 44, 0.08)", "rgba(179, 137, 57, 0.1)");
+  const hoverBg = useColorModeValue("rgba(179, 137, 57, 0.08)", "rgba(179, 137, 57, 0.15)");
+  const notificationIconColor = useColorModeValue("#1A202C", "#B38939");
+  const dividerColor = useColorModeValue("rgba(26, 32, 44, 0.15)", "rgba(179, 137, 57, 0.3)");
+  const subTextColor = useColorModeValue("#718096", "#A0AEC0");
+  const avatarBorderColor = useColorModeValue("#B38939", "#BB954D");
+  const hoverBorderColor = useColorModeValue("rgba(179, 137, 57, 0.2)", "rgba(179, 137, 57, 0.4)");
+  const enhancedHoverBg = useColorModeValue("rgba(179, 137, 57, 0.12)", "rgba(179, 137, 57, 0.2)");
+
+  // useToast hook
   const toast = useToast();
 
-  useEffect(() => {
-    const handleScroll = () => {
+  // useCallback hook
+  const handleScroll = useCallback(
+    debounce(() => {
       setScrolled(window.scrollY > 10);
-    };
+    }, 100),
+    []
+  );
 
+  // All useEffect hooks
+  useEffect(() => {
     window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      handleScroll.cancel(); // Cleanup debounce
+    };
+  }, [handleScroll]);
 
+  // Fetch user data and notifications
   useEffect(() => {
     const fetchUserData = async () => {
       try {
         const token = localStorage.getItem("access-token");
         if (!token) {
           console.warn("No access token found for user data fetch");
+          setUserData({});
           return;
         }
-        axios.defaults.headers.common["access-token"] = token;
+        axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+
+        // Check localStorage cache
+        const cachedUser = localStorage.getItem("userData");
+        const cacheTimestamp = localStorage.getItem("userDataTimestamp");
+        const cacheTTL = 5 * 60 * 1000; // 5 minutes
+        if (cachedUser && cacheTimestamp && Date.now() - parseInt(cacheTimestamp) < cacheTTL) {
+          setUserData(JSON.parse(cachedUser));
+          return;
+        }
 
         const response = await axios.get(`${BASE_URL}/api/users/user-details`);
-        setUserData(response.data.data?.user || {});
+        const user = response.data.data?.user || {};
+        setUserData(user);
+        // Cache user data
+        localStorage.setItem("userData", JSON.stringify(user));
+        localStorage.setItem("userDataTimestamp", Date.now().toString());
       } catch (error) {
         console.error("Error fetching user data:", {
           message: error.message,
@@ -50,6 +95,13 @@ const MiniNav = () => {
           data: error.response?.data,
         });
         setUserData({});
+        toast({
+          title: "Error",
+          description: "Failed to load user profile. Please try again.",
+          status: "error",
+          duration: 3000,
+          isClosable: true,
+        });
       }
     };
 
@@ -63,7 +115,7 @@ const MiniNav = () => {
             return;
           }
           const response = await axios.get(`${BASE_URL}/api/notifications/notifications`, {
-            headers: { "access-token": token },
+            headers: { Authorization: `Bearer ${token}` },
             timeout: 30000,
           });
           if (response.data.success) {
@@ -81,13 +133,12 @@ const MiniNav = () => {
             message: error.message,
             status: error.response?.status,
             data: error.response?.data,
-            url: `${BASE_URL}/api/notifications/notifications`,
           });
           if (attempt === retries) {
             setNotificationCount(0);
             toast({
               title: "Error",
-              description: error.response?.data?.error || "Failed to fetch notifications after multiple attempts.",
+              description: "Unable to fetch notifications. Please check your connection.",
               status: "error",
               duration: 3000,
               isClosable: true,
@@ -105,148 +156,291 @@ const MiniNav = () => {
     return () => clearInterval(interval);
   }, [toast]);
 
-  // Avatar handling effect - similar to Profile component
+  // Memoized avatar URL to prevent unnecessary re-computation
+  const avatarUrl = useMemo(() => {
+    if (!userData?.avatarImage) {
+      return null;
+    }
+    const baseUrl = userData.avatarImage.startsWith("https://")
+      ? userData.avatarImage
+      : `${BASE_URL}${userData.avatarImage}`;
+    return `${baseUrl}?t=${Date.now()}&size=small`; // Request smaller image if supported
+  }, [userData?.avatarImage, userData?._id]);
+
+  // Avatar handling with retry logic
   useEffect(() => {
     setIsAvatarLoading(true);
     setAvatarError(false);
 
-    if (userData?.avatarImage) {
-      const avatarUrl = userData.avatarImage.startsWith('https://')
-        ? `${userData.avatarImage}?t=${Date.now()}`
-        : `${BASE_URL}${userData.avatarImage}?t=${Date.now()}`;
-      console.log('Loading avatar in MiniNav:', { url: avatarUrl });
+    if (avatarUrl) {
       setAvatarPreview(avatarUrl);
     } else {
-      console.warn('No avatarImage found in userData, using fallback');
-      setAvatarPreview(FALLBACK_AVATAR);
+      setAvatarPreview(null);
     }
-
     setIsAvatarLoading(false);
-  }, [userData?.avatarImage, userData?._id]);
+  }, [avatarUrl]);
 
-  const handleAvatarLoad = () => {
-    console.log('MiniNav avatar loaded successfully');
+  // Memoized computed values
+  const userName = useMemo(() => {
+    return userData
+      ? `${userData.firstName || ""} ${userData.lastName || ""}`.trim()
+      : "User";
+  }, [userData]);
+
+  const initials = useMemo(() => {
+    return userName.split(" ").map((n) => n[0]).join("").toUpperCase() || "U";
+  }, [userName]);
+
+  const handleAvatarLoad = useCallback(() => {
+    console.log("MiniNav avatar loaded successfully");
     setAvatarError(false);
     setIsAvatarLoading(false);
-  };
+  }, []);
 
-  const handleAvatarError = (e) => {
-    console.error('MiniNav avatar load error:', e);
-
-    // Don't retry if we're already using the fallback
-    if (avatarPreview === FALLBACK_AVATAR) {
-      setAvatarError(true);
-      setIsAvatarLoading(false);
-      return;
-    }
-
-    // Fall back to default avatar
-    console.log('MiniNav falling back to default avatar:', FALLBACK_AVATAR);
-    setAvatarPreview(FALLBACK_AVATAR);
+  const handleAvatarError = useCallback(() => {
+    console.error("MiniNav avatar load error");
+    setAvatarPreview(null);
     setAvatarError(true);
     setIsAvatarLoading(false);
-  };
-
-  const handleMenuToggle = () => setMenu(!menu);
-
-  const bgColor = useColorModeValue("white", "#051E2F");
-  const textColor = useColorModeValue("#1E293B", "white");
-  const shadowColor = useColorModeValue("rgba(0,0,0,0.05)", "rgba(0,0,0,0.2)");
-
-  const userName = userData ? `${userData.firstName || ''} ${userData.lastName || ''}`.trim() : "";
+  }, []);
 
   return (
-    <Box
-      as={motion.div}
-      initial={{ y: -20, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.3 }}
-      className={`flex items-center justify-between md:pl-[60px] md:pr-[60px] px-5 fixed right-0 z-30 top-0 h-[70px] w-full ${scrolled ? "shadow-md" : ""}`}
-      style={{
-        backgroundColor: bgColor,
-        boxShadow: scrolled ? `0 4px 20px ${shadowColor}` : "none",
-        transition: "all 0.3s ease",
-      }}
-    >
-      <div className="font-bold flex md:hidden cursor-pointer md:text-3xl text-2xl uppercase">
-        <Link to="/dashboard" className="outline-none flex items-center">
-          {/* <motion.img src={Logo2} alt="Logo" className="h-10 w-auto" whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 400, damping: 10 }} /> */}
-        </Link>
-      </div>
-
-      <div className="flex items-center justify-end w-full gap-1">
-        <Link to="/notifications" className="relative">
-          <motion.div
-            className="relative p-3 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <Text color={textColor}>
-              <MdNotifications className="text-2xl text-[#B38939]" />
-            </Text>
-            <AnimatePresence>
-              {notificationCount > 0 && (
-                <motion.div
-                  initial={{ scale: 0, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0, opacity: 0 }}
-                  className="absolute top-1 right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"
-                >
-                  {notificationCount > 9 ? "9+" : notificationCount}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
-        </Link>
-
-        <motion.div
-          className="h-8 w-px bg-gray-200 dark:bg-gray-700 mx-1"
-          initial={{ height: 0 }}
-          animate={{ height: 32 }}
-          transition={{ delay: 0.2 }}
-        />
-
-        <motion.div
-          className="relative"
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
+    <>
+      <Box
+        as={motion.div}
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
+        className="fixed right-0 z-30 top-0 h-[80px] w-full"
+        style={{
+          backgroundColor: bgColor,
+          boxShadow: scrolled 
+            ? `0 8px 32px ${shadowColor}, 0 2px 8px ${shadowColor}` 
+            : `0 1px 3px ${borderColor}`,
+          backdropFilter: "blur(20px)",
+          borderBottom: `1px solid ${borderColor}`,
+          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+        }}
+      >
+        <Flex
+          align="center"
+          justify="flex-end"
+          h="full"
+          maxW="100%"
+          px={{ base: 4, md: 8, lg: 12 }}
         >
-          {userData ? (
-            <Link to="/profile">
-              <Box
-                as="div"
-                width="32px"
-                height="32px"
-                borderRadius="full"
-                overflow="hidden"
-                className="cursor-pointer border-2 border-white dark:border-gray-800"
-              >
-                {isAvatarLoading ? (
-                  <SkeletonCircle size="32px" />
-                ) : (
-                  <Avatar
-                    size="sm"
-                    src={avatarPreview || FALLBACK_AVATAR}
-                    onLoad={handleAvatarLoad}
-                    onError={handleAvatarError}
-                    name={`${userData.firstName || 'User'}'s avatar`}
-                    bg="linear-gradient(to bottom right, #B38939, #8A6D2F)"
-                    color="white"
-                    key={avatarPreview} // Force re-render when preview changes
-                  />
-                )}
-              </Box>
-            </Link>
-          ) : (
-            <Avatar
-              size="sm"
-              bg="linear-gradient(to bottom right, #B38939, #8A6D2F)"
-              className="cursor-pointer border-2 border-white dark:border-gray-800"
+          {/* Right Side Actions */}
+          <Flex align="center" gap={6}>
+            {/* Notifications */}
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 400, damping: 25 }}
+            >
+              <Link to="/notifications" className="relative group">
+                <Tooltip
+                  label="View Notifications"
+                  fontSize="sm"
+                  bg="#1A202C"
+                  color="white"
+                  borderRadius="lg"
+                  placement="bottom"
+                  hasArrow
+                  px={3}
+                  py={2}
+                >
+                  <Box
+                    p={3}
+                    borderRadius="xl"
+                    bg={hoverBg}
+                    border="1px solid"
+                    borderColor="transparent"
+                    _hover={{
+                      borderColor: "#B38939",
+                      bg: enhancedHoverBg,
+                      transform: "translateY(-1px)",
+                      shadow: `0 8px 25px rgba(179, 137, 57, 0.15)`,
+                    }}
+                    transition="all 0.2s cubic-bezier(0.4, 0, 0.2, 1)"
+                    position="relative"
+                    cursor="pointer"
+                  >
+                    {notificationCount > 0 ? (
+                      <MdNotificationsActive 
+                        className="text-2xl" 
+                        style={{ color: "#B38939" }} 
+                      />
+                    ) : (
+                      <MdNotifications 
+                        className="text-2xl"
+                        style={{ color: notificationIconColor }}
+                      />
+                    )}
+                    
+                    <AnimatePresence>
+                      {notificationCount > 0 && (
+                        <motion.div
+                          initial={{ scale: 0, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          exit={{ scale: 0, opacity: 0 }}
+                          transition={{ 
+                            type: "spring", 
+                            stiffness: 500, 
+                            damping: 20,
+                            duration: 0.3 
+                          }}
+                          className="absolute -top-2 -right-2"
+                        >
+                          <Badge
+                            bg="linear-gradient(135deg, #B38939, #BB954D)"
+                            color="white"
+                            fontSize="xs"
+                            fontWeight="bold"
+                            borderRadius="full"
+                            minW="22px"
+                            h="22px"
+                            display="flex"
+                            alignItems="center"
+                            justifyContent="center"
+                            border="2px solid"
+                            borderColor={bgColor}
+                            className="pulse-notification"
+                            boxShadow="0 2px 8px rgba(179, 137, 57, 0.4)"
+                          >
+                            {notificationCount > 99 ? "99+" : notificationCount}
+                          </Badge>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </Box>
+                </Tooltip>
+              </Link>
+            </motion.div>
+
+            {/* Elegant Divider */}
+            <Box
+              w="1px"
+              h="35px"
+              bg={dividerColor}
+              as={motion.div}
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 35, opacity: 1 }}
+              transition={{ delay: 0.2, duration: 0.4 }}
             />
-          )}
-        </motion.div>
-      </div>
-    </Box>
+
+            {/* User Profile Section */}
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              transition={{ type: "spring", stiffness: 400, damping: 25 }}
+            >
+              <Link to="/profile" className="group">
+                <Tooltip
+                  label={`${userName} - View Profile`}
+                  fontSize="sm"
+                  bg="#1A202C"
+                  color="white"
+                  borderRadius="lg"
+                  placement="bottom"
+                  hasArrow
+                  px={3}
+                  py={2}
+                >
+                  <HStack
+                    spacing={3}
+                    p={2}
+                    borderRadius="xl"
+                    bg="transparent"
+                    _hover={{
+                      bg: hoverBg,
+                      transform: "translateY(-1px)",
+                      shadow: `0 8px 25px rgba(179, 137, 57, 0.12)`,
+                    }}
+                    transition="all 0.2s cubic-bezier(0.4, 0, 0.2, 1)"
+                    cursor="pointer"
+                    border="1px solid transparent"
+                    _groupHover={{
+                      borderColor: hoverBorderColor,
+                    }}
+                  >
+                    {/* User Info - Only show on larger screens */}
+                    <Box
+                      display={{ base: "none", lg: "block" }}
+                      textAlign="right"
+                      lineHeight="1.2"
+                    >
+                      <Text
+                        fontSize="sm"
+                        fontWeight="600"
+                        color={textColor}
+                        mb={0}
+                        letterSpacing="0.025em"
+                      >
+                        {userName}
+                      </Text>
+                      <Text
+                        fontSize="xs"
+                        color={subTextColor}
+                        fontWeight="500"
+                      >
+                        Portfolio Manager
+                      </Text>
+                    </Box>
+
+                    {/* Avatar */}
+                    <Box position="relative">
+                      {isAvatarLoading ? (
+                        <SkeletonCircle size="44px" />
+                      ) : (
+                        <Avatar
+                          size="md"
+                          src={avatarPreview}
+                          onLoad={handleAvatarLoad}
+                          onError={handleAvatarError}
+                          name={userName}
+                          bg="linear-gradient(135deg, #B38939, #BB954D)"
+                          color="white"
+                          key={avatarPreview}
+                          borderRadius="full"
+                          border="3px solid"
+                          borderColor={avatarBorderColor}
+                          className="cursor-pointer"
+                          _groupHover={{
+                            borderColor: "#BB954D",
+                            shadow: "0 4px 16px rgba(179, 137, 57, 0.3)",
+                          }}
+                          transition="all 0.2s cubic-bezier(0.4, 0, 0.2, 1)"
+                        />
+                      )}
+                      
+                      {/* Online Status Indicator */}
+                      <Box
+                        position="absolute"
+                        bottom="2px"
+                        right="2px"
+                        w="12px"
+                        h="12px"
+                        bg="#10B981"
+                        borderRadius="full"
+                        border="2px solid"
+                        borderColor={bgColor}
+                        as={motion.div}
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ delay: 0.5, type: "spring", stiffness: 400 }}
+                      />
+                    </Box>
+                  </HStack>
+                </Tooltip>
+              </Link>
+            </motion.div>
+          </Flex>
+        </Flex>
+      </Box>
+
+      {/* Enhanced Animations and Styles */}
+      
+    </>
   );
 };
 
