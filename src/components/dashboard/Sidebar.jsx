@@ -179,7 +179,7 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
     { to: "/join-transaction", label: "Join Transaction", icon: <FaHandshake className="text-xl" /> },
     { to: "/transactions/tab", label: "My Transactions", icon: <FaExchangeAlt className="text-xl" /> },
     { to: "/profile", label: "My Profile", icon: <MdPerson className="text-xl" /> },
-    { to: "/security-settings/kyc", label: "KYC Verification", icon: <FaUserShield className="text-lg" /> },
+    { to: "/security-settings/kyc", label: "BVN Verification", icon: <FaUserShield className="text-lg" /> },
   ];
   const handleLinkClick = useCallback((to) => {
     setActiveLink(to);

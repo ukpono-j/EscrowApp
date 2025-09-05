@@ -227,20 +227,20 @@ const TransactionCreation = () => {
     });
   };
 
-  const handleAmountChange = (e) => {
+  const handleAmountChange = useCallback((e) => {
     const input = e.target.value.replace(/,/g, "");
     if (input === "" || /^\d*\.?\d{0,2}$/.test(input)) {
       setPaymentAmount(input);
       setDisplayAmount(
         input
           ? parseFloat(input).toLocaleString("en-NG", {
-              minimumFractionDigits: 0,
-              maximumFractionDigits: 2,
-            })
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2,
+          })
           : ""
       );
     }
-  };
+  }, [setPaymentAmount, setDisplayAmount]);
 
   const acceptTransactionFunction = useCallback(
     (e) => {
@@ -256,7 +256,7 @@ const TransactionCreation = () => {
       }
       setAcceptTransactionModel(true);
     },
-    [formValid, toast]
+    [formValid, toast, setAcceptTransactionModel]
   );
 
   const createNewTransaction = useCallback(
@@ -271,7 +271,7 @@ const TransactionCreation = () => {
         });
         return;
       }
-      setIsCreating(true); // Set loading state
+      setIsCreating(true);
       const requestData = {
         paymentName: userDetails.fullName || "User",
         email: email || userDetails.email || "",
@@ -291,7 +291,7 @@ const TransactionCreation = () => {
           duration: 5000,
           isClosable: true,
         });
-        setIsCreating(false); // Reset loading state
+        setIsCreating(false);
         return;
       }
       axios
@@ -345,12 +345,13 @@ const TransactionCreation = () => {
           });
         })
         .finally(() => {
-          setIsCreating(false); // Reset loading state
-          setAcceptTransactionModel(false); // Close modal
+          setIsCreating(false);
+          setAcceptTransactionModel(false);
         });
     },
     [
       formValid,
+      isCreating,
       userDetails.fullName,
       userDetails.email,
       email,
@@ -359,7 +360,9 @@ const TransactionCreation = () => {
       selectedUserType,
       navigate,
       toast,
-      isCreating, // Add dependency
+      setIsCreating,
+      setAcceptTransactionModel,
+      validateApiResponse,
     ]
   );
 
@@ -376,7 +379,7 @@ const TransactionCreation = () => {
         });
         return;
       }
-      setIsCreating(true); // Set loading state
+      setIsCreating(true);
       const requestData = {
         paymentName: userDetails.fullName || "Buyer",
         email: userDetails.email || email || "",
@@ -396,7 +399,7 @@ const TransactionCreation = () => {
           duration: 5000,
           isClosable: true,
         });
-        setIsCreating(false); // Reset loading state
+        setIsCreating(false);
         return;
       }
       axios
@@ -450,11 +453,23 @@ const TransactionCreation = () => {
           });
         })
         .finally(() => {
-          setIsCreating(false); // Reset loading state
-          setAcceptTransactionModel(false); // Close modal
+          setIsCreating(false);
+          setAcceptTransactionModel(false);
         });
     },
-    [userDetails.fullName, userDetails.email, email, paymentAmount, paymentDescription, navigate, toast, isCreating] // Add dependency
+    [
+      isCreating,
+      userDetails.fullName,
+      userDetails.email,
+      email,
+      paymentAmount,
+      paymentDescription,
+      navigate,
+      toast,
+      setIsCreating,
+      setAcceptTransactionModel,
+      validateApiResponse,
+    ]
   );
 
   const handleRadioClick = useCallback((userType) => {

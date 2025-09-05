@@ -1,4 +1,3 @@
-// Enhanced axiosConfig.js with better user experience
 import axios from 'axios';
 import { navigateTo } from './navigate';
 import { toast } from 'react-toastify';
@@ -10,13 +9,11 @@ const instance = axios.create({
 
 let isOffline = !navigator.onLine;
 let pendingRequests = new Map();
-let lastConnectivityToast = 0; // Prevent spam toasts
+let lastConnectivityToast = 0;
 let networkIssueDetected = false;
 
-// Enhanced network connectivity detection
 const checkConnectivity = async () => {
   try {
-    // Try to fetch a small resource to test real connectivity
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 3000);
     
@@ -33,7 +30,6 @@ const checkConnectivity = async () => {
   }
 };
 
-// Debounce function to prevent duplicate requests
 const debounceRequest = (config) => {
   const key = `${config.method}-${config.url}`;
   
@@ -53,12 +49,11 @@ const debounceRequest = (config) => {
   return request;
 };
 
-// Better connectivity event handlers
 window.addEventListener('online', () => {
   isOffline = false;
   networkIssueDetected = false;
   const now = Date.now();
-  if (now - lastConnectivityToast > 5000) { // Only show once every 5 seconds
+  if (now - lastConnectivityToast > 5000) {
     toast.success('Connection restored', { 
       autoClose: 2000,
       toastId: 'online-status'
@@ -94,7 +89,6 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
-// Determine if endpoint is critical (affects user workflow)
 const isCriticalEndpoint = (url) => {
   const criticalPaths = [
     '/api/auth/login',
@@ -102,7 +96,9 @@ const isCriticalEndpoint = (url) => {
     '/api/auth/refreshToken',
     '/api/transactions/create',
     '/api/wallet/transfer',
-    '/api/users/update-profile'
+    '/api/users/update-profile',
+    '/api/kyc/submit-kyc', // Add KYC endpoints as critical
+    '/api/kyc/kyc-details'
   ];
   return criticalPaths.some(path => url?.includes(path));
 };
@@ -111,7 +107,6 @@ instance.interceptors.request.use(
   (config) => {
     config.requestStartTime = Date.now();
     
-    // Skip auth header for public endpoints
     if (
       config.url?.includes('/api/auth/login') ||
       config.url?.includes('/api/auth/register') ||
@@ -127,7 +122,6 @@ instance.interceptors.request.use(
     return config;
   },
   (error) => {
-    // Only log in development
     if (import.meta.env.DEV) {
       console.error('Request interceptor error:', error.message);
     }
@@ -137,13 +131,11 @@ instance.interceptors.request.use(
 
 instance.interceptors.response.use(
   (response) => {
-    // Reset network issue flag on successful response
     if (networkIssueDetected) {
       networkIssueDetected = false;
     }
     
     const duration = Date.now() - response.config.requestStartTime;
-    // Only log slow responses in development
     if (import.meta.env.DEV && duration > 10000) {
       console.warn(`Slow response: ${response.config.url} (${duration}ms)`);
     }
@@ -157,7 +149,6 @@ instance.interceptors.response.use(
     const isNetworkError = !error.response && (isTimeout || error.code === 'ERR_NETWORK');
     const isCritical = isCriticalEndpoint(originalRequest.url);
 
-    // Enhanced error logging (development only)
     if (import.meta.env.DEV) {
       console.error('API Error:', {
         url: originalRequest.url,
@@ -166,11 +157,11 @@ instance.interceptors.response.use(
         duration: `${duration}ms`,
         isTimeout,
         isNetworkError,
-        isCritical
+        isCritical,
+        details: error.response?.data
       });
     }
 
-    // Handle network connectivity issues
     if (isNetworkError && !networkIssueDetected) {
       networkIssueDetected = true;
       const isReallyOffline = await checkConnectivity();
@@ -188,7 +179,6 @@ instance.interceptors.response.use(
       }
     }
 
-    // Handle 401 errors with token refresh (existing logic)
     if (status === 401 && !originalRequest._retry && !originalRequest.url?.includes('/api/auth/refreshToken')) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
@@ -247,21 +237,20 @@ instance.interceptors.response.use(
       }
     }
 
-    // Don't interfere with auth endpoint errors - let them bubble up
     if (originalRequest.url?.includes('/api/auth/')) {
       return Promise.reject(error);
     }
 
-    // Handle different error types with better user experience
     const now = Date.now();
     
-    // Only show user-friendly messages for critical endpoints or specific conditions
     if (isCritical && !networkIssueDetected) {
       if (status === 500) {
-        toast.error('Server error. Please try again in a moment.', { 
+        toast.error('Server error during KYC operation. Please try again or contact support.', { 
           autoClose: 4000,
           toastId: 'server-error'
         });
+      } else if (status === 404 && originalRequest.url?.includes('/api/kyc/kyc-details')) {
+        // Don't show toast for 404 on kyc-details (handled by component)
       } else if (status === 404) {
         toast.error('Service unavailable. Please try again.', { 
           autoClose: 3000,
@@ -276,7 +265,6 @@ instance.interceptors.response.use(
       }
     }
 
-    // Enhanced fallback data with better structure
     const errorMessage = isOffline 
       ? 'You are offline. Some features may not work correctly.'
       : isTimeout 
@@ -298,10 +286,11 @@ instance.interceptors.response.use(
             ? { balance: 0, currency: 'USD' }
             : originalRequest.url?.includes('user-details')
               ? { user: {}, profile: {} }
-              : null,
+              : originalRequest.url?.includes('kyc-details')
+                ? { isKycSubmitted: false }
+                : null,
     };
 
-    // Return fallback data instead of rejecting for non-critical endpoints
     return Promise.resolve({ 
       data: fallbackData,
       status: error.response?.status || 0,

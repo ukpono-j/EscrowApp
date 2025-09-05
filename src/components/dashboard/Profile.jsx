@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
@@ -1110,7 +1110,7 @@ const Profile = () => {
     setIsAuthLoading(false);
   };
 
-  const renderTransaction = (tx) => (
+  const renderTransaction = useCallback((tx) => (
     <Card
       key={tx.reference || tx._id || Math.random()}
       bg={cardBg}
@@ -1156,120 +1156,120 @@ const Profile = () => {
         </VStack>
       </Flex>
     </Card>
-  );
+  ), [cardBg, borderColor, textColor, subtleTextColor]);
 
-  const PaginationControls = ({ currentPage, setCurrentPage, totalItems }) => {
-    const totalPages = Math.ceil(totalItems / itemsPerPage);
+const PaginationControls = useCallback(({ currentPage, setCurrentPage, totalItems }) => {
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
 
-    if (totalPages <= 1) return null;
+  if (totalPages <= 1) return null;
 
-    const pageNumbers = [];
-    const maxVisiblePages = 5;
+  const pageNumbers = [];
+  const maxVisiblePages = 5;
 
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+  let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+  let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
 
-    if (endPage - startPage + 1 < maxVisiblePages) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1);
-    }
+  if (endPage - startPage + 1 < maxVisiblePages) {
+    startPage = Math.max(1, endPage - maxVisiblePages + 1);
+  }
 
-    for (let i = startPage; i <= endPage; i++) {
-      pageNumbers.push(i);
-    }
+  for (let i = startPage; i <= endPage; i++) {
+    pageNumbers.push(i);
+  }
 
-    return (
-      <Flex justify="center" align="center" mt={6} gap={2} wrap="wrap">
-        <Button
-          size="sm"
-          bg={currentPage === 1 ? "gray.300" : "#B38939"}
-          _hover={{ bg: currentPage === 1 ? "gray.300" : "#BB954D" }}
-          color={currentPage === 1 ? "gray.500" : "white"}
-          onClick={() => setCurrentPage(1)}
-          isDisabled={currentPage === 1}
-          cursor={currentPage === 1 ? "not-allowed" : "pointer"}
-        >
-          First
-        </Button>
-        <Button
-          size="sm"
-          bg={currentPage === 1 ? "gray.300" : "#B38939"}
-          _hover={{ bg: currentPage === 1 ? "gray.300" : "#BB954D" }}
-          color={currentPage === 1 ? "gray.500" : "white"}
-          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-          isDisabled={currentPage === 1}
-          cursor={currentPage === 1 ? "not-allowed" : "pointer"}
-        >
-          Previous
-        </Button>
-        {startPage > 1 && (
-          <>
-            <Button
-              size="sm"
-              bg={cardBg}
-              color={textColor}
-              _hover={{ bg: "#BB954D", color: "white" }}
-              onClick={() => setCurrentPage(1)}
-            >
-              1
-            </Button>
-            {startPage > 2 && <Text color={textColor}>...</Text>}
-          </>
-        )}
-        {pageNumbers.map((page) => (
+  return (
+    <Flex justify="center" align="center" mt={6} gap={2} wrap="wrap">
+      <Button
+        size="sm"
+        bg={currentPage === 1 ? "gray.300" : "#B38939"}
+        _hover={{ bg: currentPage === 1 ? "gray.300" : "#BB954D" }}
+        color={currentPage === 1 ? "gray.500" : "white"}
+        onClick={() => setCurrentPage(1)}
+        isDisabled={currentPage === 1}
+        cursor={currentPage === 1 ? "not-allowed" : "pointer"}
+      >
+        First
+      </Button>
+      <Button
+        size="sm"
+        bg={currentPage === 1 ? "gray.300" : "#B38939"}
+        _hover={{ bg: currentPage === 1 ? "gray.300" : "#BB954D" }}
+        color={currentPage === 1 ? "gray.500" : "white"}
+        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+        isDisabled={currentPage === 1}
+        cursor={currentPage === 1 ? "not-allowed" : "pointer"}
+      >
+        Previous
+      </Button>
+      {startPage > 1 && (
+        <>
           <Button
-            key={page}
             size="sm"
-            bg={currentPage === page ? "#B38939" : cardBg}
-            color={currentPage === page ? "white" : textColor}
+            bg={cardBg}
+            color={textColor}
             _hover={{ bg: "#BB954D", color: "white" }}
-            onClick={() => setCurrentPage(page)}
-            fontWeight={currentPage === page ? "bold" : "normal"}
+            onClick={() => setCurrentPage(1)}
           >
-            {page}
+            1
           </Button>
-        ))}
-        {endPage < totalPages && (
-          <>
-            {endPage < totalPages - 1 && <Text color={textColor}>...</Text>}
-            <Button
-              size="sm"
-              bg={cardBg}
-              color={textColor}
-              _hover={{ bg: "#BB954D", color: "white" }}
-              onClick={() => setCurrentPage(totalPages)}
-            >
-              {totalPages}
-            </Button>
-          </>
-        )}
+          {startPage > 2 && <Text color={textColor}>...</Text>}
+        </>
+      )}
+      {pageNumbers.map((page) => (
         <Button
+          key={page}
           size="sm"
-          bg={currentPage === totalPages ? "gray.300" : "#B38939"}
-          _hover={{ bg: currentPage === totalPages ? "gray.300" : "#BB954D" }}
-          color={currentPage === totalPages ? "gray.500" : "white"}
-          onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-          isDisabled={currentPage === totalPages}
-          cursor={currentPage === totalPages ? "not-allowed" : "pointer"}
+          bg={currentPage === page ? "#B38939" : cardBg}
+          color={currentPage === page ? "white" : textColor}
+          _hover={{ bg: "#BB954D", color: "white" }}
+          onClick={() => setCurrentPage(page)}
+          fontWeight={currentPage === page ? "bold" : "normal"}
         >
-          Next
+          {page}
         </Button>
-        <Button
-          size="sm"
-          bg={currentPage === totalPages ? "gray.300" : "#B38939"}
-          _hover={{ bg: currentPage === totalPages ? "gray.300" : "#BB954D" }}
-          color={currentPage === totalPages ? "gray.500" : "white"}
-          onClick={() => setCurrentPage(totalPages)}
-          isDisabled={currentPage === totalPages}
-          cursor={currentPage === totalPages ? "not-allowed" : "pointer"}
-        >
-          Last
-        </Button>
-        <Text color={subtleTextColor} fontSize="sm" ml={4}>
-          Page {currentPage} of {totalPages} ({totalItems} total)
-        </Text>
-      </Flex>
-    );
-  };
+      ))}
+      {endPage < totalPages && (
+        <>
+          {endPage < totalPages - 1 && <Text color={textColor}>...</Text>}
+          <Button
+            size="sm"
+            bg={cardBg}
+            color={textColor}
+            _hover={{ bg: "#BB954D", color: "white" }}
+            onClick={() => setCurrentPage(totalPages)}
+          >
+            {totalPages}
+          </Button>
+        </>
+      )}
+      <Button
+        size="sm"
+        bg={currentPage === totalPages ? "gray.300" : "#B38939"}
+        _hover={{ bg: currentPage === totalPages ? "gray.300" : "#BB954D" }}
+        color={currentPage === totalPages ? "gray.500" : "white"}
+        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+        isDisabled={currentPage === totalPages}
+        cursor={currentPage === totalPages ? "not-allowed" : "pointer"}
+      >
+        Next
+      </Button>
+      <Button
+        size="sm"
+        bg={currentPage === totalPages ? "gray.300" : "#B38939"}
+        _hover={{ bg: currentPage === totalPages ? "gray.300" : "#BB954D" }}
+        color={currentPage === totalPages ? "gray.500" : "white"}
+        onClick={() => setCurrentPage(totalPages)}
+        isDisabled={currentPage === totalPages}
+        cursor={currentPage === totalPages ? "not-allowed" : "pointer"}
+      >
+        Last
+      </Button>
+      <Text color={subtleTextColor} fontSize="sm" ml={4}>
+        Page {currentPage} of {totalPages} ({totalItems} total)
+      </Text>
+    </Flex>
+  );
+}, [cardBg, textColor, subtleTextColor, itemsPerPage]);
 
   if (isAuthLoading) {
     return (

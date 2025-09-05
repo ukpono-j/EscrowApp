@@ -32,10 +32,10 @@ export const fetchInitialData = createAsyncThunk(
             ...config,
             params: { ...config.params, noCache: noCache || Date.now() },
           });
-          logger.info(`Fetched data from ${url}`, { 
-            success: response.data.success, 
-            data: response.data 
-          });
+          // logger.info(`Fetched data from ${url}`, { 
+          //   success: response.data.success, 
+          //   data: response.data 
+          // });
           return response.data;
         } catch (err) {
           lastError = err;
@@ -93,7 +93,7 @@ export const fetchInitialData = createAsyncThunk(
               }))
               .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
           : [];
-        logger.info('Transactions fetched', { count: result.transactions.length });
+        // logger.info('Transactions fetched', { count: result.transactions.length });
       } else if (transactionsResponse.status === 'rejected') {
         logger.warn('Transactions fetch failed:', transactionsResponse.reason);
         result.transactions = existingTransactions;
@@ -114,7 +114,7 @@ export const fetchInitialData = createAsyncThunk(
                 .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
             : [],
         };
-        logger.info('Wallet data fetched', { balance: result.wallet.balance, transactionCount: result.wallet.transactions.length });
+        // logger.info('Wallet data fetched', { balance: result.wallet.balance, transactionCount: result.wallet.transactions.length });
       } else if (walletResponse.status === 'rejected') {
         logger.warn('Wallet balance fetch failed:', walletResponse.reason);
         result.wallet = {
@@ -165,7 +165,7 @@ export const fundWallet = createAsyncThunk(
         phoneNumber,
         userId,
       });
-      logger.info('Wallet funding initiated', { userId, amount, reference: response.data.data?.reference });
+      // logger.info('Wallet funding initiated', { userId, amount, reference: response.data.data?.reference });
       if (!response.data.success) {
         throw new Error(response.data.error || 'Failed to initiate funding');
       }
@@ -193,11 +193,11 @@ export const withdrawFunds = createAsyncThunk(
         { amount, accountNumber, accountName, bankCode },
         { headers: { Authorization: `Bearer ${localStorage.getItem('access-token')}` } }
       );
-      logger.info('Withdraw funds initiated:', {
-        amount,
-        accountNumber: accountNumber?.slice(-4),
-        bankCode,
-      });
+      // logger.info('Withdraw funds initiated:', {
+      //   amount,
+      //   accountNumber: accountNumber?.slice(-4),
+      //   bankCode,
+      // });
       return response.data;
     } catch (error) {
       logger.error('Withdraw error:', {
@@ -220,10 +220,10 @@ export const checkFundingStatus = createAsyncThunk(
         headers: { Authorization: `Bearer ${localStorage.getItem('access-token')}` },
         params: { noCache: Date.now() },
       });
-      logger.info('Checked funding status', {
-        reference,
-        status: response.data.data?.transaction?.status,
-      });
+      // logger.info('Checked funding status', {
+      //   reference,
+      //   status: response.data.data?.transaction?.status,
+      // });
 
       if (response.data.success && response.data.data.transaction?.status === 'completed') {
         dispatch(setWallet({
@@ -264,10 +264,10 @@ export const manualReconcileTransaction = createAsyncThunk(
         { reference },
         { headers: { Authorization: `Bearer ${localStorage.getItem('access-token')}` } }
       );
-      logger.info('Manual reconciliation response', {
-        reference,
-        status: response.data.data?.transaction?.status,
-      });
+      // logger.info('Manual reconciliation response', {
+      //   reference,
+      //   status: response.data.data?.transaction?.status,
+      // });
 
       if (response.data.success && response.data.data.transaction?.status === 'completed') {
         dispatch(setWallet({
@@ -300,9 +300,9 @@ export const fetchPendingWithdrawals = createAsyncThunk(
         headers: { Authorization: `Bearer ${localStorage.getItem('access-token')}` },
         params: { noCache: Date.now() },
       });
-      logger.info('Fetched pending withdrawals', {
-        count: response.data.data?.pendingWithdrawals?.length || 0,
-      });
+      // logger.info('Fetched pending withdrawals', {
+      //   count: response.data.data?.pendingWithdrawals?.length || 0,
+      // });
       return response.data; // Return the entire response
     } catch (error) {
       logger.error('Fetch pending withdrawals error', {
@@ -341,16 +341,16 @@ export const fetchTransactions = createAsyncThunk(
         }),
       ]);
 
-      logger.info('Fetched transactions', { 
-        success: transactionsResponse.data.success, 
-        count: transactionsResponse.data.data?.transactions?.length || 0, 
-        responseData: transactionsResponse.data 
-      });
+      // logger.info('Fetched transactions', { 
+      //   success: transactionsResponse.data.success, 
+      //   count: transactionsResponse.data.data?.transactions?.length || 0, 
+      //   responseData: transactionsResponse.data 
+      // });
 
-      logger.info('Fetched wallet balance', { 
-        success: walletResponse.data.success, 
-        balance: walletResponse.data.data?.wallet?.balance || 0 
-      });
+      // logger.info('Fetched wallet balance', { 
+      //   success: walletResponse.data.success, 
+      //   balance: walletResponse.data.data?.wallet?.balance || 0 
+      // });
 
       if (!transactionsResponse.data.success) {
         logger.warn('Transaction fetch unsuccessful', { response: transactionsResponse.data });

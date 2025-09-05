@@ -42,7 +42,7 @@ const transactionSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchInitialData.fulfilled, (state, action) => {
-        console.log('fetchInitialData payload:', action.payload);
+        // console.log('fetchInitialData payload:', action.payload);
         state.transactions = Array.isArray(action.payload.transactions)
           ? action.payload.transactions.filter(t => t && t._id)
           : [];

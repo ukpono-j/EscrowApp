@@ -1175,7 +1175,7 @@ const DisplayTransaction = () => {
     return filtered;
   }, [transactions, activeTab, searchQuery]);
 
-  const handleChat = async (transactionId) => {
+  const handleChat = useCallback(async (transactionId) => {
     try {
       const res = await axios.post(`${BASE_URL}/api/transactions/create-chatroom`, { transactionId }, {
         headers: { Authorization: `Bearer ${localStorage.getItem('access-token')}` },
@@ -1188,9 +1188,9 @@ const DisplayTransaction = () => {
     } catch (error) {
       managedToast({ id: `chat-error-${transactionId}`, title: 'Error', description: error.response?.data?.error || error.message, status: 'error', duration: 5000, isClosable: true });
     }
-  };
+  }, [navigate, managedToast]);
 
-  const handleWaybill = (transactionId, isBuyer) => {
+  const handleWaybill = useCallback((transactionId, isBuyer) => {
     const transaction = transactions.find(t => t._id === transactionId);
     if (!transaction) {
       managedToast({
@@ -1216,7 +1216,7 @@ const DisplayTransaction = () => {
     }
     if (isBuyer) {
       setBuyerShowWaybillPopup(prev => ({ ...prev, [transactionId]: true }));
-      setIsFetchingWaybill(prev => ({ ...prev, [transactionId]: true })); // Initialize loading state
+      setIsFetchingWaybill(prev => ({ ...prev, [transactionId]: true }));
       fetchBuyerWaybillDetails(transactionId);
     } else {
       setShowWaybillPopup(prev => ({ ...prev, [transactionId]: true }));
@@ -1225,9 +1225,9 @@ const DisplayTransaction = () => {
         item: transaction?.productDetails?.description || '',
       }));
     }
-  };
+  }, [transactions, managedToast]);
 
-  const fetchBuyerWaybillDetails = async (transactionId) => {
+  const fetchBuyerWaybillDetails = useCallback(async (transactionId) => {
     setIsFetchingWaybill(prev => ({ ...prev, [transactionId]: true }));
     try {
       const res = await axios.get(`${BASE_URL}/api/transactions/waybill-details/${transactionId}`, {
@@ -1251,9 +1251,9 @@ const DisplayTransaction = () => {
     } finally {
       setIsFetchingWaybill(prev => ({ ...prev, [transactionId]: false }));
     }
-  };
+  }, [managedToast]);
 
-  const handleWaybillSubmit = async (transactionId) => {
+  const handleWaybillSubmit = useCallback(async (transactionId) => {
     const newErrors = {};
     ["shippingAddress", "trackingNumber", "deliveryDate"].forEach(key => {
       if (!waybillDetails[key]) newErrors[key] = `${key.charAt(0).toUpperCase() + key.slice(1)} is required`;
@@ -1273,11 +1273,6 @@ const DisplayTransaction = () => {
     formData.append("trackingNumber", waybillDetails.trackingNumber);
     formData.append("deliveryDate", waybillDetails.deliveryDate);
     if (waybillDetails.image) formData.append("image", waybillDetails.image);
-
-    console.log('Submitting FormData for waybill:');
-    for (const [key, value] of formData.entries()) {
-      console.log(`${key}: ${typeof value === 'object' ? value.name || 'File object' : value}`);
-    }
 
     try {
       setIsSubmitting(true);
@@ -1332,9 +1327,9 @@ const DisplayTransaction = () => {
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [waybillDetails, dispatch, managedToast]);
 
-  const downloadImage = async (url) => {
+  const downloadImage = useCallback(async (url) => {
     if (!url) return;
     try {
       const response = await fetch(url);
@@ -1350,18 +1345,20 @@ const DisplayTransaction = () => {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      URL.revokeObjectURL(blobUrl); // Clean up
+      URL.revokeObjectURL(blobUrl);
     } catch (error) {
       console.error('Error downloading image:', error);
     }
-  };
+  }, []);
 
-  const openCancelModal = (transactionId) => {
+
+  const openCancelModal = useCallback((transactionId) => {
     setCancelTransactionId(transactionId);
     setCancelModalVisible(true);
-  };
+  }, []);
 
-  const cancelTransactionAction = async (transactionId) => {
+
+  const cancelTransactionAction = useCallback(async (transactionId) => {
     if (isConfirming[transactionId]) return;
     setIsConfirming(prev => ({ ...prev, [transactionId]: true }));
     try {
@@ -1413,9 +1410,9 @@ const DisplayTransaction = () => {
       setCancelModalVisible(false);
       setCancelTransactionId(null);
     }
-  };
+  }, [isConfirming, dispatch, managedToast]);
 
-  const handleConfirm = async (transactionId) => {
+  const handleConfirm = useCallback(async (transactionId) => {
     const userId = userDetails?.id || userDetails?.user?.id || 'unknown';
     if (isConfirming[transactionId] || !userId) return;
     setIsConfirming(prev => ({ ...prev, [transactionId]: true }));
@@ -1461,14 +1458,15 @@ const DisplayTransaction = () => {
     setSelectedTransactionId(transactionId);
     setModalVisible(true);
     setIsConfirming(prev => ({ ...prev, [transactionId]: false }));
-  };
+  }, [userDetails, isConfirming, transactions, fetchWalletBalance, walletBalance, dispatch, managedToast, openFundingModal]);
 
-  const completeTransaction = async (transactionId) => {
+
+  const completeTransaction = useCallback(async (transactionId) => {
     if (isConfirming[transactionId]) return;
     setIsConfirming(prev => ({ ...prev, [transactionId]: true }));
     try {
       const response = await dispatch(confirmTransaction(transactionId)).unwrap();
-      const transaction = response.transaction; // Extract transaction from response
+      const transaction = response.transaction;
       managedToast({
         id: `confirm-success-${transactionId}`,
         title: transaction.status === 'completed' ? 'Completed' : 'Confirmation Recorded',
@@ -1507,9 +1505,9 @@ const DisplayTransaction = () => {
       setModalVisible(false);
       setSelectedTransactionId(null);
     }
-  };
+  }, [isConfirming, dispatch, managedToast, transactions, openFundingModal]);
 
-  const handleFund = async (transaction) => {
+  const handleFund = useCallback(async (transaction) => {
     if (!transaction || !transaction._id || transaction.locked || !transaction.paymentAmount || parseFloat(transaction.paymentAmount) <= 0) {
       managedToast({
         id: `fund-error-${transaction?._id || 'unknown'}`,
@@ -1524,9 +1522,9 @@ const DisplayTransaction = () => {
     setCurrentTransaction(transaction);
     await fetchWalletBalance();
     openFundingModal();
-  };
+  }, [managedToast, fetchWalletBalance, openFundingModal]);
 
-  const confirmFunding = async (transaction, setError) => {
+  const confirmFunding = useCallback(async (transaction, setError) => {
     if (!transaction || !transaction.paymentAmount) {
       managedToast({
         id: `fund-error-${transaction?._id || 'unknown'}`,
@@ -1573,9 +1571,9 @@ const DisplayTransaction = () => {
     } finally {
       setIsConfirming(prev => ({ ...prev, [transaction._id]: false }));
     }
-  };
+  }, [dispatch, managedToast, closeFundingModal, fetchWalletBalance]);
 
-  const handleEditPayment = (transaction) => {
+  const handleEditPayment = useCallback((transaction) => {
     if (!transaction || !transaction._id) {
       managedToast({
         id: `edit-error-${transaction?._id || 'unknown'}`,
@@ -1590,9 +1588,9 @@ const DisplayTransaction = () => {
     setCurrentTransaction(transaction);
     setPaymentDetails({ paymentAmount: transaction.paymentAmount || "" });
     setShowPaymentDetailsModal(true);
-  };
+  }, [managedToast]);
 
-  const handlePaymentSubmit = async () => {
+  const handlePaymentSubmit = useCallback(async () => {
     if (!currentTransaction || !currentTransaction._id) {
       managedToast({
         id: `payment-error-no-transaction`,
@@ -1660,17 +1658,17 @@ const DisplayTransaction = () => {
         isClosable: true,
       });
     }
-  };
+  }, [currentTransaction, paymentDetails, dispatch, managedToast]);
 
-  const copyToClipboard = (text) => {
+  const copyToClipboard = useCallback((text) => {
     navigator.clipboard.writeText(text).then(() =>
       managedToast({ id: `copy-${text}`, title: 'Copied', status: 'success', duration: 2000, isClosable: true })
     );
-  };
+  }, [managedToast]);
 
-  const toggleDescription = (transactionId) => {
+  const toggleDescription = useCallback((transactionId) => {
     setExpandedDescriptions(prev => ({ ...prev, [transactionId]: !prev[transactionId] }));
-  };
+  }, []);
 
   const isUserDataLoaded = userDetails && (userDetails.id || userDetails.user?.id || userDetails.email);
 
@@ -1898,8 +1896,29 @@ const DisplayTransaction = () => {
             </ModalBody>
             <ModalFooter>
               <Flex gap={3} w="full">
-                <Button size="sm" bg={useColorModeValue('gray.200', 'gray.600')} color={textColor} _hover={{ bg: useColorModeValue('gray.300', 'gray.700') }} onClick={() => setModalVisible(false)}>Cancel</Button>
-                <Button size="sm" bg="#BB954D" color="white" _hover={{ bg: "#967532" }} onClick={() => completeTransaction(selectedTransactionId)} isLoading={isConfirming[selectedTransactionId]}>Confirm</Button>
+                {/* // For the confirm transaction modal (around line 800): */}
+                <Button
+                  size="sm"
+                  bg="#BB954D"
+                  color="white"
+                  _hover={{ bg: "#967532" }}
+                  onClick={() => completeTransaction(selectedTransactionId)}
+                  isLoading={isConfirming[selectedTransactionId]}
+                >
+                  Confirm
+                </Button>
+
+                {/* // For the cancel transaction modal (around line 820): */}
+                <Button
+                  size="sm"
+                  bg="#ef4444"
+                  color="white"
+                  _hover={{ bg: "#dc2626" }}
+                  onClick={() => cancelTransactionAction(cancelTransactionId)}
+                  isLoading={isConfirming[cancelTransactionId]}
+                >
+                  Yes
+                </Button>
               </Flex>
             </ModalFooter>
           </ModalContent>
