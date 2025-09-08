@@ -120,7 +120,6 @@ const Kyc = () => {
     fetchKycStatus();
   }, [navigate, toast]);
 
-  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -152,7 +151,12 @@ const Kyc = () => {
       setFormData({ bvn: "" });
       setErrors({});
     } catch (error) {
-      const errorMessage = error.response?.data?.error || error.message || "An error occurred during BVN verification";
+      const errorMessage =
+        error.response?.data?.error === "invalid_bvn"
+          ? "Invalid BVN. Please check and try again."
+          : error.response?.data?.error === "Paystack rate limit exceeded. Please try again later."
+            ? "Too many requests. Please try again later."
+            : error.response?.data?.error || error.message || "An error occurred during BVN verification";
       toast({
         title: "Submission Failed",
         description: errorMessage,
@@ -235,7 +239,7 @@ const Kyc = () => {
     return (
       <Box bg={bgColor} minH="100vh">
         <Sidebar onCollapseChange={setIsSidebarCollapsed} />
-        
+
         {/* Desktop Layout */}
         <Box ml={isSidebarCollapsed ? "80px" : "280px"} display={{ base: "none", md: "block" }}>
           <Flex h="100vh" align="center" justify="center" px={4}>
