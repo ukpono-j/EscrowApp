@@ -1,3 +1,4 @@
+// Sidebar.jsx (update links array and add useEffect for user role)
 import React, { useEffect, useState, useCallback, memo } from "react";
 import {
   MdLogout,
@@ -8,7 +9,7 @@ import {
   MdMenu,
   MdClose,
 } from "react-icons/md";
-import { FaHandshake, FaExchangeAlt, FaUserShield } from "react-icons/fa";
+import { FaHandshake, FaExchangeAlt, FaUserShield, FaGavel } from "react-icons/fa";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   useToast,
@@ -26,7 +27,6 @@ import ThemeToggle from "../../ThemeToggle";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 
-// Error Boundary
 class SidebarErrorBoundary extends React.Component {
   state = { hasError: false };
 
@@ -59,7 +59,6 @@ const validateUserResponse = (responseData) => {
   throw new Error(responseData.error || "Invalid user data received");
 };
 
-// Optimized Sidebar Component
 const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }) => {
   const location = useLocation();
   const [activeLink, setActiveLink] = useState(location.pathname === "/" ? "/dashboard" : location.pathname);
@@ -74,8 +73,8 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
   });
   const [isMobile, setIsMobile] = useState(false);
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false); // Add state for admin role
 
-  // Color mode values
   const bgColor = useColorModeValue("#FFFFFF", "#051E2F");
   const borderColor = useColorModeValue("#E2E8F0", "rgba(179, 137, 57, 0.1)");
 
@@ -87,7 +86,6 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
       setIsCollapsed(false);
     } else {
       setIsSidebarVisible(true);
-      // Use saved collapsed state from localStorage or default to collapsed for < 1024px
       const savedCollapsed = JSON.parse(localStorage.getItem('sidebarCollapsed'));
       setIsCollapsed(savedCollapsed !== null ? savedCollapsed : window.innerWidth < 1024);
     }
@@ -131,6 +129,7 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
         console.log("User details response:", response.data);
         const user = validateUserResponse(response.data);
         setUserName(user.firstName || "User");
+        setIsAdmin(user.isAdmin || false); // Set admin status
       } catch (error) {
         console.error("Error fetching user details:", {
           message: error.message,
@@ -160,7 +159,6 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
     onCollapseChange?.(isMobile ? isSidebarVisible : isCollapsed);
   }, [isCollapsed, isSidebarVisible, isMobile, onCollapseChange]);
 
-
   const toggleSidebar = useCallback(() => {
     if (isMobile) {
       setIsSidebarVisible((prev) => !prev);
@@ -178,16 +176,18 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
     { to: "/create-transaction", label: "Create Transaction", icon: <MdAddCircle className="text-xl" /> },
     { to: "/join-transaction", label: "Join Transaction", icon: <FaHandshake className="text-xl" /> },
     { to: "/transactions/tab", label: "My Transactions", icon: <FaExchangeAlt className="text-xl" /> },
+    { to: "/disputes", label: "Disputes", icon: <FaGavel className="text-xl" /> }, // Add Disputes link
+    ...(isAdmin ? [{ to: "/admin/disputes", label: "Admin Disputes", icon: <FaGavel className="text-xl" /> }] : []), // Add Admin Disputes link for admins
     { to: "/profile", label: "My Profile", icon: <MdPerson className="text-xl" /> },
     { to: "/security-settings/kyc", label: "BVN Verification", icon: <FaUserShield className="text-lg" /> },
   ];
+
   const handleLinkClick = useCallback((to) => {
     setActiveLink(to);
     setSettingLinks(false);
     if (isMobile) {
       setIsSidebarVisible(false);
     }
-    // Ensure sidebar remains collapsed if it was collapsed
     const savedCollapsed = JSON.parse(localStorage.getItem('sidebarCollapsed'));
     if (!isMobile && savedCollapsed) {
       setIsCollapsed(true);
@@ -211,7 +211,6 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
     navigate("/login");
   }, [navigate, toast]);
 
-  // Simple tooltip without animations
   const Tooltip = ({ children, label }) => (
     <div className="group relative">
       {children}
@@ -224,7 +223,6 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
     </div>
   );
 
-  // Mobile toggle button
   const MobileToggle = () => {
     if (!isMobile || isSidebarVisible) return null;
     return (
@@ -239,7 +237,6 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
     );
   };
 
-  // Calculate sidebar width without animations
   const sidebarWidth = isMobile ? (isSidebarVisible ? "260px" : "0px") : (isCollapsed ? "80px" : "260px");
   const sidebarOpacity = isMobile ? (isSidebarVisible ? 1 : 0) : 1;
 
@@ -255,7 +252,7 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
             minWidth: isMobile ? "0px" : "80px",
             transform: 'translate3d(0, 0, 0)',
             willChange: 'width, opacity',
-            overflowX: 'hidden', // Enforce no horizontal scrolling
+            overflowX: 'hidden',
           }}
         >
           <Box
@@ -273,13 +270,11 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
                 "0 8px 32px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(179, 137, 57, 0.08)",
                 "0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(179, 137, 57, 0.15)"
               ),
-              overflowX: 'hidden', // Enforce no horizontal scrolling on Box
+              overflowX: 'hidden',
             }}
           >
-            {/* Header Section */}
             <div className="flex-shrink-0 border-b border-opacity-20" style={{ height: "100px", borderColor, overflowX: 'hidden' }}>
               <div className="flex items-center justify-between p-4 h-full">
-                {/* Logo */}
                 <div
                   className="flex items-center justify-center overflow-hidden transition-opacity duration-150"
                   style={{
@@ -304,8 +299,6 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
                     />
                   </Link>
                 </div>
-
-                {/* Toggle Button - Always visible */}
                 <button
                   onClick={toggleSidebar}
                   className="flex items-center justify-center rounded-xl bg-gradient-to-br from-[#B38939]/10 to-[#BB954D]/10 hover:from-[#B38939]/20 hover:to-[#BB954D]/20 transition-colors duration-200 border border-[#B38939]/20"
@@ -328,12 +321,10 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
                 </button>
               </div>
             </div>
-
-            {/* Navigation Section */}
             <div className="flex-1 overflow-y-auto" style={{
               scrollbarWidth: "thin",
               scrollbarColor: "rgba(179, 137, 57, 0.3) transparent",
-              overflowX: 'hidden', // Enforce no horizontal scrolling
+              overflowX: 'hidden',
             }}>
               <div className="p-4 space-y-2" style={{ overflowX: 'hidden' }}>
                 {links.map((link, index) => (
@@ -348,7 +339,7 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
                         }`}
                       style={{
                         width: isCollapsed && !isMobile ? "43px" : "100%",
-                        maxWidth: isCollapsed && !isMobile ? "43px" : "100%", // Prevent overflow
+                        maxWidth: isCollapsed && !isMobile ? "43px" : "100%",
                         height: "44px",
                         minWidth: isCollapsed && !isMobile ? "43px" : "auto",
                         overflowX: 'hidden',
@@ -357,7 +348,6 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
                       <span className={`${activeLink === link.to ? "text-white" : "text-[#B38939]"}`}>
                         {link.icon}
                       </span>
-
                       {(!isCollapsed || isMobile) && (
                         <span className="text-sm font-medium whitespace-nowrap">
                           {link.label}
@@ -368,11 +358,8 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
                 ))}
               </div>
             </div>
-
-            {/* Footer Section - Always visible and properly sized */}
             <div className="flex-shrink-0 border-t border-opacity-20 p-4" style={{ borderColor, minHeight: "80px", overflowX: 'hidden' }}>
               {isCollapsed && !isMobile ? (
-                // Collapsed footer with centered logout
                 <div className="flex items-center justify-center">
                   <Tooltip label="Logout">
                     <button
@@ -390,7 +377,6 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
                   </Tooltip>
                 </div>
               ) : (
-                // Expanded footer
                 <div className="flex flex-col gap-3">
                   <Flex align="center" justify="space-between">
                     <Text fontSize="xs" color="gray.500" fontWeight="medium">
@@ -398,7 +384,6 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
                     </Text>
                     <ThemeToggle />
                   </Flex>
-
                   <button
                     onClick={handleLogout}
                     className="w-full flex items-center justify-center gap-3 py-3 rounded-xl bg-red-500/10 hover:bg-red-500/15 transition-colors duration-200 font-medium border border-red-500/20 text-red-500"

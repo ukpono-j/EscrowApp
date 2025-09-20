@@ -17,6 +17,7 @@ import SetAvatar from './pages/SetAvatar';
 import Kyc from './components/dashboard/Kyc';
 import Settings from './components/dashboard/Settings';
 import Admin from './components/admin/Admin';
+import DisputePage from './components/dashboard/DisputePage'; // Import DisputePage
 import PrivateRoute from './components/PrivateRoute';
 import PublicRoute from './components/PublicRoute';
 import ForgotPassword from './pages/ForgotPassword';
@@ -173,6 +174,8 @@ function App() {
         <Route path="/transactions" element={<PrivateRoute><Transaction /></PrivateRoute>} />
         <Route path="/transactions/tab" element={<PrivateRoute><DisplayTransaction /></PrivateRoute>} />
         <Route path="/join-transaction" element={<PrivateRoute><JoinTransaction /></PrivateRoute>} />
+        <Route path="/disputes" element={<PrivateRoute><DisputePage /></PrivateRoute>} /> {/* Add User Dispute Route */}
+        <Route path="/admin/disputes" element={<PrivateRoute><DisputePage isAdmin={true} /></PrivateRoute>} /> {/* Add Admin Dispute Route */}
         <Route path="/contact" element={<PrivateRoute><ContactUs /></PrivateRoute>} />
         <Route path="/notifications" element={<PrivateRoute><Notification /></PrivateRoute>} />
         <Route path="/setAvatar" element={<PrivateRoute><SetAvatar /></PrivateRoute>} />

@@ -1,3 +1,4 @@
+// thunks.js
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import axios from '../../utils/axiosConfig';
 import { toast } from 'react-toastify';
@@ -11,7 +12,6 @@ export const fetchInitialData = createAsyncThunk(
     const token = localStorage.getItem('access-token');
 
     if (!token) {
-      // Don't show error toast here - let user continue with cached data
       console.warn('No access token found for initial data fetch');
       return rejectWithValue('No access token found');
     }
@@ -28,11 +28,9 @@ export const fetchInitialData = createAsyncThunk(
           throw new Error(response.data?.error || 'Request failed');
         } catch (err) {
           lastError = err;
-          // Don't retry on auth errors - let axios interceptor handle them
           if (err.response?.status === 401) {
-            throw err;
+            throw err; // Let axios interceptor handle
           }
-          // Don't retry on client errors
           if (err.response?.status >= 400 && err.response?.status < 500) {
             console.warn(`Stopping retries for ${url} due to client error ${err.response?.status}`);
             throw err;
@@ -64,7 +62,6 @@ export const fetchInitialData = createAsyncThunk(
         wallet: { balance: 0, totalDeposits: 0, transactions: [] },
       };
 
-      // Process results without showing error toasts for each failure
       if (userResponse.status === 'fulfilled' && userResponse.value) {
         const userData = userResponse.value.user || userResponse.value;
         result.userDetails = {
@@ -73,13 +70,13 @@ export const fetchInitialData = createAsyncThunk(
           lastName: userData.lastName || '',
           email: userData.email || '',
         };
-      } else if (userResponse.status === 'rejected') {
+      } else if (userResponse.status === 'rejected' && userResponse.reason.response?.status !== 401) {
         console.warn('User details fetch failed:', userResponse.reason);
       }
 
       if (transactionsResponse.status === 'fulfilled' && Array.isArray(transactionsResponse.value)) {
         result.transactions = transactionsResponse.value.filter(t => t && t._id);
-      } else if (transactionsResponse.status === 'rejected') {
+      } else if (transactionsResponse.status === 'rejected' && transactionsResponse.reason.response?.status !== 401) {
         console.warn('Transactions fetch failed:', transactionsResponse.reason);
       }
 
@@ -91,23 +88,24 @@ export const fetchInitialData = createAsyncThunk(
             ? walletResponse.value.wallet.transactions
             : [],
         };
-      } else if (walletResponse.status === 'rejected') {
+      } else if (walletResponse.status === 'rejected' && walletResponse.reason.response?.status !== 401) {
         console.warn('Wallet balance fetch failed:', walletResponse.reason);
       }
 
-      // Only show a general error if all requests failed
       const allFailed = [userResponse, transactionsResponse, walletResponse].every(
-        response => response.status === 'rejected'
+        response => response.status === 'rejected' && response.reason.response?.status !== 401
       );
-      
+
       if (allFailed) {
         toast.error('Unable to load some data. Please refresh the page.', { autoClose: 3000 });
       }
 
       return result;
     } catch (error) {
-      console.error('Fetch initial data error:', error);
-      // Don't show error toast here - user can still use the app with cached data
+      if (error.response?.status !== 401) {
+        console.error('Fetch initial data error:', error);
+        toast.error('Unable to load some data. Please try again.', { autoClose: 3000 });
+      }
       return rejectWithValue(error.message || 'Failed to fetch initial data');
     }
   }
@@ -121,7 +119,6 @@ export const fetchSingleTransaction = createAsyncThunk(
     const token = localStorage.getItem('access-token');
 
     if (!token) {
-      // Don't show toast here - axios interceptor will handle auth
       return rejectWithValue('Authentication token missing');
     }
 
@@ -153,7 +150,7 @@ export const fetchSingleTransaction = createAsyncThunk(
             throw new Error('Transaction not found');
           }
           if (err.response?.status === 401) {
-            throw err; // Let axios interceptor handle this
+            throw err; // Let axios interceptor handle
           }
           if (i === maxRetries - 1) {
             throw lastError;
@@ -170,8 +167,8 @@ export const fetchSingleTransaction = createAsyncThunk(
       }
       return data;
     } catch (error) {
-      console.error('fetchSingleTransaction error:', error);
-      if (error.message !== 'Transaction not found') {
+      if (error.response?.status !== 401 && error.message !== 'Transaction not found') {
+        console.error('fetchSingleTransaction error:', error);
         toast.error('Unable to load transaction details. Please try again.', { autoClose: 3000 });
       }
       return rejectWithValue(error.message || 'Failed to fetch transaction');
@@ -206,12 +203,14 @@ export const updateTransaction = createAsyncThunk(
       toast.success('Transaction updated successfully!', { autoClose: 3000 });
       return response.data.data;
     } catch (error) {
-      const errorMessage =
-        error.response?.status === 404
-          ? 'Transaction not found. It may have been deleted.'
-          : error.response?.data?.error || error.message || 'Failed to update transaction';
-      toast.error(errorMessage, { autoClose: 3000 });
-      return rejectWithValue(errorMessage);
+      if (error.response?.status !== 401) {
+        const errorMessage =
+          error.response?.status === 404
+            ? 'Transaction not found. It may have been deleted.'
+            : error.response?.data?.error || error.message || 'Failed to update transaction';
+        toast.error(errorMessage, { autoClose: 3000 });
+      }
+      return rejectWithValue(error.message || 'Failed to update transaction');
     }
   }
 );
@@ -224,11 +223,11 @@ export const confirmTransaction = createAsyncThunk(
     const token = localStorage.getItem('access-token');
 
     if (!token) {
-      return rejectWithValue({ error: 'Authentication token missing' });
+      return rejectWithValue('Authentication token missing');
     }
     if (!/^[0-9a-fA-F]{24}$/.test(transactionId)) {
       toast.error('Invalid transaction ID.', { autoClose: 3000 });
-      return rejectWithValue({ error: 'Invalid transaction ID format' });
+      return rejectWithValue('Invalid transaction ID format');
     }
 
     const confirmWithRetry = async () => {
@@ -254,7 +253,7 @@ export const confirmTransaction = createAsyncThunk(
             throw new Error('Transaction not found');
           }
           if (err.response?.status === 401) {
-            throw err; // Let axios interceptor handle this
+            throw err; // Let axios interceptor handle
           }
           if ([429, 503].includes(err.response?.status)) {
             console.warn(`Retry ${i + 1}/${maxRetries} for confirmTransaction due to status ${err.response?.status}`);
@@ -275,10 +274,10 @@ export const confirmTransaction = createAsyncThunk(
       toast.success('Transaction confirmed successfully!', { autoClose: 3000 });
       return { transaction: fetched };
     } catch (error) {
-      if (error.message !== 'Transaction not found') {
+      if (error.response?.status !== 401 && error.message !== 'Transaction not found') {
         toast.error('Failed to confirm transaction. Please try again.', { autoClose: 3000 });
       }
-      return rejectWithValue({ error: error.message || 'Failed to confirm transaction' });
+      return rejectWithValue(error.message || 'Failed to confirm transaction');
     }
   }
 );
@@ -291,11 +290,15 @@ export const fundTransaction = createAsyncThunk(
     const token = localStorage.getItem('access-token');
 
     if (!token) {
-      return rejectWithValue({ error: 'Authentication token missing' });
+      return rejectWithValue('Authentication token missing');
     }
     if (!/^[0-9a-fA-F]{24}$/.test(transactionId)) {
       toast.error('Invalid transaction ID.', { autoClose: 3000 });
-      return rejectWithValue({ error: 'Invalid transaction ID format' });
+      return rejectWithValue('Invalid transaction ID format');
+    }
+    if (amount <= 0) {
+      toast.error('Invalid amount. Must be greater than zero.', { autoClose: 3000 });
+      return rejectWithValue('Invalid amount');
     }
 
     let lastError = null;
@@ -306,7 +309,7 @@ export const fundTransaction = createAsyncThunk(
           { transactionId, amount },
           {
             headers: { Authorization: `Bearer ${token}` },
-            timeout: 60000  // 60 seconds timeout
+            timeout: 60000, // 60 seconds timeout
           }
         );
         if (response.data?.success) {
@@ -316,8 +319,6 @@ export const fundTransaction = createAsyncThunk(
         throw new Error(response.data?.error || 'Failed to fund transaction');
       } catch (error) {
         lastError = error;
-        
-        // Handle timeout errors with retry
         if (error.code === 'ECONNABORTED' || error.response?.status === 408 || error.message.includes('timeout')) {
           if (attempt < maxRetries - 1) {
             toast.info(`Request timed out. Retrying... (${attempt + 1}/${maxRetries})`, { autoClose: 2000 });
@@ -325,28 +326,31 @@ export const fundTransaction = createAsyncThunk(
             continue;
           } else {
             toast.error('Request timed out after multiple attempts. Please try again.', { autoClose: 5000 });
+            return rejectWithValue('Request timed out after multiple attempts');
           }
         }
-        
         if (error.response?.status === 404) {
           toast.error('Transaction not found.', { autoClose: 3000 });
-          return rejectWithValue({ error: 'Transaction not found' });
+          return rejectWithValue('Transaction not found');
         }
-        
         if (error.response?.status === 401) {
-          // Let axios interceptor handle auth errors
-          return rejectWithValue({ error: 'Authentication failed' });
+          return rejectWithValue('Authentication failed'); // Let axios interceptor handle
         }
-        
-        const errorMessage = error.response?.data?.error || error.message || 'Failed to fund transaction';
-        toast.error(errorMessage, { autoClose: 3000 });
-        return rejectWithValue({ error: errorMessage });
+        if (error.response?.status === 400 && error.response?.data?.error.includes('Insufficient')) {
+          toast.error('Insufficient wallet balance.', { autoClose: 3000 });
+          return rejectWithValue('Insufficient wallet balance');
+        }
+        if (attempt === maxRetries - 1) {
+          const errorMessage = error.response?.data?.error || error.message || 'Failed to fund transaction';
+          toast.error(errorMessage, { autoClose: 3000 });
+          return rejectWithValue(errorMessage);
+        }
       }
     }
-    
-    const errorMessage = lastError?.message || 'Failed after multiple attempts';
+
+    const errorMessage = lastError?.response?.data?.error || lastError?.message || 'Failed after multiple attempts';
     toast.error(errorMessage, { autoClose: 3000 });
-    return rejectWithValue({ error: errorMessage });
+    return rejectWithValue(errorMessage);
   }
 );
 
@@ -356,33 +360,35 @@ export const cancelTransaction = createAsyncThunk(
     try {
       const token = localStorage.getItem('access-token');
       if (!token) {
-        return rejectWithValue({ error: 'Authentication token missing' });
+        return rejectWithValue('Authentication token missing');
       }
       if (!/^[0-9a-fA-F]{24}$/.test(transactionId)) {
         toast.error('Invalid transaction ID.', { autoClose: 3000 });
-        return rejectWithValue({ error: 'Invalid transaction ID format' });
+        return rejectWithValue('Invalid transaction ID format');
       }
-      
+
       const response = await axios.put(
         `${BASE_URL}/api/transactions/cancel/${transactionId}`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
-      if (response.data?.message) {
+
+      if (response.data?.success) {
         await dispatch(fetchSingleTransaction(transactionId)).unwrap();
-        toast.success(response.data.message, { autoClose: 3000 });
+        toast.success(response.data.message || 'Transaction cancelled successfully!', { autoClose: 3000 });
         return response.data;
       }
-      throw new Error(response.data?.message || 'Failed to cancel transaction');
+      throw new Error(response.data?.error || 'Failed to cancel transaction');
     } catch (error) {
       if (error.response?.status === 404) {
         toast.error('Transaction not found.', { autoClose: 3000 });
-        return rejectWithValue({ error: 'Transaction not found' });
+        return rejectWithValue('Transaction not found');
       }
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to cancel transaction';
-      toast.error(errorMessage, { autoClose: 3000 });
-      return rejectWithValue({ error: errorMessage });
+      if (error.response?.status !== 401) {
+        const errorMessage = error.response?.data?.error || error.message || 'Failed to cancel transaction';
+        toast.error(errorMessage, { autoClose: 3000 });
+      }
+      return rejectWithValue(error.message || 'Failed to cancel transaction');
     }
   }
 );

@@ -32,6 +32,7 @@ const Kyc = () => {
   const [kycStatus, setKycStatus] = useState({ isSubmitted: false, status: "not_submitted" });
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     if (typeof window !== "undefined") {
       const isMobile = window.innerWidth < 768;
@@ -72,8 +73,10 @@ const Kyc = () => {
   // Handle input change
   const handleInputChange = useCallback((e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    const error = validateBVN(value);
+    // Only allow numbers and limit to 11 digits
+    const numericValue = value.replace(/\D/g, '').slice(0, 11);
+    setFormData((prev) => ({ ...prev, [name]: numericValue }));
+    const error = validateBVN(numericValue);
     setErrors((prev) => ({ ...prev, [name]: error }));
   }, [validateBVN]);
 
@@ -144,25 +147,59 @@ const Kyc = () => {
         title: "Success!",
         description: `BVN verification submitted successfully. Status: ${response.data.status}.`,
         status: "success",
-        duration: 3000,
+        duration: 4000,
       });
 
       setKycStatus({ isSubmitted: true, status: response.data.status });
       setFormData({ bvn: "" });
       setErrors({});
+      setRetryCount(0);
     } catch (error) {
-      const errorMessage =
-        error.response?.data?.error === "invalid_bvn"
-          ? "Invalid BVN. Please check and try again."
-          : error.response?.data?.error === "Paystack rate limit exceeded. Please try again later."
-            ? "Too many requests. Please try again later."
-            : error.response?.data?.error || error.message || "An error occurred during BVN verification";
+      console.error("BVN submission error:", error);
+      
+      let errorMessage = "An error occurred during BVN verification";
+      let canRetry = false;
+
+      if (error.response?.status === 408 || error.code === 'ECONNABORTED') {
+        errorMessage = "Request timed out. Please try again.";
+        canRetry = true;
+      } else if (error.response?.status === 429) {
+        errorMessage = "Too many requests. Please wait a few minutes before trying again.";
+        canRetry = true;
+      } else if (error.response?.status === 503) {
+        errorMessage = "Service temporarily unavailable. Please try again later.";
+        canRetry = true;
+      } else if (error.response?.status === 400) {
+        const apiError = error.response.data?.error;
+        if (apiError?.toLowerCase().includes('invalid')) {
+          errorMessage = "Invalid BVN provided. Please check and try again.";
+        } else if (apiError?.toLowerCase().includes('already submitted')) {
+          errorMessage = "BVN verification already submitted.";
+          // Refresh status
+          setKycStatus({ isSubmitted: true, status: "pending" });
+        } else {
+          errorMessage = apiError || errorMessage;
+        }
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+        canRetry = error.response.status >= 500;
+      }
+
       toast({
-        title: "Submission Failed",
+        title: "Verification Failed",
         description: errorMessage,
         status: "error",
-        duration: 4000,
+        duration: 5000,
+        isClosable: true,
       });
+
+      // Auto-retry logic for network errors
+      if (canRetry && retryCount < 2 && (error.response?.status >= 500 || error.code === 'ECONNABORTED')) {
+        setTimeout(() => {
+          setRetryCount(prev => prev + 1);
+          handleSubmit(e);
+        }, 2000 * (retryCount + 1)); // Exponential backoff
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -257,16 +294,9 @@ const Kyc = () => {
               boxShadow="md"
             >
               <VStack spacing={4}>
-                {/* Icon */}
-                <Box
-                  bg={statusConfig.color}
-                  borderRadius="full"
-                  p={2.5}
-                >
+                <Box bg={statusConfig.color} borderRadius="full" p={2.5}>
                   <StatusIcon size="20px" color="white" />
                 </Box>
-
-                {/* Heading */}
                 <VStack spacing={1}>
                   <Heading size="md" color={textColor} fontWeight="600">
                     BVN Verification
@@ -275,8 +305,6 @@ const Kyc = () => {
                     {statusConfig.description}
                   </Text>
                 </VStack>
-
-                {/* Status Badge */}
                 <Badge
                   bg={statusConfig.color}
                   color="white"
@@ -292,8 +320,6 @@ const Kyc = () => {
                   <StatusIcon size="10px" />
                   {statusConfig.text}
                 </Badge>
-
-                {/* Action Buttons */}
                 <VStack spacing={2} w="100%" pt={1}>
                   {statusConfig.showTryAgain && (
                     <Button
@@ -348,16 +374,9 @@ const Kyc = () => {
               boxShadow="sm"
             >
               <VStack spacing={3}>
-                {/* Icon */}
-                <Box
-                  bg={statusConfig.color}
-                  borderRadius="full"
-                  p={2}
-                >
+                <Box bg={statusConfig.color} borderRadius="full" p={2}>
                   <StatusIcon size="18px" color="white" />
                 </Box>
-
-                {/* Heading */}
                 <VStack spacing={1}>
                   <Heading size="sm" color={textColor} fontWeight="600">
                     BVN Verification
@@ -366,8 +385,6 @@ const Kyc = () => {
                     {statusConfig.description}
                   </Text>
                 </VStack>
-
-                {/* Status Badge */}
                 <Badge
                   bg={statusConfig.color}
                   color="white"
@@ -383,8 +400,6 @@ const Kyc = () => {
                   <StatusIcon size="8px" />
                   {statusConfig.text}
                 </Badge>
-
-                {/* Action Buttons */}
                 <VStack spacing={2} w="100%" pt={1}>
                   {statusConfig.showTryAgain && (
                     <Button
@@ -452,6 +467,11 @@ const Kyc = () => {
                 BVN Verification
               </Heading>
               <Text color={subtleTextColor} fontSize="sm">Verify your identity with your BVN</Text>
+              {retryCount > 0 && (
+                <Text color="#B38939" fontSize="xs" mt={1}>
+                  Retry attempt {retryCount}/2
+                </Text>
+              )}
             </VStack>
 
             <FormControl isInvalid={!!errors.bvn} mb={8}>
@@ -465,9 +485,13 @@ const Kyc = () => {
                 placeholder="Enter your 11-digit BVN"
                 value={formData.bvn}
                 onChange={handleInputChange}
+                maxLength={11}
                 {...inputStyles}
               />
               <FormErrorMessage>{errors.bvn}</FormErrorMessage>
+              <Text color={subtleTextColor} fontSize="xs" mt={1}>
+                Your BVN is used to verify your identity securely
+              </Text>
             </FormControl>
 
             <Flex justify="flex-end" gap={3}>
@@ -480,6 +504,7 @@ const Kyc = () => {
                 px={6}
                 _hover={{ bg: "#B38939", color: "white" }}
                 onClick={() => navigate("/dashboard")}
+                disabled={isSubmitting}
               >
                 Cancel
               </Button>
@@ -488,14 +513,14 @@ const Kyc = () => {
                 bg="#B38939"
                 color="white"
                 isLoading={isSubmitting}
-                loadingText="Verifying"
+                loadingText={retryCount > 0 ? "Retrying..." : "Verifying"}
                 borderRadius="lg"
                 h="44px"
                 px={6}
                 _hover={{ bg: "#BB954D" }}
-                disabled={isSubmitting}
+                disabled={isSubmitting || !formData.bvn || formData.bvn.length !== 11}
               >
-                Verify BVN
+                {retryCount > 0 ? "Retry Verification" : "Verify BVN"}
               </Button>
             </Flex>
           </MotionBox>
@@ -524,6 +549,11 @@ const Kyc = () => {
               </Box>
               <Heading color={textColor} fontSize="xl">BVN Verification</Heading>
               <Text color={subtleTextColor} fontSize="xs">Verify your identity with your BVN</Text>
+              {retryCount > 0 && (
+                <Text color="#B38939" fontSize="xs" mt={1}>
+                  Retry {retryCount}/2
+                </Text>
+              )}
             </VStack>
 
             <VStack spacing={4}>
@@ -535,10 +565,14 @@ const Kyc = () => {
                   placeholder="Enter your 11-digit BVN"
                   value={formData.bvn}
                   onChange={handleInputChange}
+                  maxLength={11}
                   {...inputStyles}
                   h="40px"
                 />
                 <FormErrorMessage>{errors.bvn}</FormErrorMessage>
+                <Text color={subtleTextColor} fontSize="xs" mt={1}>
+                  Used to verify your identity securely
+                </Text>
               </FormControl>
 
               <Flex w="100%" gap={2}>
@@ -550,6 +584,7 @@ const Kyc = () => {
                   h="40px"
                   onClick={() => navigate("/dashboard")}
                   _hover={{ bg: "#B38939", color: "white" }}
+                  disabled={isSubmitting}
                 >
                   Cancel
                 </Button>
@@ -558,11 +593,13 @@ const Kyc = () => {
                   bg="#B38939"
                   color="white"
                   isLoading={isSubmitting}
+                  loadingText={retryCount > 0 ? "Retrying..." : "Verifying"}
                   flex={2}
                   h="40px"
                   _hover={{ bg: "#BB954D" }}
+                  disabled={isSubmitting || !formData.bvn || formData.bvn.length !== 11}
                 >
-                  Verify
+                  {retryCount > 0 ? "Retry" : "Verify"}
                 </Button>
               </Flex>
             </VStack>

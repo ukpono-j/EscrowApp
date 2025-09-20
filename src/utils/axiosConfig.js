@@ -1,3 +1,4 @@
+// axiosConfig.js
 import axios from 'axios';
 import { navigateTo } from './navigate';
 import { toast } from 'react-toastify';
@@ -11,6 +12,7 @@ let isOffline = !navigator.onLine;
 let pendingRequests = new Map();
 let lastConnectivityToast = 0;
 let networkIssueDetected = false;
+let isSessionExpired = false; // Track session expiration to prevent multiple toasts
 
 const checkConnectivity = async () => {
   try {
@@ -52,6 +54,7 @@ const debounceRequest = (config) => {
 window.addEventListener('online', () => {
   isOffline = false;
   networkIssueDetected = false;
+  isSessionExpired = false; // Reset session expiration on reconnect
   const now = Date.now();
   if (now - lastConnectivityToast > 5000) {
     toast.success('Connection restored', { 
@@ -97,7 +100,7 @@ const isCriticalEndpoint = (url) => {
     '/api/transactions/create',
     '/api/wallet/transfer',
     '/api/users/update-profile',
-    '/api/kyc/submit-kyc', // Add KYC endpoints as critical
+    '/api/kyc/submit-kyc',
     '/api/kyc/kyc-details'
   ];
   return criticalPaths.some(path => url?.includes(path));
@@ -116,7 +119,7 @@ instance.interceptors.request.use(
     }
 
     const token = localStorage.getItem('access-token');
-    if (token) {
+    if (token && !isSessionExpired) { // Only add token if session is not expired
       config.headers['Authorization'] = `Bearer ${token}`;
     }
     return config;
@@ -180,7 +183,7 @@ instance.interceptors.response.use(
     }
 
     if (status === 401 && !originalRequest._retry && !originalRequest.url?.includes('/api/auth/refreshToken')) {
-      if (isRefreshing) {
+      if (isRefreshing || isSessionExpired) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
@@ -196,12 +199,15 @@ instance.interceptors.response.use(
 
       const refreshToken = localStorage.getItem('refresh-token');
       if (!refreshToken) {
-        if (error.response?.data?.tokenExpired === true) {
-          toast.warn('Session expired. Please sign in again.', { autoClose: 3000 });
-          localStorage.removeItem('access-token');
-          localStorage.removeItem('refresh-token');
-          navigateTo('/login');
+        isSessionExpired = true;
+        const now = Date.now();
+        if (now - lastConnectivityToast > 5000) {
+          toast.warn('Session expired. Logging out now...', { autoClose: 3000 });
+          lastConnectivityToast = now;
         }
+        localStorage.removeItem('access-token');
+        localStorage.removeItem('refresh-token');
+        navigateTo('/login');
         processQueue(new Error('No refresh token available'));
         isRefreshing = false;
         return Promise.reject(error);
@@ -222,15 +228,18 @@ instance.interceptors.response.use(
         originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
         processQueue(null, newAccessToken);
         isRefreshing = false;
+        isSessionExpired = false; // Reset session expiration flag
         return instance(originalRequest);
       } catch (refreshError) {
-        if (refreshError.response?.status === 401 || refreshError.response?.data?.tokenExpired === true) {
-          toast.warn('Session expired. Please sign in again.', { autoClose: 3000 });
-          localStorage.removeItem('access-token');
-          localStorage.removeItem('refresh-token');
-          navigateTo('/login');
+        isSessionExpired = true;
+        const now = Date.now();
+        if (now - lastConnectivityToast > 5000) {
+          toast.warn('Session expired. Logging out now...', { autoClose: 3000 });
+          lastConnectivityToast = now;
         }
-        
+        localStorage.removeItem('access-token');
+        localStorage.removeItem('refresh-token');
+        navigateTo('/login');
         processQueue(refreshError);
         isRefreshing = false;
         return Promise.reject(refreshError);
@@ -243,9 +252,9 @@ instance.interceptors.response.use(
 
     const now = Date.now();
     
-    if (isCritical && !networkIssueDetected) {
+    if (isCritical && !networkIssueDetected && !isSessionExpired) {
       if (status === 500) {
-        toast.error('Server error during KYC operation. Please try again or contact support.', { 
+        toast.error('Server error during critical operation. Please try again or contact support.', { 
           autoClose: 4000,
           toastId: 'server-error'
         });
