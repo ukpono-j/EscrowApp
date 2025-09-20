@@ -21,13 +21,13 @@ const BottomNav = ({ onShowProfile, onShowToggleComponent }) => {
         if (error.response?.status === 401) {
           // Axios interceptor handles token refresh and redirect
         } else {
-          toast({
-            title: "Error",
-            description: "Failed to fetch user details. Please try again.",
-            status: "error",
-            duration: 5000,
-            isClosable: true,
-          });
+          // toast({
+          //   title: "Error",
+          //   description: "Failed to fetch user details. Please try again.",
+          //   status: "error",
+          //   duration: 5000,
+          //   isClosable: true,
+          // });
         }
       }
     };

@@ -136,13 +136,13 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
           response: error.response?.data,
           status: error.response?.status,
         });
-        toast({
-          title: "Error fetching user details",
-          description: error.message || "An error occurred while fetching user details.",
-          status: "error",
-          duration: 3000,
-          isClosable: true,
-        });
+        // toast({
+        //   title: "Error fetching user details",
+        //   description: error.message || "An error occurred while fetching user details.",
+        //   status: "error",
+        //   duration: 3000,
+        //   isClosable: true,
+        // });
         if (error.response?.status === 401 || error.response?.status === 404) {
           handleLogout();
         }

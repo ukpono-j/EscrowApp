@@ -546,14 +546,14 @@ const TransactionCreation = () => {
         setErrorMessage(
           error.response?.data?.error || error.message || "Unable to fetch user details"
         );
-        toast({
-          title: "Error fetching user details",
-          description:
-            error.response?.data?.error || error.message || "Unable to fetch user details",
-          status: "error",
-          duration: 3000,
-          isClosable: true,
-        });
+        // toast({
+        //   title: "Error fetching user details",
+        //   description:
+        //     error.response?.data?.error || error.message || "Unable to fetch user details",
+        //   status: "error",
+        //   duration: 3000,
+        //   isClosable: true,
+        // });
         if (error.response?.status === 401 || error.response?.status === 404) {
           console.log("Unauthorized or not found, redirecting to login");
           localStorage.removeItem("access-token");

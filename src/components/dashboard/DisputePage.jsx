@@ -21,12 +21,12 @@ import { format, isToday, isYesterday } from "date-fns";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 
-// Brand colors from MyTransaction component
+// Brand colors matching TransactionCreation
 const BRAND_COLORS = {
-  primary: "#B38939",
-  secondary: "#8A6D2F",
-  primaryRgb: "179, 137, 57",
-  secondaryRgb: "138, 109, 47"
+  primary: "#957432",
+  secondary: "#A88D50",
+  primaryRgb: "149, 116, 50",
+  secondaryRgb: "168, 141, 80"
 };
 
 // Mock data and constants
@@ -90,32 +90,43 @@ const DisputePage = ({ isAdmin = false }) => {
     evidence: []
   });
 
-  // Color scheme with brand colors and proper light/dark mode
+  // Color scheme with brand colors matching TransactionCreation
+  const bgMain = useColorModeValue("white", "#0F1624");
+  const bgSecondary = useColorModeValue("#F7FAFC", "#1E293B");
+  const bgTertiary = useColorModeValue("#EDF2F7", "#2D3748");
+  const textColor = useColorModeValue("gray.800", "white");
+  const borderColor = useColorModeValue("#957432", "#957432");
+  const accentColor = "#957432";
+  const accentHoverColor = "#A88D50";
+  const shadowColor = useColorModeValue("rgba(0, 0, 0, 0.1)", "rgba(0, 0, 0, 0.3)");
+  const inputBg = useColorModeValue("white", "#0F1624");
+  const cardBorder = useColorModeValue("1px solid #E2E8F0", "none");
+  const modalHeaderBg = useColorModeValue("gray.50", "#0F1624");
+  const modalHeaderBorder = useColorModeValue("gray.200", "gray.700");
+  const modalButtonHoverBg = useColorModeValue("gray.100", "gray.700");
+
   const colors = {
-    bg: useColorModeValue("#FFFFFF", "#1A202C"),
-    cardBg: useColorModeValue("rgba(255, 255, 255, 0.95)", "rgba(26, 32, 44, 0.95)"),
-    textColor: useColorModeValue("gray.800", "white"),
+    bg: bgMain,
+    cardBg: bgSecondary,
+    textColor: textColor,
     mutedColor: useColorModeValue("gray.600", "gray.400"),
-    chatBg: useColorModeValue("rgba(248, 250, 252, 0.8)", "rgba(26, 32, 44, 0.8)"),
-    myMessageBg: BRAND_COLORS.primary,
+    chatBg: bgTertiary,
+    myMessageBg: accentColor,
     otherMessageBg: useColorModeValue("white", "gray.700"),
     adminMessageBg: "#e53e3e",
-    buyerMessageBg: BRAND_COLORS.primary,
-    sellerMessageBg: BRAND_COLORS.secondary,
-    borderColor: useColorModeValue("gray.200", "gray.600"),
+    buyerMessageBg: accentColor,
+    sellerMessageBg: accentHoverColor,
+    borderColor: borderColor,
     hoverBg: `rgba(${BRAND_COLORS.primaryRgb}, 0.15)`,
-    brandPrimary: BRAND_COLORS.primary,
-    brandSecondary: BRAND_COLORS.secondary,
-    glassBg: useColorModeValue("rgba(255, 255, 255, 0.8)", "rgba(26, 32, 44, 0.8)"),
-    glassHover: useColorModeValue("rgba(255, 255, 255, 0.9)", "rgba(26, 32, 44, 0.9)"),
+    brandPrimary: accentColor,
+    brandSecondary: accentHoverColor,
+    glassBg: bgSecondary,
+    glassHover: useColorModeValue("#F7FAFC", "#2D3748"),
     gradientBg: useColorModeValue(
       `linear-gradient(135deg, rgba(${BRAND_COLORS.primaryRgb}, 0.1) 0%, rgba(${BRAND_COLORS.secondaryRgb}, 0.1) 100%)`,
       `linear-gradient(135deg, rgba(${BRAND_COLORS.primaryRgb}, 0.2) 0%, rgba(${BRAND_COLORS.secondaryRgb}, 0.2) 100%)`
     ),
-    gradientBorder: useColorModeValue(
-      `1px solid rgba(${BRAND_COLORS.primaryRgb}, 0.2)`,
-      `1px solid rgba(${BRAND_COLORS.primaryRgb}, 0.3)`
-    )
+    gradientBorder: cardBorder
   };
 
   // Responsive design system
@@ -458,40 +469,25 @@ const DisputePage = ({ isAdmin = false }) => {
   const StatsCard = ({ icon, title, value, color }) => (
     <Box
       bg={colors.glassBg}
-      backdropFilter="blur(20px)"
       border={colors.gradientBorder}
-      borderRadius="3xl"
+      borderRadius="xl"
       p={responsive.spacing.lg}
       _hover={{
         bg: colors.glassHover,
-        transform: "translateY(-4px)",
-        shadow: useColorModeValue(
-          "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-          "0 25px 50px -12px rgba(0, 0, 0, 0.6)"
-        )
+        transform: "translateY(-2px)",
+        boxShadow: `0px 8px 20px ${shadowColor}`
       }}
-      transition="all 0.4s cubic-bezier(0.4, 0, 0.2, 1)"
+      transition="all 0.3s ease"
       cursor="pointer"
-      position="relative"
-      overflow="hidden"
+      boxShadow={`0px 4px 12px ${shadowColor}`}
     >
-      <Box
-        position="absolute"
-        top="-50%"
-        right="-50%"
-        w="200%"
-        h="200%"
-        bg={`radial-gradient(circle, ${color}22 0%, transparent 70%)`}
-        opacity={0.3}
-        pointerEvents="none"
-      />
-      <HStack spacing={responsive.spacing.md} position="relative" zIndex={1}>
+      <HStack spacing={responsive.spacing.md}>
         <Box
           p={responsive.spacing.sm}
-          borderRadius="2xl"
-          bg={`${color}20`}
+          borderRadius="xl"
+          bg={`rgba(${BRAND_COLORS.primaryRgb}, 0.1)`}
           border="1px solid"
-          borderColor={`${color}40`}
+          borderColor={`rgba(${BRAND_COLORS.primaryRgb}, 0.2)`}
         >
           <Icon as={icon} boxSize={responsive.iconSize} color={color} />
         </Box>
@@ -538,55 +534,36 @@ const DisputePage = ({ isAdmin = false }) => {
 
       <Box
         bg={colors.glassBg}
-        backdropFilter="blur(30px)"
-        borderRadius="3xl"
+        borderRadius="xl"
         border={colors.gradientBorder}
         p={responsive.spacing.lg}
-        shadow={useColorModeValue(
-          "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-          "0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.2)"
-        )}
+        boxShadow={`0px 8px 20px ${shadowColor}`}
       >
         <Flex justify="space-between" align="center" wrap="wrap" gap={responsive.spacing.md}>
           <HStack spacing={responsive.spacing.md}>
             <Button
               leftIcon={<FaArrowLeft />}
-              variant="ghost"
-              color={colors.brandPrimary}
-              h={responsive.buttonHeight}
+              variant="outline"
+              borderColor={accentColor}
+              color={textColor}
+              borderRadius="full"
+              size="lg"
               px={responsive.spacing.lg}
-              borderRadius="2xl"
-              fontSize={responsive.fontSize.sm}
-              bg={`rgba(${BRAND_COLORS.primaryRgb}, 0.1)`}
-              border="1px solid"
-              borderColor={`rgba(${BRAND_COLORS.primaryRgb}, 0.3)`}
-              _hover={{
-                bg: `rgba(${BRAND_COLORS.primaryRgb}, 0.2)`,
-                transform: "translateY(-2px)",
-                borderColor: colors.brandPrimary
-              }}
-              transition="all 0.3s ease"
+              _hover={{ bg: colors.hoverBg }}
               onClick={() => navigate("/dashboard")}
             >
               Dashboard
             </Button>
             <Button
               leftIcon={<FaPlus />}
-              bg={`linear-gradient(135deg, ${colors.brandPrimary}, ${colors.brandSecondary})`}
+              bg={accentColor}
               color="white"
               onClick={onOpen}
-              h={responsive.buttonHeight}
+              borderRadius="full"
+              size="lg"
               px={responsive.spacing.xl}
-              borderRadius="2xl"
-              fontSize={responsive.fontSize.sm}
-              shadow={`0 10px 15px -3px rgba(${BRAND_COLORS.primaryRgb}, 0.4)`}
-              _hover={{
-                transform: "translateY(-3px)",
-                shadow: `0 20px 25px -5px rgba(${BRAND_COLORS.primaryRgb}, 0.5)`
-              }}
-              transition="all 0.3s ease"
-              position="relative"
-              overflow="hidden"
+              _hover={{ bg: accentHoverColor }}
+              boxShadow={`0px 4px 12px ${shadowColor}`}
             >
               Create Dispute
             </Button>
@@ -598,14 +575,11 @@ const DisputePage = ({ isAdmin = false }) => {
               icon={colorMode === 'light' ? <FaMoon /> : <FaSun />}
               onClick={toggleColorMode}
               variant="ghost"
-              color={colors.brandPrimary}
+              color={accentColor}
               bg={`rgba(${BRAND_COLORS.primaryRgb}, 0.1)`}
               border="1px solid"
-              borderColor={`rgba(${BRAND_COLORS.primaryRgb}, 0.3)`}
-              _hover={{
-                bg: `rgba(${BRAND_COLORS.primaryRgb}, 0.2)`,
-                transform: "scale(1.05)"
-              }}
+              borderColor={`rgba(${BRAND_COLORS.primaryRgb}, 0.2)`}
+              _hover={{ bg: `rgba(${BRAND_COLORS.primaryRgb}, 0.2)` }}
               borderRadius="xl"
               size="md"
             />
@@ -619,7 +593,7 @@ const DisputePage = ({ isAdmin = false }) => {
               display="flex"
               alignItems="center"
               gap={1}
-              shadow="0 4px 6px -1px rgba(0, 0, 0, 0.1)"
+              boxShadow={`0px 2px 4px ${shadowColor}`}
             >
               <Box
                 w={2}
@@ -660,17 +634,13 @@ const DisputePage = ({ isAdmin = false }) => {
           color={isOwn || ['Admin', 'Buyer', 'Seller'].includes(userRole) ? "white" : colors.textColor}
           px={responsive.spacing.md}
           py={responsive.spacing.sm}
-          borderRadius={isOwn ? "24px 24px 8px 24px" : "24px 24px 24px 8px"}
-          shadow={useColorModeValue(
-            "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
-            "0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.15)"
-          )}
-          position="relative"
+          borderRadius={isOwn ? "18px 18px 4px 18px" : "18px 18px 18px 4px"}
+          boxShadow={`0px 2px 8px ${shadowColor}`}
           opacity={message.isLoading ? 0.7 : 1}
         >
           {!isOwn && (
             <HStack mb={responsive.spacing.xs} spacing={responsive.spacing.sm}>
-              <Text fontSize={responsive.fontSize.xs} fontWeight="700" opacity={0.9}>
+              <Text fontSize={responsive.fontSize.xs} fontWeight="600" opacity={0.9}>
                 {message.userId?.firstName || 'Unknown'} {message.userId?.lastName || 'User'}
               </Text>
               <Badge
@@ -678,7 +648,7 @@ const DisputePage = ({ isAdmin = false }) => {
                 bg="whiteAlpha.300"
                 color="white"
                 fontSize={responsive.fontSize.xs}
-                fontWeight="600"
+                fontWeight="500"
                 borderRadius="full"
               >
                 {userRole}
@@ -694,7 +664,7 @@ const DisputePage = ({ isAdmin = false }) => {
               </Text>
             </HStack>
           ) : (
-            <Text fontSize={responsive.fontSize.sm} wordBreak="break-word" lineHeight="1.5">
+            <Text fontSize={responsive.fontSize.sm} wordBreak="break-word" lineHeight="1.4">
               {message.message}
             </Text>
           )}
@@ -719,42 +689,25 @@ const DisputePage = ({ isAdmin = false }) => {
         cursor="pointer"
         onClick={() => fetchDisputeDetails(dispute._id)}
         position="relative"
-        _hover={{ transform: "translateY(-8px)" }}
-        transition="all 0.4s cubic-bezier(0.4, 0, 0.2, 1)"
+        _hover={{ transform: "translateY(-4px)" }}
+        transition="all 0.3s ease"
       >
         <Box
           bg={colors.glassBg}
-          backdropFilter="blur(20px)"
           border="2px solid"
-          borderColor={isSelected ? colors.brandPrimary : useColorModeValue("rgba(255, 255, 255, 0.2)", "rgba(255, 255, 255, 0.1)")}
-          borderRadius="3xl"
+          borderColor={isSelected ? colors.brandPrimary : borderColor}
+          borderRadius="xl"
           p={responsive.spacing.lg}
-          shadow={isSelected ?
-            `0 25px 50px -12px rgba(${BRAND_COLORS.primaryRgb}, 0.4)` :
-            useColorModeValue(
-              "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-              "0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.2)"
-            )
-          }
+          // boxShadow={isSelected 
+          //   ? `0px 8px 25px rgba(${BRAND_COLORS.primaryRgb}, 0.3)`
+          //   : `0px 4px 12px ${shadowColor}`
+          // }
           // _hover={{
           //   borderColor: colors.brandPrimary,
-          //   shadow: `0 25px 50px -12px rgba(${BRAND_COLORS.primaryRgb}, 0.3), 0 20px 25px -5px rgba(0, 0, 0, ${colorMode === 'light' ? '0.1' : '0.3'})`
+          //   boxShadow: `0px 8px 25px rgba(${BRAND_COLORS.primaryRgb}, 0.2)`
           // }}
-          position="relative"
-          overflow="hidden"
         >
-          <Box
-            position="absolute"
-            top="-50%"
-            right="-50%"
-            w="200%"
-            h="200%"
-            bg={`conic-gradient(from 0deg, ${colors.brandPrimary}10, transparent, ${colors.brandSecondary}10)`}
-            opacity={0.3}
-            pointerEvents="none"
-          />
-
-          <VStack align="stretch" spacing={responsive.spacing.md} position="relative" zIndex={1}>
+          <VStack align="stretch" spacing={responsive.spacing.md}>
             <HStack justify="space-between">
               <Badge
                 colorScheme={getStatusColor(dispute.status)}
@@ -765,9 +718,6 @@ const DisputePage = ({ isAdmin = false }) => {
                 display="flex"
                 alignItems="center"
                 gap={2}
-                shadow="0 4px 6px -1px rgba(0, 0, 0, 0.1)"
-                border="1px solid"
-                borderColor={useColorModeValue("rgba(255, 255, 255, 0.8)", "rgba(255, 255, 255, 0.2)")}
               >
                 <Icon as={StatusIcon} boxSize={3} />
                 {dispute.status}
@@ -779,12 +729,10 @@ const DisputePage = ({ isAdmin = false }) => {
 
             <Box>
               <Text
-                fontWeight="800"
+                fontWeight="700"
                 fontSize={responsive.fontSize.lg}
                 mb={responsive.spacing.sm}
                 color={colors.textColor}
-                bgGradient={`linear(to-r, ${colors.textColor}, ${colors.brandPrimary})`}
-                bgClip="text"
               >
                 {dispute.reason}
               </Text>
@@ -797,23 +745,21 @@ const DisputePage = ({ isAdmin = false }) => {
                   <Text
                     fontSize={responsive.fontSize.md}
                     color={colors.brandPrimary}
-                    fontWeight="800"
-                    textShadow={`0 0 10px rgba(${BRAND_COLORS.primaryRgb}, 0.3)`}
+                    fontWeight="700"
                   >
                     ₦{(transaction?.paymentAmount || 0).toLocaleString('en-NG')}
                   </Text>
                 </HStack>
 
-                {transaction?.productDetails?.description && (
+                {transaction?.paymentDescription && (
                   <Box
-                    bg={useColorModeValue("rgba(255, 255, 255, 0.1)", "rgba(255, 255, 255, 0.05)")}
+                    bg={bgTertiary}
                     p={responsive.spacing.sm}
-                    borderRadius="xl"
-                    border="1px solid"
-                    borderColor={useColorModeValue("rgba(255, 255, 255, 0.2)", "rgba(255, 255, 255, 0.1)")}
+                    borderRadius="lg"
+                    border={cardBorder}
                   >
                     <Text fontSize={responsive.fontSize.sm} color={colors.textColor} noOfLines={2}>
-                      {transaction.productDetails.description}
+                      {transaction.paymentDescription}
                     </Text>
                   </Box>
                 )}
@@ -839,7 +785,7 @@ const DisputePage = ({ isAdmin = false }) => {
                 color={colors.mutedColor}
                 noOfLines={2}
                 mb={responsive.spacing.md}
-                lineHeight="1.5"
+                lineHeight="1.4"
               >
                 {dispute.description}
               </Text>
@@ -848,14 +794,14 @@ const DisputePage = ({ isAdmin = false }) => {
             <HStack
               fontSize={responsive.fontSize.sm}
               color={colors.brandPrimary}
-              fontWeight="700"
+              fontWeight="600"
               justify="center"
               p={responsive.spacing.sm}
               bg={`rgba(${BRAND_COLORS.primaryRgb}, 0.1)`}
-              borderRadius="xl"
+              borderRadius="lg"
               border="1px solid"
               borderColor={`rgba(${BRAND_COLORS.primaryRgb}, 0.2)`}
-              _hover={{ bg: `rgba(${BRAND_COLORS.primaryRgb}, 0.2)` }}
+              _hover={{ bg: `rgba(${BRAND_COLORS.primaryRgb}, 0.15)` }}
               transition="all 0.3s ease"
             >
               <Icon as={FaComments} boxSize={responsive.iconSize} />
@@ -870,34 +816,18 @@ const DisputePage = ({ isAdmin = false }) => {
   const EmptyState = ({ title, description, showCreateButton = false }) => (
     <Box
       bg={colors.glassBg}
-      backdropFilter="blur(30px)"
-      borderRadius="3xl"
-      shadow={useColorModeValue(
-        "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-        "0 25px 50px -12px rgba(0, 0, 0, 0.6)"
-      )}
+      borderRadius="xl"
+      boxShadow={`0px 8px 20px ${shadowColor}`}
       border={colors.gradientBorder}
-      position="relative"
-      overflow="hidden"
+      p={responsive.spacing.xl}
     >
-      <Box
-        position="absolute"
-        top="50%"
-        left="50%"
-        transform="translate(-50%, -50%)"
-        w="400px"
-        h="400px"
-        bg={`radial-gradient(circle, ${colors.brandPrimary}15 0%, transparent 70%)`}
-        pointerEvents="none"
-      />
-
-      <VStack textAlign="center" py={responsive.spacing.xl} spacing={responsive.spacing.lg} position="relative" zIndex={1}>
+      <VStack textAlign="center" py={responsive.spacing.xl} spacing={responsive.spacing.lg}>
         <Box
           p={responsive.spacing.lg}
           borderRadius="full"
           bg={showCreateButton ? `rgba(${BRAND_COLORS.primaryRgb}, 0.1)` : "rgba(56, 161, 105, 0.1)"}
           border="2px solid"
-          borderColor={showCreateButton ? `rgba(${BRAND_COLORS.primaryRgb}, 0.3)` : "rgba(56, 161, 105, 0.3)"}
+          borderColor={showCreateButton ? `rgba(${BRAND_COLORS.primaryRgb}, 0.2)` : "rgba(56, 161, 105, 0.2)"}
         >
           <Icon
             as={showCreateButton ? FaExclamationTriangle : FaCheckCircle}
@@ -907,7 +837,7 @@ const DisputePage = ({ isAdmin = false }) => {
         </Box>
 
         <VStack spacing={responsive.spacing.sm}>
-          <Text fontSize={responsive.fontSize.xl} fontWeight="800" color={colors.textColor}>
+          <Text fontSize={responsive.fontSize.xl} fontWeight="700" color={colors.textColor}>
             {title}
           </Text>
           <Text color={colors.mutedColor} fontSize={responsive.fontSize.lg} maxW="md">
@@ -917,19 +847,15 @@ const DisputePage = ({ isAdmin = false }) => {
 
         {showCreateButton && (
           <Button
-            bg={`linear-gradient(135deg, ${colors.brandPrimary}, ${colors.brandSecondary})`}
+            bg={accentColor}
             color="white"
             leftIcon={<FaPlus />}
             onClick={onOpen}
-            borderRadius="2xl"
-            h={responsive.buttonHeight}
+            borderRadius="full"
+            size="lg"
             px={responsive.spacing.xl}
-            fontSize={responsive.fontSize.md}
-            shadow={`0 10px 15px -3px rgba(${BRAND_COLORS.primaryRgb}, 0.4)`}
-            _hover={{
-              transform: "translateY(-2px)",
-              shadow: `0 20px 25px -5px rgba(${BRAND_COLORS.primaryRgb}, 0.5)`
-            }}
+            _hover={{ bg: accentHoverColor }}
+            boxShadow={`0px 4px 12px ${shadowColor}`}
           >
             Create Your First Dispute
           </Button>
@@ -975,37 +901,21 @@ const DisputePage = ({ isAdmin = false }) => {
         <VStack spacing={responsive.spacing.lg}>
           <Box position="relative">
             <Icon as={FaExclamationTriangle} boxSize={responsive.spacing.xl} color={colors.brandPrimary} />
-            <Box
-              position="absolute"
-              top="50%"
-              left="50%"
-              transform="translate(-50%, -50%)"
-              w="80px"
-              h="80px"
-              borderRadius="full"
-              bg={`radial-gradient(circle, ${colors.brandPrimary}20 0%, transparent 70%)`}
-              animation="pulse 2s infinite"
-            />
           </Box>
-          <Text fontSize={responsive.fontSize.xl} color={colors.textColor} fontWeight="700">
+          <Text fontSize={responsive.fontSize.xl} color={colors.textColor} fontWeight="600">
             Error Loading Disputes
           </Text>
           <Text fontSize={responsive.fontSize.md} color={colors.mutedColor}>
             {state.error || "An unexpected error occurred. Please try again."}
           </Text>
           <Button
-            bg={`linear-gradient(135deg, ${colors.brandPrimary}, ${colors.brandSecondary})`}
+            bg={accentColor}
             color="white"
             onClick={fetchData}
-            borderRadius="2xl"
-            h={responsive.buttonHeight}
+            borderRadius="full"
+            size="lg"
             px={responsive.spacing.lg}
-            fontSize={responsive.fontSize.sm}
-            shadow={`0 10px 15px -3px rgba(${BRAND_COLORS.primaryRgb}, 0.4)`}
-            _hover={{
-              transform: "translateY(-2px)",
-              shadow: `0 20px 25px -5px rgba(${BRAND_COLORS.primaryRgb}, 0.5)`
-            }}
+            _hover={{ bg: accentHoverColor }}
           >
             Retry
           </Button>
@@ -1019,21 +929,8 @@ const DisputePage = ({ isAdmin = false }) => {
     return (
       <Box bg={colors.bg} minH="100vh" display="flex" alignItems="center" justifyContent="center">
         <VStack spacing={responsive.spacing.lg}>
-          <Box position="relative">
-            <Spinner size="xl" color={colors.brandPrimary} thickness="4px" />
-            <Box
-              position="absolute"
-              top="50%"
-              left="50%"
-              transform="translate(-50%, -50%)"
-              w="80px"
-              h="80px"
-              borderRadius="full"
-              bg={`radial-gradient(circle, ${colors.brandPrimary}20 0%, transparent 70%)`}
-              animation="pulse 2s infinite"
-            />
-          </Box>
-          <Text fontSize={responsive.fontSize.xl} color={colors.textColor} fontWeight="700">
+          <Spinner size="xl" color={colors.brandPrimary} thickness="4px" />
+          <Text fontSize={responsive.fontSize.xl} color={colors.textColor} fontWeight="600">
             Loading your disputes...
           </Text>
         </VStack>
@@ -1042,43 +939,23 @@ const DisputePage = ({ isAdmin = false }) => {
   }
 
   return (
-    <Box bg={colors.bg} minH="100vh" position="relative" overflow="hidden">
-      <Box
-        position="fixed"
-        top="-50%"
-        left="-50%"
-        w="200%"
-        h="200%"
-        bg={`conic-gradient(from 0deg, ${colors.brandPrimary}05, transparent, ${colors.brandSecondary}05, transparent)`}
-        animation="spin 60s linear infinite"
-        pointerEvents="none"
-        zIndex={0}
-      />
-
-      <Flex position="relative" zIndex={1}>
+    <Box bg={colors.bg} minH="100vh" className="px-7 pt-10 pb-20">
+      <Flex position="relative">
         <Box flex={1} mr={state.selectedDispute ? { base: 0, lg: responsive.chatWidth } : 0} transition="all 0.4s ease">
           <Container maxW="7xl" py={responsive.spacing.xl} px={responsive.containerPadding}>
             <VStack spacing={responsive.spacing.xl} align="stretch">
-              <Box textAlign="center" py={responsive.spacing.lg} position="relative">
-                <Box
-                  position="absolute"
-                  top="50%"
-                  left="50%"
-                  transform="translate(-50%, -50%)"
-                  w="300px"
-                  h="300px"
-                  bg={`radial-gradient(circle, ${colors.brandPrimary}10 0%, transparent 70%)`}
-                  pointerEvents="none"
-                />
-
+              <Box textAlign="center" py={responsive.spacing.lg}>
                 <Heading
                   fontSize={responsive.fontSize["2xl"]}
                   mb={responsive.spacing.md}
-                  bgGradient={`linear(45deg, ${colors.brandPrimary}, ${colors.brandSecondary}, ${colors.brandPrimary})`}
+                  bgGradient={
+                    colorMode === "light"
+                      ? "linear(to-r, #957432, #A88D50)"
+                      : "linear(to-r, #957432, #A88D50)"
+                  }
                   bgClip="text"
-                  fontWeight="900"
-                  position="relative"
-                  textShadow={`0 0 30px rgba(${BRAND_COLORS.primaryRgb}, 0.3)`}
+                  fontWeight="800"
+                  letterSpacing="tight"
                 >
                   {isAdmin ? "Dispute Management Center" : "Dispute Resolution"}
                 </Heading>
@@ -1088,11 +965,10 @@ const DisputePage = ({ isAdmin = false }) => {
                   maxW="4xl"
                   mx="auto"
                   lineHeight="1.6"
-                  position="relative"
                 >
                   {isAdmin
                     ? "Streamline dispute resolution with our intelligent management system. Monitor, communicate, and resolve customer issues efficiently."
-                    : "Your trusted partner in transaction security. We ensure every dispute is handled with care, transparency, and speed. Only funded transactions can be disputed."
+                    : "Your trusted partner in transaction security. Only funded transactions can be disputed."
                   }
                 </Text>
               </Box>
@@ -1101,64 +977,32 @@ const DisputePage = ({ isAdmin = false }) => {
 
               <Box
                 bg={colors.glassBg}
-                backdropFilter="blur(30px)"
-                borderRadius="3xl"
+                borderRadius="xl"
                 border={colors.gradientBorder}
-                shadow={useColorModeValue(
-                  "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-                  "0 25px 50px -12px rgba(0, 0, 0, 0.6)"
-                )}
+                boxShadow={`0px 8px 20px ${shadowColor}`}
                 overflow="hidden"
-                position="relative"
               >
-                <Box
-                  position="absolute"
-                  top="0"
-                  left="0"
-                  right="0"
-                  h="1px"
-                  bg={`linear-gradient(90deg, transparent, ${colors.brandPrimary}60, transparent)`}
-                />
-
                 <Tabs variant="unstyled" p={responsive.spacing.lg}>
                   <TabList
                     mb={responsive.spacing.xl}
-                    bg={useColorModeValue("rgba(255, 255, 255, 0.05)", "rgba(255, 255, 255, 0.05)")}
+                    bg={bgTertiary}
                     p={responsive.spacing.sm}
-                    borderRadius="2xl"
-                    border="1px solid"
-                    borderColor={useColorModeValue("rgba(255, 255, 255, 0.1)", "rgba(255, 255, 255, 0.05)")}
-                    position="relative"
-                    overflow="hidden"
+                    borderRadius="xl"
+                    border={cardBorder}
                   >
-                    <Box
-                      position="absolute"
-                      top="0"
-                      left="0"
-                      right="0"
-                      bottom="0"
-                      bg={`linear-gradient(135deg, ${colors.brandPrimary}10, ${colors.brandSecondary}10)`}
-                      pointerEvents="none"
-                    />
-
                     <Tab
-                      borderRadius="xl"
-                      fontWeight="800"
+                      borderRadius="lg"
+                      fontWeight="600"
                       fontSize={responsive.fontSize.sm}
                       px={responsive.spacing.xl}
                       py={responsive.spacing.md}
                       color={colors.mutedColor}
-                      position="relative"
                       _selected={{
                         color: "white",
-                        bg: `linear-gradient(135deg, ${colors.brandPrimary}, ${colors.brandSecondary})`,
-                        shadow: `0 10px 15px -3px rgba(${BRAND_COLORS.primaryRgb}, 0.4)`,
-                        transform: "translateY(-2px)"
+                        bg: accentColor,
+                        boxShadow: `0px 4px 8px ${shadowColor}`
                       }}
-                      _hover={{
-                        color: colors.textColor,
-                        bg: useColorModeValue("rgba(255, 255, 255, 0.1)", "rgba(255, 255, 255, 0.05)")
-                      }}
+                      _hover={{ color: colors.textColor, bg: colors.hoverBg }}
                       transition="all 0.3s ease"
                     >
                       <HStack spacing={2}>
@@ -1177,31 +1021,26 @@ const DisputePage = ({ isAdmin = false }) => {
                     </Tab>
 
                     <Tab
-                      borderRadius="xl"
-                      fontWeight="800"
+                      borderRadius="lg"
+                      fontWeight="600"
                       fontSize={responsive.fontSize.sm}
                       px={responsive.spacing.xl}
                       py={responsive.spacing.md}
                       color={colors.mutedColor}
-                      position="relative"
                       _selected={{
                         color: "white",
-                        bg: `linear-gradient(135deg, ${colors.brandPrimary}, ${colors.brandSecondary})`,
-                        shadow: `0 10px 15px -3px rgba(${BRAND_COLORS.primaryRgb}, 0.4)`,
-                        transform: "translateY(-2px)"
+                        bg: accentColor,
+                        boxShadow: `0px 4px 8px ${shadowColor}`
                       }}
-                      _hover={{
-                        color: colors.textColor,
-                        bg: useColorModeValue("rgba(255, 255, 255, 0.1)", "rgba(255, 255, 255, 0.05)")
-                      }}
+                      _hover={{ color: colors.textColor, bg: colors.hoverBg }}
                       transition="all 0.3s ease"
                     >
                       <HStack spacing={2}>
                         <Icon as={FaHistory} />
                         <Text>All Cases</Text>
                         <Badge
-                          bg={useColorModeValue("rgba(255, 255, 255, 0.2)", "rgba(255, 255, 255, 0.1)")}
-                          color="white"
+                          bg={bgTertiary}
+                          color={colors.textColor}
                           borderRadius="full"
                           px={2}
                           fontSize="xs"
@@ -1261,97 +1100,66 @@ const DisputePage = ({ isAdmin = false }) => {
             w={responsive.chatWidth}
             h="100vh"
             bg={colors.glassBg}
-            backdropFilter="blur(40px)"
-            shadow={useColorModeValue(
-              "0 25px 50px -12px rgba(0, 0, 0, 0.4)",
-              "0 25px 50px -12px rgba(0, 0, 0, 0.8)"
-            )}
-            borderLeft="1px solid"
-            borderColor={useColorModeValue("rgba(255, 255, 255, 0.2)", "rgba(255, 255, 255, 0.1)")}
+            boxShadow={`-8px 0px 20px ${shadowColor}`}
+            borderLeft={cardBorder}
             zIndex={1000}
             display="flex"
             flexDirection="column"
             overflow="hidden"
           >
             <Box
-              position="absolute"
-              top="0"
-              left="0"
-              right="0"
-              bottom="0"
-              bg={`linear-gradient(180deg, ${colors.brandPrimary}05 0%, transparent 50%, ${colors.brandSecondary}05 100%)`}
-              pointerEvents="none"
-            />
-
-            <Box
               p={responsive.spacing.lg}
-              borderBottom="1px solid"
-              borderColor={useColorModeValue("rgba(255, 255, 255, 0.1)", "rgba(255, 255, 255, 0.05)")}
-              position="relative"
-              zIndex={2}
-              bg={useColorModeValue("rgba(255, 255, 255, 0.05)", "rgba(255, 255, 255, 0.02)")}
-              backdropFilter="blur(20px)"
+              borderBottom={cardBorder}
+              bg={modalHeaderBg}
             >
               <HStack justify="space-between" mb={responsive.spacing.md}>
                 <Button
                   size="sm"
-                  variant="ghost"
-                  color={colors.brandPrimary}
+                  variant="outline"
+                  borderColor={accentColor}
+                  color={textColor}
                   onClick={() => setState(prev => ({ ...prev, selectedDispute: null, messages: [] }))}
-                  borderRadius="xl"
+                  borderRadius="full"
                   leftIcon={<FaArrowLeft />}
-                  fontSize={responsive.fontSize.sm}
-                  bg={`rgba(${BRAND_COLORS.primaryRgb}, 0.1)`}
-                  border="1px solid"
-                  borderColor={`rgba(${BRAND_COLORS.primaryRgb}, 0.2)`}
-                  _hover={{
-                    bg: `rgba(${BRAND_COLORS.primaryRgb}, 0.2)`,
-                    transform: "translateX(-2px)"
-                  }}
-                  transition="all 0.3s ease"
+                  _hover={{ bg: colors.hoverBg }}
                 >
                   Back
                 </Button>
 
-                <HStack spacing={2}>
-                  <Badge
-                    bg={state.isConnected ? "#38A169" : "#E53E3E"}
-                    color="white"
-                    px={responsive.spacing.md}
-                    py={responsive.spacing.sm}
+                <Badge
+                  bg={state.isConnected ? "#38A169" : "#E53E3E"}
+                  color="white"
+                  px={responsive.spacing.md}
+                  py={responsive.spacing.sm}
+                  borderRadius="full"
+                  fontSize={responsive.fontSize.xs}
+                  display="flex"
+                  alignItems="center"
+                  gap={2}
+                >
+                  <Box
+                    w={2}
+                    h={2}
                     borderRadius="full"
-                    fontSize={responsive.fontSize.xs}
-                    display="flex"
-                    alignItems="center"
-                    gap={2}
-                    shadow="0 4px 6px -1px rgba(0, 0, 0, 0.1)"
-                    border="1px solid"
-                    borderColor={useColorModeValue("rgba(255, 255, 255, 0.8)", "rgba(255, 255, 255, 0.2)")}
-                  >
-                    <Box
-                      w={2}
-                      h={2}
-                      borderRadius="full"
-                      bg="currentColor"
-                      animation={state.isConnected ? "pulse 2s infinite" : "none"}
-                    />
-                    {state.isConnected ? "Live Support" : "Connecting..."}
-                  </Badge>
-                </HStack>
+                    bg="currentColor"
+                    animation={state.isConnected ? "pulse 2s infinite" : "none"}
+                  />
+                  {state.isConnected ? "Live Support" : "Connecting..."}
+                </Badge>
               </HStack>
 
               <HStack spacing={responsive.spacing.sm}>
                 <Box
                   p={responsive.spacing.sm}
-                  borderRadius="xl"
-                  bg={`rgba(${BRAND_COLORS.primaryRgb}, 0.2)`}
+                  borderRadius="lg"
+                  bg={`rgba(${BRAND_COLORS.primaryRgb}, 0.1)`}
                   border="1px solid"
-                  borderColor={`rgba(${BRAND_COLORS.primaryRgb}, 0.3)`}
+                  borderColor={`rgba(${BRAND_COLORS.primaryRgb}, 0.2)`}
                 >
                   <Icon as={FaShieldAlt} color={colors.brandPrimary} boxSize={responsive.iconSize} />
                 </Box>
                 <VStack align="start" spacing={0}>
-                  <Text fontSize={responsive.fontSize.md} fontWeight="800" color={colors.textColor}>
+                  <Text fontSize={responsive.fontSize.md} fontWeight="600" color={colors.textColor}>
                     Secure Chat
                   </Text>
                   <Text fontSize={responsive.fontSize.xs} color={colors.mutedColor}>
@@ -1361,26 +1169,14 @@ const DisputePage = ({ isAdmin = false }) => {
               </HStack>
             </Box>
 
-            <Box
-              flex={1}
-              overflowY="auto"
-              p={responsive.spacing.lg}
-              position="relative"
-              zIndex={1}
-            >
+            <Box flex={1} overflowY="auto" p={responsive.spacing.lg}>
               {state.isLoadingMessages ? (
                 <VStack spacing={responsive.spacing.lg}>
                   {[1, 2, 3].map(i => (
                     <Box key={i} w="full">
                       <HStack spacing={3} justify={i % 2 === 0 ? "flex-start" : "flex-end"}>
                         {i % 2 === 0 && <Skeleton w="40px" h="40px" borderRadius="full" />}
-                        <Skeleton
-                          h="60px"
-                          w="70%"
-                          borderRadius="2xl"
-                          startColor={useColorModeValue("rgba(255, 255, 255, 0.1)", "rgba(255, 255, 255, 0.05)")}
-                          endColor={useColorModeValue("rgba(255, 255, 255, 0.2)", "rgba(255, 255, 255, 0.1)")}
-                        />
+                        <Skeleton h="60px" w="70%" borderRadius="xl" />
                         {i % 2 !== 0 && <Skeleton w="40px" h="40px" borderRadius="full" />}
                       </HStack>
                     </Box>
@@ -1398,7 +1194,7 @@ const DisputePage = ({ isAdmin = false }) => {
                     <Icon as={FaComments} boxSize={responsive.spacing.xl} color={colors.brandPrimary} />
                   </Box>
                   <VStack spacing={responsive.spacing.sm}>
-                    <Text fontSize={responsive.fontSize.lg} fontWeight="800" color={colors.textColor}>
+                    <Text fontSize={responsive.fontSize.lg} fontWeight="600" color={colors.textColor}>
                       Start the Conversation
                     </Text>
                     <Text fontSize={responsive.fontSize.sm} color={colors.mutedColor} maxW="sm">
@@ -1430,86 +1226,67 @@ const DisputePage = ({ isAdmin = false }) => {
 
             <Box
               p={responsive.spacing.lg}
-              borderTop="1px solid"
-              borderColor={useColorModeValue("rgba(255, 255, 255, 0.1)", "rgba(255, 255, 255, 0.05)")}
-              bg={useColorModeValue("rgba(255, 255, 255, 0.05)", "rgba(255, 255, 255, 0.02)")}
-              backdropFilter="blur(20px)"
-              position="relative"
-              zIndex={2}
+              borderTop={cardBorder}
+              bg={modalHeaderBg}
             >
               <VStack spacing={responsive.spacing.sm}>
                 <HStack spacing={responsive.spacing.sm} w="full">
-                  <Box position="relative" flex={1}>
-                    <Input
-                      value={state.newMessage}
-                      onChange={(e) => {
-                        setState(prev => ({ ...prev, newMessage: e.target.value }));
+                  <Input
+                    value={state.newMessage}
+                    onChange={(e) => {
+                      setState(prev => ({ ...prev, newMessage: e.target.value }));
 
-                        if (socketRef.current?.connected && state.selectedDispute) {
-                          socketRef.current.emit('userTyping', {
-                            disputeId: state.selectedDispute._id,
-                            userId: state.userId,
-                            userName: "You"
-                          });
+                      if (socketRef.current?.connected && state.selectedDispute) {
+                        socketRef.current.emit('userTyping', {
+                          disputeId: state.selectedDispute._id,
+                          userId: state.userId,
+                          userName: "You"
+                        });
 
-                          if (typingTimeoutRef.current) {
-                            clearTimeout(typingTimeoutRef.current);
+                        if (typingTimeoutRef.current) {
+                          clearTimeout(typingTimeoutRef.current);
+                        }
+
+                        typingTimeoutRef.current = setTimeout(() => {
+                          if (socketRef.current?.connected) {
+                            socketRef.current.emit('userStoppedTyping', {
+                              disputeId: state.selectedDispute._id,
+                              userId: state.userId
+                            });
                           }
-
-                          typingTimeoutRef.current = setTimeout(() => {
-                            if (socketRef.current?.connected) {
-                              socketRef.current.emit('userStoppedTyping', {
-                                disputeId: state.selectedDispute._id,
-                                userId: state.userId
-                              });
-                            }
-                          }, 1000);
-                        }
-                      }}
-                      placeholder={!state.isConnected ? "Connecting..." : "Type your message..."}
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          handleSendMessage();
-                        }
-                      }}
-                      disabled={!state.isConnected}
-                      h={responsive.buttonHeight}
-                      borderRadius="2xl"
-                      bg={useColorModeValue("rgba(255, 255, 255, 0.1)", "rgba(255, 255, 255, 0.05)")}
-                      border="1px solid"
-                      borderColor={useColorModeValue("rgba(255, 255, 255, 0.2)", "rgba(255, 255, 255, 0.1)")}
-                      fontSize={responsive.fontSize.sm}
-                      color={colors.textColor}
-                      _placeholder={{ color: colors.mutedColor }}
-                      _focus={{
-                        borderColor: colors.brandPrimary,
-                        boxShadow: `0 0 0 1px ${colors.brandPrimary}`,
-                        bg: useColorModeValue("rgba(255, 255, 255, 0.15)", "rgba(255, 255, 255, 0.08)")
-                      }}
-                    />
-                  </Box>
+                        }, 1000);
+                      }
+                    }}
+                    placeholder={!state.isConnected ? "Connecting..." : "Type your message..."}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage();
+                      }
+                    }}
+                    disabled={!state.isConnected}
+                    borderRadius="full"
+                    bg={inputBg}
+                    border={cardBorder}
+                    color={colors.textColor}
+                    _placeholder={{ color: colors.mutedColor }}
+                    _focus={{
+                      borderColor: colors.brandPrimary,
+                      boxShadow: `0 0 0 1px ${colors.brandPrimary}`
+                    }}
+                  />
 
                   <Button
                     onClick={handleSendMessage}
-                    bg={`linear-gradient(135deg, ${colors.brandPrimary}, ${colors.brandSecondary})`}
+                    bg={accentColor}
                     color="white"
                     isDisabled={!state.newMessage.trim() || !state.isConnected}
-                    h={responsive.buttonHeight}
-                    w={responsive.buttonHeight}
-                    borderRadius="2xl"
-                    shadow={`0 10px 15px -3px rgba(${BRAND_COLORS.primaryRgb}, 0.4)`}
-                    _hover={{
-                      transform: "scale(1.05) translateY(-2px)",
-                      shadow: `0 20px 25px -5px rgba(${BRAND_COLORS.primaryRgb}, 0.5)`
-                    }}
+                    borderRadius="full"
+                    _hover={{ bg: accentHoverColor }}
                     _disabled={{
                       opacity: 0.5,
-                      cursor: "not-allowed",
-                      transform: "none",
-                      _hover: { transform: "none" }
+                      cursor: "not-allowed"
                     }}
-                    transition="all 0.3s ease"
                   >
                     <Icon as={FaPaperPlane} boxSize={responsive.iconSize} />
                   </Button>
@@ -1534,45 +1311,27 @@ const DisputePage = ({ isAdmin = false }) => {
       </Flex>
 
       <Modal isOpen={isOpen} onClose={onClose} size="2xl" isCentered>
-        <ModalOverlay
-          backdropFilter="blur(20px)"
-          bg="rgba(0, 0, 0, 0.6)"
-        />
+        <ModalOverlay bg="rgba(0, 0, 0, 0.6)" />
         <ModalContent
-          borderRadius="3xl"
+          borderRadius="xl"
           mx={responsive.containerPadding}
           bg={colors.glassBg}
-          backdropFilter="blur(40px)"
           border={colors.gradientBorder}
-          shadow={useColorModeValue(
-            "0 25px 50px -12px rgba(0, 0, 0, 0.4)",
-            "0 25px 50px -12px rgba(0, 0, 0, 0.8)"
-          )}
+          boxShadow={`0px 12px 30px ${shadowColor}`}
         >
-          <Box
-            position="absolute"
-            top="0"
-            left="0"
-            right="0"
-            bottom="0"
-            bg={`linear-gradient(135deg, ${colors.brandPrimary}05, transparent, ${colors.brandSecondary}05)`}
-            pointerEvents="none"
-            zIndex={-1}
-          />
-
-          <ModalHeader pb={responsive.spacing.sm} position="relative" zIndex={1}>
+          <ModalHeader pb={responsive.spacing.sm}>
             <HStack spacing={responsive.spacing.md}>
               <Box
                 p={responsive.spacing.sm}
-                borderRadius="xl"
-                bg={`rgba(${BRAND_COLORS.primaryRgb}, 0.2)`}
+                borderRadius="lg"
+                bg={`rgba(${BRAND_COLORS.primaryRgb}, 0.1)`}
                 border="1px solid"
-                borderColor={`rgba(${BRAND_COLORS.primaryRgb}, 0.3)`}
+                borderColor={`rgba(${BRAND_COLORS.primaryRgb}, 0.2)`}
               >
                 <Icon as={FaShieldAlt} color={colors.brandPrimary} boxSize={responsive.iconSize} />
               </Box>
               <VStack align="start" spacing={0}>
-                <Text color={colors.textColor} fontWeight="800" fontSize={responsive.fontSize.xl}>
+                <Text color={colors.textColor} fontWeight="700" fontSize={responsive.fontSize.xl}>
                   Create Dispute
                 </Text>
                 <Text fontSize={responsive.fontSize.sm} color={colors.mutedColor}>
@@ -1586,19 +1345,18 @@ const DisputePage = ({ isAdmin = false }) => {
             onClick={onClose}
             color={colors.mutedColor}
             _hover={{ color: colors.textColor }}
-            borderRadius="xl"
-            zIndex={10}
+            borderRadius="lg"
           />
 
-          <ModalBody pb={responsive.spacing.lg} position="relative" zIndex={1}>
+          <ModalBody pb={responsive.spacing.lg}>
             <VStack spacing={responsive.spacing.lg}>
               <Alert
                 status="info"
-                borderRadius="2xl"
+                borderRadius="xl"
                 variant="subtle"
-                bg={useColorModeValue("rgba(49, 130, 206, 0.1)", "rgba(49, 130, 206, 0.2)")}
+                bg={`rgba(49, 130, 206, 0.1)`}
                 border="1px solid"
-                borderColor={useColorModeValue("rgba(49, 130, 206, 0.2)", "rgba(49, 130, 206, 0.3)")}
+                borderColor={`rgba(49, 130, 206, 0.2)`}
               >
                 <AlertIcon color="#3182ce" />
                 <Box>
@@ -1613,7 +1371,7 @@ const DisputePage = ({ isAdmin = false }) => {
 
               <VStack spacing={responsive.spacing.lg} w="100%">
                 <Box w="100%">
-                  <Text fontSize={responsive.fontSize.sm} mb={responsive.spacing.sm} fontWeight="700" color={colors.textColor}>
+                  <Text fontSize={responsive.fontSize.sm} mb={responsive.spacing.sm} fontWeight="600" color={colors.textColor}>
                     Select Transaction
                   </Text>
                   <Select
@@ -1638,12 +1396,9 @@ const DisputePage = ({ isAdmin = false }) => {
                       setForm(prev => ({ ...prev, [name]: value }));
                     }}
                     placeholder="Choose the transaction to dispute"
-                    h={responsive.buttonHeight}
                     borderRadius="xl"
-                    bg={useColorModeValue("rgba(255, 255, 255, 0.1)", "rgba(255, 255, 255, 0.05)")}
-                    border="1px solid"
-                    borderColor={useColorModeValue("rgba(255, 255, 255, 0.2)", "rgba(255, 255, 255, 0.1)")}
-                    fontSize={responsive.fontSize.sm}
+                    bg={inputBg}
+                    border={cardBorder}
                     color={colors.textColor}
                     _focus={{
                       borderColor: colors.brandPrimary,
@@ -1652,7 +1407,7 @@ const DisputePage = ({ isAdmin = false }) => {
                   >
                     {state.transactions.map((tx) => {
                       const txDate = format(new Date(tx.createdAt || tx.updatedAt), "MMM dd, yyyy");
-                      const description = tx.productDetails?.description || tx.serviceDetails?.description || 'No description';
+                      const description = tx.paymentDescription || 'No description';
                       const truncatedDescription = description.length > 50
                         ? `${description.substring(0, 50)}...`
                         : description;
@@ -1664,7 +1419,7 @@ const DisputePage = ({ isAdmin = false }) => {
 
                       return (
                         <option key={tx._id} value={tx._id} style={{ background: colors.bg }}>
-                          {`${tx.reference || tx._id.slice(-8)} • ₦${(tx.amount || tx.paymentAmount || 0).toLocaleString('en-NG')} • ${userRole}: ${participantName} • ${truncatedDescription} • ${txDate}`}
+                          {`${tx.reference || tx._id.slice(-8)} • ₦${(tx.paymentAmount || 0).toLocaleString('en-NG')} • ${userRole}: ${participantName} • ${truncatedDescription} • ${txDate}`}
                         </option>
                       );
                     })}
@@ -1682,7 +1437,7 @@ const DisputePage = ({ isAdmin = false }) => {
                 </Box>
 
                 <Box w="100%">
-                  <Text fontSize={responsive.fontSize.sm} mb={responsive.spacing.sm} fontWeight="700" color={colors.textColor}>
+                  <Text fontSize={responsive.fontSize.sm} mb={responsive.spacing.sm} fontWeight="600" color={colors.textColor}>
                     Issue Category
                   </Text>
                   <Select
@@ -1690,12 +1445,9 @@ const DisputePage = ({ isAdmin = false }) => {
                     value={form.reason}
                     onChange={(e) => setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))}
                     placeholder="What type of issue are you experiencing?"
-                    h={responsive.buttonHeight}
                     borderRadius="xl"
-                    bg={useColorModeValue("rgba(255, 255, 255, 0.1)", "rgba(255, 255, 255, 0.05)")}
-                    border="1px solid"
-                    borderColor={useColorModeValue("rgba(255, 255, 255, 0.2)", "rgba(255, 255, 255, 0.1)")}
-                    fontSize={responsive.fontSize.sm}
+                    bg={inputBg}
+                    border={cardBorder}
                     color={colors.textColor}
                     _focus={{
                       borderColor: colors.brandPrimary,
@@ -1711,7 +1463,7 @@ const DisputePage = ({ isAdmin = false }) => {
                 </Box>
 
                 <Box w="100%">
-                  <Text fontSize={responsive.fontSize.sm} mb={responsive.spacing.sm} fontWeight="700" color={colors.textColor}>
+                  <Text fontSize={responsive.fontSize.sm} mb={responsive.spacing.sm} fontWeight="600" color={colors.textColor}>
                     Detailed Description
                   </Text>
                   <Textarea
@@ -1721,10 +1473,8 @@ const DisputePage = ({ isAdmin = false }) => {
                     placeholder="Please describe what happened in detail. Include dates, communications, and any relevant information..."
                     rows={5}
                     borderRadius="xl"
-                    bg={useColorModeValue("rgba(255, 255, 255, 0.1)", "rgba(255, 255, 255, 0.05)")}
-                    border="1px solid"
-                    borderColor={useColorModeValue("rgba(255, 255, 255, 0.2)", "rgba(255, 255, 255, 0.1)")}
-                    fontSize={responsive.fontSize.sm}
+                    bg={inputBg}
+                    border={cardBorder}
                     color={colors.textColor}
                     resize="vertical"
                     _focus={{
@@ -1736,27 +1486,26 @@ const DisputePage = ({ isAdmin = false }) => {
                 </Box>
 
                 <Box w="100%">
-                  <Text fontSize={responsive.fontSize.sm} mb={responsive.spacing.sm} fontWeight="700" color={colors.textColor}>
+                  <Text fontSize={responsive.fontSize.sm} mb={responsive.spacing.sm} fontWeight="600" color={colors.textColor}>
                     Supporting Evidence (Optional)
                   </Text>
                   <Box
                     border="2px dashed"
-                    borderColor={useColorModeValue("rgba(255, 255, 255, 0.3)", "rgba(255, 255, 255, 0.2)")}
-                    borderRadius="2xl"
+                    borderColor={borderColor}
+                    borderRadius="xl"
                     p={responsive.spacing.xl}
                     textAlign="center"
                     position="relative"
-                    bg={useColorModeValue("rgba(255, 255, 255, 0.05)", "rgba(255, 255, 255, 0.02)")}
+                    bg={bgTertiary}
                     _hover={{
                       borderColor: colors.brandPrimary,
-                      bg: `rgba(${BRAND_COLORS.primaryRgb}, 0.1)`,
-                      transform: "scale(1.02)"
+                      bg: colors.hoverBg
                     }}
                     transition="all 0.3s ease"
                     cursor="pointer"
                   >
                     <Icon as={FaFileUpload} boxSize={responsive.spacing.xl} color={colors.brandPrimary} mb={responsive.spacing.md} />
-                    <Text fontSize={responsive.fontSize.md} mb={responsive.spacing.sm} fontWeight="700" color={colors.textColor}>
+                    <Text fontSize={responsive.fontSize.md} mb={responsive.spacing.sm} fontWeight="600" color={colors.textColor}>
                       Upload Evidence
                     </Text>
                     <Text fontSize={responsive.fontSize.sm} color={colors.mutedColor}>
@@ -1780,14 +1529,14 @@ const DisputePage = ({ isAdmin = false }) => {
                     <Box
                       mt={responsive.spacing.sm}
                       p={responsive.spacing.md}
-                      bg={useColorModeValue("rgba(56, 161, 105, 0.1)", "rgba(56, 161, 105, 0.2)")}
-                      borderRadius="xl"
+                      bg="rgba(56, 161, 105, 0.1)"
+                      borderRadius="lg"
                       border="1px solid"
-                      borderColor={useColorModeValue("rgba(56, 161, 105, 0.2)", "rgba(56, 161, 105, 0.3)")}
+                      borderColor="rgba(56, 161, 105, 0.2)"
                     >
                       <HStack>
                         <Icon as={FaCheckCircle} color="#38A169" />
-                        <Text fontSize={responsive.fontSize.sm} color="#38A169" fontWeight="700">
+                        <Text fontSize={responsive.fontSize.sm} color="#38A169" fontWeight="600">
                           {form.evidence.length} file(s) ready to upload
                         </Text>
                       </HStack>
@@ -1798,24 +1547,18 @@ const DisputePage = ({ isAdmin = false }) => {
             </VStack>
           </ModalBody>
 
-          <ModalFooter pt={responsive.spacing.sm} gap={responsive.spacing.md} position="relative" zIndex={1}>
+          <ModalFooter pt={responsive.spacing.sm} gap={responsive.spacing.md}>
             <Button
               variant="ghost"
               onClick={onClose}
-              borderRadius="xl"
+              borderRadius="full"
               color={colors.mutedColor}
-              h={responsive.buttonHeight}
-              px={responsive.spacing.lg}
-              fontSize={responsive.fontSize.sm}
-              _hover={{
-                color: colors.textColor,
-                bg: useColorModeValue("rgba(255, 255, 255, 0.1)", "rgba(255, 255, 255, 0.05)")
-              }}
+              _hover={{ color: colors.textColor, bg: colors.hoverBg }}
             >
               Cancel
             </Button>
             <Button
-              bg={`linear-gradient(135deg, ${colors.brandPrimary}, ${colors.brandSecondary})`}
+              bg={accentColor}
               color="white"
               onClick={async () => {
                 const formData = new FormData();
@@ -1844,21 +1587,13 @@ const DisputePage = ({ isAdmin = false }) => {
               }}
               isDisabled={!form.transactionId || !form.reason || !form.description}
               leftIcon={<FaCheckCircle />}
-              borderRadius="xl"
-              h={responsive.buttonHeight}
+              borderRadius="full"
               px={responsive.spacing.xl}
-              fontSize={responsive.fontSize.sm}
-              shadow={`0 10px 15px -3px rgba(${BRAND_COLORS.primaryRgb}, 0.4)`}
-              _hover={{
-                transform: "translateY(-2px)",
-                shadow: `0 20px 25px -5px rgba(${BRAND_COLORS.primaryRgb}, 0.5)`
-              }}
+              _hover={{ bg: accentHoverColor }}
               _disabled={{
                 opacity: 0.5,
-                cursor: "not-allowed",
-                transform: "none"
+                cursor: "not-allowed"
               }}
-              transition="all 0.3s ease"
             >
               Submit Dispute
             </Button>
@@ -1867,11 +1602,6 @@ const DisputePage = ({ isAdmin = false }) => {
       </Modal>
 
       <style jsx>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        
         @keyframes pulse {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.5; }
