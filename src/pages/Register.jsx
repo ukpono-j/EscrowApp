@@ -1,23 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "../utils/axiosConfig";
+import axios from "axios";
 import {
   useToast, Box, Text, Input, Button, FormControl, FormLabel,
   VStack, HStack, Flex, Container, Heading, InputGroup, InputRightElement,
-  ScaleFade, FormErrorMessage, InputLeftElement
+  ScaleFade, FormErrorMessage, InputLeftElement, PinInput, PinInputField,
+  Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalCloseButton
 } from "@chakra-ui/react";
 import { motion } from "framer-motion";
 import {
   FiEye, FiEyeOff, FiArrowRight, FiMail, FiLock, FiUser,
   FiCalendar, FiCheckCircle, FiShield, FiPhone
 } from "react-icons/fi";
-import "./Register.css";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
-
 const MotionBox = motion(Box);
-const MotionFlex = motion(Flex);
-const MotionContainer = motion(Container);
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -34,56 +31,34 @@ const Register = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
-  const [mounted, setMounted] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
+  const [showOTPModal, setShowOTPModal] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [otpTimer, setOtpTimer] = useState(0);
+  
   const navigate = useNavigate();
   const toast = useToast();
 
-  useEffect(() => {
-    setMounted(true);
-    return () => setMounted(false);
-  }, []);
-
   const accentColor = "#B38939";
-  const buttonBgColor = "#031420";
-  const buttonHoverBgColor = "#B38939";
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.15,
-        delayChildren: 0.2,
-      },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: { duration: 0.6, ease: "easeOut" },
-    },
-  };
+  useEffect(() => {
+    if (otpTimer > 0) {
+      const timer = setTimeout(() => setOtpTimer(otpTimer - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [otpTimer]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
 
     if (name === 'password') {
       calculatePasswordStrength(value);
     }
 
     if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ""
-      }));
+      setErrors(prev => ({ ...prev, [name]: "" }));
     }
   };
 
@@ -92,7 +67,6 @@ const Register = () => {
       setPasswordStrength(0);
       return;
     }
-
     let strength = 0;
     if (password.length >= 8) strength += 1;
     if (/[A-Z]/.test(password)) strength += 1;
@@ -104,12 +78,8 @@ const Register = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.firstName.trim()) {
-      newErrors.firstName = "First name is required";
-    }
-    if (!formData.lastName.trim()) {
-      newErrors.lastName = "Last name is required";
-    }
+    if (!formData.firstName.trim()) newErrors.firstName = "First name is required";
+    if (!formData.lastName.trim()) newErrors.lastName = "Last name is required";
     if (!formData.email) {
       newErrors.email = "Email is required";
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
@@ -126,11 +96,9 @@ const Register = () => {
         let age = today.getFullYear() - dob.getFullYear();
         const monthDiff = today.getMonth() - dob.getMonth();
         if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
-          age = age - 1;
+          age--;
         }
-        if (age < 18) {
-          newErrors.dateOfBirth = "You must be at least 18 years old";
-        }
+        if (age < 18) newErrors.dateOfBirth = "You must be at least 18 years old";
       }
     }
     if (formData.phoneNumber && !/^(0\d{10}|\+234\d{10})$/.test(formData.phoneNumber)) {
@@ -152,8 +120,7 @@ const Register = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  // Register.jsx (updated handleSubmit)
-  const handleSubmit = async (e) => {
+  const handleRequestOTP = async (e) => {
     e.preventDefault();
 
     if (!validateForm()) {
@@ -171,74 +138,139 @@ const Register = () => {
     setIsLoading(true);
 
     try {
-      const response = await axios.post(`${BASE_URL}/api/auth/register`, {
+      await axios.post(`${BASE_URL}/api/auth/register/request-otp`, {
         firstName: formData.firstName,
         lastName: formData.lastName,
-        password: formData.password,
         email: formData.email,
+        password: formData.password,
         dateOfBirth: formData.dateOfBirth,
         phoneNumber: formData.phoneNumber
       });
 
-      // Show success message without storing token
-      let successMessage = "Registration successful! Please log in to continue.";
-      if (response.data.walletId) {
-        successMessage += `\n\nYour wallet has been created with ID: ${response.data.walletId}`;
-      }
-
       toast({
-        title: "Account Created Successfully",
-        description: successMessage,
+        title: "OTP Sent",
+        description: "Please check your email for the verification code",
         status: "success",
-        duration: 7000,
+        duration: 5000,
         isClosable: true,
         position: "top"
       });
 
-      // Redirect to login page
-      setTimeout(() => {
-        navigate("/login");
-      }, 1500);
+      setShowOTPModal(true);
+      setOtpTimer(300); // 5 minutes
     } catch (error) {
-      console.error('Registration error:', error.response?.data || error);
-      let errorMessage = 'Unable to register. Please try again.';
+      console.error('Request OTP error:', error.response?.data || error);
+      let errorMessage = 'Unable to send OTP. Please try again.';
 
       if (error.response?.data?.error) {
-        switch (error.response.data.error) {
-          case 'All fields are required':
-            errorMessage = 'Please fill in all required fields.';
-            break;
-          case 'Invalid email format':
-            errorMessage = 'Please enter a valid email address.';
-            break;
-          case 'Invalid date of birth':
-            errorMessage = 'Please enter a valid date of birth.';
-            break;
-          case 'You must be at least 18 years old':
-            errorMessage = 'You must be at least 18 years old to register.';
-            break;
-          case 'Email already in use':
-            errorMessage = 'This email is already registered. Please use a different email or log in.';
-            break;
-          case 'Wallet already exists for this user':
-            errorMessage = 'An account with this email already has a wallet. Please contact support.';
-            break;
-          case 'Database error: Duplicate key':
-            errorMessage = `Registration failed due to duplicate data: ${JSON.stringify(error.response.data.details)}. Please contact support.`;
-            break;
-          case 'Password must be at least 8 characters and include uppercase, number, and special character':
-            errorMessage = 'Password must be at least 8 characters and include an uppercase letter, number, and special character.';
-            break;
-          default:
-            errorMessage = error.response.data.error;
-        }
-      } else if (error.response?.status === 500) {
-        errorMessage = 'Server error. Please try again later.';
+        errorMessage = error.response.data.error;
       }
 
       toast({
-        title: "Registration Failed",
+        title: "Request Failed",
         description: errorMessage,
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+        position: "top"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyOTP = async () => {
+    if (otp.length !== 6) {
+      toast({
+        title: "Invalid OTP",
+        description: "Please enter the complete 6-digit code",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+        position: "top"
+      });
+      return;
+    }
+
+    setIsVerifying(true);
+
+    try {
+      const response = await axios.post(`${BASE_URL}/api/auth/register/verify-otp`, {
+        email: formData.email,
+        otp: otp
+      });
+
+      toast({
+        title: "Registration Successful",
+        description: "Your email has been verified. Redirecting to dashboard...",
+        status: "success",
+        duration: 5000,
+        isClosable: true,
+        position: "top"
+      });
+
+      // Store tokens
+      localStorage.setItem("accessToken", response.data.accessToken);
+      localStorage.setItem("refreshToken", response.data.refreshToken);
+      localStorage.setItem("user", JSON.stringify(response.data.user));
+
+      setShowOTPModal(false);
+      
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 1500);
+    } catch (error) {
+      console.error('Verify OTP error:', error.response?.data || error);
+      let errorMessage = 'Invalid OTP. Please try again.';
+
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+
+      if (error.response?.data?.attemptsRemaining) {
+        errorMessage += ` (${error.response.data.attemptsRemaining} attempts remaining)`;
+      }
+
+      toast({
+        title: "Verification Failed",
+        description: errorMessage,
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+        position: "top"
+      });
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handleResendOTP = async () => {
+    setIsLoading(true);
+    try {
+      await axios.post(`${BASE_URL}/api/auth/register/request-otp`, {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        password: formData.password,
+        dateOfBirth: formData.dateOfBirth,
+        phoneNumber: formData.phoneNumber
+      });
+
+      toast({
+        title: "OTP Resent",
+        description: "A new verification code has been sent to your email",
+        status: "success",
+        duration: 5000,
+        isClosable: true,
+        position: "top"
+      });
+
+      setOtp("");
+      setOtpTimer(300);
+    } catch (error) {
+      toast({
+        title: "Resend Failed",
+        description: error.response?.data?.error || "Unable to resend OTP",
         status: "error",
         duration: 5000,
         isClosable: true,
@@ -257,185 +289,84 @@ const Register = () => {
     return accentColor;
   };
 
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   return (
     <Box
-      className="register-page"
       minHeight="100vh"
       bgGradient="linear(to-br, #1A202C, #1A202C, #1A202C)"
       position="relative"
       overflow="hidden"
     >
-      {/* Animated Background Elements */}
-      <Box className="background-shapes">
-        <MotionBox
-          position="absolute"
-          top={{ base: "5%", md: "15%" }}
-          right={{ base: "-5%", md: "10%" }}
-          width={{ base: "200px", md: "300px" }}
-          height={{ base: "200px", md: "300px" }}
-          borderRadius="full"
-          background={`${accentColor}15`}
-          filter="blur(60px)"
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{
-            scale: mounted ? 1 : 0.8,
-            opacity: mounted ? 0.7 : 0,
-            y: [0, -20, 0],
-          }}
-          transition={{
-            y: { repeat: Infinity, duration: 10, ease: "easeInOut" },
-            opacity: { duration: 1.5 },
-            scale: { duration: 1.5 }
-          }}
-        />
-        <MotionBox
-          position="absolute"
-          bottom="5%"
-          left={{ base: "-10%", md: "5%" }}
-          width={{ base: "150px", md: "200px" }}
-          height={{ base: "150px", md: "200px" }}
-          borderRadius="full"
-          background={`${accentColor}10`}
-          filter="blur(50px)"
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{
-            scale: mounted ? 1 : 0.8,
-            opacity: mounted ? 0.6 : 0,
-            y: [0, 20, 0],
-          }}
-          transition={{
-            y: { repeat: Infinity, duration: 12, ease: "easeInOut" },
-            opacity: { duration: 1.5, delay: 0.5 },
-            scale: { duration: 1.5, delay: 0.5 }
-          }}
-        />
-        <MotionBox
-          position="absolute"
-          top="60%"
-          right={{ base: "5%", md: "20%" }}
-          width={{ base: "100px", md: "150px" }}
-          height={{ base: "100px", md: "150px" }}
-          borderRadius="full"
-          background={`${buttonBgColor}15`}
-          filter="blur(40px)"
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{
-            scale: mounted ? 1 : 0.8,
-            opacity: mounted ? 0.5 : 0,
-            x: [0, 15, 0],
-          }}
-          transition={{
-            x: { repeat: Infinity, duration: 15, ease: "easeInOut" },
-            opacity: { duration: 1.5, delay: 0.8 },
-            scale: { duration: 1.5, delay: 0.8 }
-          }}
-        />
-      </Box>
-
-      <MotionContainer
+      <Container
         maxW="container.xl"
         minHeight="100vh"
         display="flex"
         alignItems="center"
         justifyContent="center"
-        initial="hidden"
-        animate="visible"
-        variants={containerVariants}
         pt={{ base: "80px", md: "0" }}
         px={{ base: 4, md: 6 }}
         py={{ base: 8, md: 12 }}
       >
-        <MotionFlex
+        <Flex
           direction={{ base: "column", lg: "row" }}
           width="full"
           maxWidth="1100px"
           align="center"
           justify="center"
           gap={{ base: 6, lg: 12 }}
-          variants={itemVariants}
         >
-          <MotionBox
+          <Box
             flex="1"
             display={{ base: "none", lg: "flex" }}
             flexDirection="column"
             alignItems="flex-start"
             justifyContent="center"
             pr={{ lg: 6, xl: 10 }}
-            variants={itemVariants}
           >
-            <MotionBox
-              initial={{ opacity: 0, x: -30 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8, delay: 0.5 }}
+            <Heading
+              as="h1"
+              size="2xl"
+              bgGradient={`linear(to-r, ${accentColor}, #C99A45)`}
+              bgClip="text"
+              lineHeight="1.2"
+              fontWeight="bold"
+              mb={6}
             >
-              <Heading
-                as="h1"
-                size="2xl"
-                bgGradient={`linear(to-r, ${accentColor}, #C99A45)`}
-                bgClip="text"
-                lineHeight="1.2"
-                fontWeight="bold"
-                mb={6}
-                className="welcome-heading"
-              >
-                Join Our Community
-              </Heading>
-              <Text
-                fontSize="lg"
-                color="#fff"
-                lineHeight="tall"
-                maxW="500px"
-                mb={6}
-                className="welcome-text"
-              >
-                Create your account today and experience secure transactions with our trusted escrow service. Your financial security is our priority.
-              </Text>
-              <VStack align="flex-start" spacing={4} mt={8} className="features-list">
-                <HStack>
-                  <Box color={accentColor}>
-                    <FiCheckCircle size={20} />
-                  </Box>
-                  <Text color="#fff">Secure transactions guaranteed</Text>
-                </HStack>
-                <HStack>
-                  <Box color={accentColor}>
-                    <FiCheckCircle size={20} />
-                  </Box>
-                  <Text color="#fff">24/7 customer support</Text>
-                </HStack>
-                <HStack>
-                  <Box color={accentColor}>
-                    <FiCheckCircle size={20} />
-                  </Box>
-                  <Text color="#fff">Fast and reliable process</Text>
-                </HStack>
-              </VStack>
-              <Box
-                width="100px"
-                height="4px"
-                background={accentColor}
-                borderRadius="md"
-                mt={8}
-                className="accent-bar"
-              />
-            </MotionBox>
-          </MotionBox>
+              Join Our Community
+            </Heading>
+            <Text fontSize="lg" color="#fff" lineHeight="tall" maxW="500px" mb={6}>
+              Create your account today and experience secure transactions with our trusted escrow service.
+            </Text>
+            <VStack align="flex-start" spacing={4} mt={8}>
+              <HStack>
+                <Box color={accentColor}><FiCheckCircle size={20} /></Box>
+                <Text color="#fff">Secure email verification</Text>
+              </HStack>
+              <HStack>
+                <Box color={accentColor}><FiCheckCircle size={20} /></Box>
+                <Text color="#fff">24/7 customer support</Text>
+              </HStack>
+              <HStack>
+                <Box color={accentColor}><FiCheckCircle size={20} /></Box>
+                <Text color="#fff">Fast and reliable process</Text>
+              </HStack>
+            </VStack>
+          </Box>
 
-          <MotionBox
-            flex="1"
-            width={{ base: "100%", sm: "90%", md: "500px" }}
-            variants={itemVariants}
-            className="register-form-wrapper"
-          >
+          <Box flex="1" width={{ base: "100%", sm: "90%", md: "500px" }}>
             <ScaleFade initialScale={0.9} in={true}>
               <Box
                 borderRadius="xl"
-                bg={buttonBgColor}
+                bg="#031420"
                 boxShadow="2xl"
                 p={{ base: 5, sm: 6, md: 8 }}
                 position="relative"
                 overflow="hidden"
-                className="form-container"
               >
                 <VStack spacing={1} mb={6} align="flex-start">
                   <Heading size="lg" color="white" fontWeight="semibold">
@@ -446,23 +377,13 @@ const Register = () => {
                   </Text>
                 </VStack>
 
-                <form onSubmit={handleSubmit}>
+                <form onSubmit={handleRequestOTP}>
                   <VStack spacing={4}>
-                    <Flex
-                      width="100%"
-                      direction={{ base: "column", sm: "row" }}
-                      gap={{ base: 4, sm: 3 }}
-                    >
+                    <Flex width="100%" direction={{ base: "column", sm: "row" }} gap={{ base: 4, sm: 3 }}>
                       <FormControl isRequired isInvalid={!!errors.firstName}>
-                        <FormLabel fontSize="sm" color="gray.300">
-                          First Name
-                        </FormLabel>
+                        <FormLabel fontSize="sm" color="gray.300">First Name</FormLabel>
                         <InputGroup size={{ base: "md", md: "md" }}>
-                          <InputLeftElement
-                            pointerEvents="none"
-                            color="gray.400"
-                            children={<FiUser />}
-                          />
+                          <InputLeftElement pointerEvents="none" color="gray.400" children={<FiUser />} />
                           <Input
                             type="text"
                             name="firstName"
@@ -471,9 +392,7 @@ const Register = () => {
                             onChange={handleChange}
                             focusBorderColor={accentColor}
                             color="white"
-                            fontSize={{ base: "sm", md: "md" }}
                             borderRadius="md"
-                            className="input-field"
                             _hover={{ bg: "gray.600" }}
                             _focus={{ bg: "gray.600" }}
                           />
@@ -482,15 +401,9 @@ const Register = () => {
                       </FormControl>
 
                       <FormControl isRequired isInvalid={!!errors.lastName}>
-                        <FormLabel fontSize="sm" color="gray.300">
-                          Last Name
-                        </FormLabel>
+                        <FormLabel fontSize="sm" color="gray.300">Last Name</FormLabel>
                         <InputGroup size={{ base: "md", md: "md" }}>
-                          <InputLeftElement
-                            pointerEvents="none"
-                            color="gray.400"
-                            children={<FiUser />}
-                          />
+                          <InputLeftElement pointerEvents="none" color="gray.400" children={<FiUser />} />
                           <Input
                             type="text"
                             name="lastName"
@@ -499,9 +412,7 @@ const Register = () => {
                             onChange={handleChange}
                             focusBorderColor={accentColor}
                             color="white"
-                            fontSize={{ base: "sm", md: "md" }}
                             borderRadius="md"
-                            className="input-field"
                             _hover={{ bg: "gray.600" }}
                             _focus={{ bg: "gray.600" }}
                           />
@@ -511,15 +422,9 @@ const Register = () => {
                     </Flex>
 
                     <FormControl isRequired isInvalid={!!errors.email}>
-                      <FormLabel fontSize="sm" color="gray.300">
-                        Email Address
-                      </FormLabel>
+                      <FormLabel fontSize="sm" color="gray.300">Email Address</FormLabel>
                       <InputGroup size={{ base: "md", md: "md" }}>
-                        <InputLeftElement
-                          pointerEvents="none"
-                          color="gray.400"
-                          children={<FiMail />}
-                        />
+                        <InputLeftElement pointerEvents="none" color="gray.400" children={<FiMail />} />
                         <Input
                           type="email"
                           name="email"
@@ -528,9 +433,7 @@ const Register = () => {
                           onChange={handleChange}
                           focusBorderColor={accentColor}
                           color="white"
-                          fontSize={{ base: "sm", md: "md" }}
                           borderRadius="md"
-                          className="input-field"
                           _hover={{ bg: "gray.600" }}
                           _focus={{ bg: "gray.600" }}
                         />
@@ -539,26 +442,18 @@ const Register = () => {
                     </FormControl>
 
                     <FormControl isRequired isInvalid={!!errors.phoneNumber}>
-                      <FormLabel fontSize="sm" color="gray.300">
-                        Phone Number
-                      </FormLabel>
+                      <FormLabel fontSize="sm" color="gray.300">Phone Number</FormLabel>
                       <InputGroup size={{ base: "md", md: "md" }}>
-                        <InputLeftElement
-                          pointerEvents="none"
-                          color="gray.400"
-                          children={<FiPhone />}
-                        />
+                        <InputLeftElement pointerEvents="none" color="gray.400" children={<FiPhone />} />
                         <Input
                           type="tel"
                           name="phoneNumber"
-                          placeholder="e.g., 08012345678 or +2348012345678"
+                          placeholder="08012345678 or +2348012345678"
                           value={formData.phoneNumber}
                           onChange={handleChange}
                           focusBorderColor={accentColor}
                           color="white"
-                          fontSize={{ base: "sm", md: "md" }}
                           borderRadius="md"
-                          className="input-field"
                           _hover={{ bg: "gray.600" }}
                           _focus={{ bg: "gray.600" }}
                         />
@@ -567,15 +462,9 @@ const Register = () => {
                     </FormControl>
 
                     <FormControl isRequired isInvalid={!!errors.dateOfBirth}>
-                      <FormLabel fontSize="sm" color="gray.300">
-                        Date of Birth
-                      </FormLabel>
+                      <FormLabel fontSize="sm" color="gray.300">Date of Birth</FormLabel>
                       <InputGroup size={{ base: "md", md: "md" }}>
-                        <InputLeftElement
-                          pointerEvents="none"
-                          color="gray.400"
-                          children={<FiCalendar />}
-                        />
+                        <InputLeftElement pointerEvents="none" color="gray.400" children={<FiCalendar />} />
                         <Input
                           type="date"
                           name="dateOfBirth"
@@ -583,9 +472,7 @@ const Register = () => {
                           onChange={handleChange}
                           focusBorderColor={accentColor}
                           color="white"
-                          fontSize={{ base: "sm", md: "md" }}
                           borderRadius="md"
-                          className="input-field date-input"
                           _hover={{ bg: "gray.600" }}
                           _focus={{ bg: "gray.600" }}
                         />
@@ -594,15 +481,9 @@ const Register = () => {
                     </FormControl>
 
                     <FormControl isRequired isInvalid={!!errors.password}>
-                      <FormLabel fontSize="sm" color="gray.300">
-                        Password
-                      </FormLabel>
+                      <FormLabel fontSize="sm" color="gray.300">Password</FormLabel>
                       <InputGroup size={{ base: "md", md: "md" }}>
-                        <InputLeftElement
-                          pointerEvents="none"
-                          color="gray.400"
-                          children={<FiLock />}
-                        />
+                        <InputLeftElement pointerEvents="none" color="gray.400" children={<FiLock />} />
                         <Input
                           type={showPassword ? "text" : "password"}
                           name="password"
@@ -611,9 +492,7 @@ const Register = () => {
                           onChange={handleChange}
                           focusBorderColor={accentColor}
                           color="white"
-                          fontSize={{ base: "sm", md: "md" }}
                           borderRadius="md"
-                          className="input-field"
                           _hover={{ bg: "gray.600" }}
                           _focus={{ bg: "gray.600" }}
                         />
@@ -637,7 +516,7 @@ const Register = () => {
                               height="100%"
                               width={`${passwordStrength * 20}%`}
                               bg={getStrengthColor(passwordStrength)}
-                              transition="width 0.3s ease, background-color 0.3s ease"
+                              transition="width 0.3s ease"
                             />
                           </Box>
                           <Text fontSize="xs" color={getStrengthColor(passwordStrength)} ml={2}>
@@ -648,15 +527,9 @@ const Register = () => {
                     </FormControl>
 
                     <FormControl isRequired isInvalid={!!errors.confirmPassword}>
-                      <FormLabel fontSize="sm" color="gray.300">
-                        Confirm Password
-                      </FormLabel>
+                      <FormLabel fontSize="sm" color="gray.300">Confirm Password</FormLabel>
                       <InputGroup size={{ base: "md", md: "md" }}>
-                        <InputLeftElement
-                          pointerEvents="none"
-                          color="gray.400"
-                          children={<FiShield />}
-                        />
+                        <InputLeftElement pointerEvents="none" color="gray.400" children={<FiShield />} />
                         <Input
                           type={showConfirmPassword ? "text" : "password"}
                           name="confirmPassword"
@@ -665,9 +538,7 @@ const Register = () => {
                           onChange={handleChange}
                           focusBorderColor={accentColor}
                           color="white"
-                          fontSize={{ base: "sm", md: "md" }}
                           borderRadius="md"
-                          className="input-field"
                           _hover={{ bg: "gray.600" }}
                           _focus={{ bg: "gray.600" }}
                         />
@@ -694,64 +565,99 @@ const Register = () => {
                       bg={accentColor}
                       color="white"
                       fontWeight="medium"
-                      borderWidth="2px"
-                      borderColor={accentColor}
-                      _hover={{
-                        bg: "#A47F35",
-                        transform: "translateY(-2px)",
-                        boxShadow: "lg"
-                      }}
-                      _active={{
-                        transform: "translateY(0)",
-                        boxShadow: "md"
-                      }}
+                      _hover={{ bg: "#A47F35", transform: "translateY(-2px)", boxShadow: "lg" }}
                       isLoading={isLoading}
-                      loadingText="Creating Account"
+                      loadingText="Sending OTP"
                       borderRadius="lg"
-                      fontSize={{ base: "md", md: "md" }}
                       rightIcon={<FiArrowRight />}
-                      transition="all 0.3s ease"
                     >
-                      Create Account
+                      Continue
                     </Button>
                   </VStack>
                 </form>
-
-                <Box
-                  position="absolute"
-                  bottom="0"
-                  left="0"
-                  height="3px"
-                  width="100%"
-                  bgGradient={`linear(to-r, ${accentColor}, #031420)`}
-                />
               </Box>
             </ScaleFade>
 
-            <MotionBox
-              textAlign="center"
-              mt={6}
-              mb={{ base: 8, md: 0 }}
-              variants={itemVariants}
-            >
+            <Box textAlign="center" mt={6}>
               <Text fontSize={{ base: "sm", md: "md" }} color="gray.600">
                 Already have an account?{" "}
                 <Link to="/login">
-                  <Text
-                    as="span"
-                    color={accentColor}
-                    fontWeight="bold"
-                    _hover={{ textDecoration: "underline" }}
-                    className="login-link"
-                  >
+                  <Text as="span" color={accentColor} fontWeight="bold" _hover={{ textDecoration: "underline" }}>
                     Log In
                   </Text>
                 </Link>
               </Text>
-            </MotionBox>
-          </MotionBox>
-        </MotionFlex>
-      </MotionContainer>
+            </Box>
+          </Box>
+        </Flex>
+      </Container>
+
+      {/* OTP Verification Modal */}
+      <Modal isOpen={showOTPModal} onClose={() => setShowOTPModal(false)} isCentered>
+        <ModalOverlay backdropFilter="blur(10px)" />
+        <ModalContent bg="#031420" color="white" mx={4}>
+          <ModalHeader>Verify Your Email</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody pb={6}>
+            <VStack spacing={4}>
+              <Text fontSize="sm" color="gray.300" textAlign="center">
+                We've sent a 6-digit verification code to{" "}
+                <Text as="span" fontWeight="bold" color={accentColor}>
+                  {formData.email}
+                </Text>
+              </Text>
+
+              <HStack justify="center" spacing={2}>
+                <PinInput
+                  otp
+                  size="lg"
+                  value={otp}
+                  onChange={setOtp}
+                  onComplete={handleVerifyOTP}
+                  focusBorderColor={accentColor}
+                >
+                  <PinInputField bg="gray.700" color="white" />
+                  <PinInputField bg="gray.700" color="white" />
+                  <PinInputField bg="gray.700" color="white" />
+                  <PinInputField bg="gray.700" color="white" />
+                  <PinInputField bg="gray.700" color="white" />
+                  <PinInputField bg="gray.700" color="white" />
+                </PinInput>
+              </HStack>
+
+              {otpTimer > 0 && (
+                <Text fontSize="sm" color="gray.400">
+                  Code expires in {formatTime(otpTimer)}
+                </Text>
+              )}
+
+              <Button
+                width="full"
+                bg={accentColor}
+                color="white"
+                onClick={handleVerifyOTP}
+                isLoading={isVerifying}
+                loadingText="Verifying"
+                _hover={{ bg: "#A47F35" }}
+                isDisabled={otp.length !== 6}
+              >
+                Verify Email
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleResendOTP}
+                isDisabled={otpTimer > 0}
+                color={accentColor}
+                _hover={{ bg: "gray.700" }}
+              >
+                {otpTimer > 0 ? `Resend in ${formatTime(otpTimer)}` : "Resend OTP"}
+              </Button>
+            </VStack>
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </Box>
   );
 };
