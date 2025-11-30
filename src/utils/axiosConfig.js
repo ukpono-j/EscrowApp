@@ -12,7 +12,7 @@ let isOffline = !navigator.onLine;
 let pendingRequests = new Map();
 let lastConnectivityToast = 0;
 let networkIssueDetected = false;
-let isSessionExpired = false; // Track session expiration to prevent multiple toasts
+let isSessionExpired = false;
 
 const checkConnectivity = async () => {
   try {
@@ -54,7 +54,7 @@ const debounceRequest = (config) => {
 window.addEventListener('online', () => {
   isOffline = false;
   networkIssueDetected = false;
-  isSessionExpired = false; // Reset session expiration on reconnect
+  isSessionExpired = false;
   const now = Date.now();
   if (now - lastConnectivityToast > 5000) {
     toast.success('Connection restored', { 
@@ -106,21 +106,35 @@ const isCriticalEndpoint = (url) => {
   return criticalPaths.some(path => url?.includes(path));
 };
 
+// Helper function to check if URL should skip auth
+const shouldSkipAuth = (url) => {
+  const authSkipPaths = [
+    '/api/auth/login',
+    '/api/auth/register',
+    '/api/auth/request-otp',
+    '/api/auth/verify-otp',
+    '/api/auth/refreshToken',
+    '/api/auth/forgot-password',
+    '/api/auth/reset-password'
+  ];
+  return authSkipPaths.some(path => url?.includes(path));
+};
+
 instance.interceptors.request.use(
   (config) => {
     config.requestStartTime = Date.now();
     
-    if (
-      config.url?.includes('/api/auth/login') ||
-      config.url?.includes('/api/auth/register') ||
-      config.url?.includes('/api/auth/refreshToken')
-    ) {
+    // Skip adding token for auth endpoints
+    if (shouldSkipAuth(config.url)) {
+      console.log('Skipping auth header for:', config.url);
       return config;
     }
 
+    // Only add token for protected endpoints
     const token = localStorage.getItem('access-token');
-    if (token && !isSessionExpired) { // Only add token if session is not expired
+    if (token && !isSessionExpired) {
       config.headers['Authorization'] = `Bearer ${token}`;
+      console.log('Added auth header for:', config.url);
     }
     return config;
   },
@@ -182,7 +196,8 @@ instance.interceptors.response.use(
       }
     }
 
-    if (status === 401 && !originalRequest._retry && !originalRequest.url?.includes('/api/auth/refreshToken')) {
+    // Handle 401 errors - but ONLY for protected endpoints, not auth endpoints
+    if (status === 401 && !originalRequest._retry && !shouldSkipAuth(originalRequest.url)) {
       if (isRefreshing || isSessionExpired) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -228,7 +243,7 @@ instance.interceptors.response.use(
         originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
         processQueue(null, newAccessToken);
         isRefreshing = false;
-        isSessionExpired = false; // Reset session expiration flag
+        isSessionExpired = false;
         return instance(originalRequest);
       } catch (refreshError) {
         isSessionExpired = true;
@@ -246,7 +261,8 @@ instance.interceptors.response.use(
       }
     }
 
-    if (originalRequest.url?.includes('/api/auth/')) {
+    // For auth endpoints, just pass through the error without retrying
+    if (shouldSkipAuth(originalRequest.url)) {
       return Promise.reject(error);
     }
 

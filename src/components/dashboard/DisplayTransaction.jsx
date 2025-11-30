@@ -1917,7 +1917,7 @@ const DisplayTransaction = () => {
                   onClick={() => cancelTransactionAction(cancelTransactionId)}
                   isLoading={isConfirming[cancelTransactionId]}
                 >
-                  Yes
+                  No
                 </Button>
               </Flex>
             </ModalFooter>

@@ -13,8 +13,6 @@ import "./Login.css";
 import { useDispatch } from 'react-redux';
 import { setUserDetails } from '../store/slices/userSlice';
 
-const BASE_URL = import.meta.env.VITE_BASE_URL;
-
 const MotionBox = motion(Box);
 const MotionFlex = motion(Flex);
 const MotionContainer = motion(Container);
@@ -78,11 +76,15 @@ const Login = () => {
       return;
     }
 
+    // Clear any existing tokens before login attempt
+    localStorage.removeItem("access-token");
+    localStorage.removeItem("refresh-token");
+
     const maxRetries = 2;
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         console.log(`Login attempt ${attempt} for email: ${email}`);
-        const response = await axios.post(`${BASE_URL}/api/auth/login`, {
+        const response = await axios.post('/api/auth/login', {
           email,
           password,
         }, {
@@ -96,7 +98,7 @@ const Login = () => {
           console.log("Storing tokens:", { accessToken, refreshToken });
           localStorage.setItem("access-token", accessToken);
           localStorage.setItem("refresh-token", refreshToken);
-          axios.defaults.headers.common["Authorization"] = `Bearer ${accessToken}`; // Use Bearer standard
+          axios.defaults.headers.common["Authorization"] = `Bearer ${accessToken}`;
           dispatch(setUserDetails(user));
 
           toast({

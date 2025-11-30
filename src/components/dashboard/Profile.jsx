@@ -161,7 +161,7 @@ const FundAmountModal = ({ isOpen, onClose, onSubmit }) => {
   );
 };
 
-const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
+const WithdrawalModal = ({ isOpen, onClose, walletBalance, availableBalance }) => {
   const [amount, setAmount] = React.useState('');
   const [accountNumber, setAccountNumber] = React.useState('');
   const [accountName, setAccountName] = React.useState('');
@@ -200,16 +200,17 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
     }
   }, [isOpen, dispatch, toast]);
 
+  // Updated validation to use availableBalance instead of walletBalance
   useEffect(() => {
     const amountNum = parseFloat(amount);
     if (amount && (isNaN(amountNum) || amountNum < 100)) {
       setAmountError('Minimum withdrawal is ₦100.');
-    } else if (amountNum > walletBalance) {
-      setAmountError(`Insufficient balance. Available: ₦${walletBalance.toFixed(2)}`);
+    } else if (amountNum > availableBalance) {
+      setAmountError(`Insufficient available balance. Available: ₦${availableBalance.toFixed(2)}`);
     } else {
       setAmountError('');
     }
-  }, [amount, walletBalance]);
+  }, [amount, availableBalance]);
 
   const formatTimeRemaining = (expectedPayoutDate) => {
     const now = moment.tz('Africa/Lagos');
@@ -317,16 +318,38 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
         <ModalHeader color={textColor} fontWeight="bold">Withdraw Funds</ModalHeader>
         <ModalCloseButton color={textColor} />
         <ModalBody px={{ base: 4, sm: 6 }} py={4}>
+          {/* Balance Info Section - NEW */}
+          <Box mb={4} p={3} bg={cardBg} borderRadius="lg" border="1px" borderColor={borderColor}>
+            <Text fontSize="sm" color={subtleTextColor} mb={1}>Total Balance</Text>
+            <Text fontSize="lg" fontWeight="bold" color={textColor} mb={2}>
+              ₦{walletBalance.toFixed(2)}
+            </Text>
+            <Text fontSize="sm" color={subtleTextColor} mb={1}>Available Balance</Text>
+            <Text fontSize="lg" fontWeight="bold" color="green.500">
+              ₦{availableBalance.toFixed(2)}
+            </Text>
+            {walletBalance !== availableBalance && (
+              <Text fontSize="xs" color="orange.500" mt={2}>
+                ⓘ Some funds are reserved for pending withdrawals
+              </Text>
+            )}
+          </Box>
+
           <FormControl mb={4} isInvalid={!!amountError}>
             <FormLabel color={textColor}>Amount (₦)</FormLabel>
             <NumberInput
               min={100}
-              max={walletBalance}
+              max={availableBalance}
               precision={2}
               value={amount}
               onChange={(value) => setAmount(value)}
             >
-              <NumberInputField placeholder={`Enter amount (max ₦${walletBalance.toFixed(2)})`} bg={cardBg} borderColor={borderColor} color={textColor} />
+              <NumberInputField
+                placeholder={`Enter amount (max ₦${availableBalance.toFixed(2)})`}
+                bg={cardBg}
+                borderColor={borderColor}
+                color={textColor}
+              />
               <NumberInputStepper>
                 <NumberIncrementStepper color={textColor} />
                 <NumberDecrementStepper color={textColor} />
@@ -334,6 +357,7 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
             </NumberInput>
             {amountError && <Text color="red.500" fontSize="sm" mt={1}>{amountError}</Text>}
           </FormControl>
+
           <FormControl mb={4}>
             <FormLabel color={textColor}>Account Number</FormLabel>
             <Input
@@ -349,6 +373,7 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
               color={textColor}
             />
           </FormControl>
+
           <FormControl mb={4}>
             <FormLabel color={textColor}>Account Name</FormLabel>
             <Input
@@ -360,6 +385,7 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
               color={textColor}
             />
           </FormControl>
+
           <FormControl mb={4}>
             <FormLabel color={textColor}>Bank Name</FormLabel>
             <Select
@@ -375,16 +401,33 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
               ))}
             </Select>
           </FormControl>
+
           {pendingWithdrawals.length > 0 && (
             <Box mt={4}>
               <Text fontWeight="bold" color={textColor} mb={2}>Pending Withdrawals</Text>
               {pendingWithdrawals.map((withdrawal) => (
-                <Card key={withdrawal.reference} bg={cardBg} p={3} borderRadius="lg" mb={2} border="1px" borderColor={borderColor}>
-                  <Text color={textColor}>Amount: ₦{withdrawal.amount.toFixed(2)}</Text>
-                  <Text color={subtleTextColor}>Account: ****{withdrawal.accountNumber}</Text>
-                  <Text color={subtleTextColor}>Name: {withdrawal.accountName}</Text>
-                  <Text color={subtleTextColor}>Bank: {withdrawal.bankName || 'N/A'}</Text>
-                  <Text color={subtleTextColor}>
+                <Card
+                  key={withdrawal.reference}
+                  bg={cardBg}
+                  p={3}
+                  borderRadius="lg"
+                  mb={2}
+                  border="1px"
+                  borderColor={borderColor}
+                >
+                  <Text color={textColor} fontWeight="semibold">
+                    Amount: ₦{withdrawal.amount.toFixed(2)}
+                  </Text>
+                  <Text color={subtleTextColor} fontSize="sm">
+                    Account: ****{withdrawal.accountNumber.slice(-4)}
+                  </Text>
+                  <Text color={subtleTextColor} fontSize="sm">
+                    Name: {withdrawal.accountName}
+                  </Text>
+                  <Text color={subtleTextColor} fontSize="sm">
+                    Bank: {withdrawal.bankName || 'N/A'}
+                  </Text>
+                  <Text color="orange.500" fontSize="sm" fontWeight="medium">
                     Time Remaining: {formatTimeRemaining(withdrawal.expectedPayoutDate)}
                   </Text>
                 </Card>
@@ -392,6 +435,7 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
             </Box>
           )}
         </ModalBody>
+
         <ModalFooter flexDir={{ base: 'column', sm: 'row' }} gap={2}>
           <Button
             bg="#B38939"
@@ -400,14 +444,29 @@ const WithdrawalModal = ({ isOpen, onClose, walletBalance }) => {
             onClick={handleWithdraw}
             isLoading={isSubmitting}
             loadingText="Processing..."
-            isDisabled={!!amountError || !accountNumber || !/^\d{10}$/.test(accountNumber) || !accountName || !bankCode || isSubmitting}
+            isDisabled={
+              !!amountError ||
+              !accountNumber ||
+              !/^\d{10}$/.test(accountNumber) ||
+              !accountName ||
+              !bankCode ||
+              isSubmitting
+            }
             size={{ base: 'sm', sm: 'md' }}
+            width={{ base: 'full', sm: 'auto' }}
             mr={{ sm: 3 }}
             mb={{ base: 2, sm: 0 }}
           >
             Submit Withdrawal
           </Button>
-          <Button variant="ghost" color={textColor} _hover={{ bg: useColorModeValue('gray.100', '#051E2F') }} onClick={onClose} size={{ base: 'sm', sm: 'md' }}>
+          <Button
+            variant="ghost"
+            color={textColor}
+            _hover={{ bg: useColorModeValue('gray.100', '#051E2F') }}
+            onClick={onClose}
+            size={{ base: 'sm', sm: 'md' }}
+            width={{ base: 'full', sm: 'auto' }}
+          >
             Cancel
           </Button>
         </ModalFooter>
@@ -451,6 +510,24 @@ const Profile = () => {
   const hasShownAvatarToast = useRef(false);
   const editPanelBg = useColorModeValue('gray.50', '#2D3748');
   const inputFieldBg = useColorModeValue('white', '#2D3748');
+
+
+  // ✅ FIX: Add a check to ensure availableBalance is populated
+  useEffect(() => {
+    if (wallet && wallet.balance !== undefined && wallet.availableBalance === undefined) {
+      // If availableBalance is missing, calculate it on the frontend as fallback
+      const pendingAmount = wallet.transactions
+        ?.filter(tx => tx.type === 'withdrawal' && tx.status === 'pending')
+        .reduce((sum, tx) => sum + tx.amount, 0) || 0;
+
+      // Update wallet with calculated availableBalance
+      dispatch(setWallet({
+        ...wallet,
+        availableBalance: wallet.balance - pendingAmount,
+        pendingWithdrawals: pendingAmount,
+      }));
+    }
+  }, [wallet, dispatch]);
 
   // Sidebar state (likely used in a parent component or layout)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
@@ -1158,118 +1235,118 @@ const Profile = () => {
     </Card>
   ), [cardBg, borderColor, textColor, subtleTextColor]);
 
-const PaginationControls = useCallback(({ currentPage, setCurrentPage, totalItems }) => {
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const PaginationControls = useCallback(({ currentPage, setCurrentPage, totalItems }) => {
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
 
-  if (totalPages <= 1) return null;
+    if (totalPages <= 1) return null;
 
-  const pageNumbers = [];
-  const maxVisiblePages = 5;
+    const pageNumbers = [];
+    const maxVisiblePages = 5;
 
-  let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-  let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
 
-  if (endPage - startPage + 1 < maxVisiblePages) {
-    startPage = Math.max(1, endPage - maxVisiblePages + 1);
-  }
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
 
-  for (let i = startPage; i <= endPage; i++) {
-    pageNumbers.push(i);
-  }
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
 
-  return (
-    <Flex justify="center" align="center" mt={6} gap={2} wrap="wrap">
-      <Button
-        size="sm"
-        bg={currentPage === 1 ? "gray.300" : "#B38939"}
-        _hover={{ bg: currentPage === 1 ? "gray.300" : "#BB954D" }}
-        color={currentPage === 1 ? "gray.500" : "white"}
-        onClick={() => setCurrentPage(1)}
-        isDisabled={currentPage === 1}
-        cursor={currentPage === 1 ? "not-allowed" : "pointer"}
-      >
-        First
-      </Button>
-      <Button
-        size="sm"
-        bg={currentPage === 1 ? "gray.300" : "#B38939"}
-        _hover={{ bg: currentPage === 1 ? "gray.300" : "#BB954D" }}
-        color={currentPage === 1 ? "gray.500" : "white"}
-        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-        isDisabled={currentPage === 1}
-        cursor={currentPage === 1 ? "not-allowed" : "pointer"}
-      >
-        Previous
-      </Button>
-      {startPage > 1 && (
-        <>
-          <Button
-            size="sm"
-            bg={cardBg}
-            color={textColor}
-            _hover={{ bg: "#BB954D", color: "white" }}
-            onClick={() => setCurrentPage(1)}
-          >
-            1
-          </Button>
-          {startPage > 2 && <Text color={textColor}>...</Text>}
-        </>
-      )}
-      {pageNumbers.map((page) => (
+    return (
+      <Flex justify="center" align="center" mt={6} gap={2} wrap="wrap">
         <Button
-          key={page}
           size="sm"
-          bg={currentPage === page ? "#B38939" : cardBg}
-          color={currentPage === page ? "white" : textColor}
-          _hover={{ bg: "#BB954D", color: "white" }}
-          onClick={() => setCurrentPage(page)}
-          fontWeight={currentPage === page ? "bold" : "normal"}
+          bg={currentPage === 1 ? "gray.300" : "#B38939"}
+          _hover={{ bg: currentPage === 1 ? "gray.300" : "#BB954D" }}
+          color={currentPage === 1 ? "gray.500" : "white"}
+          onClick={() => setCurrentPage(1)}
+          isDisabled={currentPage === 1}
+          cursor={currentPage === 1 ? "not-allowed" : "pointer"}
         >
-          {page}
+          First
         </Button>
-      ))}
-      {endPage < totalPages && (
-        <>
-          {endPage < totalPages - 1 && <Text color={textColor}>...</Text>}
+        <Button
+          size="sm"
+          bg={currentPage === 1 ? "gray.300" : "#B38939"}
+          _hover={{ bg: currentPage === 1 ? "gray.300" : "#BB954D" }}
+          color={currentPage === 1 ? "gray.500" : "white"}
+          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+          isDisabled={currentPage === 1}
+          cursor={currentPage === 1 ? "not-allowed" : "pointer"}
+        >
+          Previous
+        </Button>
+        {startPage > 1 && (
+          <>
+            <Button
+              size="sm"
+              bg={cardBg}
+              color={textColor}
+              _hover={{ bg: "#BB954D", color: "white" }}
+              onClick={() => setCurrentPage(1)}
+            >
+              1
+            </Button>
+            {startPage > 2 && <Text color={textColor}>...</Text>}
+          </>
+        )}
+        {pageNumbers.map((page) => (
           <Button
+            key={page}
             size="sm"
-            bg={cardBg}
-            color={textColor}
+            bg={currentPage === page ? "#B38939" : cardBg}
+            color={currentPage === page ? "white" : textColor}
             _hover={{ bg: "#BB954D", color: "white" }}
-            onClick={() => setCurrentPage(totalPages)}
+            onClick={() => setCurrentPage(page)}
+            fontWeight={currentPage === page ? "bold" : "normal"}
           >
-            {totalPages}
+            {page}
           </Button>
-        </>
-      )}
-      <Button
-        size="sm"
-        bg={currentPage === totalPages ? "gray.300" : "#B38939"}
-        _hover={{ bg: currentPage === totalPages ? "gray.300" : "#BB954D" }}
-        color={currentPage === totalPages ? "gray.500" : "white"}
-        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-        isDisabled={currentPage === totalPages}
-        cursor={currentPage === totalPages ? "not-allowed" : "pointer"}
-      >
-        Next
-      </Button>
-      <Button
-        size="sm"
-        bg={currentPage === totalPages ? "gray.300" : "#B38939"}
-        _hover={{ bg: currentPage === totalPages ? "gray.300" : "#BB954D" }}
-        color={currentPage === totalPages ? "gray.500" : "white"}
-        onClick={() => setCurrentPage(totalPages)}
-        isDisabled={currentPage === totalPages}
-        cursor={currentPage === totalPages ? "not-allowed" : "pointer"}
-      >
-        Last
-      </Button>
-      <Text color={subtleTextColor} fontSize="sm" ml={4}>
-        Page {currentPage} of {totalPages} ({totalItems} total)
-      </Text>
-    </Flex>
-  );
-}, [cardBg, textColor, subtleTextColor, itemsPerPage]);
+        ))}
+        {endPage < totalPages && (
+          <>
+            {endPage < totalPages - 1 && <Text color={textColor}>...</Text>}
+            <Button
+              size="sm"
+              bg={cardBg}
+              color={textColor}
+              _hover={{ bg: "#BB954D", color: "white" }}
+              onClick={() => setCurrentPage(totalPages)}
+            >
+              {totalPages}
+            </Button>
+          </>
+        )}
+        <Button
+          size="sm"
+          bg={currentPage === totalPages ? "gray.300" : "#B38939"}
+          _hover={{ bg: currentPage === totalPages ? "gray.300" : "#BB954D" }}
+          color={currentPage === totalPages ? "gray.500" : "white"}
+          onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+          isDisabled={currentPage === totalPages}
+          cursor={currentPage === totalPages ? "not-allowed" : "pointer"}
+        >
+          Next
+        </Button>
+        <Button
+          size="sm"
+          bg={currentPage === totalPages ? "gray.300" : "#B38939"}
+          _hover={{ bg: currentPage === totalPages ? "gray.300" : "#BB954D" }}
+          color={currentPage === totalPages ? "gray.500" : "white"}
+          onClick={() => setCurrentPage(totalPages)}
+          isDisabled={currentPage === totalPages}
+          cursor={currentPage === totalPages ? "not-allowed" : "pointer"}
+        >
+          Last
+        </Button>
+        <Text color={subtleTextColor} fontSize="sm" ml={4}>
+          Page {currentPage} of {totalPages} ({totalItems} total)
+        </Text>
+      </Flex>
+    );
+  }, [cardBg, textColor, subtleTextColor, itemsPerPage]);
 
   if (isAuthLoading) {
     return (
@@ -1324,6 +1401,10 @@ const PaginationControls = useCallback(({ currentPage, setCurrentPage, totalItem
       </Flex>
     );
   }
+
+
+
+
 
   return (
     <ErrorBoundary>
@@ -1835,6 +1916,8 @@ const PaginationControls = useCallback(({ currentPage, setCurrentPage, totalItem
             isOpen={isWithdrawOpen}
             onClose={onWithdrawClose}
             walletBalance={wallet?.balance || 0}
+            // ✅ FIX: Ensure availableBalance defaults to balance if undefined
+            availableBalance={wallet?.availableBalance ?? wallet?.balance ?? 0}
           />
         </Container>
       </Box>
