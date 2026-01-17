@@ -2,16 +2,28 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "../utils/axiosConfig";
 import {
-  useToast, Box, Text, Input, Button, FormControl, FormLabel,
-  VStack, Flex, Container, Heading, InputGroup, InputRightElement,
-  ScaleFade, useColorModeValue
+  useToast,
+  Box,
+  Text,
+  Input,
+  Button,
+  FormControl,
+  FormLabel,
+  VStack,
+  Flex,
+  Container,
+  Heading,
+  InputGroup,
+  InputRightElement,
+  ScaleFade,
+  useColorModeValue,
 } from "@chakra-ui/react";
 import { motion } from "framer-motion";
 import { FiEye, FiEyeOff, FiArrowRight, FiMail, FiLock } from "react-icons/fi";
 import Logo from "../assets/logo1.png";
 import "./Login.css";
-import { useDispatch } from 'react-redux';
-import { setUserDetails } from '../store/slices/userSlice';
+import { useDispatch } from "react-redux";
+import { setUserDetails } from "../store/slices/userSlice";
 
 const MotionBox = motion(Box);
 const MotionFlex = motion(Flex);
@@ -59,6 +71,7 @@ const Login = () => {
     },
   };
 
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -84,69 +97,91 @@ const Login = () => {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         console.log(`Login attempt ${attempt} for email: ${email}`);
-        const response = await axios.post('/api/auth/login', {
-          email,
-          password,
-        }, {
-          timeout: 30000,
-        });
+        const response = await axios.post(
+          "/api/auth/login",
+          { email, password },
+          { timeout: 30000 }
+        );
 
         console.log("Login response:", response.data);
+        console.log("Response type check:", {
+          hasData: !!response.data,
+          success: response.data?.success,
+          successType: typeof response.data?.success,
+          hasAccessToken: !!response.data?.accessToken,
+          hasRefreshToken: !!response.data?.refreshToken
+        });
 
-        if (response.data?.success && response.data?.message === "Login successful") {
-          const { accessToken, refreshToken, user } = response.data;
-          console.log("Storing tokens:", { accessToken, refreshToken });
-          localStorage.setItem("access-token", accessToken);
-          localStorage.setItem("refresh-token", refreshToken);
-          axios.defaults.headers.common["Authorization"] = `Bearer ${accessToken}`;
-          dispatch(setUserDetails(user));
-
-          toast({
-            title: "Login Successful",
-            description: "Welcome back!",
-            status: "success",
-            duration: 5000,
-            isClosable: true,
-            position: "top",
-          });
-
-          console.log("Navigating to /dashboard");
-          navigate("/dashboard");
-          break;
-        } else {
-          throw new Error(response.data?.error || "Unexpected response format");
+        // FIXED: Check if response exists
+        if (!response || !response.data) {
+          throw new Error("No response data received");
         }
+
+        const { success, accessToken, refreshToken, user, walletId } = response.data;
+
+        // FIXED: Only check for tokens, not success flag
+        if (!accessToken || !refreshToken) {
+          console.error("Missing tokens in response:", { success, accessToken, refreshToken });
+          throw new Error(
+            response.data?.error || "Login failed - missing access or refresh token"
+          );
+        }
+
+        // SUCCESS PATH - we have both tokens
+        console.log("Storing tokens:", { accessToken, refreshToken });
+
+        localStorage.setItem("access-token", accessToken);
+        localStorage.setItem("refresh-token", refreshToken);
+        axios.defaults.headers.common["Authorization"] = `Bearer ${accessToken}`;
+        dispatch(setUserDetails(user));
+
+        toast({
+          title: "Login Successful",
+          description: "Welcome back!",
+          status: "success",
+          duration: 5000,
+          isClosable: true,
+          position: "top",
+        });
+
+        console.log("Navigating to /dashboard");
+        navigate("/dashboard");
+        break; // Exit the retry loop on success
+
       } catch (error) {
         console.error(`Login error (Attempt ${attempt}):`, error);
+
         if (attempt === maxRetries) {
           let errorTitle = "Login Failed";
-          let errorMessage = "An unexpected error occurred. Please try again.";
+          let errorMessage =
+            error.message || "An unexpected error occurred. Please try again.";
 
           if (error.response) {
-            if (error.response.status === 400) {
+            const status = error.response.status;
+            if (status === 400) {
               errorTitle = "Invalid Input";
               errorMessage = "Please provide both email and password.";
-            } else if (error.response.status === 404) {
-              errorTitle = "User Not Found";
-              errorMessage = "No account exists with this email. Would you like to register?";
-              navigate("/register", { state: { email } });
-            } else if (error.response.status === 401) {
+            } else if (status === 401) {
               errorTitle = "Invalid Credentials";
-              errorMessage = "Incorrect email or password. Try resetting your password if you forgot it.";
-            } else if (error.response.status === 500) {
+              errorMessage = "Incorrect email or password.";
+            } else if (status === 404) {
+              errorTitle = "User Not Found";
+              errorMessage =
+                "No account with this email. Would you like to register?";
+              navigate("/register", { state: { email } });
+            } else if (status === 500) {
               errorTitle = "Server Error";
-              errorMessage = "Something went wrong on the server. Please try again later.";
+              errorMessage =
+                "Something went wrong on our end. Please try again later.";
             } else {
               errorMessage = error.response.data?.error || errorMessage;
             }
           } else if (error.code === "ECONNABORTED") {
-            errorTitle = "Connection Timeout";
-            errorMessage = "The server took too long to respond. Please check your connection and try again.";
+            errorTitle = "Timeout";
+            errorMessage = "The server is taking too long. Check your connection.";
           } else if (error.request) {
-            errorTitle = "Connection Error";
-            errorMessage = "Unable to connect to the server. Please check your internet connection or try again later.";
-          } else {
-            errorMessage = error.message || errorMessage;
+            errorTitle = "Network Error";
+            errorMessage = "Cannot reach the server. Check your internet.";
           }
 
           toast({
@@ -157,8 +192,11 @@ const Login = () => {
                 {error.response?.status === 401 && (
                   <>
                     {" "}
-                    <Link to="/forgot-password" style={{ color: "#B38939", textDecoration: "underline" }}>
-                      Reset Password
+                    <Link
+                      to="/forgot-password"
+                      style={{ color: "#B38939", textDecoration: "underline" }}
+                    >
+                      Forgot Password?
                     </Link>
                   </>
                 )}
@@ -170,8 +208,9 @@ const Login = () => {
             position: "top",
           });
         }
+
         if (attempt < maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+          await new Promise((resolve) => setTimeout(resolve, 2000 * attempt));
         }
       } finally {
         if (attempt === maxRetries) {
@@ -208,7 +247,7 @@ const Login = () => {
           transition={{
             y: { repeat: Infinity, duration: 10, ease: "easeInOut" },
             opacity: { duration: 1.5 },
-            scale: { duration: 1.5 }
+            scale: { duration: 1.5 },
           }}
         />
         <MotionBox
@@ -229,7 +268,7 @@ const Login = () => {
           transition={{
             y: { repeat: Infinity, duration: 12, ease: "easeInOut" },
             opacity: { duration: 1.5, delay: 0.5 },
-            scale: { duration: 1.5, delay: 0.5 }
+            scale: { duration: 1.5, delay: 0.5 },
           }}
         />
         <MotionBox
@@ -250,7 +289,7 @@ const Login = () => {
           transition={{
             x: { repeat: Infinity, duration: 15, ease: "easeInOut" },
             opacity: { duration: 1.5, delay: 0.8 },
-            scale: { duration: 1.5, delay: 0.8 }
+            scale: { duration: 1.5, delay: 0.8 },
           }}
         />
       </Box>
@@ -341,12 +380,7 @@ const Login = () => {
                 overflow="hidden"
                 className="form-container"
               >
-                <VStack
-                  spacing={1}
-                  mb={6}
-                  align="flex-start"
-                  display={{ base: "flex", lg: "flex" }}
-                >
+                <VStack spacing={1} mb={6} align="flex-start">
                   <Heading size="lg" color="white" fontWeight="semibold">
                     Log In
                   </Heading>
@@ -375,7 +409,14 @@ const Login = () => {
                           _hover={{ bg: "gray.600" }}
                           _focus={{ bg: "gray.600" }}
                         />
-                        <Box position="absolute" left="3" top="50%" transform="translateY(-50%)" color="gray.400" zIndex="1">
+                        <Box
+                          position="absolute"
+                          left="3"
+                          top="50%"
+                          transform="translateY(-50%)"
+                          color="gray.400"
+                          zIndex="1"
+                        >
                           <FiMail />
                         </Box>
                       </InputGroup>
@@ -399,7 +440,14 @@ const Login = () => {
                           _hover={{ bg: "gray.600" }}
                           _focus={{ bg: "gray.600" }}
                         />
-                        <Box position="absolute" left="3" top="50%" transform="translateY(-50%)" color="gray.400" zIndex="1">
+                        <Box
+                          position="absolute"
+                          left="3"
+                          top="50%"
+                          transform="translateY(-50%)"
+                          color="gray.400"
+                          zIndex="1"
+                        >
                           <FiLock />
                         </Box>
                         <InputRightElement h="full">
@@ -443,11 +491,11 @@ const Login = () => {
                       _hover={{
                         bg: "#A47F35",
                         transform: "translateY(-2px)",
-                        boxShadow: "lg"
+                        boxShadow: "lg",
                       }}
                       _active={{
                         transform: "translateY(0)",
-                        boxShadow: "md"
+                        boxShadow: "md",
                       }}
                       isLoading={isLoading}
                       borderRadius="lg"
@@ -473,11 +521,7 @@ const Login = () => {
               </Box>
             </ScaleFade>
 
-            <MotionBox
-              textAlign="center"
-              mt={6}
-              variants={itemVariants}
-            >
+            <MotionBox textAlign="center" mt={6} variants={itemVariants}>
               <Text fontSize={{ base: "sm", md: "md" }} color="gray.600">
                 Don't have an account?{" "}
                 <Link to="/register">

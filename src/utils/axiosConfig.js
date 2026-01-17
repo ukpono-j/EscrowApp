@@ -18,13 +18,13 @@ const checkConnectivity = async () => {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 3000);
-    
-    await fetch('/favicon.ico', { 
+
+    await fetch('/favicon.ico', {
       method: 'HEAD',
       cache: 'no-cache',
       signal: controller.signal
     });
-    
+
     clearTimeout(timeoutId);
     return true;
   } catch {
@@ -34,20 +34,20 @@ const checkConnectivity = async () => {
 
 const debounceRequest = (config) => {
   const key = `${config.method}-${config.url}`;
-  
+
   if (pendingRequests.has(key)) {
     return pendingRequests.get(key);
   }
-  
+
   const request = axios(config);
   pendingRequests.set(key, request);
-  
+
   request.finally(() => {
     setTimeout(() => {
       pendingRequests.delete(key);
     }, 1000);
   });
-  
+
   return request;
 };
 
@@ -57,7 +57,7 @@ window.addEventListener('online', () => {
   isSessionExpired = false;
   const now = Date.now();
   if (now - lastConnectivityToast > 5000) {
-    toast.success('Connection restored', { 
+    toast.success('Connection restored', {
       autoClose: 2000,
       toastId: 'online-status'
     });
@@ -70,7 +70,7 @@ window.addEventListener('offline', () => {
   networkIssueDetected = true;
   const now = Date.now();
   if (now - lastConnectivityToast > 5000) {
-    toast.warn('Connection lost. Working offline...', { 
+    toast.warn('Connection lost. Working offline...', {
       autoClose: 3000,
       toastId: 'offline-status'
     });
@@ -123,7 +123,7 @@ const shouldSkipAuth = (url) => {
 instance.interceptors.request.use(
   (config) => {
     config.requestStartTime = Date.now();
-    
+
     // Skip adding token for auth endpoints
     if (shouldSkipAuth(config.url)) {
       console.log('Skipping auth header for:', config.url);
@@ -151,7 +151,7 @@ instance.interceptors.response.use(
     if (networkIssueDetected) {
       networkIssueDetected = false;
     }
-    
+
     const duration = Date.now() - response.config.requestStartTime;
     if (import.meta.env.DEV && duration > 10000) {
       console.warn(`Slow response: ${response.config.url} (${duration}ms)`);
@@ -182,7 +182,7 @@ instance.interceptors.response.use(
     if (isNetworkError && !networkIssueDetected) {
       networkIssueDetected = true;
       const isReallyOffline = await checkConnectivity();
-      
+
       if (isReallyOffline) {
         isOffline = true;
         const now = Date.now();
@@ -233,12 +233,12 @@ instance.interceptors.response.use(
           `${import.meta.env.VITE_BASE_URL}/api/auth/refreshToken`,
           { refreshToken }
         );
-        
+
         const newAccessToken = response.data.accessToken;
         if (!newAccessToken) {
           throw new Error('No access token returned from refresh');
         }
-        
+
         localStorage.setItem('access-token', newAccessToken);
         originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
         processQueue(null, newAccessToken);
@@ -261,28 +261,29 @@ instance.interceptors.response.use(
       }
     }
 
-    // For auth endpoints, just pass through the error without retrying
+    // CRITICAL FIX: For auth endpoints, just pass through the error WITHOUT wrapping
+    // This prevents successful login responses from being wrapped with fallback data
     if (shouldSkipAuth(originalRequest.url)) {
       return Promise.reject(error);
     }
 
     const now = Date.now();
-    
+
     if (isCritical && !networkIssueDetected && !isSessionExpired) {
       if (status === 500) {
-        toast.error('Server error during critical operation. Please try again or contact support.', { 
+        toast.error('Server error during critical operation. Please try again or contact support.', {
           autoClose: 4000,
           toastId: 'server-error'
         });
       } else if (status === 404 && originalRequest.url?.includes('/api/kyc/kyc-details')) {
         // Don't show toast for 404 on kyc-details (handled by component)
       } else if (status === 404) {
-        toast.error('Service unavailable. Please try again.', { 
+        toast.error('Service unavailable. Please try again.', {
           autoClose: 3000,
           toastId: 'not-found'
         });
       } else if (isTimeout && now - lastConnectivityToast > 10000) {
-        toast.warn('Slow connection detected. Please wait...', { 
+        toast.warn('Slow connection detected. Please wait...', {
           autoClose: 3000,
           toastId: 'slow-connection'
         });
@@ -290,12 +291,27 @@ instance.interceptors.response.use(
       }
     }
 
-    const errorMessage = isOffline 
+    // Only provide fallback data for NON-auth, NON-critical endpoints
+    // For critical endpoints and auth endpoints, let the error propagate normally
+    const errorMessage = isOffline
       ? 'You are offline. Some features may not work correctly.'
-      : isTimeout 
+      : isTimeout
         ? 'Request timed out. Please try again.'
         : error.response?.data?.error || error.message || 'Something went wrong';
 
+    // ONLY provide fallback for specific safe endpoints
+    const shouldProvideFallback =
+      originalRequest.url?.includes('transactions/get-transaction') ||
+      originalRequest.url?.includes('wallet/balance') ||
+      originalRequest.url?.includes('user-details') ||
+      originalRequest.url?.includes('kyc-details');
+
+    if (!shouldProvideFallback) {
+      // For most endpoints (including critical ones), just reject the error
+      return Promise.reject(error);
+    }
+
+    // Only for safe fallback endpoints, provide graceful degradation
     const fallbackData = {
       success: false,
       error: errorMessage,
@@ -305,18 +321,16 @@ instance.interceptors.response.use(
       duration,
       data: originalRequest.url?.includes('transactions/get-transaction')
         ? []
-        : originalRequest.url?.includes('/transactions/') && originalRequest.url?.match(/transactions\/[0-9a-fA-F]{24}$/)
-          ? {}
-          : originalRequest.url?.includes('wallet/balance')
-            ? { balance: 0, currency: 'USD' }
-            : originalRequest.url?.includes('user-details')
-              ? { user: {}, profile: {} }
-              : originalRequest.url?.includes('kyc-details')
-                ? { isKycSubmitted: false }
-                : null,
+        : originalRequest.url?.includes('wallet/balance')
+          ? { balance: 0, currency: 'USD' }
+          : originalRequest.url?.includes('user-details')
+            ? { user: {}, profile: {} }
+            : originalRequest.url?.includes('kyc-details')
+              ? { isKycSubmitted: false }
+              : null,
     };
 
-    return Promise.resolve({ 
+    return Promise.resolve({
       data: fallbackData,
       status: error.response?.status || 0,
       config: originalRequest
