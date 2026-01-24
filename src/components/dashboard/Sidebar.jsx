@@ -177,7 +177,7 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
     { to: "/join-transaction", label: "Join Transaction", icon: <FaHandshake className="text-xl" /> },
     { to: "/transactions/tab", label: "My Transactions", icon: <FaExchangeAlt className="text-xl" /> },
     { to: "/disputes", label: "Disputes", icon: <FaGavel className="text-xl" /> }, // Add Disputes link
-    ...(isAdmin ? [{ to: "/admin/disputes", label: "Admin Disputes", icon: <FaGavel className="text-xl" /> }] : []), // Add Admin Disputes link for admins
+    // ...(isAdmin ? [{ to: "/admin/disputes", label: "Admin Disputes", icon: <FaGavel className="text-xl" /> }] : []), // Add Admin Disputes link for admins
     { to: "/profile", label: "My Profile", icon: <MdPerson className="text-xl" /> },
     { to: "/security-settings/kyc", label: "BVN Verification", icon: <FaUserShield className="text-lg" /> },
   ];
