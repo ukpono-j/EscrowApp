@@ -100,7 +100,8 @@ export default function CreateDeal() {
           automatically
         </p>
         <div className="bg-white flex items-center justify-between p-2 rounded-xl w-full">
-          <h4 className="truncate">{url}</h4>
+          <div className="flex-1" >  <h4 className="truncate">{url}</h4></div>
+        
 
           <button onClick={copyContent} className="bg-gray-100 p-3 rounded-xl active:scale-[0.98] transition">
             <Copy size={20} className="text-green-600" />
@@ -140,18 +141,8 @@ export default function CreateDeal() {
 
 
 
-  const createDeal = () => {
- toast({
-            title: "Successfully created a transaction",
-            description: <Item id={"t1234##################################################"} />,
-            status: "success",
-            duration: 50000,
-            isClosable: true,
+  const handleCreateDeal = () => {
 
-          });
-
-
-    return
 
 
     if (isLoading) {
@@ -465,7 +456,7 @@ export default function CreateDeal() {
         ) : (
  
   <button
-  onClick={createDeal}
+  onClick={handleCreateDeal}
   disabled={isLoading}
   className="w-full py-3 rounded-xl font-semibold bg-green-500 text-white active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-70"
 >
