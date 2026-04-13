@@ -11,7 +11,7 @@ const validateApiResponse = (responseData, endpoint) => {
   if (responseData.success) {
     return responseData.data || {};
   }
-  // console.error(`Invalid response from ${endpoint}:`, responseData);
+  console.error(`Invalid response from ${endpoint}:`, responseData);
   throw new Error(responseData.error || "Invalid response received");
 };
 
