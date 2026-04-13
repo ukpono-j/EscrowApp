@@ -1,0 +1,1 @@
+export const formatNaira = (value) => `₦ ${value === 0 ? "0.00" : value.toLocaleString()}`;

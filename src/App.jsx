@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import  { useEffect, useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import axios from 'axios';
 import Home from './pages/Home';
@@ -21,8 +21,9 @@ import DisputePage from './components/dashboard/DisputePage'; // Import DisputeP
 import PrivateRoute from './components/PrivateRoute';
 import PublicRoute from './components/PublicRoute';
 import ForgotPassword from './pages/ForgotPassword';
-import { Box, Button, useColorModeValue } from '@chakra-ui/react';
+import { Box, Button } from '@chakra-ui/react';
 import VerifyEmail from './pages/VerifyEmail';
+import DashboardOnboarding from './pages/dashbroardonbroading';
 
 const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:3001';
 
@@ -158,13 +159,14 @@ function App() {
     }
   };
 
-  const bgColor = useColorModeValue('white', 'gray.800');
+ 
 
   return (
     <>
       <Routes>
         <Route path="/" element={<PublicRoute><Home /></PublicRoute>} />
         <Route path="/login" element={<PublicRoute><LogIn /></PublicRoute>} />
+        <Route path="/onbroading" element={<PrivateRoute><DashboardOnboarding /></PrivateRoute>} />
         <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
         <Route path="/verify-email" element={<PublicRoute><VerifyEmail /></PublicRoute>} />        
         <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />

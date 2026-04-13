@@ -4,7 +4,7 @@ import axiosRetry from 'axios-retry';
 import pino from 'pino';
 import { setWallet, setPaymentDetails } from './walletSlice';
 
-const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:3001';
+// const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:3001';
 const logger = pino({ level: 'info', browser: { asObject: true } });
 
 axiosRetry(axios, {
@@ -56,13 +56,13 @@ export const fetchInitialData = createAsyncThunk(
 
     try {
       const [userResponse, transactionsResponse, walletResponse] = await Promise.allSettled([
-        fetchWithRetry(`${BASE_URL}/api/users/user-details`, {
+        fetchWithRetry(`/api/users/user-details`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetchWithRetry(`${BASE_URL}/api/transactions/get-transaction`, {
+        fetchWithRetry(`/api/transactions/get-transaction`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetchWithRetry(`${BASE_URL}/api/wallet/balance`, {
+        fetchWithRetry(`/api/wallet/balance`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
@@ -159,7 +159,7 @@ export const fundWallet = createAsyncThunk(
       if (!email || !phoneNumber || !userId) {
         throw new Error('Missing required fields: email, phoneNumber, or userId');
       }
-      const response = await axios.post(`${BASE_URL}/api/wallet/fund`, {
+      const response = await axios.post(`/api/wallet/fund`, {
         amount,
         email,
         phoneNumber,
@@ -189,7 +189,7 @@ export const withdrawFunds = createAsyncThunk(
   async ({ amount, accountNumber, accountName, bankCode }, { rejectWithValue }) => {
     try {
       const response = await axios.post(
-        `${BASE_URL}/api/wallet/withdraw`,
+        `/api/wallet/withdraw`,
         { amount, accountNumber, accountName, bankCode },
         { headers: { Authorization: `Bearer ${localStorage.getItem('access-token')}` } }
       );
@@ -216,7 +216,7 @@ export const checkFundingStatus = createAsyncThunk(
   'wallet/checkFundingStatus',
   async (reference, { dispatch, rejectWithValue }) => {
     try {
-      const response = await axios.get(`${BASE_URL}/api/wallet/funding-status/${reference}`, {
+      const response = await axios.get(`/api/wallet/funding-status/${reference}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('access-token')}` },
         params: { noCache: Date.now() },
       });
@@ -260,7 +260,7 @@ export const manualReconcileTransaction = createAsyncThunk(
   async (reference, { dispatch, rejectWithValue }) => {
     try {
       const response = await axios.post(
-        `${BASE_URL}/api/wallet/reconcile`,
+        `/api/wallet/reconcile`,
         { reference },
         { headers: { Authorization: `Bearer ${localStorage.getItem('access-token')}` } }
       );
@@ -296,7 +296,7 @@ export const fetchPendingWithdrawals = createAsyncThunk(
   'wallet/fetchPendingWithdrawals',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${BASE_URL}/api/wallet/pending-withdrawals`, {
+      const response = await axios.get(`/api/wallet/pending-withdrawals`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('access-token')}` },
         params: { noCache: Date.now() },
       });
@@ -331,11 +331,11 @@ export const fetchTransactions = createAsyncThunk(
 
       // Fetch transactions and wallet balance concurrently
       const [transactionsResponse, walletResponse] = await Promise.all([
-        axios.get(`${BASE_URL}/api/transactions/get-transaction`, {
+        axios.get(`/api/transactions/get-transaction`, {
           headers: { Authorization: `Bearer ${token}` },
           params: { noCache: Date.now() },
         }),
-        axios.get(`${BASE_URL}/api/wallet/balance`, {
+        axios.get(`/api/wallet/balance`, {
           headers: { Authorization: `Bearer ${token}` },
           params: { noCache: Date.now() },
         }),

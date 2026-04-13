@@ -20,10 +20,10 @@ import {
 } from "@chakra-ui/react";
 import { motion } from "framer-motion";
 import { FiEye, FiEyeOff, FiArrowRight, FiMail, FiLock } from "react-icons/fi";
-import Logo from "../assets/logo1.png";
+// import Logo from "../assets/logo1.png";
 import "./Login.css";
 import { useDispatch } from "react-redux";
-import { setUserDetails } from "../store/slices/userSlice";
+import { setUserDetails} from "../store/slices/userSlice";
 
 const MotionBox = motion(Box);
 const MotionFlex = motion(Flex);
@@ -44,12 +44,12 @@ const Login = () => {
     return () => setMounted(false);
   }, []);
 
-  const bgColor = useColorModeValue("white", "gray.900");
-  const formBgColor = useColorModeValue("gray.50", "gray.800");
-  const textColor = useColorModeValue("gray.800", "white");
+  // const bgColor = useColorModeValue("white", "gray.900");
+  // const formBgColor = useColorModeValue("gray.50", "gray.800");
+  // const textColor = useColorModeValue("gray.800", "white");
   const accentColor = "#B38939";
   const buttonBgColor = useColorModeValue("#031420", "#051e2f");
-  const buttonHoverBgColor = "#B38939";
+  // const buttonHoverBgColor = "#B38939";
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -144,8 +144,9 @@ const Login = () => {
           position: "top",
         });
 
-        console.log("Navigating to /dashboard");
-        navigate("/dashboard");
+        console.log("Navigating to /onbroading");
+
+        navigate("/onbroading");
         break; // Exit the retry loop on success
 
       } catch (error) {

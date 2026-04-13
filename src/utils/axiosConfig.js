@@ -3,8 +3,19 @@ import axios from 'axios';
 import { navigateTo } from './navigate';
 import { toast } from 'react-toastify';
 
+
+const baseURL = import.meta.env.VITE_BASE_URL;
+// || 'http://localhost:3001';
+
+
+
+if (!baseURL) {
+  throw new Error('VITE_BASE_URL is not defined');
+}
+
+
 const instance = axios.create({
-  baseURL: import.meta.env.VITE_BASE_URL || 'http://localhost:3001',
+  baseURL,
   timeout: 25000,
 });
 

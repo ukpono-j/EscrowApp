@@ -1,5 +1,5 @@
 // Sidebar.jsx (update links array and add useEffect for user role)
-import React, { useEffect, useState, useCallback, memo } from "react";
+import React, { useEffect, useState, useCallback, memo, useLayoutEffect } from "react";
 import {
   MdLogout,
   MdDashboard,
@@ -154,10 +154,12 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
     verifyToken();
   }, [toast, navigate]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     localStorage.setItem('sidebarCollapsed', JSON.stringify(isCollapsed));
     onCollapseChange?.(isMobile ? isSidebarVisible : isCollapsed);
   }, [isCollapsed, isSidebarVisible, isMobile, onCollapseChange]);
+
+
 
   const toggleSidebar = useCallback(() => {
     if (isMobile) {
@@ -180,6 +182,7 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
     // ...(isAdmin ? [{ to: "/admin/disputes", label: "Admin Disputes", icon: <FaGavel className="text-xl" /> }] : []), // Add Admin Disputes link for admins
     { to: "/profile", label: "My Profile", icon: <MdPerson className="text-xl" /> },
     { to: "/security-settings/kyc", label: "BVN Verification", icon: <FaUserShield className="text-lg" /> },
+    { to: "/onbroading", label: "Switch Role", icon: <FaExchangeAlt className="text-lg" /> },
   ];
 
   const handleLinkClick = useCallback((to) => {
@@ -382,7 +385,7 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
                     <Text fontSize="xs" color="gray.500" fontWeight="medium">
                       © 2025 Sylo
                     </Text>
-                    <ThemeToggle />
+                    {/* <ThemeToggle /> */}
                   </Flex>
                   <button
                     onClick={handleLogout}

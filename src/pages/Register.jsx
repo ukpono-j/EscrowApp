@@ -188,7 +188,8 @@ const Register = () => {
         isClosable: true 
       });
 
-      setTimeout(() => navigate("/dashboard"), 1500);
+      // setTimeout(() => navigate("/dashboard"), 1500);
+      setTimeout(() => navigate("/onbroading"), 1500);
     } catch (error) {
       let message = "Registration failed";
       if (error?.response?.data?.error) {

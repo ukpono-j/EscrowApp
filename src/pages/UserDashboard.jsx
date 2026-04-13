@@ -63,6 +63,7 @@ const UserDashboard = () => {
     verifyToken();
   }, [navigate, toast]);
 
+  
   const isMobile = useBreakpointValue({ base: true, md: false });
   const mainContentWidth = useBreakpointValue({
     base: "100%",
@@ -89,7 +90,7 @@ const UserDashboard = () => {
       >
         <Box h="full">
           <Box display={showToggleContainer ? "block" : "none"}>
-            {/* <MiniNav /> */}
+  
             <Box p={5}>
               <MyTransaction />
             </Box>

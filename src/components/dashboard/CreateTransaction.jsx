@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import Profile from './Profile';
 import TransactionCreation from './TransactionCreation';
 import MiniNav from './MiniNav';
-import { Box, Text, Flex, Avatar } from "@chakra-ui/react";
+import { Box } from "@chakra-ui/react";
 
 
 const CreateTransaction = () => {
   const [showToggleContainer, setShowToggleContainer] = useState(true);
-  const [showProfile, setShowProfile] = useState(false);
+  // const [showProfile, setShowProfile] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -36,12 +36,12 @@ const CreateTransaction = () => {
 
   const handleShowProfile = () => {
     setShowToggleContainer(false);
-    setShowProfile(true);
+    // setShowProfile(true);
   };
 
   const handleMyTransaction = () => {
     setShowToggleContainer(true);
-    setShowProfile(false);
+    // setShowProfile(false);
   };
 
   // Function to handle sidebar collapse state changes

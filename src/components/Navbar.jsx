@@ -241,7 +241,7 @@ const Navbar = () => {
             gap={["12px", "16px"]}
             ml={4}
           >
-            <ThemeToggle />
+            {/* <ThemeToggle /> */}
             <Button
               as={Link}
               to="/login"
