@@ -27,8 +27,9 @@ import {
   Fade,
 } from "@chakra-ui/react";
 import CreateDeal from "../deals/CreateDeal";
+
 // import defaultProfileImage from "../../assets/profile_icon.png";
-// import CreateDeal from "../deals_component/CreateDeal";
+
 
 // const BASE_URL = import.meta.env.VITE_BASE_URL;
 
