@@ -8,7 +8,6 @@ import { Box } from "@chakra-ui/react";
 
 const CreateTransaction = () => {
   const [showToggleContainer, setShowToggleContainer] = useState(true);
-  // const [showProfile, setShowProfile] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -41,7 +40,6 @@ const CreateTransaction = () => {
 
   const handleMyTransaction = () => {
     setShowToggleContainer(true);
-    // setShowProfile(false);
   };
 
   // Function to handle sidebar collapse state changes
