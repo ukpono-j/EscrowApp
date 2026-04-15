@@ -4,7 +4,7 @@ import { AiOutlineMenu, AiOutlineClose } from "react-icons/ai";
 import { Link } from "react-router-dom";
 import Logo from "../assets/logo1.png";
 import "./Navbar.css";
-import ThemeToggle from "../ThemeToggle";
+// import ThemeToggle from "../ThemeToggle";
 import {
   Box,
   Text,
@@ -302,7 +302,7 @@ const Navbar = () => {
             align="center"
             gap={["12px", "16px"]}
           >
-            <ThemeToggle />
+            {/* <ThemeToggle /> */}
             <Button
               variant="ghost"
               size="sm"

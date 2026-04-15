@@ -622,12 +622,12 @@ const PaymentDetailsModal = ({ isOpen, onClose, transaction, paymentDetails, set
 };
 
 const FundingModal = ({ isOpen, onClose, transaction, walletBalance, confirmFunding, isLoading, fetchWalletBalance }) => {
-  const bgColor = useColorModeValue('white', '#1A202C');
+  const bgColor = useColorModeValue('white', '#0a1528');
   const textColor = useColorModeValue('#051E2F', 'white');
   const subtleTextColor = useColorModeValue('gray.500', 'gray.400');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   const [error, setError] = useState('');
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} isCentered size={{ base: "full", sm: "sm" }}>

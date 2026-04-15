@@ -120,7 +120,7 @@ export default function CreateDeal() {
       paymentBankCode: "000",
       paymentAccountNumber: "0",
     };
-    console.log("Sending create buyer transaction request:", requestData);
+    // console.log("Sending create buyer transaction request:", requestData);
     if (!requestData.email || !requestData.paymentAmount || !requestData.paymentDescription) {
       toast({
         title: "Invalid input",
@@ -228,11 +228,11 @@ export default function CreateDeal() {
         </div>
 
         <div className="flex gap-2 items-center">
-          <p className="text-sm text-gray-500">STEP {step} OF 2</p>
+          <p className="text-sm text-gray-400">STEP {step} OF 2</p>
 
           <div className="h-1 bg-gray-200 flex-1">
             <div
-              className="h-1 bg-green-500 transition-all duration-300"
+              className="h-1 bg-[#d59e2d] transition-all duration-300"
               style={{ width: step === 1 ? "50%" : "100%" }}
             />
           </div>
@@ -261,7 +261,7 @@ export default function CreateDeal() {
 
             {/* Item */}
             <div className="">
-              <label className="text-sm font-medium text-gray-700">
+              <label className="text-sm font-medium text-gray-400">
                 What are you buying?
               </label>
               <input
@@ -269,14 +269,14 @@ export default function CreateDeal() {
                 placeholder="iPhone 13 Pro"
                 value={form.item}
                 onChange={(e) => setForm({ ...form, item: e.target.value })}
-                className="mt-1 w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-xs placeholder:font-extralight"
+                className="mt-1 w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#d59e2d] placeholder:text-xs placeholder:font-extralight"
               />
             </div>
 
 
             {/* Price */}
             <div className="">
-              <label className="text-sm font-medium text-gray-700">
+              <label className="text-sm font-medium text-gray-400">
                 Price (₦)
               </label>
               <input
@@ -284,7 +284,7 @@ export default function CreateDeal() {
                 placeholder="50000"
                 value={form.price}
                 onChange={(e) => updateForm("price", e.target.value)}
-                className="mt-1 w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-xs placeholder:font-extralight"
+                className="mt-1 w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#d59e2d] placeholder:text-xs placeholder:font-extralight"
               />
             </div>
 
@@ -301,7 +301,7 @@ export default function CreateDeal() {
                   // placeholder="david@sylo.com"
                   value={userDetails.email.trim()}
                   onChange={(e) => setForm({ ...form, buyer: e.target.value })}
-                  className="mt-1 w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-xs placeholder:font-extralight"
+                  className="mt-1 w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#d59e2d] placeholder:text-xs placeholder:font-extralight"
                 />
               </div>
 
@@ -312,9 +312,9 @@ export default function CreateDeal() {
 
           <div className={`w-full shrink-0 pt-6 space-y-6  ${step !== 2 ? "hidden" : ""}`}>
             {/* Wallet */}
-            <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex justify-between">
-              <span className="text-sm text-gray-600">Wallet Balance</span>
-              <span className="font-semibold text-green-700">
+            <div className="bg-[#e8f0fb] rounded-xl p-4 flex justify-between">
+              <span className="text-sm text-[#1c3151]">Wallet Balance</span>
+              <span className="font-semibold text-[#06427c]">
                 {formatNaira(wallet?.balance || 0)}
               </span>
             </div>
@@ -322,12 +322,12 @@ export default function CreateDeal() {
             {/* Deal Summary */}
 
             <div
-              className="p-4 rounded-xl w-full"
+              className="p-4 rounded-xl w-full bg-[#0e1e38]"
               style={{
-                background: "linear-gradient(135deg, rgba(183, 137, 57, 0.1) 0%, rgba(138, 109, 47, 0.1) 100%)",
-                border: "1px solid rgba(183, 137, 57, 0.2)",
-                backdropFilter: "blur(8px)",
-                boxShadow: "0 4px 20px rgba(0, 0, 0, 0.1)",
+                // background: "linear-gradient(135deg, rgba(183, 137, 57, 0.1) 0%, rgba(138, 109, 47, 0.1) 100%)",
+                // border: "1px solid rgba(183, 137, 57, 0.2)",
+                // backdropFilter: "blur(8px)",
+                // boxShadow: "0 4px 20px rgba(0, 0, 0, 0.1)",
               }}
             >
               {/* <div className="bg-white rounded-2xl p-5 border shadow-sm"> */}
@@ -335,7 +335,7 @@ export default function CreateDeal() {
 
               {/* Core Info */}
               <div className="space-y-3 text-sm">
-                <Row label={`${role} contact email`} value={userDetails.email.trim()} />
+                <Row label={`${role == "seller" ? "Seller" : "Buyer"} contact email`} value={userDetails.email.trim()} />
                 <Row label="Item" value={form.item} />
                 <Row label="Amount" value={formatNaira(amount)} highlight />
               </div>
@@ -349,7 +349,7 @@ export default function CreateDeal() {
 
             {/* Balance after */}
             <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Balance after lock</span>
+              <span className="text-gray-400">Balance after lock</span>
               <span className="font-semibold text-white">
                 
                 {role === "seller" ? formatNaira(wallet?.balance + total) : formatNaira(wallet?.balance - total)}
@@ -357,12 +357,12 @@ export default function CreateDeal() {
             </div>
 
             {/* Escrow Info */}
-           {role === "buyer" && <div className="bg-green-50 border border-green-200 rounded-2xl p-4">
-              <h3 className="font-semibold text-green-700 mb-2">
+           {role === "buyer" && <div className="bg-[#e8f0fb] rounded-2xl p-4">
+              <h3 className="font-semibold text-[#06427c] mb-2">
                 How you are protected. 
               </h3>
 
-              <ul className="text-sm text-gray-600 space-y-2">
+              <ul className="text-sm text-[#1c3151] space-y-2">
                 <li>Your payment to the seller is locked here until the seller delivers the right item</li>
               </ul>
             </div>}
@@ -384,8 +384,8 @@ export default function CreateDeal() {
           <button
             onClick={handleNext}
             disabled={!isValid}
-            className={`w-full py-3 rounded-xl font-semibold transition ${isValid
-                ? "bg-green-500 text-white active:scale-[0.98]"
+            className={`w-full py-3 border rounded-xl font-semibold transition ${isValid
+                ? " text-white active:scale-[0.98]"
                 : "bg-gray-600 text-gray-400"
               }`}
           >
@@ -396,7 +396,7 @@ export default function CreateDeal() {
   <button
   onClick={handleCreateDeal}
   disabled={isLoading}
-  className="w-full py-3 rounded-xl font-semibold bg-green-500 text-white active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-70"
+  className="w-full py-3 rounded-xl font-semibold border text-white active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-70"
 >
   {isLoading ? (
     <>
@@ -437,10 +437,10 @@ export default function CreateDeal() {
 // eslint-disable-next-line react/prop-types
 const Row = ({ label, value, highlight, bold, }) => (
   <div className="flex justify-between">
-    <span className="text-gray-500">{label}</span>
+    <span className="text-gray-400">{label}</span>
     <span
       className={`
-        ${highlight ? "text-green-600 font-semibold" : ""}
+        ${highlight ? "text-[#d59e2d] font-semibold" : ""}
         ${bold ? "font-bold " : ""}
       `}
     >
