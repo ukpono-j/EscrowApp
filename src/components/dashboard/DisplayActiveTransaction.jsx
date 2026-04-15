@@ -812,7 +812,7 @@ const DisplayActiveTransaction = () => {
         if (!token) {
           throw new Error('Authentication token missing');
         }
-        const response = await axios.get(`${BASE_URL}/api/wallet/balance`, {
+        const response = await axios.get(`/api/wallet/balance`, {
           headers: { Authorization: `Bearer ${token}` },
           timeout: 15000,
         });
@@ -1180,7 +1180,7 @@ const DisplayActiveTransaction = () => {
 
   const handleChat = useCallback(async (transactionId) => {
     try {
-      const res = await axios.post(`${BASE_URL}/api/transactions/create-chatroom`, { transactionId }, {
+      const res = await axios.post(`/api/transactions/create-chatroom`, { transactionId }, {
         headers: { Authorization: `Bearer ${localStorage.getItem('access-token')}` },
       });
       if (res.data?.success && res.data.chatroomId) {
@@ -1233,7 +1233,7 @@ const DisplayActiveTransaction = () => {
   const fetchBuyerWaybillDetails = useCallback(async (transactionId) => {
     setIsFetchingWaybill(prev => ({ ...prev, [transactionId]: true }));
     try {
-      const res = await axios.get(`${BASE_URL}/api/transactions/waybill-details/${transactionId}`, {
+      const res = await axios.get(`/api/transactions/waybill-details/${transactionId}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("access-token")}` },
       });
       if (res.data?.success && res.data.data) {
