@@ -5,7 +5,7 @@ import {
   MdDashboard,
   MdAddCircle,
   MdPerson,
-  MdSecurity,
+  // MdSecurity,
   MdMenu,
   MdClose,
 } from "react-icons/md";
@@ -18,14 +18,24 @@ import {
   Flex,
   useColorModeValue,
   Image,
-  Spinner,
+  // Spinner,
 } from "@chakra-ui/react";
-import { BsChevronDown } from "react-icons/bs";
-import axios from "../../utils/axiosConfig";
+// import { BsChevronDown } from "react-icons/bs";
+// import axios from "../../utils/axiosConfig";
 import Logo from "../../assets/logo1.png";
-import ThemeToggle from "../../ThemeToggle";
+// import ThemeToggle from "../../ThemeToggle";
 
-const BASE_URL = import.meta.env.VITE_BASE_URL;
+// const BASE_URL = import.meta.env.VITE_BASE_URL;
+
+
+import { useDispatch, useSelector } from "react-redux";
+import {
+  toggleSidebar,
+  setIsMobile,
+  closeSidebar,
+} from "../../store/slices/sidebarSlice";
+
+
 
 class SidebarErrorBoundary extends React.Component {
   state = { hasError: false };
@@ -46,56 +56,84 @@ class SidebarErrorBoundary extends React.Component {
   }
 }
 
-const validateUserResponse = (responseData) => {
-  if (
-    responseData.success &&
-    responseData.data?.user &&
-    Object.keys(responseData.data.user).length > 0 &&
-    responseData.data.user.firstName
-  ) {
-    return responseData.data.user;
-  }
-  console.error("Invalid user data structure:", responseData);
-  throw new Error(responseData.error || "Invalid user data received");
-};
+// const validateUserResponse = (responseData) => {
+//   if (
+//     responseData.success &&
+//     responseData.data?.user &&
+//     Object.keys(responseData.data.user).length > 0 &&
+//     responseData.data.user.firstName
+//   ) {
+//     return responseData.data.user;
+//   }
+//   console.error("Invalid user data structure:", responseData);
+//   throw new Error(responseData.error || "Invalid user data received");
+// };
 
 const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }) => {
+
+const dispatch = useDispatch();
+
+const { isCollapsed, isMobile, isSidebarVisible } = useSelector(
+  (state) => state.sidebar
+);
+
+
+
+
+
   const location = useLocation();
   const [activeLink, setActiveLink] = useState(location.pathname === "/" ? "/dashboard" : location.pathname);
   const toast = useToast();
   const navigate = useNavigate();
-  const [userName, setUserName] = useState("");
-  const [isUserLoading, setIsUserLoading] = useState(true);
-  const [settingLinks, setSettingLinks] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(() => {
-    const saved = localStorage.getItem('sidebarCollapsed');
-    return saved !== null ? JSON.parse(saved) : window.innerWidth < 1024;
-  });
-  const [isMobile, setIsMobile] = useState(false);
-  const [isSidebarVisible, setIsSidebarVisible] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false); // Add state for admin role
+  // const [userName, setUserName] = useState("");
+  // const [isUserLoading, setIsUserLoading] = useState(true);
+  // const [settingLinks, setSettingLinks] = useState(false);
+
+
+  // const [isCollapsed, setIsCollapsed] = useState(() => {
+  //   const saved = localStorage.getItem('sidebarCollapsed');
+  //   return saved !== null ? JSON.parse(saved) : window.innerWidth < 1024;
+  // });
+  // const [isMobile, setIsMobile] = useState(false);
+  // const [isSidebarVisible, setIsSidebarVisible] = useState(true);
+  // const [isAdmin, setIsAdmin] = useState(false); // Add state for admin role
 
   const bgColor = useColorModeValue("#FFFFFF", "#051E2F");
   const borderColor = useColorModeValue("#E2E8F0", "rgba(179, 137, 57, 0.1)");
 
-  const checkScreenSize = useCallback(() => {
-    const mobileView = window.innerWidth < 768;
-    setIsMobile(mobileView);
-    if (mobileView) {
-      setIsSidebarVisible(false);
-      setIsCollapsed(false);
-    } else {
-      setIsSidebarVisible(true);
-      const savedCollapsed = JSON.parse(localStorage.getItem('sidebarCollapsed'));
-      setIsCollapsed(savedCollapsed !== null ? savedCollapsed : window.innerWidth < 1024);
-    }
-  }, []);
+  // const checkScreenSize = useCallback(() => {
+  //   const mobileView = window.innerWidth < 768;
+  //   setIsMobile(mobileView);
+  //   if (mobileView) {
+  //     setIsSidebarVisible(false);
+  //     setIsCollapsed(false);
+  //   } else {
+  //     setIsSidebarVisible(true);
+  //     const savedCollapsed = JSON.parse(localStorage.getItem('sidebarCollapsed'));
+  //     setIsCollapsed(savedCollapsed !== null ? savedCollapsed : window.innerWidth < 1024);
+  //   }
+  // }, []);
 
-  useEffect(() => {
-    checkScreenSize();
-    window.addEventListener("resize", checkScreenSize);
-    return () => window.removeEventListener("resize", checkScreenSize);
-  }, [checkScreenSize]);
+  const checkScreenSize = useCallback(() => {
+  const mobileView = window.innerWidth < 768;
+  dispatch(setIsMobile(mobileView));
+}, [dispatch]);
+
+useEffect(() => {
+  checkScreenSize();
+  window.addEventListener("resize", checkScreenSize);
+  return () => window.removeEventListener("resize", checkScreenSize);
+}, [checkScreenSize]);
+
+const handleToggle = () => {
+  dispatch(toggleSidebar());
+};
+
+  // useEffect(() => {
+  //   checkScreenSize();
+  //   window.addEventListener("resize", checkScreenSize);
+  //   return () => window.removeEventListener("resize", checkScreenSize);
+  // }, [checkScreenSize]);
 
   useEffect(() => {
     const currentPath = location.pathname === "/" ? "/dashboard" : location.pathname;
@@ -107,52 +145,59 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
     });
   }, [location.pathname]);
 
-  useEffect(() => {
-    const verifyToken = async () => {
-      const token = localStorage.getItem("access-token");
-      if (!token) {
-        console.warn("No access token found, redirecting to login");
-        toast({
-          title: "Session expired",
-          description: "Please log in again.",
-          status: "error",
-          duration: 3000,
-          isClosable: true,
-        });
-        handleLogout();
-        return;
-      }
 
-      setIsUserLoading(true);
-      try {
-        const response = await axios.get(`${BASE_URL}/api/users/user-details`);
-        console.log("User details response:", response.data);
-        const user = validateUserResponse(response.data);
-        setUserName(user.firstName || "User");
-        setIsAdmin(user.isAdmin || false); // Set admin status
-      } catch (error) {
-        console.error("Error fetching user details:", {
-          message: error.message,
-          response: error.response?.data,
-          status: error.response?.status,
-        });
-        // toast({
-        //   title: "Error fetching user details",
-        //   description: error.message || "An error occurred while fetching user details.",
-        //   status: "error",
-        //   duration: 3000,
-        //   isClosable: true,
-        // });
-        if (error.response?.status === 401 || error.response?.status === 404) {
-          handleLogout();
-        }
-        setUserName("User");
-      } finally {
-        setIsUserLoading(false);
-      }
-    };
-    verifyToken();
-  }, [toast, navigate]);
+  useEffect(() => {
+  if (isMobile) {
+    dispatch(closeSidebar());
+  }
+}, [location.pathname, isMobile, dispatch]);
+
+  // useEffect(() => {
+  //   const verifyToken = async () => {
+  //     const token = localStorage.getItem("access-token");
+  //     if (!token) {
+  //       console.warn("No access token found, redirecting to login");
+  //       toast({
+  //         title: "Session expired",
+  //         description: "Please log in again.",
+  //         status: "error",
+  //         duration: 3000,
+  //         isClosable: true,
+  //       });
+  //       handleLogout();
+  //       return;
+  //     }
+
+  //     setIsUserLoading(true);
+  //     try {
+  //       const response = await axios.get(`${BASE_URL}/api/users/user-details`);
+  //       console.log("User details response:", response.data);
+  //       const user = validateUserResponse(response.data);
+  //       setUserName(user.firstName || "User");
+  //       setIsAdmin(user.isAdmin || false); // Set admin status
+  //     } catch (error) {
+  //       console.error("Error fetching user details:", {
+  //         message: error.message,
+  //         response: error.response?.data,
+  //         status: error.response?.status,
+  //       });
+  //       // toast({
+  //       //   title: "Error fetching user details",
+  //       //   description: error.message || "An error occurred while fetching user details.",
+  //       //   status: "error",
+  //       //   duration: 3000,
+  //       //   isClosable: true,
+  //       // });
+  //       if (error.response?.status === 401 || error.response?.status === 404) {
+  //         handleLogout();
+  //       }
+  //       setUserName("User");
+  //     } finally {
+  //       setIsUserLoading(false);
+  //     }
+  //   };
+  //   verifyToken();
+  // }, [toast, navigate]);
 
   useLayoutEffect(() => {
     localStorage.setItem('sidebarCollapsed', JSON.stringify(isCollapsed));
@@ -161,17 +206,17 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
 
 
 
-  const toggleSidebar = useCallback(() => {
-    if (isMobile) {
-      setIsSidebarVisible((prev) => !prev);
-    } else {
-      setIsCollapsed((prev) => {
-        const newState = !prev;
-        localStorage.setItem('sidebarCollapsed', JSON.stringify(newState));
-        return newState;
-      });
-    }
-  }, [isMobile]);
+  // const toggleSidebar = useCallback(() => {
+  //   if (isMobile) {
+  //     setIsSidebarVisible((prev) => !prev);
+  //   } else {
+  //     setIsCollapsed((prev) => {
+  //       const newState = !prev;
+  //       localStorage.setItem('sidebarCollapsed', JSON.stringify(newState));
+  //       return newState;
+  //     });
+  //   }
+  // }, [isMobile]);
 
   const links = [
     { to: "/dashboard", label: "Dashboard", icon: <MdDashboard className="text-xl" /> },
@@ -185,22 +230,33 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
     { to: "/onbroading", label: "Switch Role", icon: <FaExchangeAlt className="text-lg" /> },
   ];
 
-  const handleLinkClick = useCallback((to) => {
-    setActiveLink(to);
-    setSettingLinks(false);
-    if (isMobile) {
-      setIsSidebarVisible(false);
-    }
-    const savedCollapsed = JSON.parse(localStorage.getItem('sidebarCollapsed'));
-    if (!isMobile && savedCollapsed) {
-      setIsCollapsed(true);
-    }
-  }, [isMobile]);
+  // const handleLinkClick = useCallback((to) => {
+  //   setActiveLink(to);
+  //   // setSettingLinks(false);
+  //   if (isMobile) {
+  //     setIsSidebarVisible(false);
+  //   }
+  //   const savedCollapsed = JSON.parse(localStorage.getItem('sidebarCollapsed'));
+  //   if (!isMobile && savedCollapsed) {
+  //     setIsCollapsed(true);
+  //   }
+  // }, [isMobile]);
 
-  const handleSettingLinkClick = useCallback((to) => {
+  const handleLinkClick = useCallback(
+  (to) => {
     setActiveLink(to);
-    setSettingLinks((prev) => !prev);
-  }, []);
+
+    if (isMobile) {
+      dispatch(closeSidebar());
+    }
+  },
+  [isMobile, dispatch]
+);
+
+  // const handleSettingLinkClick = useCallback((to) => {
+  //   setActiveLink(to);
+  //   setSettingLinks((prev) => !prev);
+  // }, []);
 
   const handleLogout = useCallback(() => {
     localStorage.removeItem("access-token");
@@ -230,7 +286,7 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
     if (!isMobile || isSidebarVisible) return null;
     return (
       <button
-        onClick={toggleSidebar}
+        onClick={handleToggle}
         className="fixed top-4 left-4 z-50 flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-[#B38939] to-[#BB954D] shadow-lg hover:shadow-xl transition-shadow duration-200"
         style={{ willChange: 'auto' }}
         aria-label="Toggle Sidebar"
@@ -303,7 +359,7 @@ const Sidebar = memo(({ onShowProfile, onShowToggleComponent, onCollapseChange }
                   </Link>
                 </div>
                 <button
-                  onClick={toggleSidebar}
+                  onClick={handleToggle}
                   className="flex items-center justify-center rounded-xl bg-gradient-to-br from-[#B38939]/10 to-[#BB954D]/10 hover:from-[#B38939]/20 hover:to-[#BB954D]/20 transition-colors duration-200 border border-[#B38939]/20"
                   style={{
                     width: "40px",

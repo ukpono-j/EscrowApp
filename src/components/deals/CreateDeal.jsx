@@ -4,8 +4,6 @@ import { formatNaira } from "../../utils";
 import axios from "../../utils/axiosConfig";
 import { useSelector } from "react-redux";
 import { useToast } from "@chakra-ui/react";
-// import { Copy, Send, Share2 } from "lucide-react";
-
 
 const validateApiResponse = (responseData, endpoint) => {
   if (responseData.success) {
@@ -19,7 +17,7 @@ const validateApiResponse = (responseData, endpoint) => {
 export default function CreateDeal() {
   const navigate = useNavigate();
   const { userDetails } = useSelector(state => state.user);
-  const { user, wallet, paymentDetails, loading, error } = useSelector((state) => state.wallet);
+  const { wallet} = useSelector((state) => state.wallet);
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const toast = useToast();
@@ -31,7 +29,7 @@ export default function CreateDeal() {
   });
 
   const isValid =
-    userDetails.email.trim() &&
+    (userDetails?.email?.trim() || "") &&
     form.item.trim() &&
     Number(form.price) > 0;
 
@@ -44,7 +42,7 @@ export default function CreateDeal() {
 
     // const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    // if (!re.test(String(userDetails.email.trim()).toLowerCase())) {
+    // if (!re.test(String(userDetails?.email.trim()).toLowerCase())) {
 
     //   toast({
     //     title: "Error",
@@ -111,17 +109,17 @@ export default function CreateDeal() {
     setIsLoading(true)
     
     const requestData = {
-      paymentName: `${userDetails.firstName} ${userDetails.lastName}` || role,
-      email: userDetails.email.trim(),
+      paymentName: `${userDetails?.firstName} ${userDetails?.lastName}` || role,
+      email: userDetails?.email.trim(),
       paymentAmount: parseFloat(total),
-      paymentDescription: form.item.trim(),
+      paymentDescription: form?.item.trim(),
       selectedUserType: role,
       paymentBank: "Pending",
       paymentBankCode: "000",
       paymentAccountNumber: "0",
     };
     // console.log("Sending create buyer transaction request:", requestData);
-    if (!requestData.email || !requestData.paymentAmount || !requestData.paymentDescription) {
+    if (!requestData?.email || !requestData?.paymentAmount || !requestData?.paymentDescription) {
       toast({
         title: "Invalid input",
         description: "Please ensure all required fields are filled correctly.",
@@ -299,7 +297,7 @@ export default function CreateDeal() {
                 <input
                   type="email"
                   // placeholder="david@sylo.com"
-                  value={userDetails.email.trim()}
+                  value={userDetails?.email.trim()}
                   onChange={(e) => setForm({ ...form, buyer: e.target.value })}
                   className="mt-1 w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#d59e2d] placeholder:text-xs placeholder:font-extralight"
                 />
@@ -335,7 +333,7 @@ export default function CreateDeal() {
 
               {/* Core Info */}
               <div className="space-y-3 text-sm">
-                <Row label={`${role == "seller" ? "Seller" : "Buyer"} contact email`} value={userDetails.email.trim()} />
+                <Row label={`${role == "seller" ? "Seller" : "Buyer"} contact email`} value={userDetails?.email.trim()} />
                 <Row label="Item" value={form.item} />
                 <Row label="Amount" value={formatNaira(amount)} highlight />
               </div>
