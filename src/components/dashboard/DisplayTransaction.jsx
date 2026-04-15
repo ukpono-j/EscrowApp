@@ -355,6 +355,8 @@ const TransactionCard = React.memo(({ transaction, currentUser, isConfirming, ha
   );
 });
 
+TransactionCard.displayName = "TransactionCard";
+
 const WaybillModal = React.memo(({ isOpen, onClose, transactionId, isBuyer, details, setDetails, errors, setErrors, handleSubmit, downloadImage, isFunded, isSubmitting, setIsSubmitting, isFetching }) => {
   const bgColor = useColorModeValue('white', '#1A202C');
   const textColor = useColorModeValue('#051E2F', 'white');
@@ -576,6 +578,9 @@ const WaybillModal = React.memo(({ isOpen, onClose, transactionId, isBuyer, deta
     </Modal>
   );
 });
+
+WaybillModal.displayName = "WaybillModal";
+
 
 const PaymentDetailsModal = ({ isOpen, onClose, transaction, paymentDetails, setPaymentDetails, paymentErrors, handleSubmit }) => {
   const bgColor = useColorModeValue('white', '#1A202C');

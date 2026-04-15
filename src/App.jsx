@@ -24,6 +24,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import { Box, Button } from '@chakra-ui/react';
 import VerifyEmail from './pages/VerifyEmail';
 import DashboardOnboarding from './pages/dashbroardonbroading';
+import DealSuccess from './components/deals/DealSuccess';
 
 const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:3001';
 
@@ -166,7 +167,11 @@ function App() {
       <Routes>
         <Route path="/" element={<PublicRoute><Home /></PublicRoute>} />
         <Route path="/login" element={<PublicRoute><LogIn /></PublicRoute>} />
-        <Route path="/onbroading" element={<PrivateRoute><DashboardOnboarding /></PrivateRoute>} />
+        <Route path="/onbroading" element={
+          // <PrivateRoute>
+            <DashboardOnboarding />
+          // </PrivateRoute>
+          } />
         <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
         <Route path="/verify-email" element={<PublicRoute><VerifyEmail /></PublicRoute>} />        
         <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
@@ -175,6 +180,7 @@ function App() {
         <Route path="/profile" element={<PrivateRoute><MainProfile /></PrivateRoute>} />
         <Route path="/transactions" element={<PrivateRoute><Transaction /></PrivateRoute>} />
         <Route path="/transactions/tab" element={<PrivateRoute><DisplayTransaction /></PrivateRoute>} />
+        <Route path="/deal/:id" element={<PrivateRoute><DealSuccess /></PrivateRoute>} />
         <Route path="/join-transaction" element={<PrivateRoute><JoinTransaction /></PrivateRoute>} />
         <Route path="/disputes" element={<PrivateRoute><DisputePage /></PrivateRoute>} /> {/* Add User Dispute Route */}
         <Route path="/admin/disputes" element={<PrivateRoute><DisputePage isAdmin={true} /></PrivateRoute>} /> {/* Add Admin Dispute Route */}

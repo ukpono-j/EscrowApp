@@ -4,7 +4,7 @@ import { formatNaira } from "../../utils";
 import axios from "../../utils/axiosConfig";
 import { useSelector } from "react-redux";
 import { useToast } from "@chakra-ui/react";
-import { Copy, Send, Share2 } from "lucide-react";
+// import { Copy, Send, Share2 } from "lucide-react";
 
 
 const validateApiResponse = (responseData, endpoint) => {
@@ -25,13 +25,13 @@ export default function CreateDeal() {
   const toast = useToast();
 
   const [form, setForm] = useState({
-    buyer: "",
+    // buyer: "",
     item: "",
     price: "",
   });
 
   const isValid =
-    form.buyer.trim() &&
+    userDetails.email.trim() &&
     form.item.trim() &&
     Number(form.price) > 0;
 
@@ -42,21 +42,21 @@ export default function CreateDeal() {
   const handleNext = () => {
     if (!isValid) return;
 
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    // const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    if (!re.test(String(form.buyer.trim()).toLowerCase())) {
+    // if (!re.test(String(userDetails.email.trim()).toLowerCase())) {
 
-      toast({
-        title: "Error",
-        description: "Invalid email address",
-        status: "error",
-        duration: 3000,
+    //   toast({
+    //     title: "Error",
+    //     description: "Invalid email address",
+    //     status: "error",
+    //     duration: 3000,
 
-      });
+    //   });
 
 
-      return
-    }
+    //   return
+    // }
 
 
     setStep(2);
@@ -76,68 +76,6 @@ export default function CreateDeal() {
 
   const role = sessionStorage.getItem("user_role");
 
-  // eslint-disable-next-line react/prop-types
-  const Item = ({ id }) => {
-
-
-    let url = `${window.location.host}/transaction/join/${id}`;
-
-
-    const copyContent = async () => {
-      try {
-        await navigator.clipboard.writeText(url);
-        console.log('Content copied to clipboard');
-      } catch (err) {
-        console.error('Failed to copy: ', err);
-      }
-    }
-
-
-    return (
-      <div className="border borderrr-green-500 rounded-xl bg-green-600  flex flex-wrap  border-red-600 max-w-[10rem] sm:max-w-md ">
-        <p className="text-white/70">
-          They join via this link and connect to your deal
-          automatically
-        </p>
-        <div className="bg-white flex items-center justify-between p-2 rounded-xl w-full">
-          <div className="flex-1" >  <h4 className="truncate">{url}</h4></div>
-        
-
-          <button onClick={copyContent} className="bg-gray-100 p-3 rounded-xl active:scale-[0.98] transition">
-            <Copy size={20} className="text-green-600" />
-
-          </button>
-
-
-
-        </div>
-
-        <div className="flex gap-2 py-2 w-full">
-          <a className="flex items-center gap-1 border flex-1 p-2 rounded-2xl bg-white " href={`whatsapp://send?text=${url}`}>
-            <Share2 size={15} className="text-[#987733]" />{" "}
-            <p className="text-black">WhatsApp</p>
-          </a>
-
-          <button
-            onClick={async () => {
-              if (navigator.share) {
-                await navigator.share({ title: "Join my deal", url });
-              } else {
-                await navigator.clipboard.writeText(url);
-                toast({ title: "Link copied!", status: "success", duration: 3000 });
-              }
-            }}
-            className="flex items-center gap-1 border flex-1 p-2 rounded-2xl bg-white"
-          >
-            <Send size={15} className="text-[#987733]" />
-            <p className="text-black">Instagram DM</p>
-          </button>
-        </div>
-      </div>
-    )
-
-  }
-
 
 
 
@@ -156,25 +94,25 @@ export default function CreateDeal() {
       return;
     }
 
-  // if((role === "buyer" &&){
-  if(role === "buyer" && parseFloat(wallet?.balance) < 0){
+ 
+  // if(role === "buyer" && parseFloat(wallet?.balance) < 1){
 
-       toast({
-        title: "Deposit Required.",
-        description: "InSufficient balance please fund your account to continue",
-        status: "warning",
-        duration: 3000,
-        isClosable: true,
-      });
+  //      toast({
+  //       title: "Deposit Required.",
+  //       description: "InSufficient balance please fund your account to continue",
+  //       status: "warning",
+  //       duration: 3000,
+  //       isClosable: true,
+  //     });
 
-
-    }
+  //     return
+  //   }
     
     setIsLoading(true)
     
     const requestData = {
       paymentName: `${userDetails.firstName} ${userDetails.lastName}` || role,
-      email: form.buyer.trim(),
+      email: userDetails.email.trim(),
       paymentAmount: parseFloat(total),
       paymentDescription: form.item.trim(),
       selectedUserType: role,
@@ -225,20 +163,20 @@ export default function CreateDeal() {
       
 
 
-        if (role === "seller") {
-          toast({
-            title: "Successfully created a transaction",
-            description: <Item id={transactionId} />,
-            status: "success",
-            duration: 50000,
-            isClosable: true,
+        // if (role === "seller") {
+        //   toast({
+        //     title: "Successfully created a transaction",
+        //     description: <Item id={transactionId} />,
+        //     status: "success",
+        //     duration: 50000,
+        //     isClosable: true,
 
-          });
+        //   });
 
-        } else {
+        // } else {
 
-          navigate("/transactions/tab");
-        }
+          // }
+            navigate(`/deal/${transactionId}`, {state: {...requestData}});
 
 
 
@@ -266,6 +204,9 @@ export default function CreateDeal() {
       })
   }
 
+  
+
+
   return (
 
     <div className="flex flex-col w-full px-4">
@@ -273,7 +214,6 @@ export default function CreateDeal() {
 
       <div className=" space-y-4">
 
-        <h1 className="text-sm font-semibold text-center">{step === 1 ? "CREATE A DEAL" : "REVIEW A DEAL"}</h1>
         <div className="flex gap-2 items-center">
           <button
             onClick={() => (step === 1 ? navigate(-1) : setStep(1))}
@@ -329,7 +269,7 @@ export default function CreateDeal() {
                 placeholder="iPhone 13 Pro"
                 value={form.item}
                 onChange={(e) => setForm({ ...form, item: e.target.value })}
-                className="mt-1 w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="mt-1 w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-xs placeholder:font-extralight"
               />
             </div>
 
@@ -344,28 +284,28 @@ export default function CreateDeal() {
                 placeholder="50000"
                 value={form.price}
                 onChange={(e) => updateForm("price", e.target.value)}
-                className="mt-1 w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="mt-1 w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-xs placeholder:font-extralight"
               />
             </div>
 
 
 
             {/* Buyer */}
-            <div>
+            {/* <div>
               <div>
                 <label className="text-sm font-medium text-gray-700">
                   Buyer's contact email
                 </label>
                 <input
                   type="email"
-                  placeholder="david@sylo.com"
-                  value={form.buyer}
+                  // placeholder="david@sylo.com"
+                  value={userDetails.email.trim()}
                   onChange={(e) => setForm({ ...form, buyer: e.target.value })}
-                  className="mt-1 w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="mt-1 w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-xs placeholder:font-extralight"
                 />
               </div>
 
-            </div>
+            </div> */}
           </div>
 
           {/* STEP 2 (placeholder) */}
@@ -395,7 +335,7 @@ export default function CreateDeal() {
 
               {/* Core Info */}
               <div className="space-y-3 text-sm">
-                <Row label="Buyer contact email" value={form.buyer} />
+                <Row label={`${role} contact email`} value={userDetails.email.trim()} />
                 <Row label="Item" value={form.item} />
                 <Row label="Amount" value={formatNaira(amount)} highlight />
               </div>
@@ -417,17 +357,15 @@ export default function CreateDeal() {
             </div>
 
             {/* Escrow Info */}
-            <div className="bg-green-50 border border-green-200 rounded-2xl p-4">
+           {role === "buyer" && <div className="bg-green-50 border border-green-200 rounded-2xl p-4">
               <h3 className="font-semibold text-green-700 mb-2">
-                How this deal is protected
+                How you are protected. 
               </h3>
 
               <ul className="text-sm text-gray-600 space-y-2">
-                <li>• Buyer pays into secure escrow</li>
-                <li>• You deliver the item</li>
-                <li>• Funds released after buyer confirms</li>
+                <li>Your payment to the seller is locked here until the seller delivers the right item</li>
               </ul>
-            </div>
+            </div>}
 
             {/* Note */}
             <p className="text-xs text-gray-400">
@@ -480,13 +418,15 @@ export default function CreateDeal() {
           d="M4 12a8 8 0 018-8V0C5.373 0 22 6.477 22 12h-4z"
         />
       </svg>
-      Creating...
+      {/* Creating... */}
     </>
   ) : (
-    "Create Escrow →"
+    role === "buyer" ? "Fund this deal" : "Create deal"
   )}
 </button>
         )}
+
+         {role === "buyer" && <p className="text-xs text-gray-400 my-3 text-center">Lock your payment and wait for seller to join</p>}
       </div>
     </div>
   );

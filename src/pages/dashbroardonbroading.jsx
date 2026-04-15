@@ -9,6 +9,8 @@ const ROLES = {
 export default function DashboardOnboarding() {
   const navigate = useNavigate();
 
+  
+
   const handleRedirect = async (role) => {
     if (!role) return;
     sessionStorage.setItem("user_role", role);
@@ -17,15 +19,9 @@ export default function DashboardOnboarding() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F2F0EF]">
-      {/* Loading Overlay */}
-      {/* {loading && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
-        </div>
-      )} */}
-
+    
       {/* Top */}
-      <div className="px-6 pt-16 pb-10 bg-black text-white">
+      <div className="px-6 pt-16 pb-10 bg-blue-950 text-white">
         <div className=" rounded-full flex items-center justify-center bg-white/10">
           <Image
             src={Logo}
@@ -62,17 +58,20 @@ export default function DashboardOnboarding() {
         </button>
 
         {/* Seller */}
-        <button
+          <button
           onClick={() => handleRedirect(ROLES.SELLER)}
           className={`w-full transition active:scale-[0.98]`}
         >
-          <div className="bg-gray-900 text-white rounded-2xl px-5 py-6">
-            <h2 className="text-lg font-semibold text-left">I'm Selling</h2>
-            <p className="text-gray-400 text-sm mt-1 text-left">
+          <div className="bg-white rounded-2xl px-5 py-6 border">
+            <h2 className="text-lg font-semibold text-left text-black">
+              I'm Selling
+            </h2>
+            <p className="text-gray-500 text-sm mt-1 text-left">
               Receive secure payments from buyers
             </p>
           </div>
         </button>
+
       </div>
     </div>
   );
