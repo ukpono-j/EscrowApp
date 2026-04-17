@@ -21,6 +21,7 @@ import { useManagedToast } from '../../utils/toastManager';
 import Sidebar from './Sidebar';
 import MiniNav from './MiniNav';
 import axios from '../../utils/axiosConfig';
+import FundingModal from '../transaction/FundingModal';
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 const MotionBox = motion(Box);
@@ -50,15 +51,15 @@ const TransactionSkeleton = () => {
   );
 };
 
-const TransactionLoader = () => {
-  const textColor = useColorModeValue('#051E2F', 'white');
-  return (
-    <Flex align="center" justify="center" h="50vh" direction="column" gap={4}>
-      <Spinner color="#BB954D" size="lg" />
-      <Text color={textColor} fontSize="md">Loading transactions...</Text>
-    </Flex>
-  );
-};
+// const TransactionLoader = () => {
+//   const textColor = useColorModeValue('#051E2F', 'white');
+//   return (
+//     <Flex align="center" justify="center" h="50vh" direction="column" gap={4}>
+//       <Spinner color="#BB954D" size="lg" />
+//       <Text color={textColor} fontSize="md">Loading transactions...</Text>
+//     </Flex>
+//   );
+// };
 
 const TransactionCard = React.memo(({ transaction, currentUser, isConfirming, handleChat, handleWaybill, handleConfirm, handleFund, handleEditPayment, openCancelModal, copyToClipboard, toggleDescription, expandedDescriptions }) => {
   const managedToast = useManagedToast();
@@ -621,92 +622,6 @@ const PaymentDetailsModal = ({ isOpen, onClose, transaction, paymentDetails, set
   );
 };
 
-const FundingModal = ({ isOpen, onClose, transaction, walletBalance, confirmFunding, isLoading, fetchWalletBalance }) => {
-  const bgColor = useColorModeValue('white', '#0a1528');
-  const textColor = useColorModeValue('#051E2F', 'white');
-  const subtleTextColor = useColorModeValue('gray.500', 'gray.400');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
-  const [error, setError] = useState('');
-  // const navigate = useNavigate();
-
-  return (
-    <Modal isOpen={isOpen} onClose={onClose} isCentered size={{ base: "full", sm: "sm" }}>
-      <ModalOverlay />
-      <ModalContent bg={bgColor} color={textColor} p={4} rounded="lg" border="1px" borderColor={borderColor}>
-        <ModalHeader fontSize="lg" fontWeight="600">Fund Transaction</ModalHeader>
-        <ModalBody>
-          <Stack spacing={3}>
-            <Box>
-              <Text fontSize="xs" color={subtleTextColor}>Transaction ID</Text>
-              <Text fontSize="sm" color={textColor}>{transaction?._id || 'N/A'}</Text>
-            </Box>
-            <Box>
-              <Text fontSize="xs" color={subtleTextColor}>Description</Text>
-              <Text fontSize="sm" color={textColor}>{transaction?.productDetails?.description || 'N/A'}</Text>
-            </Box>
-            <Box>
-              <Text fontSize="xs" color={subtleTextColor}>Amount Required</Text>
-              <Text fontSize="sm" color={textColor}>
-                ₦{(transaction?.paymentAmount || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
-              </Text>
-            </Box>
-            <Box>
-              <Text fontSize="xs" color={subtleTextColor}>Wallet Balance</Text>
-              <Text fontSize="sm" color={textColor}>
-                {walletBalance !== null
-                  ? `₦${(walletBalance || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
-                  : 'Unable to fetch balance. Please try again.'}
-              </Text>
-              {walletBalance === null && (
-                <Button
-                  size="sm"
-                  bg="#BB954D"
-                  color="white"
-                  _hover={{ bg: "#967532" }}
-                  onClick={fetchWalletBalance}
-                  mt={2}
-                >
-                  Retry Fetching Balance
-                </Button>
-              )}
-            </Box>
-            {walletBalance !== null && walletBalance < transaction?.paymentAmount && (
-              <Text fontSize="sm" color="red.400">
-                Your wallet balance is insufficient to fund this transaction. Please top up your wallet in the Profile section.
-              </Text>
-            )}
-            {error && <Text fontSize="sm" color="red.400">{error}</Text>}
-          </Stack>
-        </ModalBody>
-        <ModalFooter>
-          <Flex gap={3} w="full">
-            <Button
-              size="sm"
-              bg={useColorModeValue('gray.200', 'gray.600')}
-              color={textColor}
-              _hover={{ bg: useColorModeValue('gray.300', 'gray.700') }}
-              onClick={onClose}
-              isDisabled={isLoading}
-            >
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              bg="#BB954D"
-              color="white"
-              _hover={{ bg: "#967532" }}
-              onClick={() => confirmFunding(transaction, setError)}
-              isLoading={isLoading}
-              isDisabled={isLoading || walletBalance === null || walletBalance < transaction?.paymentAmount}
-            >
-              Fund Transaction
-            </Button>
-          </Flex>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
-  );
-};
 
 const DisplayTransaction = () => {
   const dispatch = useDispatch();
